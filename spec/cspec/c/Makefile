@@ -22,6 +22,7 @@ include kernel.mk
 # called by ../../Makefile
 cspec: ${UMM_TYPES} ${KERNEL_BUILD_ROOT}/kernel_all.c_pp
 	cd ${KERNEL_BUILD_ROOT} && ninja kernel_theories
+	cp -r ${KERNEL_BUILD_ROOT}/generated/* ../${L4V_ARCH}
 
 
 CONFIG_THY := ../../machine/${L4V_ARCH}/Kernel_Config.thy
