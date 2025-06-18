@@ -96,7 +96,7 @@ BUILD_DONE = ${KERNEL_BUILD_ROOT}/.cmake_done-${SEL4_CONFIG_NAME}
 # Top level rule for rebuilding kernel_all.c_pp
 ${KERNEL_BUILD_ROOT}/kernel_all.c_pp: ${BUILD_DONE}
 	cd ${KERNEL_BUILD_ROOT} && ninja kernel_all_pp_wrapper
-	cp -a ${KERNEL_BUILD_ROOT}/kernel_all_pp.c $@
+	python desensitize-c_pp.py ${KERNEL_BUILD_ROOT}/kernel_all_pp.c $@
 
 ifneq ($(L4V_ARCH),X64)
 OVERLAY_DIR := ${CSPEC_DIR}/c/overlays/${L4V_ARCH}
