@@ -80,7 +80,7 @@ c-parser: .FORCE
 binary-verification-input: c-kernel
 	$(ISABELLE_TOOL) build -d .. -v SimplExport
 	echo 'Built CFunDump.txt, md5sums of relevance are:'
-	md5sum cspec/CFunDump.txt cspec/c/kernel_all.c_pp
+	md5sum cspec/CFunDump.txt cspec/$(L4V_ARCH)/kernel_all.c_pp
 
 # Clean
 clean:
