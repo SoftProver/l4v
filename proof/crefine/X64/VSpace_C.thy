@@ -16,7 +16,7 @@ autocorres
     scope = handleVMFault lookupPDPTSlot,
     scope_depth = 0,
     c_locale = kernel_all_substitute
-  ] "../c/build/$L4V_ARCH/kernel_all.c_pp"
+  ] "./kernel_all.c_pp"
 
 context begin interpretation Arch . (*FIXME: arch_split*)
 
