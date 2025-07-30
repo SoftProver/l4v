@@ -1,0 +1,1753 @@
+<\STATESEP>section \<open>Bitwise Operations on integers\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Bits_Int
+  imports
+    "Word_Lib.Most_significant_bit"
+    "Word_Lib.Least_significant_bit"
+    "Word_Lib.Generic_set_bit"
+    "Word_Lib.Bit_Comprehension"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Implicit bit representation of \<^typ>\<open>int\<close>\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_last_def:
+  "(odd :: int \<Rightarrow> bool) w \<longleftrightarrow> w mod 2 = 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd w = (w mod 2 = 1)<\STATESEP>by (fact odd_iff_mod_2_eq_one)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_numeral_simps [simp]:
+  "\<not> odd (0 :: int)"
+  "odd (1 :: int)"
+  "odd (- 1 :: int)"
+  "odd (Numeral1 :: int)"
+  "\<not> odd (numeral (Num.Bit0 w) :: int)"
+  "odd (numeral (Num.Bit1 w) :: int)"
+  "\<not> odd (- numeral (Num.Bit0 w) :: int)"
+  "odd (- numeral (Num.Bit1 w) :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<not> odd 0 &&& \<not> is_unit 2) &&& odd (- 1) &&& odd Numeral1) &&& (\<not> odd (numeral (num.Bit0 w)) &&& odd (numeral (num.Bit1 w))) &&& \<not> odd (- numeral (num.Bit0 w)) &&& odd (- numeral (num.Bit1 w))<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_numeral_simps [simp]:
+  "(\<lambda>k::int. k div 2) 0 = 0"
+  "(\<lambda>k::int. k div 2) 1 = 0"
+  "(\<lambda>k::int. k div 2) (- 1) = - 1"
+  "(\<lambda>k::int. k div 2) Numeral1 = 0"
+  "(\<lambda>k::int. k div 2) (numeral (Num.Bit0 w)) = numeral w"
+  "(\<lambda>k::int. k div 2) (numeral (Num.Bit1 w)) = numeral w"
+  "(\<lambda>k::int. k div 2) (- numeral (Num.Bit0 w)) = - numeral w"
+  "(\<lambda>k::int. k div 2) (- numeral (Num.Bit1 w)) = - numeral (w + Num.One)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((0 div 2 = 0 &&& 1 div 2 = 0) &&& - 1 div 2 = - 1 &&& Numeral1 div 2 = 0) &&& (numeral (num.Bit0 w) div 2 = numeral w &&& numeral (num.Bit1 w) div 2 = numeral w) &&& - numeral (num.Bit0 w) div 2 = - numeral w &&& - numeral (num.Bit1 w) div 2 = - numeral (w + num.One)<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rl_eqI: "\<lbrakk>(\<lambda>k::int. k div 2) x = (\<lambda>k::int. k div 2) y; odd x = odd y\<rbrakk> \<Longrightarrow> x = y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x div 2 = y div 2; odd x = odd y\<rbrakk> \<Longrightarrow> x = y<\STATESEP>by (auto elim: oddE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma [simp]:
+  shows bin_rest_lt0: "(\<lambda>k::int. k div 2) i < 0 \<longleftrightarrow> i < 0"
+  and  bin_rest_ge_0: "(\<lambda>k::int. k div 2) i \<ge> 0 \<longleftrightarrow> i \<ge> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (i div 2 < 0) = (i < 0) &&& (0 \<le> i div 2) = (0 \<le> i)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_gt_0 [simp]: "(\<lambda>k::int. k div 2) x > 0 \<longleftrightarrow> x > 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 < x div 2) = (1 < x)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Bit projection\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_nth_eq_iff: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) x = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y \<longleftrightarrow> x = y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (bit x = bit y) = (x = y)<\STATESEP>by (simp add: bit_eq_iff fun_eq_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_eqI:
+  "x = y" if "\<And>n. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n \<longleftrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = y<\STATESEP>using that<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+bit x ?n = bit y ?n
+
+goal (1 subgoal):
+ 1. x = y<\STATESEP>by (rule bit_eqI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_eq_iff: "x = y \<longleftrightarrow> (\<forall>n. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x = y) = (\<forall>n. bit x n = bit y n)<\STATESEP>by (metis bit_eq_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_zero [simp]: "\<not> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) 0 n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> bit 0 n<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_1 [simp]: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) 1 n \<longleftrightarrow> n = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit 1 n = (n = 0)<\STATESEP>by (cases n) (simp_all add: bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_minus1 [simp]: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (- 1) n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (- 1) n<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_numeral: "(\<lambda>k::int. k div 2) x = y \<Longrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x (numeral n) = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y (pred_numeral n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x div 2 = y \<Longrightarrow> bit x (numeral n) = bit y (pred_numeral n)<\STATESEP>by (simp add: numeral_eq_Suc bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_nth_numeral_simps [simp] =
+  bin_nth_numeral [OF bin_rest_numeral_simps(8)]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bin_nth_simps =
+  bit_0 bit_Suc bin_nth_zero bin_nth_minus1
+  bin_nth_numeral_simps<\STATESEP>0<\TRANSEP><\STATESEP>lemma nth_2p_bin: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (2 ^ n) m = (m = n)" \<comment> \<open>for use when simplifying with \<open>bin_nth_Bit\<close>\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (2 ^ n) m = (m = n)<\STATESEP>by (auto simp add: bit_exp_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma nth_rest_power_bin: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (((\<lambda>k::int. k div 2) ^^ k) w) n = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) w (n + k)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (((\<lambda>k. k div 2) ^^ k) w) n = bit w (n + k)<\STATESEP>apply (induct k arbitrary: n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n. bit (((\<lambda>k. k div 2) ^^ 0) w) n = bit w (n + 0)
+ 2. \<And>k n. (\<And>n. bit (((\<lambda>k. k div 2) ^^ k) w) n = bit w (n + k)) \<Longrightarrow> bit (((\<lambda>k. k div 2) ^^ Suc k) w) n = bit w (n + Suc k)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>k n. (\<And>n. bit (((\<lambda>k. k div 2) ^^ k) w) n = bit w (n + k)) \<Longrightarrow> bit (((\<lambda>k. k div 2) ^^ Suc k) w) n = bit w (n + Suc k)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>k n. (\<And>n. bit (((\<lambda>k. k div 2) ^^ k) w) n = bit w (n + k)) \<Longrightarrow> bit (((\<lambda>k. k div 2) ^^ k) w div 2) n = bit w (Suc (n + k))<\STATESEP>apply (simp only: bit_Suc [symmetric] add_Suc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_numeral_unfold:
+  "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral (num.Bit0 x)) n \<longleftrightarrow> n > 0 \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral x) (n - 1)"
+  "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral (num.Bit1 x)) n \<longleftrightarrow> (n > 0 \<longrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral x) (n - 1))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (numeral (num.Bit0 x)) n = (0 < n \<and> bit (numeral x) (n - 1)) &&& bit (numeral (num.Bit1 x)) n = (0 < n \<longrightarrow> bit (numeral x) (n - 1))<\STATESEP>by (cases n; simp)+<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Truncating\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition bin_sign :: "int \<Rightarrow> int"
+  where "bin_sign k = (if k \<ge> 0 then 0 else - 1)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_sign_simps [simp]:
+  "bin_sign 0 = 0"
+  "bin_sign 1 = 0"
+  "bin_sign (- 1) = - 1"
+  "bin_sign (numeral k) = 0"
+  "bin_sign (- numeral k) = -1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (bin_sign 0 = 0 &&& bin_sign 1 = 0) &&& bin_sign (- 1) = - 1 &&& bin_sign (numeral k) = 0 &&& bin_sign (- numeral k) = - 1<\STATESEP>by (simp_all add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sign_rest [simp]: "bin_sign ((\<lambda>k::int. k div 2) w) = bin_sign w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (w div 2) = bin_sign w<\STATESEP>by (simp add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_mod2p: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w = w mod 2 ^ n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n w = w mod 2 ^ n<\STATESEP>by (fact take_bit_eq_mod)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_mod2p: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w = (w + 2 ^ n) mod 2 ^ Suc n - 2 ^ n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n w = (w + 2 ^ n) mod 2 ^ Suc n - 2 ^ n<\STATESEP>by (simp add: bintrunc_mod2p signed_take_bit_eq_take_bit_shift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_eq_take_bit:
+  \<open>(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n k = take_bit (Suc n) (k + 2 ^ n) - 2 ^ n\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n k = take_bit (Suc n) (k + 2 ^ n) - 2 ^ n<\STATESEP>by (fact signed_take_bit_eq_take_bit_shift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_bintr: "bin_sign ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (take_bit n w) = 0<\STATESEP>by (simp add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_n_0: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n 0 = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n 0 = 0<\STATESEP>by (fact take_bit_of_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_n_0: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n 0 = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n 0 = 0<\STATESEP>by (fact signed_take_bit_of_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_n_minus1: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- 1) = -1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n (- 1) = - 1<\STATESEP>by (fact signed_take_bit_of_minus_1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_Suc_numeral:
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) 1 = 1"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (- 1) = 1 + 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- 1)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (numeral (Num.Bit0 w)) = 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (numeral w)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (numeral (Num.Bit1 w)) = 1 + 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (numeral w)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (- numeral (Num.Bit0 w)) = 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- numeral w)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (- numeral (Num.Bit1 w)) = 1 + 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- numeral (w + Num.One))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (take_bit (Suc n) 1 = 1 &&& take_bit (Suc n) (- 1) = 1 + 2 * take_bit n (- 1) &&& take_bit (Suc n) (numeral (num.Bit0 w)) = 2 * take_bit n (numeral w)) &&& take_bit (Suc n) (numeral (num.Bit1 w)) = 1 + 2 * take_bit n (numeral w) &&& take_bit (Suc n) (- numeral (num.Bit0 w)) = 2 * take_bit n (- numeral w) &&& take_bit (Suc n) (- numeral (num.Bit1 w)) = 1 + 2 * take_bit n (- numeral (w + num.One))<\STATESEP>by (simp_all add: take_bit_Suc del: take_bit_minus_one_eq_mask)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_0_numeral [simp]:
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) 0 1 = -1"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) 0 (numeral (Num.Bit0 w)) = 0"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) 0 (numeral (Num.Bit1 w)) = -1"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) 0 (- numeral (Num.Bit0 w)) = 0"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) 0 (- numeral (Num.Bit1 w)) = -1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (signed_take_bit 0 1 = - 1 &&& signed_take_bit 0 (numeral (num.Bit0 w)) = 0) &&& signed_take_bit 0 (numeral (num.Bit1 w)) = - 1 &&& signed_take_bit 0 (- numeral (num.Bit0 w)) = 0 &&& signed_take_bit 0 (- numeral (num.Bit1 w)) = - 1<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_Suc_numeral:
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) 1 = 1"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (numeral (Num.Bit0 w)) = 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (numeral w)"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (numeral (Num.Bit1 w)) = 1 + 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (numeral w)"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (- numeral (Num.Bit0 w)) = 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- numeral w)"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (- numeral (Num.Bit1 w)) = 1 + 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- numeral (w + Num.One))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (signed_take_bit (Suc n) 1 = 1 &&& signed_take_bit (Suc n) (numeral (num.Bit0 w)) = 2 * signed_take_bit n (numeral w)) &&& signed_take_bit (Suc n) (numeral (num.Bit1 w)) = 1 + 2 * signed_take_bit n (numeral w) &&& signed_take_bit (Suc n) (- numeral (num.Bit0 w)) = 2 * signed_take_bit n (- numeral w) &&& signed_take_bit (Suc n) (- numeral (num.Bit1 w)) = 1 + 2 * signed_take_bit n (- numeral (w + num.One))<\STATESEP>by (simp_all add: signed_take_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sign_lem: "(bin_sign ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin) = -1) = bit bin n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (bin_sign (signed_take_bit n bin) = - 1) = bit bin n<\STATESEP>by (simp add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma nth_bintr: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m w) n \<longleftrightarrow> n < m \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) w n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (take_bit m w) n = (n < m \<and> bit w n)<\STATESEP>by (fact bit_take_bit_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma nth_sbintr: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m w) n = (if n < m then (bit :: int \<Rightarrow> nat \<Rightarrow> bool) w n else (bit :: int \<Rightarrow> nat \<Rightarrow> bool) w m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (signed_take_bit m w) n = (if n < m then bit w n else bit w m)<\STATESEP>by (simp add: bit_signed_take_bit_iff min_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_Bit0:
+  "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral (Num.Bit0 w)) n \<longleftrightarrow>
+    (\<exists>m. n = Suc m \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral w) m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (numeral (num.Bit0 w)) n = (\<exists>m. n = Suc m \<and> bit (numeral w) m)<\STATESEP>using bit_double_iff [of \<open>numeral w :: int\<close> n]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+bit (2 * numeral w) n = (possible_bit TYPE(int) n \<and> n \<noteq> 0 \<and> bit (numeral w) (n - 1))
+
+goal (1 subgoal):
+ 1. bit (numeral (num.Bit0 w)) n = (\<exists>m. n = Suc m \<and> bit (numeral w) m)<\STATESEP>by (auto intro: exI [of _ \<open>n - 1\<close>])<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_Bit1:
+  "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral (Num.Bit1 w)) n \<longleftrightarrow>
+    n = 0 \<or> (\<exists>m. n = Suc m \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (numeral w) m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (numeral (num.Bit1 w)) n = (n = 0 \<or> (\<exists>m. n = Suc m \<and> bit (numeral w) m))<\STATESEP>using even_bit_succ_iff [of \<open>2 * numeral w :: int\<close> n]
+    bit_double_iff [of \<open>numeral w :: int\<close> n]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+even (2 * numeral w) \<Longrightarrow> bit (1 + 2 * numeral w) n = (bit (2 * numeral w) n \<or> n = 0)
+bit (2 * numeral w) n = (possible_bit TYPE(int) n \<and> n \<noteq> 0 \<and> bit (numeral w) (n - 1))
+
+goal (1 subgoal):
+ 1. bit (numeral (num.Bit1 w)) n = (n = 0 \<or> (\<exists>m. n = Suc m \<and> bit (numeral w) m))<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_bintrunc_l: "n \<le> m \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<le> m \<Longrightarrow> take_bit m (take_bit n w) = take_bit n w<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_sbintrunc_l: "n \<le> m \<Longrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<le> m \<Longrightarrow> signed_take_bit m (signed_take_bit n w) = signed_take_bit n w<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_bintrunc_ge: "n \<le> m \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m w) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<le> m \<Longrightarrow> take_bit n (take_bit m w) = take_bit n w<\STATESEP>by (rule bin_eqI) (auto simp: nth_bintr)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_bintrunc_min [simp]: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (min m n) w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit m (take_bit n w) = take_bit (min m n) w<\STATESEP>by (rule take_bit_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_sbintrunc_min [simp]: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (min m n) w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit m (signed_take_bit n w) = signed_take_bit (min m n) w<\STATESEP>by (rule signed_take_bit_signed_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sbintrunc_Suc_Pls =
+  signed_take_bit_Suc [where a="0::int", simplified bin_last_numeral_simps bin_rest_numeral_simps]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_Suc_Min =
+  signed_take_bit_Suc [where a="-1::int", simplified bin_last_numeral_simps bin_rest_numeral_simps]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_Sucs = sbintrunc_Suc_Pls sbintrunc_Suc_Min
+  sbintrunc_Suc_numeral<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_Pls =
+  signed_take_bit_0 [where a="0::int", simplified bin_last_numeral_simps bin_rest_numeral_simps]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_Min =
+  signed_take_bit_0 [where a="-1::int", simplified bin_last_numeral_simps bin_rest_numeral_simps]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_0_simps =
+  sbintrunc_Pls sbintrunc_Min<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_simps = sbintrunc_0_simps sbintrunc_Sucs<\STATESEP>0<\TRANSEP><\STATESEP>lemma bintrunc_minus: "0 < n \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc (n - 1)) w = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> take_bit (Suc (n - 1)) w = take_bit n w<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_minus: "0 < n \<Longrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc (n - 1)) w = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> signed_take_bit (Suc (n - 1)) w = signed_take_bit n w<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sbintrunc_minus_simps =
+  sbintrunc_Sucs [THEN [2] sbintrunc_minus [symmetric, THEN trans]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma sbintrunc_BIT_I:
+  \<open>0 < n \<Longrightarrow>
+  (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) 0 = y \<Longrightarrow>
+  (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n 0 = 2 * y\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < n; signed_take_bit (n - 1) 0 = y\<rbrakk> \<Longrightarrow> signed_take_bit n 0 = 2 * y<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_Suc_Is:
+  \<open>(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- 1) = y \<Longrightarrow>
+  (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) (- 1) = 1 + 2 * y\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n (- 1) = y \<Longrightarrow> signed_take_bit (Suc n) (- 1) = 1 + 2 * y<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_Suc_lem: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) x = y \<Longrightarrow> m = Suc n \<Longrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m x = y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>signed_take_bit (Suc n) x = y; m = Suc n\<rbrakk> \<Longrightarrow> signed_take_bit m x = y<\STATESEP>by (rule ssubst)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sbintrunc_Suc_Ialts =
+  sbintrunc_Suc_Is [THEN sbintrunc_Suc_lem]<\STATESEP>0<\TRANSEP><\STATESEP>lemma sbintrunc_bintrunc_lt: "m > n \<Longrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m w) = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < m \<Longrightarrow> signed_take_bit n (take_bit m w) = signed_take_bit n w<\STATESEP>by (rule bin_eqI) (auto simp: nth_sbintr nth_bintr)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_sbintrunc_le: "m \<le> Suc n \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m \<le> Suc n \<Longrightarrow> take_bit m (signed_take_bit n w) = take_bit m w<\STATESEP>by (rule take_bit_signed_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bintrunc_sbintrunc [simp] = order_refl [THEN bintrunc_sbintrunc_le]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_bintrunc [simp] = lessI [THEN sbintrunc_bintrunc_lt]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bintrunc_bintrunc [simp] = order_refl [THEN bintrunc_bintrunc_l]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_sbintrunc [simp] = order_refl [THEN sbintrunc_sbintrunc_l]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bintrunc_sbintrunc' [simp]: "0 < n \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) w) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> take_bit n (signed_take_bit (n - 1) w) = take_bit n w<\STATESEP>by (cases n) simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_bintrunc' [simp]: "0 < n \<Longrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w) = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> signed_take_bit (n - 1) (take_bit n w) = signed_take_bit (n - 1) w<\STATESEP>by (cases n) simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sbin_eq_iff: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) x = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) y \<longleftrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (take_bit (Suc n) x = take_bit (Suc n) y) = (signed_take_bit n x = signed_take_bit n y)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. take_bit (Suc n) x = take_bit (Suc n) y \<Longrightarrow> signed_take_bit n x = signed_take_bit n y
+ 2. signed_take_bit n x = signed_take_bit n y \<Longrightarrow> take_bit (Suc n) x = take_bit (Suc n) y<\STATESEP>apply (rule box_equals [OF _ sbintrunc_bintrunc sbintrunc_bintrunc])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. take_bit (Suc n) x = take_bit (Suc n) y \<Longrightarrow> signed_take_bit n (take_bit (Suc n) x) = signed_take_bit n (take_bit (Suc n) y)
+ 2. signed_take_bit n x = signed_take_bit n y \<Longrightarrow> take_bit (Suc n) x = take_bit (Suc n) y<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n x = signed_take_bit n y \<Longrightarrow> take_bit (Suc n) x = take_bit (Suc n) y<\STATESEP>apply (rule box_equals [OF _ bintrunc_sbintrunc bintrunc_sbintrunc])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n x = signed_take_bit n y \<Longrightarrow> take_bit (Suc n) (signed_take_bit n x) = take_bit (Suc n) (signed_take_bit n y)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sbin_eq_iff':
+  "0 < n \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y \<longleftrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) x = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> (take_bit n x = take_bit n y) = (signed_take_bit (n - 1) x = signed_take_bit (n - 1) y)<\STATESEP>by (cases n) (simp_all add: bin_sbin_eq_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bintrunc_sbintruncS0 [simp] = bintrunc_sbintrunc' [unfolded One_nat_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_bintruncS0 [simp] = sbintrunc_bintrunc' [unfolded One_nat_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bintrunc_bintrunc_l' = le_add1 [THEN bintrunc_bintrunc_l]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sbintrunc_sbintrunc_l' = le_add1 [THEN sbintrunc_sbintrunc_l]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas nat_non0_gr =
+  trans [OF iszero_def [THEN Not_eq_iff [THEN iffD2]] refl]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bintrunc_numeral:
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) x = of_bool (odd x) + 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (x div 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit (numeral k) x = of_bool (odd x) + 2 * take_bit (pred_numeral k) (x div 2)<\STATESEP>by (simp add: numeral_eq_Suc take_bit_Suc mod_2_eq_odd)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_numeral:
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) x = of_bool (odd x) + 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (x div 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit (numeral k) x = of_bool (odd x) + 2 * signed_take_bit (pred_numeral k) (x div 2)<\STATESEP>by (simp add: numeral_eq_Suc signed_take_bit_Suc mod2_eq_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_numeral_simps [simp]:
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (numeral (Num.Bit0 w)) =
+    2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (numeral w)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (numeral (Num.Bit1 w)) =
+    1 + 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (numeral w)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (- numeral (Num.Bit0 w)) =
+    2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (- numeral w)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (- numeral (Num.Bit1 w)) =
+    1 + 2 * (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (- numeral (w + Num.One))"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) 1 = 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (take_bit (numeral k) (numeral (num.Bit0 w)) = 2 * take_bit (pred_numeral k) (numeral w) &&& take_bit (numeral k) (numeral (num.Bit1 w)) = 1 + 2 * take_bit (pred_numeral k) (numeral w)) &&& take_bit (numeral k) (- numeral (num.Bit0 w)) = 2 * take_bit (pred_numeral k) (- numeral w) &&& take_bit (numeral k) (- numeral (num.Bit1 w)) = 1 + 2 * take_bit (pred_numeral k) (- numeral (w + num.One)) &&& take_bit (numeral k) 1 = 1<\STATESEP>by (simp_all add: bintrunc_numeral)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_numeral_simps [simp]:
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (numeral (Num.Bit0 w)) =
+    2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (numeral w)"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (numeral (Num.Bit1 w)) =
+    1 + 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (numeral w)"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (- numeral (Num.Bit0 w)) =
+    2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (- numeral w)"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) (- numeral (Num.Bit1 w)) =
+    1 + 2 * (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (pred_numeral k) (- numeral (w + Num.One))"
+  "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (numeral k) 1 = 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (signed_take_bit (numeral k) (numeral (num.Bit0 w)) = 2 * signed_take_bit (pred_numeral k) (numeral w) &&& signed_take_bit (numeral k) (numeral (num.Bit1 w)) = 1 + 2 * signed_take_bit (pred_numeral k) (numeral w)) &&& signed_take_bit (numeral k) (- numeral (num.Bit0 w)) = 2 * signed_take_bit (pred_numeral k) (- numeral w) &&& signed_take_bit (numeral k) (- numeral (num.Bit1 w)) = 1 + 2 * signed_take_bit (pred_numeral k) (- numeral (w + num.One)) &&& signed_take_bit (numeral k) 1 = 1<\STATESEP>by (simp_all add: sbintrunc_numeral)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_bintr_alt1: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n = (\<lambda>w. w mod 2 ^ n :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n = (\<lambda>w. w mod 2 ^ n)<\STATESEP>by (rule ext) (rule bintrunc_mod2p)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_bintrunc: "range ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n) = {i. 0 \<le> i \<and> i < 2 ^ n}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. range (take_bit n) = {i. 0 \<le> i \<and> i < 2 ^ n}<\STATESEP>by (auto simp add: take_bit_eq_mod image_iff) (metis mod_pos_pos_trivial)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_sbintr_alt2: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n = (\<lambda>w. (w + 2 ^ n) mod 2 ^ Suc n - 2 ^ n :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n = (\<lambda>w. (w + 2 ^ n) mod 2 ^ Suc n - 2 ^ n)<\STATESEP>by (rule ext) (simp add : sbintrunc_mod2p)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_sbintrunc: "range ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>have \<open>surj (\<lambda>k::int. k + 2 ^ n)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. surj (\<lambda>k. k + 2 ^ n)<\STATESEP>by (rule surjI [of _ \<open>(\<lambda>k. k - 2 ^ n)\<close>]) simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+surj (\<lambda>k. k + 2 ^ n)
+
+goal (1 subgoal):
+ 1. range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+surj (\<lambda>k. k + 2 ^ n)
+
+goal (1 subgoal):
+ 1. range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>have \<open>(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n = ((\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n))\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n = (\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n)<\STATESEP>by (simp add: sbintrunc_eq_take_bit fun_eq_iff)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+signed_take_bit n = (\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n)
+
+goal (1 subgoal):
+ 1. range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+surj (\<lambda>k. k + 2 ^ n)
+signed_take_bit n = (\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+surj (\<lambda>k. k + 2 ^ n)
+signed_take_bit n = (\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n)
+
+goal (1 subgoal):
+ 1. range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>apply (simp only: fun.set_map range_bintrunc)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>surj (\<lambda>k. k + 2 ^ n); signed_take_bit n = (\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n)\<rbrakk> \<Longrightarrow> (\<lambda>k. k - 2 ^ n) ` {i. 0 \<le> i \<and> i < 2 ^ Suc n} = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}<\STATESEP>apply (auto simp add: image_iff)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>signed_take_bit n = (\<lambda>k. k - 2 ^ n) \<circ> take_bit (Suc n) \<circ> (\<lambda>k. k + 2 ^ n); - (2 ^ n) \<le> x; x < 2 ^ n\<rbrakk> \<Longrightarrow> \<exists>xa\<ge>0. xa < 2 * 2 ^ n \<and> x = xa - 2 ^ n<\STATESEP>apply presburger<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+range (signed_take_bit n) = {i. - (2 ^ n) \<le> i \<and> i < 2 ^ n}
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma sbintrunc_inc:
+  \<open>k + 2 ^ Suc n \<le> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n k\<close> if \<open>k < - (2 ^ n)\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. k + 2 ^ Suc n \<le> signed_take_bit n k<\STATESEP>using that<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+k < - (2 ^ n)
+
+goal (1 subgoal):
+ 1. k + 2 ^ Suc n \<le> signed_take_bit n k<\STATESEP>by (fact signed_take_bit_int_greater_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_dec:
+  \<open>(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n k \<le> k - 2 ^ (Suc n)\<close> if \<open>k \<ge> 2 ^ n\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n k \<le> k - 2 ^ Suc n<\STATESEP>using that<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+2 ^ n \<le> k
+
+goal (1 subgoal):
+ 1. signed_take_bit n k \<le> k - 2 ^ Suc n<\STATESEP>by (fact signed_take_bit_int_less_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_ge0: "0 \<le> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 \<le> take_bit n w<\STATESEP>by (simp add: bintrunc_mod2p)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_lt2p: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w < 2 ^ n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n w < 2 ^ n<\STATESEP>by (simp add: bintrunc_mod2p)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_Min: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- 1) = 2 ^ n - 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (- 1) = 2 ^ n - 1<\STATESEP>by (simp add: stable_imp_take_bit_eq mask_eq_exp_minus_1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintr_ge: "- (2 ^ n) \<le> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - (2 ^ n) \<le> signed_take_bit n w<\STATESEP>by (fact signed_take_bit_int_greater_eq_minus_exp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintr_lt: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w < 2 ^ n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n w < 2 ^ n<\STATESEP>by (fact signed_take_bit_int_less_exp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_Pls_ge_0: "bin_sign bin = 0 \<longleftrightarrow> bin \<ge> 0"
+  for bin :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (bin_sign bin = 0) = (0 \<le> bin)<\STATESEP>by (simp add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_Min_lt_0: "bin_sign bin = -1 \<longleftrightarrow> bin < 0"
+  for bin :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (bin_sign bin = - 1) = (bin < 0)<\STATESEP>by (simp add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_trunc: "(\<lambda>k::int. k div 2) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - 1) ((\<lambda>k::int. k div 2) bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n bin div 2 = take_bit (n - 1) (bin div 2)<\STATESEP>by (simp add: take_bit_rec [of n bin])<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_power_trunc:
+  "((\<lambda>k::int. k div 2) ^^ k) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (n - k) (((\<lambda>k::int. k div 2) ^^ k) bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>k. k div 2) ^^ k) (take_bit n bin) = take_bit (n - k) (((\<lambda>k. k div 2) ^^ k) bin)<\STATESEP>by (induct k) (auto simp: bin_rest_trunc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_trunc_i: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((\<lambda>k::int. k div 2) bin) = (\<lambda>k::int. k div 2) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (bin div 2) = take_bit (Suc n) bin div 2<\STATESEP>by (auto simp add: take_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_strunc: "(\<lambda>k::int. k div 2) ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (Suc n) bin) = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((\<lambda>k::int. k div 2) bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit (Suc n) bin div 2 = signed_take_bit n (bin div 2)<\STATESEP>by (simp add: signed_take_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_rest [simp]: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((\<lambda>k::int. k div 2) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin)) = (\<lambda>k::int. k div 2) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (take_bit n bin div 2) = take_bit n bin div 2<\STATESEP>by (induct n arbitrary: bin) (simp_all add: take_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_rest [simp]: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((\<lambda>k::int. k div 2) ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin)) = (\<lambda>k::int. k div 2) ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n (signed_take_bit n bin div 2) = signed_take_bit n bin div 2<\STATESEP>by (induct n arbitrary: bin) (simp_all add: signed_take_bit_Suc mod2_eq_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_rest': "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n \<circ> (\<lambda>k::int. k div 2) \<circ> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n = (\<lambda>k::int. k div 2) \<circ> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n \<circ> (\<lambda>k. k div 2) \<circ> take_bit n = (\<lambda>k. k div 2) \<circ> take_bit n<\STATESEP>by (rule ext) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_rest': "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n \<circ> (\<lambda>k::int. k div 2) \<circ> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n = (\<lambda>k::int. k div 2) \<circ> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit n \<circ> (\<lambda>k. k div 2) \<circ> signed_take_bit n = (\<lambda>k. k div 2) \<circ> signed_take_bit n<\STATESEP>by (rule ext) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma rco_lem: "f \<circ> g \<circ> f = g \<circ> f \<Longrightarrow> f \<circ> (g \<circ> f) ^^ n = g ^^ n \<circ> f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f \<circ> g \<circ> f = g \<circ> f \<Longrightarrow> f \<circ> (g \<circ> f) ^^ n = g ^^ n \<circ> f<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. f \<circ> g \<circ> f = g \<circ> f \<Longrightarrow> (f \<circ> (g \<circ> f) ^^ n) x = (g ^^ n \<circ> f) x<\STATESEP>apply (induct_tac n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. f \<circ> g \<circ> f = g \<circ> f \<Longrightarrow> (f \<circ> (g \<circ> f) ^^ 0) x = (g ^^ 0 \<circ> f) x
+ 2. \<And>x n. \<lbrakk>f \<circ> g \<circ> f = g \<circ> f; (f \<circ> (g \<circ> f) ^^ n) x = (g ^^ n \<circ> f) x\<rbrakk> \<Longrightarrow> (f \<circ> (g \<circ> f) ^^ Suc n) x = (g ^^ Suc n \<circ> f) x<\STATESEP>apply (simp_all (no_asm))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x n. \<lbrakk>f \<circ> g \<circ> f = g \<circ> f; (f \<circ> (g \<circ> f) ^^ n) x = (g ^^ n \<circ> f) x\<rbrakk> \<Longrightarrow> f (g (f (((\<lambda>a. g (f a)) ^^ n) x))) = g ((g ^^ n) (f x))<\STATESEP>apply (drule fun_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x n. \<lbrakk>(f \<circ> (g \<circ> f) ^^ n) x = (g ^^ n \<circ> f) x; (f \<circ> g \<circ> f) (?x3 x n) = (g \<circ> f) (?x3 x n)\<rbrakk> \<Longrightarrow> f (g (f (((\<lambda>a. g (f a)) ^^ n) x))) = g ((g ^^ n) (f x))<\STATESEP>apply (unfold o_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x n. \<lbrakk>f (((\<lambda>a. g (f a)) ^^ n) x) = (g ^^ n) (f x); f (g (f (?x3 x n))) = g (f (?x3 x n))\<rbrakk> \<Longrightarrow> f (g (f (((\<lambda>a. g (f a)) ^^ n) x))) = g ((g ^^ n) (f x))<\STATESEP>apply (erule trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x n. f (((\<lambda>a. g (f a)) ^^ n) x) = (g ^^ n) (f x) \<Longrightarrow> g (f (((\<lambda>a. g (f a)) ^^ n) x)) = g ((g ^^ n) (f x))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas rco_bintr = bintrunc_rest'
+  [THEN rco_lem [THEN fun_cong], unfolded o_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rco_sbintr = sbintrunc_rest'
+  [THEN rco_lem [THEN fun_cong], unfolded o_def]<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Splitting and concatenation\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition bin_split :: \<open>nat \<Rightarrow> int \<Rightarrow> int \<times> int\<close>
+  where [simp]: \<open>bin_split n k = (drop_bit n k, take_bit n k)\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma [code]:
+  "bin_split (Suc n) w = (let (w1, w2) = bin_split n (w div 2) in (w1, of_bool (odd w) + 2 * w2))"
+  "bin_split 0 w = (w, 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split (Suc n) w = (let (w1, w2) = bin_split n (w div 2) in (w1, of_bool (odd w) + 2 * w2)) &&& bin_split 0 w = (w, 0)<\STATESEP>by (simp_all add: drop_bit_Suc take_bit_Suc mod_2_eq_odd)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_eq_push_bit_add_take_bit:
+  \<open>concat_bit n l k = push_bit n k + take_bit n l\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n l k = push_bit n k + take_bit n l<\STATESEP>by (simp add: concat_bit_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sign_cat: "bin_sign ((\<lambda>k n l. concat_bit n l k) x n y) = bin_sign x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (concat_bit n y x) = bin_sign x<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. bin_sign (concat_bit n y x) = bin_sign x<\STATESEP>have \<open>0 \<le> x\<close> if \<open>0 \<le> x * 2 ^ n + y mod 2 ^ n\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>proof -<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>have \<open>y mod 2 ^ n < 2 ^ n\<close><\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. y mod 2 ^ n < 2 ^ n<\STATESEP>using pos_mod_bound [of \<open>2 ^ n\<close> y]<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+0 < 2 ^ n \<Longrightarrow> y mod 2 ^ n < 2 ^ n
+
+goal (1 subgoal):
+ 1. y mod 2 ^ n < 2 ^ n<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+y mod 2 ^ n < 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+y mod 2 ^ n < 2 ^ n<\STATESEP>have \<open>\<not> y mod 2 ^ n \<ge> 2 ^ n\<close><\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+y mod 2 ^ n < 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> 2 ^ n \<le> y mod 2 ^ n<\STATESEP>by (simp add: less_le)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<not> 2 ^ n \<le> y mod 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>with that<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n
+\<not> 2 ^ n \<le> y mod 2 ^ n<\STATESEP>have \<open>x \<noteq> - 1\<close><\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n
+\<not> 2 ^ n \<le> y mod 2 ^ n
+
+goal (1 subgoal):
+ 1. x \<noteq> - 1<\STATESEP>by auto<\STATESEP>5<\TRANSEP>proof (state)
+this:
+x \<noteq> - 1
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>have *: \<open>- 1 \<le> (- (y mod 2 ^ n)) div 2 ^ n\<close><\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - 1 \<le> - (y mod 2 ^ n) div 2 ^ n<\STATESEP>by (simp add: zdiv_zminus1_eq_if)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+- 1 \<le> - (y mod 2 ^ n) div 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>from that<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n<\STATESEP>have \<open>- (y mod 2 ^ n) \<le> x * 2 ^ n\<close><\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n
+
+goal (1 subgoal):
+ 1. - (y mod 2 ^ n) \<le> x * 2 ^ n<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+- (y mod 2 ^ n) \<le> x * 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+- (y mod 2 ^ n) \<le> x * 2 ^ n<\STATESEP>have \<open>(- (y mod 2 ^ n)) div 2 ^ n \<le> (x * 2 ^ n) div 2 ^ n\<close><\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+- (y mod 2 ^ n) \<le> x * 2 ^ n
+
+goal (1 subgoal):
+ 1. - (y mod 2 ^ n) div 2 ^ n \<le> x * 2 ^ n div 2 ^ n<\STATESEP>using zdiv_mono1 zero_less_numeral zero_less_power<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+- (y mod 2 ^ n) \<le> x * 2 ^ n
+\<lbrakk>?a \<le> ?a'; 0 < ?b\<rbrakk> \<Longrightarrow> ?a div ?b \<le> ?a' div ?b
+(0::?'a) < numeral ?n
+(0::?'a) < ?a \<Longrightarrow> (0::?'a) < ?a ^ ?n
+
+goal (1 subgoal):
+ 1. - (y mod 2 ^ n) div 2 ^ n \<le> x * 2 ^ n div 2 ^ n<\STATESEP>by blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+- (y mod 2 ^ n) div 2 ^ n \<le> x * 2 ^ n div 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>with *<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+- 1 \<le> - (y mod 2 ^ n) div 2 ^ n
+- (y mod 2 ^ n) div 2 ^ n \<le> x * 2 ^ n div 2 ^ n<\STATESEP>have \<open>- 1 \<le> x * 2 ^ n div 2 ^ n\<close><\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+- 1 \<le> - (y mod 2 ^ n) div 2 ^ n
+- (y mod 2 ^ n) div 2 ^ n \<le> x * 2 ^ n div 2 ^ n
+
+goal (1 subgoal):
+ 1. - 1 \<le> x * 2 ^ n div 2 ^ n<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+- 1 \<le> x * 2 ^ n div 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>with \<open>x \<noteq> - 1\<close><\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+x \<noteq> - 1
+- 1 \<le> x * 2 ^ n div 2 ^ n<\STATESEP>show ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+x \<noteq> - 1
+- 1 \<le> x * 2 ^ n div 2 ^ n
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+0 \<le> x
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n \<Longrightarrow> 0 \<le> x
+
+goal (1 subgoal):
+ 1. bin_sign (concat_bit n y x) = bin_sign x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n \<Longrightarrow> 0 \<le> x<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+0 \<le> x * 2 ^ n + y mod 2 ^ n \<Longrightarrow> 0 \<le> x
+
+goal (1 subgoal):
+ 1. bin_sign (concat_bit n y x) = bin_sign x<\STATESEP>by (simp add: bin_sign_def not_le not_less bin_cat_eq_push_bit_add_take_bit push_bit_eq_mult take_bit_eq_mod)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bin_sign (concat_bit n y x) = bin_sign x
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bin_cat_assoc: "(\<lambda>k n l. concat_bit n l k) ((\<lambda>k n l. concat_bit n l k) x m y) n z = (\<lambda>k n l. concat_bit n l k) x (m + n) ((\<lambda>k n l. concat_bit n l k) y n z)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n z (concat_bit m y x) = concat_bit (m + n) (concat_bit n z y) x<\STATESEP>by (fact concat_bit_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_assoc_sym: "(\<lambda>k n l. concat_bit n l k) x m ((\<lambda>k n l. concat_bit n l k) y n z) = (\<lambda>k n l. concat_bit n l k) ((\<lambda>k n l. concat_bit n l k) x (m - n) y) (min m n) z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit m (concat_bit n z y) x = concat_bit (min m n) z (concat_bit (m - n) y x)<\STATESEP>by (fact concat_bit_assoc_sym)<\STATESEP>1<\TRANSEP><\STATESEP>definition bin_rcat :: \<open>nat \<Rightarrow> int list \<Rightarrow> int\<close>
+  where \<open>bin_rcat n = horner_sum (take_bit n) (2 ^ n) \<circ> rev\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_rcat_eq_foldl:
+  \<open>bin_rcat n = foldl (\<lambda>u v. (\<lambda>k n l. concat_bit n l k) u n v) 0\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_rcat n = foldl (\<lambda>u v. concat_bit n v u) 0<\STATESEP>proof<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x. bin_rcat n x = foldl (\<lambda>u v. concat_bit n v u) 0 x<\STATESEP>fix ks :: \<open>int list\<close><\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x. bin_rcat n x = foldl (\<lambda>u v. concat_bit n v u) 0 x<\STATESEP>show \<open>bin_rcat n ks = foldl (\<lambda>u v. (\<lambda>k n l. concat_bit n l k) u n v) 0 ks\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_rcat n ks = foldl (\<lambda>u v. concat_bit n v u) 0 ks<\STATESEP>by (induction ks rule: rev_induct)
+      (simp_all add: bin_rcat_def concat_bit_eq push_bit_eq_mult)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bin_rcat n ks = foldl (\<lambda>u v. concat_bit n v u) 0 ks
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>fun bin_rsplit_aux :: "nat \<Rightarrow> nat \<Rightarrow> int \<Rightarrow> int list \<Rightarrow> int list"
+  where "bin_rsplit_aux n m c bs =
+    (if m = 0 \<or> n = 0 then bs
+     else
+      let (a, b) = bin_split n c
+      in bin_rsplit_aux n (m - n) a (b # bs))"<\STATESEP>0<\TRANSEP><\STATESEP>definition bin_rsplit :: "nat \<Rightarrow> nat \<times> int \<Rightarrow> int list"
+  where "bin_rsplit n w = bin_rsplit_aux n (fst w) (snd w) []"<\STATESEP>0<\TRANSEP><\STATESEP>fun bin_rsplitl_aux :: "nat \<Rightarrow> nat \<Rightarrow> int \<Rightarrow> int list \<Rightarrow> int list"
+  where "bin_rsplitl_aux n m c bs =
+    (if m = 0 \<or> n = 0 then bs
+     else
+      let (a, b) = bin_split (min m n) c
+      in bin_rsplitl_aux n (m - n) a (b # bs))"<\STATESEP>0<\TRANSEP><\STATESEP>definition bin_rsplitl :: "nat \<Rightarrow> nat \<times> int \<Rightarrow> int list"
+  where "bin_rsplitl n w = bin_rsplitl_aux n (fst w) (snd w) []"<\STATESEP>0<\TRANSEP><\STATESEP>declare bin_rsplit_aux.simps [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>declare bin_rsplitl_aux.simps [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_nth_cat:
+  "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) ((\<lambda>k n l. concat_bit n l k) x k y) n =
+    (if n < k then (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y n else (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x (n - k))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (concat_bit k y x) n = (if n < k then bit y n else bit x (n - k))<\STATESEP>by (simp add: bit_concat_bit_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_drop_bit_iff:
+  \<open>(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (drop_bit n c) k \<longleftrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) c (n + k)\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (drop_bit n c) k = bit c (n + k)<\STATESEP>by (simp add: bit_drop_bit_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_take_bit_iff:
+  \<open>(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (take_bit n c) k \<longleftrightarrow> k < n \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) c k\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (take_bit n c) k = (k < n \<and> bit c k)<\STATESEP>by (fact bit_take_bit_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_split:
+  "bin_split n c = (a, b) \<Longrightarrow>
+    (\<forall>k. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) a k = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) c (n + k)) \<and>
+    (\<forall>k. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) b k = (k < n \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) c k))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n c = (a, b) \<Longrightarrow> (\<forall>k. bit a k = bit c (n + k)) \<and> (\<forall>k. bit b k = (k < n \<and> bit c k))<\STATESEP>by (auto simp add: bin_nth_drop_bit_iff bin_nth_take_bit_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_zero [simp]: "(\<lambda>k n l. concat_bit n l k) 0 n w = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n w 0 = take_bit n w<\STATESEP>by (simp add: bin_cat_eq_push_bit_add_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_cat1: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (k + n) ((\<lambda>k n l. concat_bit n l k) a n b) = (\<lambda>k n l. concat_bit n l k) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) k a) n b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit (k + n) (concat_bit n b a) = concat_bit n b (take_bit k a)<\STATESEP>by (metis bin_cat_assoc bin_cat_zero)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_cat: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m ((\<lambda>k n l. concat_bit n l k) a n b) =
+    (\<lambda>k n l. concat_bit n l k) ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (m - n) a) n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (min m n) b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit m (concat_bit n b a) = concat_bit n (take_bit (min m n) b) (take_bit (m - n) a)<\STATESEP>by (rule bin_eqI) (auto simp: bin_nth_cat nth_bintr)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_cat_same [simp]: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((\<lambda>k n l. concat_bit n l k) a n b) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (concat_bit n b a) = take_bit n b<\STATESEP>by (auto simp add : bintr_cat)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cat_bintr [simp]: "(\<lambda>k n l. concat_bit n l k) a n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n b) = (\<lambda>k n l. concat_bit n l k) a n b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n (take_bit n b) a = concat_bit n b a<\STATESEP>by (simp add: bin_cat_eq_push_bit_add_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma split_bintrunc: "bin_split n c = (a, b) \<Longrightarrow> b = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n c = (a, b) \<Longrightarrow> b = take_bit n c<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_split: "bin_split n w = (u, v) \<Longrightarrow> w = (\<lambda>k n l. concat_bit n l k) u n v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n w = (u, v) \<Longrightarrow> w = concat_bit n v u<\STATESEP>by (auto simp add: bin_cat_eq_push_bit_add_take_bit bits_ident)<\STATESEP>1<\TRANSEP><\STATESEP>lemma drop_bit_bin_cat_eq:
+  \<open>drop_bit n ((\<lambda>k n l. concat_bit n l k) v n w) = v\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. drop_bit n (concat_bit n w v) = v<\STATESEP>by (rule bit_eqI) (simp add: bit_drop_bit_eq bit_concat_bit_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma take_bit_bin_cat_eq:
+  \<open>take_bit n ((\<lambda>k n l. concat_bit n l k) v n w) = take_bit n w\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (concat_bit n w v) = take_bit n w<\STATESEP>by (rule bit_eqI) (simp add: bit_concat_bit_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_cat: "bin_split n ((\<lambda>k n l. concat_bit n l k) v n w) = (v, (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n (concat_bit n w v) = (v, take_bit n w)<\STATESEP>by (simp add: drop_bit_bin_cat_eq take_bit_bin_cat_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_zero [simp]: "bin_split n 0 = (0, 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n 0 = (0, 0)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_minus1 [simp]:
+  "bin_split n (- 1) = (- 1, (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (- 1))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n (- 1) = (- 1, take_bit n (- 1))<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_trunc:
+  "bin_split (min m n) c = (a, b) \<Longrightarrow>
+    bin_split n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m c) = ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (m - n) a, b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split (min m n) c = (a, b) \<Longrightarrow> bin_split n (take_bit m c) = (take_bit (m - n) a, b)<\STATESEP>apply (induct n arbitrary: m b c, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m b c. \<lbrakk>\<And>m b c. bin_split (min m n) c = (a, b) \<Longrightarrow> bin_split n (take_bit m c) = (take_bit (m - n) a, b); bin_split (min m (Suc n)) c = (a, b)\<rbrakk> \<Longrightarrow> bin_split (Suc n) (take_bit m c) = (take_bit (m - Suc n) a, b)<\STATESEP>apply (simp add: bin_rest_trunc Let_def split: prod.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c. \<lbrakk>\<And>m c. drop_bit (min m n) c = a \<Longrightarrow> drop_bit n (take_bit m c) = take_bit (m - n) a \<and> take_bit (min n m) c = take_bit (min m n) c; drop_bit (min m (Suc n)) c = a\<rbrakk> \<Longrightarrow> drop_bit (Suc n) (take_bit m c) = take_bit (m - Suc n) a \<and> take_bit (min (Suc n) m) c = take_bit (min m (Suc n)) c<\STATESEP>apply (case_tac m)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n m c. \<lbrakk>\<And>m c. drop_bit (min m n) c = a \<Longrightarrow> drop_bit n (take_bit m c) = take_bit (m - n) a \<and> take_bit (min n m) c = take_bit (min m n) c; drop_bit (min m (Suc n)) c = a; m = 0\<rbrakk> \<Longrightarrow> drop_bit (Suc n) (take_bit m c) = take_bit (m - Suc n) a \<and> take_bit (min (Suc n) m) c = take_bit (min m (Suc n)) c
+ 2. \<And>n m c nat. \<lbrakk>\<And>m c. drop_bit (min m n) c = a \<Longrightarrow> drop_bit n (take_bit m c) = take_bit (m - n) a \<and> take_bit (min n m) c = take_bit (min m n) c; drop_bit (min m (Suc n)) c = a; m = Suc nat\<rbrakk> \<Longrightarrow> drop_bit (Suc n) (take_bit m c) = take_bit (m - Suc n) a \<and> take_bit (min (Suc n) m) c = take_bit (min m (Suc n)) c<\STATESEP>apply (auto simp: Let_def drop_bit_Suc take_bit_Suc mod_2_eq_odd split: prod.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_trunc1:
+  "bin_split n c = (a, b) \<Longrightarrow>
+    bin_split n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m c) = ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (m - n) a, (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n c = (a, b) \<Longrightarrow> bin_split n (take_bit m c) = (take_bit (m - n) a, take_bit m b)<\STATESEP>apply (induct n arbitrary: m b c, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m b c. \<lbrakk>\<And>m b c. bin_split n c = (a, b) \<Longrightarrow> bin_split n (take_bit m c) = (take_bit (m - n) a, take_bit m b); bin_split (Suc n) c = (a, b)\<rbrakk> \<Longrightarrow> bin_split (Suc n) (take_bit m c) = (take_bit (m - Suc n) a, take_bit m b)<\STATESEP>apply (simp add: bin_rest_trunc Let_def split: prod.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c. \<lbrakk>\<And>m c. drop_bit n c = a \<Longrightarrow> drop_bit n (take_bit m c) = take_bit (m - n) a \<and> take_bit (min n m) c = take_bit (min m n) c; drop_bit (Suc n) c = a\<rbrakk> \<Longrightarrow> drop_bit (Suc n) (take_bit m c) = take_bit (m - Suc n) a \<and> take_bit (min (Suc n) m) c = take_bit (min m (Suc n)) c<\STATESEP>apply (case_tac m)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n m c. \<lbrakk>\<And>m c. drop_bit n c = a \<Longrightarrow> drop_bit n (take_bit m c) = take_bit (m - n) a \<and> take_bit (min n m) c = take_bit (min m n) c; drop_bit (Suc n) c = a; m = 0\<rbrakk> \<Longrightarrow> drop_bit (Suc n) (take_bit m c) = take_bit (m - Suc n) a \<and> take_bit (min (Suc n) m) c = take_bit (min m (Suc n)) c
+ 2. \<And>n m c nat. \<lbrakk>\<And>m c. drop_bit n c = a \<Longrightarrow> drop_bit n (take_bit m c) = take_bit (m - n) a \<and> take_bit (min n m) c = take_bit (min m n) c; drop_bit (Suc n) c = a; m = Suc nat\<rbrakk> \<Longrightarrow> drop_bit (Suc n) (take_bit m c) = take_bit (m - Suc n) a \<and> take_bit (min (Suc n) m) c = take_bit (min m (Suc n)) c<\STATESEP>apply (auto simp: Let_def drop_bit_Suc take_bit_Suc mod_2_eq_odd split: prod.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_num: "(\<lambda>k n l. concat_bit n l k) a n b = a * 2 ^ n + (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n b a = a * 2 ^ n + take_bit n b<\STATESEP>by (simp add: bin_cat_eq_push_bit_add_take_bit push_bit_eq_mult)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_num: "bin_split n b = (b div 2 ^ n, b mod 2 ^ n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n b = (b div 2 ^ n, b mod 2 ^ n)<\STATESEP>by (simp add: drop_bit_eq_div take_bit_eq_mod)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_rsplit_aux_simps = bin_rsplit_aux.simps bin_rsplitl_aux.simps<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rsplit_aux_simps = bin_rsplit_aux_simps<\STATESEP>0<\TRANSEP><\STATESEP>lemmas th_if_simp1 = if_split [where P = "(=) l", THEN iffD1, THEN conjunct1, THEN mp] for l<\STATESEP>0<\TRANSEP><\STATESEP>lemmas th_if_simp2 = if_split [where P = "(=) l", THEN iffD1, THEN conjunct2, THEN mp] for l<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rsplit_aux_simp1s = rsplit_aux_simps [THEN th_if_simp1]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rsplit_aux_simp2ls = rsplit_aux_simps [THEN th_if_simp2]
+\<comment> \<open>these safe to \<open>[simp add]\<close> as require calculating \<open>m - n\<close>\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas bin_rsplit_aux_simp2s [simp] = rsplit_aux_simp2ls [unfolded Let_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rbscl = bin_rsplit_aux_simp2s (2)<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rsplit_aux_0_simps [simp] =
+  rsplit_aux_simp1s [OF disjI1] rsplit_aux_simp1s [OF disjI2]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_rsplit_aux_append: "bin_rsplit_aux n m c (bs @ cs) = bin_rsplit_aux n m c bs @ cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_rsplit_aux n m c (bs @ cs) = bin_rsplit_aux n m c bs @ cs<\STATESEP>apply (induct n m c bs rule: bin_rsplit_aux.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (m - n) xa ((y # bs) @ cs) = bin_rsplit_aux n (m - n) xa (y # bs) @ cs) \<Longrightarrow> bin_rsplit_aux n m c (bs @ cs) = bin_rsplit_aux n m c bs @ cs<\STATESEP>apply (subst bin_rsplit_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (m - n) xa ((y # bs) @ cs) = bin_rsplit_aux n (m - n) xa (y # bs) @ cs) \<Longrightarrow> (if m = 0 \<or> n = 0 then bs @ cs else let (a, b) = bin_split n c in bin_rsplit_aux n (m - n) a (b # bs @ cs)) = bin_rsplit_aux n m c bs @ cs<\STATESEP>apply (subst bin_rsplit_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (m - n) xa ((y # bs) @ cs) = bin_rsplit_aux n (m - n) xa (y # bs) @ cs) \<Longrightarrow> (if m = 0 \<or> n = 0 then bs @ cs else let (a, b) = bin_split n c in if m - n = 0 \<or> n = 0 then b # bs @ cs else let (a, ba) = bin_split n a in bin_rsplit_aux n (m - n - n) a (ba # b # bs @ cs)) = bin_rsplit_aux n m c bs @ cs<\STATESEP>apply (clarsimp split: prod.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplitl_aux_append: "bin_rsplitl_aux n m c (bs @ cs) = bin_rsplitl_aux n m c bs @ cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_rsplitl_aux n m c (bs @ cs) = bin_rsplitl_aux n m c bs @ cs<\STATESEP>apply (induct n m c bs rule: bin_rsplitl_aux.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split (min m n) c; (xa, y) = x\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (m - n) xa ((y # bs) @ cs) = bin_rsplitl_aux n (m - n) xa (y # bs) @ cs) \<Longrightarrow> bin_rsplitl_aux n m c (bs @ cs) = bin_rsplitl_aux n m c bs @ cs<\STATESEP>apply (subst bin_rsplitl_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split (min m n) c; (xa, y) = x\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (m - n) xa ((y # bs) @ cs) = bin_rsplitl_aux n (m - n) xa (y # bs) @ cs) \<Longrightarrow> (if m = 0 \<or> n = 0 then bs @ cs else let (a, b) = bin_split (min m n) c in bin_rsplitl_aux n (m - n) a (b # bs @ cs)) = bin_rsplitl_aux n m c bs @ cs<\STATESEP>apply (subst bin_rsplitl_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split (min m n) c; (xa, y) = x\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (m - n) xa ((y # bs) @ cs) = bin_rsplitl_aux n (m - n) xa (y # bs) @ cs) \<Longrightarrow> (if m = 0 \<or> n = 0 then bs @ cs else let (a, b) = bin_split (min m n) c in if m - n = 0 \<or> n = 0 then b # bs @ cs else let (a, ba) = bin_split (min (m - n) n) a in bin_rsplitl_aux n (m - n - n) a (ba # b # bs @ cs)) = bin_rsplitl_aux n m c bs @ cs<\STATESEP>apply (clarsimp split: prod.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas rsplit_aux_apps [where bs = "[]"] =
+  bin_rsplit_aux_append bin_rsplitl_aux_append<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rsplit_def_auxs = bin_rsplit_def bin_rsplitl_def<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rsplit_aux_alts = rsplit_aux_apps
+  [unfolded append_Nil rsplit_def_auxs [symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_split_minus: "0 < n \<Longrightarrow> bin_split (Suc (n - 1)) w = bin_split n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> bin_split (Suc (n - 1)) w = bin_split n w<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_split_pred_simp [simp]:
+  "(0::nat) < numeral bin \<Longrightarrow>
+    bin_split (numeral bin) w =
+      (let (w1, w2) = bin_split (numeral bin - 1) ((\<lambda>k::int. k div 2) w)
+       in (w1, of_bool (odd w) + 2 * w2))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < numeral bin \<Longrightarrow> bin_split (numeral bin) w = (let (w1, w2) = bin_split (numeral bin - 1) (w div 2) in (w1, of_bool (odd w) + 2 * w2))<\STATESEP>by (simp add: take_bit_rec drop_bit_rec mod_2_eq_odd)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_aux_simp_alt:
+  "bin_rsplit_aux n m c bs =
+    (if m = 0 \<or> n = 0 then bs
+     else let (a, b) = bin_split n c in bin_rsplit n (m - n, a) @ b # bs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_rsplit_aux n m c bs = (if m = 0 \<or> n = 0 then bs else let (a, b) = bin_split n c in bin_rsplit n (m - n, a) @ b # bs)<\STATESEP>apply (simp add: bin_rsplit_aux.simps [of n m c bs])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < m \<and> 0 < n \<longrightarrow> bin_rsplit_aux n (m - n) (drop_bit n c) (take_bit n c # bs) = bin_rsplit n (m - n, drop_bit n c) @ take_bit n c # bs<\STATESEP>apply (subst rsplit_aux_alts)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < m \<and> 0 < n \<longrightarrow> bin_rsplit_aux n (m - n) (drop_bit n c) [] @ take_bit n c # bs = bin_rsplit n (m - n, drop_bit n c) @ take_bit n c # bs<\STATESEP>apply (simp add: bin_rsplit_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_rsplit_simp_alt =
+  trans [OF bin_rsplit_def bin_rsplit_aux_simp_alt]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bthrs = bin_rsplit_simp_alt [THEN [2] trans]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_rsplit_size_sign' [rule_format]:
+  "n > 0 \<Longrightarrow> rev sw = bin_rsplit n (nw, w) \<Longrightarrow> \<forall>v\<in>set sw. (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n v = v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < n; rev sw = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v<\STATESEP>apply (induct sw arbitrary: nw w)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>nw w. \<lbrakk>0 < n; rev [] = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set []. take_bit n v = v
+ 2. \<And>a sw nw w. \<lbrakk>\<And>nw w. \<lbrakk>0 < n; rev sw = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v; 0 < n; rev (a # sw) = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set (a # sw). take_bit n v = v<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a sw nw w. \<lbrakk>\<And>nw w. \<lbrakk>0 < n; rev sw = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v; 0 < n; rev (a # sw) = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set (a # sw). take_bit n v = v<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a sw nw w. \<lbrakk>\<And>nw w. rev sw = bin_rsplit n (nw, w) \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v; 0 < n; rev sw @ [a] = bin_rsplit n (nw, w)\<rbrakk> \<Longrightarrow> take_bit n a = a \<and> (\<forall>v\<in>set sw. take_bit n v = v)<\STATESEP>apply (drule bthrs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a sw nw w. \<lbrakk>\<And>nw w. rev sw = bin_rsplit n (nw, w) \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v; 0 < n; rev sw @ [a] = (if fst (nw, w) = 0 \<or> n = 0 then [] else let (a, b) = bin_split n (snd (nw, w)) in bin_rsplit n (fst (nw, w) - n, a) @ [b])\<rbrakk> \<Longrightarrow> take_bit n a = a \<and> (\<forall>v\<in>set sw. take_bit n v = v)<\STATESEP>apply (simp (no_asm_use) add: Let_def split: prod.split_asm if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sw nw w. \<lbrakk>\<And>nw w. rev sw = bin_rsplit n (nw, w) \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v; 0 < n; 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w)\<rbrakk> \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v<\STATESEP>apply clarify<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sw nw w v. \<lbrakk>\<And>nw w. rev sw = bin_rsplit n (nw, w) \<Longrightarrow> \<forall>v\<in>set sw. take_bit n v = v; 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w); v \<in> set sw; 0 < nw; 0 < n\<rbrakk> \<Longrightarrow> take_bit n v = v<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_rsplit_size_sign = bin_rsplit_size_sign' [OF asm_rl
+  rev_rev_ident [THEN trans] set_rev [THEN equalityD2 [THEN subsetD]]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_nth_rsplit [rule_format] :
+  "n > 0 \<Longrightarrow> m < n \<Longrightarrow>
+    \<forall>w k nw.
+      rev sw = bin_rsplit n (nw, w) \<longrightarrow>
+      k < size sw \<longrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (sw ! k) m = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) w (k * n + m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < n; m < n\<rbrakk> \<Longrightarrow> \<forall>w k nw. rev sw = bin_rsplit n (nw, w) \<longrightarrow> k < length sw \<longrightarrow> bit (sw ! k) m = bit w (k * n + m)<\STATESEP>apply (induct sw)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>0 < n; m < n\<rbrakk> \<Longrightarrow> \<forall>w k nw. rev [] = bin_rsplit n (nw, w) \<longrightarrow> k < length [] \<longrightarrow> bit ([] ! k) m = bit w (k * n + m)
+ 2. \<And>a sw. \<lbrakk>\<lbrakk>0 < n; m < n\<rbrakk> \<Longrightarrow> \<forall>w k nw. rev sw = bin_rsplit n (nw, w) \<longrightarrow> k < length sw \<longrightarrow> bit (sw ! k) m = bit w (k * n + m); 0 < n; m < n\<rbrakk> \<Longrightarrow> \<forall>w k nw. rev (a # sw) = bin_rsplit n (nw, w) \<longrightarrow> k < length (a # sw) \<longrightarrow> bit ((a # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a sw. \<lbrakk>\<lbrakk>0 < n; m < n\<rbrakk> \<Longrightarrow> \<forall>w k nw. rev sw = bin_rsplit n (nw, w) \<longrightarrow> k < length sw \<longrightarrow> bit (sw ! k) m = bit w (k * n + m); 0 < n; m < n\<rbrakk> \<Longrightarrow> \<forall>w k nw. rev (a # sw) = bin_rsplit n (nw, w) \<longrightarrow> k < length (a # sw) \<longrightarrow> bit ((a # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a sw w nw k. \<lbrakk>\<forall>w. (\<exists>nw. rev sw = bin_rsplit n (nw, w)) \<longrightarrow> (\<forall>k<length sw. bit (sw ! k) m = bit w (k * n + m)); m < n; rev sw @ [a] = bin_rsplit n (nw, w); k < Suc (length sw)\<rbrakk> \<Longrightarrow> bit ((a # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply (drule bthrs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a sw w nw k. \<lbrakk>\<forall>w. (\<exists>nw. rev sw = bin_rsplit n (nw, w)) \<longrightarrow> (\<forall>k<length sw. bit (sw ! k) m = bit w (k * n + m)); m < n; k < Suc (length sw); rev sw @ [a] = (if fst (nw, w) = 0 \<or> n = 0 then [] else let (a, b) = bin_split n (snd (nw, w)) in bin_rsplit n (fst (nw, w) - n, a) @ [b])\<rbrakk> \<Longrightarrow> bit ((a # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply (simp (no_asm_use) add: Let_def split: prod.split_asm if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sw w nw k. \<lbrakk>\<forall>w. (\<exists>nw. rev sw = bin_rsplit n (nw, w)) \<longrightarrow> (\<forall>k<length sw. bit (sw ! k) m = bit w (k * n + m)); m < n; k < Suc (length sw); 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w)\<rbrakk> \<Longrightarrow> bit ((take_bit n w # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply (erule allE, erule impE, erule exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sw w nw k. \<lbrakk>m < n; k < Suc (length sw); 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit ((take_bit n w # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply (case_tac k)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sw w nw k. \<lbrakk>m < n; k < Suc (length sw); 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m); k = 0\<rbrakk> \<Longrightarrow> bit ((take_bit n w # sw) ! k) m = bit w (k * n + m)
+ 2. \<And>sw w nw k nat. \<lbrakk>m < n; k < Suc (length sw); 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m); k = Suc nat\<rbrakk> \<Longrightarrow> bit ((take_bit n w # sw) ! k) m = bit w (k * n + m)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sw w nw. \<lbrakk>m < n; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (take_bit n w) m = bit w m
+ 2. \<And>sw w nw k nat. \<lbrakk>m < n; k < Suc (length sw); 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m); k = Suc nat\<rbrakk> \<Longrightarrow> bit ((take_bit n w # sw) ! k) m = bit w (k * n + m)<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sw w nw k nat. \<lbrakk>m < n; k < Suc (length sw); 0 < nw \<and> 0 < n; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m); k = Suc nat\<rbrakk> \<Longrightarrow> bit ((take_bit n w # sw) ! k) m = bit w (k * n + m)
+ 2. \<And>sw w nw. \<lbrakk>m < n; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (take_bit n w) m = bit w m<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sw w nw nat. \<lbrakk>m < n; nat < length sw; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (drop_bit n w) (nat * n + m) = bit w (n + nat * n + m)
+ 2. \<And>sw w nw. \<lbrakk>m < n; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (take_bit n w) m = bit w m<\STATESEP>apply (erule allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sw w nw nat. \<lbrakk>m < n; nat < length sw; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); ?k40 sw w nw nat < length sw \<longrightarrow> bit (sw ! ?k40 sw w nw nat) m = bit (drop_bit n w) (?k40 sw w nw nat * n + m)\<rbrakk> \<Longrightarrow> bit (drop_bit n w) (nat * n + m) = bit w (n + nat * n + m)
+ 2. \<And>sw w nw. \<lbrakk>m < n; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (take_bit n w) m = bit w m<\STATESEP>apply (erule (1) impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sw w nw nat. \<lbrakk>m < n; nat < length sw; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); bit (sw ! nat) m = bit (drop_bit n w) (nat * n + m)\<rbrakk> \<Longrightarrow> bit (drop_bit n w) (nat * n + m) = bit w (n + nat * n + m)
+ 2. \<And>sw w nw. \<lbrakk>m < n; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (take_bit n w) m = bit w m<\STATESEP>apply (simp add: bit_drop_bit_eq ac_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sw w nw. \<lbrakk>m < n; 0 < nw; rev sw = bin_rsplit n (nw - n, drop_bit n w); \<forall>k<length sw. bit (sw ! k) m = bit (drop_bit n w) (k * n + m)\<rbrakk> \<Longrightarrow> bit (take_bit n w) m = bit w m<\STATESEP>apply (simp add: bit_take_bit_iff ac_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_all: "0 < nw \<Longrightarrow> nw \<le> n \<Longrightarrow> bin_rsplit n (nw, w) = [(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < nw; nw \<le> n\<rbrakk> \<Longrightarrow> bin_rsplit n (nw, w) = [take_bit n w]<\STATESEP>by (auto simp: bin_rsplit_def rsplit_aux_simp2ls split: prod.split dest!: split_bintrunc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_l [rule_format]:
+  "\<forall>bin. bin_rsplitl n (m, bin) = bin_rsplit n (m, (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m bin)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>bin. bin_rsplitl n (m, bin) = bin_rsplit n (m, take_bit m bin)<\STATESEP>apply (rule_tac a = "m" in wf_less_than [THEN wf_induct])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<forall>y. (y, x) \<in> less_than \<longrightarrow> (\<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin)) \<Longrightarrow> \<forall>bin. bin_rsplitl n (x, bin) = bin_rsplit n (x, take_bit x bin)<\STATESEP>apply (simp (no_asm) add: bin_rsplitl_def bin_rsplit_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<forall>y. (y, x) \<in> less_than \<longrightarrow> (\<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin)) \<Longrightarrow> \<forall>bin. bin_rsplitl_aux n x bin [] = bin_rsplit_aux n x (take_bit x bin) []<\STATESEP>apply (rule allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<forall>y. (y, x) \<in> less_than \<longrightarrow> (\<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin)) \<Longrightarrow> bin_rsplitl_aux n x bin [] = bin_rsplit_aux n x (take_bit x bin) []<\STATESEP>apply (subst bin_rsplitl_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<forall>y. (y, x) \<in> less_than \<longrightarrow> (\<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin)) \<Longrightarrow> (if x = 0 \<or> n = 0 then [] else let (a, b) = bin_split (min x n) bin in bin_rsplitl_aux n (x - n) a [b]) = bin_rsplit_aux n x (take_bit x bin) []<\STATESEP>apply (subst bin_rsplit_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<forall>y. (y, x) \<in> less_than \<longrightarrow> (\<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin)) \<Longrightarrow> (if x = 0 \<or> n = 0 then [] else let (a, b) = bin_split (min x n) bin in bin_rsplitl_aux n (x - n) a [b]) = (if x = 0 \<or> n = 0 then [] else let (a, b) = bin_split n (take_bit x bin) in bin_rsplit_aux n (x - n) a [b])<\STATESEP>apply (clarsimp simp: Let_def split: prod.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin); 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (x - n) (drop_bit (min x n) bin) [take_bit (min x n) bin] = bin_rsplit_aux n (x - n) (drop_bit n (take_bit x bin)) [take_bit (min n x) bin]<\STATESEP>apply (simp add: ac_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin); 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (x - n) (drop_bit (min x n) bin) [take_bit (min x n) bin] = bin_rsplit_aux n (x - n) (drop_bit n (take_bit x bin)) [take_bit (min x n) bin]<\STATESEP>apply (subst rsplit_aux_alts(1))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin); 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (x - n) (drop_bit (min x n) bin) [take_bit (min x n) bin] = bin_rsplit_aux n (x - n) (drop_bit n (take_bit x bin)) [] @ [take_bit (min x n) bin]<\STATESEP>apply (subst rsplit_aux_alts(2))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin); 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (x - n) (drop_bit (min x n) bin) [] @ [take_bit (min x n) bin] = bin_rsplit_aux n (x - n) (drop_bit n (take_bit x bin)) [] @ [take_bit (min x n) bin]<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl n (y, bin) = bin_rsplit n (y, take_bit y bin); 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (x - n) (drop_bit (min x n) bin) [] = bin_rsplit_aux n (x - n) (drop_bit n (take_bit x bin)) []<\STATESEP>unfolding bin_rsplit_def bin_rsplitl_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl_aux n (fst (y, bin)) (snd (y, bin)) [] = bin_rsplit_aux n (fst (y, take_bit y bin)) (snd (y, take_bit y bin)) []; 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplitl_aux n (x - n) (drop_bit (min x n) bin) [] = bin_rsplit_aux n (x - n) (drop_bit n (take_bit x bin)) []<\STATESEP>apply (simp add: drop_bit_take_bit)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl_aux n y bin [] = bin_rsplit_aux n y (take_bit y bin) []; 0 < x; 0 < n\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (x - n) (take_bit (x - n) (drop_bit (min x n) bin)) [] = bin_rsplit_aux n (x - n) (take_bit (x - n) (drop_bit n bin)) []<\STATESEP>apply (case_tac \<open>x < n\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl_aux n y bin [] = bin_rsplit_aux n y (take_bit y bin) []; 0 < x; 0 < n; x < n\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (x - n) (take_bit (x - n) (drop_bit (min x n) bin)) [] = bin_rsplit_aux n (x - n) (take_bit (x - n) (drop_bit n bin)) []
+ 2. \<And>x bin. \<lbrakk>\<forall>y<x. \<forall>bin. bin_rsplitl_aux n y bin [] = bin_rsplit_aux n y (take_bit y bin) []; 0 < x; 0 < n; \<not> x < n\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (x - n) (take_bit (x - n) (drop_bit (min x n) bin)) [] = bin_rsplit_aux n (x - n) (take_bit (x - n) (drop_bit n bin)) []<\STATESEP>apply (simp_all add: not_less min_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_rcat [rule_format]:
+  "n > 0 \<longrightarrow> bin_rsplit n (n * size ws, bin_rcat n ws) = map ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n) ws"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<longrightarrow> bin_rsplit n (n * length ws, bin_rcat n ws) = map (take_bit n) ws<\STATESEP>apply (unfold bin_rsplit_def bin_rcat_eq_foldl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<longrightarrow> bin_rsplit_aux n (fst (n * length ws, foldl (\<lambda>u v. concat_bit n v u) 0 ws)) (snd (n * length ws, foldl (\<lambda>u v. concat_bit n v u) 0 ws)) [] = map (take_bit n) ws<\STATESEP>apply (rule_tac xs = ws in rev_induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. 0 < n \<longrightarrow> bin_rsplit_aux n (fst (n * length [], foldl (\<lambda>u v. concat_bit n v u) 0 [])) (snd (n * length [], foldl (\<lambda>u v. concat_bit n v u) 0 [])) [] = map (take_bit n) []
+ 2. \<And>x xs. 0 < n \<longrightarrow> bin_rsplit_aux n (fst (n * length xs, foldl (\<lambda>u v. concat_bit n v u) 0 xs)) (snd (n * length xs, foldl (\<lambda>u v. concat_bit n v u) 0 xs)) [] = map (take_bit n) xs \<Longrightarrow> 0 < n \<longrightarrow> bin_rsplit_aux n (fst (n * length (xs @ [x]), foldl (\<lambda>u v. concat_bit n v u) 0 (xs @ [x]))) (snd (n * length (xs @ [x]), foldl (\<lambda>u v. concat_bit n v u) 0 (xs @ [x]))) [] = map (take_bit n) (xs @ [x])<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs. 0 < n \<longrightarrow> bin_rsplit_aux n (fst (n * length xs, foldl (\<lambda>u v. concat_bit n v u) 0 xs)) (snd (n * length xs, foldl (\<lambda>u v. concat_bit n v u) 0 xs)) [] = map (take_bit n) xs \<Longrightarrow> 0 < n \<longrightarrow> bin_rsplit_aux n (fst (n * length (xs @ [x]), foldl (\<lambda>u v. concat_bit n v u) 0 (xs @ [x]))) (snd (n * length (xs @ [x]), foldl (\<lambda>u v. concat_bit n v u) 0 (xs @ [x]))) [] = map (take_bit n) (xs @ [x])<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs. \<lbrakk>0 < n; bin_rsplit_aux n (n * length xs) (foldl (\<lambda>u v. concat_bit n v u) 0 xs) [] = map (take_bit n) xs\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (n * length xs) (drop_bit n (concat_bit n x (foldl (\<lambda>u v. concat_bit n v u) 0 xs))) [take_bit n x] = map (take_bit n) xs @ [take_bit n x]<\STATESEP>apply (subst rsplit_aux_alts)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs. \<lbrakk>0 < n; bin_rsplit_aux n (n * length xs) (foldl (\<lambda>u v. concat_bit n v u) 0 xs) [] = map (take_bit n) xs\<rbrakk> \<Longrightarrow> bin_rsplit_aux n (n * length xs) (drop_bit n (concat_bit n x (foldl (\<lambda>u v. concat_bit n v u) 0 xs))) [] @ [take_bit n x] = map (take_bit n) xs @ [take_bit n x]<\STATESEP>apply (simp add: drop_bit_bin_cat_eq take_bit_bin_cat_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_aux_len_le [rule_format] :
+  "\<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow>
+    length ws \<le> m \<longleftrightarrow> nw + length bs * n \<le> m * n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow> (length ws \<le> m) = (nw + length bs * n \<le> m * n)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow> (length ws \<le> m) = (nw + length bs * n \<le> m * n)<\STATESEP>have *: R
+    if d: "i \<le> j \<or> m < j'"
+    and R1: "i * k \<le> j * k \<Longrightarrow> R"
+    and R2: "Suc m * k' \<le> j' * k' \<Longrightarrow> R"
+    for i j j' k k' m :: nat and R<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. R<\STATESEP>using d<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+i \<le> j \<or> m < j'
+
+goal (1 subgoal):
+ 1. R<\STATESEP>apply safe<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. i \<le> j \<Longrightarrow> R
+ 2. m < j' \<Longrightarrow> R<\STATESEP>apply (rule R1, erule mult_le_mono1)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m < j' \<Longrightarrow> R<\STATESEP>apply (rule R2, erule Suc_le_eq [THEN iffD2 [THEN mult_le_mono1]])<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrakk>?i \<le> ?j \<or> ?m < ?j'; ?i * ?k \<le> ?j * ?k \<Longrightarrow> ?R; Suc ?m * ?k' \<le> ?j' * ?k' \<Longrightarrow> ?R\<rbrakk> \<Longrightarrow> ?R
+
+goal (1 subgoal):
+ 1. \<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow> (length ws \<le> m) = (nw + length bs * n \<le> m * n)<\STATESEP>have **: "0 < sc \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n \<longleftrightarrow> sc + lb * n \<le> m * n"
+    for sc m n lb :: nat<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < sc \<Longrightarrow> (sc - n + (n + lb * n) \<le> m * n) = (sc + lb * n \<le> m * n)<\STATESEP>apply safe<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>0 < sc; sc - n + (n + lb * n) \<le> m * n\<rbrakk> \<Longrightarrow> sc + lb * n \<le> m * n
+ 2. \<lbrakk>0 < sc; sc + lb * n \<le> m * n\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply arith<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < sc; sc + lb * n \<le> m * n\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply (case_tac "sc \<ge> n")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; n \<le> sc\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n
+ 2. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; \<not> n \<le> sc\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply arith<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; \<not> n \<le> sc\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply (insert linorder_le_less_linear [of m lb])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; \<not> n \<le> sc; m \<le> lb \<or> lb < m\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply (erule_tac k=n and k'=n in *)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; \<not> n \<le> sc; m * n \<le> lb * n\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n
+ 2. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; \<not> n \<le> sc; Suc lb * n \<le> m * n\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply arith<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < sc; sc + lb * n \<le> m * n; \<not> n \<le> sc; Suc lb * n \<le> m * n\<rbrakk> \<Longrightarrow> sc - n + (n + lb * n) \<le> m * n<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+0 < ?sc \<Longrightarrow> (?sc - ?n + (?n + ?lb * ?n) \<le> ?m * ?n) = (?sc + ?lb * ?n \<le> ?m * ?n)
+
+goal (1 subgoal):
+ 1. \<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow> (length ws \<le> m) = (nw + length bs * n \<le> m * n)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow> (length ws \<le> m) = (nw + length bs * n \<le> m * n)<\STATESEP>apply (induct n nw w bs rule: bin_rsplit_aux.induct)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x\<rbrakk> \<Longrightarrow> \<forall>ws ma. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n (m - n) xa (y # bs) \<longrightarrow> (length ws \<le> ma) = (m - n + length (y # bs) * n \<le> ma * n)) \<Longrightarrow> \<forall>ws ma. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n m c bs \<longrightarrow> (length ws \<le> ma) = (m + length bs * n \<le> ma * n)<\STATESEP>apply (subst bin_rsplit_aux.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. (\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x\<rbrakk> \<Longrightarrow> \<forall>ws ma. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n (m - n) xa (y # bs) \<longrightarrow> (length ws \<le> ma) = (m - n + length (y # bs) * n \<le> ma * n)) \<Longrightarrow> \<forall>ws ma. n \<noteq> 0 \<longrightarrow> ws = (if m = 0 \<or> n = 0 then bs else let (a, b) = bin_split n c in bin_rsplit_aux n (m - n) a (b # bs)) \<longrightarrow> (length ws \<le> ma) = (m + length bs * n \<le> ma * n)<\STATESEP>apply (simp add: ** Let_def split: prod.split)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>ws m. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit_aux n nw w bs \<longrightarrow> (length ws \<le> m) = (nw + length bs * n \<le> m * n)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bin_rsplit_len_le: "n \<noteq> 0 \<longrightarrow> ws = bin_rsplit n (nw, w) \<longrightarrow> length ws \<le> m \<longleftrightarrow> nw \<le> m * n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<noteq> 0 \<longrightarrow> ws = bin_rsplit n (nw, w) \<longrightarrow> (length ws \<le> m) = (nw \<le> m * n)<\STATESEP>by (auto simp: bin_rsplit_def bin_rsplit_aux_len_le)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_aux_len:
+  "n \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n nw w cs) = (nw + n - 1) div n + length cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n nw w cs) = (nw + n - 1) div n + length cs<\STATESEP>apply (induct n nw w cs rule: bin_rsplit_aux.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. \<lbrakk>\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x; n \<noteq> 0\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) xa (y # bs)) = (m - n + n - 1) div n + length (y # bs); n \<noteq> 0\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n m c bs) = (m + n - 1) div n + length bs<\STATESEP>apply (subst bin_rsplit_aux.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. \<lbrakk>\<And>x xa y. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x; n \<noteq> 0\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) xa (y # bs)) = (m - n + n - 1) div n + length (y # bs); n \<noteq> 0\<rbrakk> \<Longrightarrow> length (if m = 0 \<or> n = 0 then bs else let (a, b) = bin_split n c in bin_rsplit_aux n (m - n) a (b # bs)) = (m + n - 1) div n + length bs<\STATESEP>apply (clarsimp simp: Let_def split: prod.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. \<lbrakk>\<And>a xa. \<lbrakk>a = drop_bit n c; xa = drop_bit n c\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) (drop_bit n c) (take_bit n c # bs)) = Suc ((m - n + n - Suc 0) div n + length bs); 0 < n; 0 < m\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n<\STATESEP>apply (erule thin_rl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs. \<lbrakk>0 < n; 0 < m\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n<\STATESEP>apply (case_tac m)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n m c bs. \<lbrakk>0 < n; 0 < m; m = 0\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n
+ 2. \<And>n m c bs nat. \<lbrakk>0 < n; 0 < m; m = Suc nat\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n m c bs nat. \<lbrakk>0 < n; 0 < m; m = Suc nat\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n<\STATESEP>apply (case_tac "m \<le> n")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n m c bs nat. \<lbrakk>0 < n; 0 < m; m = Suc nat; m \<le> n\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n
+ 2. \<And>n m c bs nat. \<lbrakk>0 < n; 0 < m; m = Suc nat; \<not> m \<le> n\<rbrakk> \<Longrightarrow> Suc ((m - n + n - Suc 0) div n) = (m + n - Suc 0) div n<\STATESEP>apply (auto simp add: div_add_self2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_len: "n \<noteq> 0 \<Longrightarrow> length (bin_rsplit n (nw, w)) = (nw + n - 1) div n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<noteq> 0 \<Longrightarrow> length (bin_rsplit n (nw, w)) = (nw + n - 1) div n<\STATESEP>by (auto simp: bin_rsplit_def bin_rsplit_aux_len)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rsplit_aux_len_indep:
+  "n \<noteq> 0 \<Longrightarrow> length bs = length cs \<Longrightarrow>
+    length (bin_rsplit_aux n nw v bs) =
+    length (bin_rsplit_aux n nw w cs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n \<noteq> 0; length bs = length cs\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n nw v bs) = length (bin_rsplit_aux n nw w cs)<\STATESEP>proof (induct n nw w cs arbitrary: v bs rule: bin_rsplit_aux.induct)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>n m c bs v bsa. \<lbrakk>\<And>x xa y v bsa. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x; n \<noteq> 0; length bsa = length (y # bs)\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) v bsa) = length (bin_rsplit_aux n (m - n) xa (y # bs)); n \<noteq> 0; length bsa = length bs\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n m v bsa) = length (bin_rsplit_aux n m c bs)<\STATESEP>case (1 n m w cs v bs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<not> (m = 0 \<or> n = 0); ?x = bin_split n w; (?xa, ?y) = ?x; n \<noteq> 0; length ?bs = length (?y # cs)\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) ?v ?bs) = length (bin_rsplit_aux n (m - n) ?xa (?y # cs))
+n \<noteq> 0
+length bs = length cs
+
+goal (1 subgoal):
+ 1. \<And>n m c bs v bsa. \<lbrakk>\<And>x xa y v bsa. \<lbrakk>\<not> (m = 0 \<or> n = 0); x = bin_split n c; (xa, y) = x; n \<noteq> 0; length bsa = length (y # bs)\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) v bsa) = length (bin_rsplit_aux n (m - n) xa (y # bs)); n \<noteq> 0; length bsa = length bs\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n m v bsa) = length (bin_rsplit_aux n m c bs)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>proof (cases "m = 0")<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. m = 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)
+ 2. m \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>case True<\STATESEP>4<\TRANSEP>proof (state)
+this:
+m = 0
+
+goal (2 subgoals):
+ 1. m = 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)
+ 2. m \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>with \<open>length bs = length cs\<close><\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+length bs = length cs
+m = 0<\STATESEP>show ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+length bs = length cs
+m = 0
+
+goal (1 subgoal):
+ 1. length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)
+
+goal (1 subgoal):
+ 1. m \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>next<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. m \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>case False<\STATESEP>4<\TRANSEP>proof (state)
+this:
+m \<noteq> 0
+
+goal (1 subgoal):
+ 1. m \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>from "1.hyps" [of \<open>bin_split n w\<close> \<open>drop_bit n w\<close> \<open>take_bit n w\<close>] \<open>m \<noteq> 0\<close> \<open>n \<noteq> 0\<close><\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+\<lbrakk>\<not> (m = 0 \<or> n = 0); bin_split n w = bin_split n w; (drop_bit n w, take_bit n w) = bin_split n w; n \<noteq> 0; length ?bs = length (take_bit n w # cs)\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) ?v ?bs) = length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))
+m \<noteq> 0
+n \<noteq> 0<\STATESEP>have hyp: "\<And>v bs. length bs = Suc (length cs) \<Longrightarrow>
+      length (bin_rsplit_aux n (m - n) v bs) =
+      length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>\<not> (m = 0 \<or> n = 0); bin_split n w = bin_split n w; (drop_bit n w, take_bit n w) = bin_split n w; n \<noteq> 0; length ?bs = length (take_bit n w # cs)\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) ?v ?bs) = length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))
+m \<noteq> 0
+n \<noteq> 0
+
+goal (1 subgoal):
+ 1. \<And>v bs. length bs = Suc (length cs) \<Longrightarrow> length (bin_rsplit_aux n (m - n) v bs) = length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))<\STATESEP>using bin_rsplit_aux_len<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>\<not> (m = 0 \<or> n = 0); bin_split n w = bin_split n w; (drop_bit n w, take_bit n w) = bin_split n w; n \<noteq> 0; length ?bs = length (take_bit n w # cs)\<rbrakk> \<Longrightarrow> length (bin_rsplit_aux n (m - n) ?v ?bs) = length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))
+m \<noteq> 0
+n \<noteq> 0
+?n \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux ?n ?nw ?w ?cs) = (?nw + ?n - 1) div ?n + length ?cs
+
+goal (1 subgoal):
+ 1. \<And>v bs. length bs = Suc (length cs) \<Longrightarrow> length (bin_rsplit_aux n (m - n) v bs) = length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))<\STATESEP>by fastforce<\STATESEP>5<\TRANSEP>proof (state)
+this:
+length ?bs = Suc (length cs) \<Longrightarrow> length (bin_rsplit_aux n (m - n) ?v ?bs) = length (bin_rsplit_aux n (m - n) (drop_bit n w) (take_bit n w # cs))
+
+goal (1 subgoal):
+ 1. m \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>from \<open>length bs = length cs\<close> \<open>n \<noteq> 0\<close><\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+length bs = length cs
+n \<noteq> 0<\STATESEP>show ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+length bs = length cs
+n \<noteq> 0
+
+goal (1 subgoal):
+ 1. length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)<\STATESEP>by (auto simp add: bin_rsplit_aux_simp_alt Let_def bin_rsplit_len split: prod.split)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+length (bin_rsplit_aux n m v bs) = length (bin_rsplit_aux n m w cs)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bin_rsplit_len_indep:
+  "n \<noteq> 0 \<Longrightarrow> length (bin_rsplit n (nw, v)) = length (bin_rsplit n (nw, w))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<noteq> 0 \<Longrightarrow> length (bin_rsplit n (nw, v)) = length (bin_rsplit n (nw, w))<\STATESEP>apply (unfold bin_rsplit_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n (fst (nw, v)) (snd (nw, v)) []) = length (bin_rsplit_aux n (fst (nw, w)) (snd (nw, w)) [])<\STATESEP>apply (simp (no_asm))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<noteq> 0 \<Longrightarrow> length (bin_rsplit_aux n nw v []) = length (bin_rsplit_aux n nw w [])<\STATESEP>apply (erule bin_rsplit_aux_len_indep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length [] = length []<\STATESEP>apply (rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Logical operations\<close><\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input) bin_sc :: \<open>nat \<Rightarrow> bool \<Rightarrow> int \<Rightarrow> int\<close>
+  where \<open>bin_sc n b i \<equiv> set_bit i n b\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_sc_0 [simp]:
+  "bin_sc 0 b w = of_bool b + 2 * (\<lambda>k::int. k div 2) w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w 0 b = of_bool b + 2 * (w div 2)<\STATESEP>by (simp add: set_bit_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_Suc [simp]:
+  "bin_sc (Suc n) b w = of_bool (odd w) + 2 * bin_sc n b (w div 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w (Suc n) b = of_bool (odd w) + 2 * set_bit_class.set_bit (w div 2) n b<\STATESEP>by (simp add: set_bit_int_def set_bit_Suc unset_bit_Suc bin_last_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_sc [bit_simps]: "bit (bin_sc n b w) n \<longleftrightarrow> b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (set_bit_class.set_bit w n b) n = b<\STATESEP>by (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_sc_same [simp]: "bin_sc n c (bin_sc n b w) = bin_sc n c w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (set_bit_class.set_bit w n b) n c = set_bit_class.set_bit w n c<\STATESEP>by (induction n arbitrary: w) (simp_all add: bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_sc_diff: "m \<noteq> n \<Longrightarrow> bin_sc m c (bin_sc n b w) = bin_sc n b (bin_sc m c w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m \<noteq> n \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w n b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) n b<\STATESEP>apply (induct n arbitrary: w m)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>w m. m \<noteq> 0 \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w 0 b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) 0 b
+ 2. \<And>n w m. \<lbrakk>\<And>w m. m \<noteq> n \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w n b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) n b; m \<noteq> Suc n\<rbrakk> \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w (Suc n) b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) (Suc n) b<\STATESEP>apply (case_tac [!] m)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>w m. \<lbrakk>m \<noteq> 0; m = 0\<rbrakk> \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w 0 b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) 0 b
+ 2. \<And>w m nat. \<lbrakk>m \<noteq> 0; m = Suc nat\<rbrakk> \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w 0 b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) 0 b
+ 3. \<And>n w m. \<lbrakk>\<And>w m. m \<noteq> n \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w n b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) n b; m \<noteq> Suc n; m = 0\<rbrakk> \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w (Suc n) b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) (Suc n) b
+ 4. \<And>n w m nat. \<lbrakk>\<And>w m. m \<noteq> n \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w n b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) n b; m \<noteq> Suc n; m = Suc nat\<rbrakk> \<Longrightarrow> set_bit_class.set_bit (set_bit_class.set_bit w (Suc n) b) m c = set_bit_class.set_bit (set_bit_class.set_bit w m c) (Suc n) b<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_sc_gen: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (bin_sc n b w) m = (if m = n then b else (bit :: int \<Rightarrow> nat \<Rightarrow> bool) w m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (set_bit_class.set_bit w n b) m = (if m = n then b else bit w m)<\STATESEP>by (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_eq:
+  \<open>bin_sc n False = unset_bit n\<close>
+  \<open>bin_sc n True = Bit_Operations.set_bit n\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>i. set_bit_class.set_bit i n False) = unset_bit n &&& (\<lambda>i. set_bit_class.set_bit i n True) = semiring_bit_operations_class.set_bit n<\STATESEP>apply (simp_all add: fun_eq_iff bit_eq_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>x na. bit (set_bit_class.set_bit x n False) na = bit (unset_bit n x) na
+ 2. \<forall>x na. bit (set_bit_class.set_bit x n True) na = bit (semiring_bit_operations_class.set_bit n x) na<\STATESEP>apply (simp_all add: bit_simps bin_nth_sc_gen)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_nth [simp]: "bin_sc n ((bit :: int \<Rightarrow> nat \<Rightarrow> bool) w n) w = w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w n (bit w n) = w<\STATESEP>by (rule bit_eqI) (simp add: bin_nth_sc_gen)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sign_sc [simp]: "bin_sign (bin_sc n b w) = bin_sign w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (set_bit_class.set_bit w n b) = bin_sign w<\STATESEP>proof (induction n arbitrary: w)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>w. bin_sign (set_bit_class.set_bit w 0 b) = bin_sign w
+ 2. \<And>n w. (\<And>w. bin_sign (set_bit_class.set_bit w n b) = bin_sign w) \<Longrightarrow> bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w<\STATESEP>case 0<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (2 subgoals):
+ 1. \<And>w. bin_sign (set_bit_class.set_bit w 0 b) = bin_sign w
+ 2. \<And>n w. (\<And>w. bin_sign (set_bit_class.set_bit w n b) = bin_sign w) \<Longrightarrow> bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (set_bit_class.set_bit w 0 b) = bin_sign w<\STATESEP>by (auto simp add: bin_sign_def) (use bin_rest_ge_0 in fastforce)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bin_sign (set_bit_class.set_bit w 0 b) = bin_sign w
+
+goal (1 subgoal):
+ 1. \<And>n w. (\<And>w. bin_sign (set_bit_class.set_bit w n b) = bin_sign w) \<Longrightarrow> bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>n w. (\<And>w. bin_sign (set_bit_class.set_bit w n b) = bin_sign w) \<Longrightarrow> bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w<\STATESEP>case (Suc n)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+bin_sign (set_bit_class.set_bit ?w n b) = bin_sign ?w
+
+goal (1 subgoal):
+ 1. \<And>n w. (\<And>w. bin_sign (set_bit_class.set_bit w n b) = bin_sign w) \<Longrightarrow> bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w<\STATESEP>from Suc [of \<open>w div 2\<close>]<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bin_sign (set_bit_class.set_bit (w div 2) n b) = bin_sign (w div 2)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bin_sign (set_bit_class.set_bit (w div 2) n b) = bin_sign (w div 2)
+
+goal (1 subgoal):
+ 1. bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w<\STATESEP>by (auto simp add: bin_sign_def split: if_splits)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bin_sign (set_bit_class.set_bit w (Suc n) b) = bin_sign w
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bin_sc_bintr [simp]:
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m (bin_sc n x ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m w)) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) m (bin_sc n x w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit m (set_bit_class.set_bit (take_bit m w) n x) = take_bit m (set_bit_class.set_bit w n x)<\STATESEP>apply (rule bit_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>na. possible_bit TYPE(int) na \<Longrightarrow> bit (take_bit m (set_bit_class.set_bit (take_bit m w) n x)) na = bit (take_bit m (set_bit_class.set_bit w n x)) na<\STATESEP>apply (cases x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na. \<lbrakk>possible_bit TYPE(int) na; x\<rbrakk> \<Longrightarrow> bit (take_bit m (set_bit_class.set_bit (take_bit m w) n x)) na = bit (take_bit m (set_bit_class.set_bit w n x)) na
+ 2. \<And>na. \<lbrakk>possible_bit TYPE(int) na; \<not> x\<rbrakk> \<Longrightarrow> bit (take_bit m (set_bit_class.set_bit (take_bit m w) n x)) na = bit (take_bit m (set_bit_class.set_bit w n x)) na<\STATESEP>apply (auto simp add: bit_simps bin_sc_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_clr_le: "bin_sc n False w \<le> w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w n False \<le> w<\STATESEP>by (simp add: set_bit_int_def unset_bit_less_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_set_ge: "bin_sc n True w \<ge> w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w \<le> set_bit_class.set_bit w n True<\STATESEP>by (simp add: set_bit_int_def set_bit_greater_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_bin_clr_le: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (bin_sc m False w) \<le> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (set_bit_class.set_bit w m False) \<le> take_bit n w<\STATESEP>by (simp add: set_bit_int_def take_bit_unset_bit_eq unset_bit_less_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_bin_set_ge: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (bin_sc m True w) \<ge> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n w \<le> take_bit n (set_bit_class.set_bit w m True)<\STATESEP>by (simp add: set_bit_int_def take_bit_set_bit_eq set_bit_greater_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_FP [simp]: "bin_sc n False 0 = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit 0 n False = 0<\STATESEP>by (induct n) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_TM [simp]: "bin_sc n True (- 1) = - 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (- 1) n True = - 1<\STATESEP>by (induct n) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_sc_simps = bin_sc_0 bin_sc_Suc bin_sc_TM bin_sc_FP<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_sc_minus: "0 < n \<Longrightarrow> bin_sc (Suc (n - 1)) b w = bin_sc n b w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> set_bit_class.set_bit w (Suc (n - 1)) b = set_bit_class.set_bit w n b<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_sc_Suc_minus =
+  trans [OF bin_sc_minus [symmetric] bin_sc_Suc]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_sc_numeral [simp]:
+  "bin_sc (numeral k) b w =
+    of_bool (odd w) + 2 * bin_sc (pred_numeral k) b (w div 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w (numeral k) b = of_bool (odd w) + 2 * set_bit_class.set_bit (w div 2) (pred_numeral k) b<\STATESEP>by (simp add: numeral_eq_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_sc_minus_simps =
+  bin_sc_simps (2,3,4) [THEN [2] trans, OF bin_sc_minus [THEN sym]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma int_set_bit_0 [simp]: fixes x :: int shows
+  "set_bit x 0 b = of_bool b + 2 * (x div 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit x 0 b = of_bool b + 2 * (x div 2)<\STATESEP>by (fact bin_sc_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_set_bit_Suc: fixes x :: int shows
+  "set_bit x (Suc n) b = of_bool (odd x) + 2 * set_bit (x div 2) n b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit x (Suc n) b = of_bool (odd x) + 2 * set_bit_class.set_bit (x div 2) n b<\STATESEP>by (fact bin_sc_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_set_bit:
+  "odd (set_bit x n b :: int) = (if n > 0 then odd x else b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (set_bit_class.set_bit x n b) = (if 0 < n then odd x else b)<\STATESEP>by (cases n) (simp_all add: int_set_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_set_bit:
+  "(set_bit x n b :: int) div 2 = (if n > 0 then set_bit (x div 2) (n - 1) b else x div 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit x n b div 2 = (if 0 < n then set_bit_class.set_bit (x div 2) (n - 1) b else x div 2)<\STATESEP>by (cases n) (simp_all add: int_set_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_set_bit_numeral: fixes x :: int shows
+  "set_bit x (numeral w) b = of_bool (odd x) + 2 * set_bit (x div 2) (pred_numeral w) b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit x (numeral w) b = of_bool (odd x) + 2 * set_bit_class.set_bit (x div 2) (pred_numeral w) b<\STATESEP>by (fact bin_sc_numeral)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas int_set_bit_numerals [simp] =
+  int_set_bit_numeral[where x="numeral w'"]
+  int_set_bit_numeral[where x="- numeral w'"]
+  int_set_bit_numeral[where x="Numeral1"]
+  int_set_bit_numeral[where x="1"]
+  int_set_bit_numeral[where x="0"]
+  int_set_bit_Suc[where x="numeral w'"]
+  int_set_bit_Suc[where x="- numeral w'"]
+  int_set_bit_Suc[where x="Numeral1"]
+  int_set_bit_Suc[where x="1"]
+  int_set_bit_Suc[where x="0"]
+  for w'<\STATESEP>0<\TRANSEP><\STATESEP>lemma msb_set_bit [simp]:
+  "msb (set_bit (x :: int) n b) \<longleftrightarrow> msb x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msb (set_bit_class.set_bit x n b) = msb x<\STATESEP>by (simp add: msb_int_def set_bit_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_bit_def:
+  \<open>set_bit a n x = word_of_int (bin_sc n x (uint a))\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit a n x = word_of_int (set_bit_class.set_bit (uint a) n x)<\STATESEP>apply (rule bit_word_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>na. na < LENGTH('a) \<Longrightarrow> bit (set_bit_class.set_bit a n x) na = bit (word_of_int (set_bit_class.set_bit (uint a) n x)) na<\STATESEP>apply (cases x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na. \<lbrakk>na < LENGTH('a); x\<rbrakk> \<Longrightarrow> bit (set_bit_class.set_bit a n x) na = bit (word_of_int (set_bit_class.set_bit (uint a) n x)) na
+ 2. \<And>na. \<lbrakk>na < LENGTH('a); \<not> x\<rbrakk> \<Longrightarrow> bit (set_bit_class.set_bit a n x) na = bit (word_of_int (set_bit_class.set_bit (uint a) n x)) na<\STATESEP>apply (simp_all add: bit_simps bin_sc_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bit_word_of_int:
+  "set_bit (word_of_int x) n b = word_of_int (bin_sc n b x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (word_of_int x) n b = word_of_int (set_bit_class.set_bit x n b)<\STATESEP>unfolding word_set_bit_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_of_int (set_bit_class.set_bit (uint (word_of_int x)) n b) = word_of_int (set_bit_class.set_bit x n b)<\STATESEP>by (rule word_eqI) (simp add: word_size bin_nth_sc_gen nth_bintr bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_numeral [simp]:
+  "set_bit (numeral bin::'a::len word) n b =
+    word_of_int (bin_sc n b (numeral bin))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (numeral bin) n b = word_of_int (set_bit_class.set_bit (numeral bin) n b)<\STATESEP>unfolding word_numeral_alt<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (word_of_int (numeral bin)) n b = word_of_int (set_bit_class.set_bit (numeral bin) n b)<\STATESEP>by (rule set_bit_word_of_int)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_neg_numeral [simp]:
+  "set_bit (- numeral bin::'a::len word) n b =
+    word_of_int (bin_sc n b (- numeral bin))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (- numeral bin) n b = word_of_int (set_bit_class.set_bit (- numeral bin) n b)<\STATESEP>unfolding word_neg_numeral_alt<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (word_of_int (- numeral bin)) n b = word_of_int (set_bit_class.set_bit (- numeral bin) n b)<\STATESEP>by (rule set_bit_word_of_int)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_bit_0 [simp]: "set_bit 0 n b = word_of_int (bin_sc n b 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit 0 n b = word_of_int (set_bit_class.set_bit 0 n b)<\STATESEP>unfolding word_0_wi<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (word_of_int 0) n b = word_of_int (set_bit_class.set_bit 0 n b)<\STATESEP>by (rule set_bit_word_of_int)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_bit_1 [simp]: "set_bit 1 n b = word_of_int (bin_sc n b 1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit 1 n b = word_of_int (set_bit_class.set_bit 1 n b)<\STATESEP>unfolding word_1_wi<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (word_of_int 1) n b = word_of_int (set_bit_class.set_bit 1 n b)<\STATESEP>by (rule set_bit_word_of_int)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas shiftl_int_def = shiftl_eq_mult[of x for x::int]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas shiftr_int_def = shiftr_eq_div[of x for x::int]<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Basic simplification rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>context
+  includes bit_operations_syntax
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemmas int_not_def = not_int_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma int_not_simps:
+  "NOT (0::int) = -1"
+  "NOT (1::int) = -2"
+  "NOT (- 1::int) = 0"
+  "NOT (numeral w::int) = - numeral (w + Num.One)"
+  "NOT (- numeral (Num.Bit0 w)::int) = numeral (Num.BitM w)"
+  "NOT (- numeral (Num.Bit1 w)::int) = numeral (Num.Bit0 w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (NOT 0 = - 1 &&& NOT 1 = - 2 &&& NOT (- 1) = 0) &&& NOT (numeral w) = - numeral (w + num.One) &&& NOT (- numeral (num.Bit0 w)) = numeral (Num.BitM w) &&& NOT (- numeral (num.Bit1 w)) = numeral (num.Bit0 w)<\STATESEP>by (simp_all add: not_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_not_not: "NOT (NOT x) = x"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. NOT (NOT x) = x<\STATESEP>by (fact bit.double_compl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_0 [simp]: "0 AND x = 0"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 AND x = 0<\STATESEP>by (fact bit.conj_zero_left)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_m1 [simp]: "-1 AND x = x"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - 1 AND x = x<\STATESEP>by (fact and.left_neutral)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_or_zero [simp]: "0 OR x = x"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 OR x = x<\STATESEP>by (fact or.left_neutral)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_or_minus1 [simp]: "-1 OR x = -1"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - 1 OR x = - 1<\STATESEP>by (fact bit.disj_one_left)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_xor_zero [simp]: "0 XOR x = x"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 XOR x = x<\STATESEP>by (fact xor.left_neutral)<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Binary destructors\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_rest_NOT [simp]: "(\<lambda>k::int. k div 2) (NOT x) = NOT ((\<lambda>k::int. k div 2) x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. NOT x div 2 = NOT (x div 2)<\STATESEP>by (fact not_int_div_2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_NOT [simp]: "(odd :: int \<Rightarrow> bool) (NOT x) \<longleftrightarrow> \<not> (odd :: int \<Rightarrow> bool) x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (NOT x) = (\<not> odd x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_AND [simp]: "(\<lambda>k::int. k div 2) (x AND y) = (\<lambda>k::int. k div 2) x AND (\<lambda>k::int. k div 2) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x AND y) div 2 = x div 2 AND y div 2<\STATESEP>by (subst and_int_rec) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_AND [simp]: "(odd :: int \<Rightarrow> bool) (x AND y) \<longleftrightarrow> (odd :: int \<Rightarrow> bool) x \<and> (odd :: int \<Rightarrow> bool) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (x AND y) = (odd x \<and> odd y)<\STATESEP>by (subst and_int_rec) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_OR [simp]: "(\<lambda>k::int. k div 2) (x OR y) = (\<lambda>k::int. k div 2) x OR (\<lambda>k::int. k div 2) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x OR y) div 2 = x div 2 OR y div 2<\STATESEP>by (subst or_int_rec) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_OR [simp]: "(odd :: int \<Rightarrow> bool) (x OR y) \<longleftrightarrow> (odd :: int \<Rightarrow> bool) x \<or> (odd :: int \<Rightarrow> bool) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (x OR y) = (odd x \<or> odd y)<\STATESEP>by (subst or_int_rec) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_XOR [simp]: "(\<lambda>k::int. k div 2) (x XOR y) = (\<lambda>k::int. k div 2) x XOR (\<lambda>k::int. k div 2) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x XOR y) div 2 = x div 2 XOR y div 2<\STATESEP>by (subst xor_int_rec) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_XOR [simp]: "(odd :: int \<Rightarrow> bool) (x XOR y) \<longleftrightarrow> ((odd :: int \<Rightarrow> bool) x \<or> (odd :: int \<Rightarrow> bool) y) \<and> \<not> ((odd :: int \<Rightarrow> bool) x \<and> (odd :: int \<Rightarrow> bool) y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (x XOR y) = ((odd x \<or> odd y) \<and> \<not> (odd x \<and> odd y))<\STATESEP>by (subst xor_int_rec) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_ops:
+  "\<And>x y. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (x AND y) n \<longleftrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y n"
+  "\<And>x y. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (x OR y) n \<longleftrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n \<or> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y n"
+  "\<And>x y. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (x XOR y) n \<longleftrightarrow> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n \<noteq> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) y n"
+  "\<And>x. (bit :: int \<Rightarrow> nat \<Rightarrow> bool) (NOT x) n \<longleftrightarrow> \<not> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<And>x y. bit (x AND y) n = (bit x n \<and> bit y n)) &&& (\<And>x y. bit (x OR y) n = (bit x n \<or> bit y n))) &&& (\<And>x y. bit (x XOR y) n = (bit x n \<noteq> bit y n)) &&& (\<And>x. bit (NOT x) n = (\<not> bit x n))<\STATESEP>by (simp_all add: bit_and_iff bit_or_iff bit_xor_iff bit_not_iff)<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Derived properties\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma int_xor_minus1 [simp]: "-1 XOR x = NOT x"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - 1 XOR x = NOT x<\STATESEP>by (fact bit.xor_one_left)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_xor_extra_simps [simp]:
+  "w XOR 0 = w"
+  "w XOR -1 = NOT w"
+  for w :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w XOR 0 = w &&& w XOR - 1 = NOT w<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_or_extra_simps [simp]:
+  "w OR 0 = w"
+  "w OR -1 = -1"
+  for w :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w OR 0 = w &&& w OR - 1 = - 1<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_extra_simps [simp]:
+  "w AND 0 = 0"
+  "w AND -1 = w"
+  for w :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w AND 0 = 0 &&& w AND - 1 = w<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_ops_comm:
+  fixes x y :: int
+  shows int_and_comm: "x AND y = y AND x"
+    and int_or_comm:  "x OR y = y OR x"
+    and int_xor_comm: "x XOR y = y XOR x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND y = y AND x &&& x OR y = y OR x &&& x XOR y = y XOR x<\STATESEP>by (simp_all add: ac_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_ops_same [simp]:
+  "x AND x = x"
+  "x OR x = x"
+  "x XOR x = 0"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND x = x &&& x OR x = x &&& x XOR x = 0<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_log_esimps =
+  int_and_extra_simps  int_or_extra_simps  int_xor_extra_simps
+  int_and_0 int_and_m1 int_or_zero int_or_minus1 int_xor_zero int_xor_minus1<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Basic properties of logical (bit-wise) operations\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bbw_ao_absorb: "x AND (y OR x) = x \<and> x OR (y AND x) = x"
+  for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND (y OR x) = x \<and> x OR y AND x = x<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bbw_ao_absorbs_other:
+  "x AND (x OR y) = x \<and> (y AND x) OR x = x"
+  "(y OR x) AND x = x \<and> x OR (x AND y) = x"
+  "(x OR y) AND x = x \<and> (x AND y) OR x = x"
+  for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND (x OR y) = x \<and> y AND x OR x = x &&& (y OR x) AND x = x \<and> x OR x AND y = x &&& (x OR y) AND x = x \<and> x AND y OR x = x<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bbw_ao_absorbs [simp] = bbw_ao_absorb bbw_ao_absorbs_other<\STATESEP>0<\TRANSEP><\STATESEP>lemma int_xor_not: "(NOT x) XOR y = NOT (x XOR y) \<and> x XOR (NOT y) = NOT (x XOR y)"
+  for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. NOT x XOR y = NOT (x XOR y) \<and> x XOR NOT y = NOT (x XOR y)<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_assoc: "(x AND y) AND z = x AND (y AND z)"
+  for x y z :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x AND y) AND z = x AND y AND z<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_or_assoc: "(x OR y) OR z = x OR (y OR z)"
+  for x y z :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x OR y) OR z = x OR y OR z<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_xor_assoc: "(x XOR y) XOR z = x XOR (y XOR z)"
+  for x y z :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x XOR y) XOR z = x XOR y XOR z<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bbw_assocs = int_and_assoc int_or_assoc int_xor_assoc<\STATESEP>0<\TRANSEP><\STATESEP>lemma bbw_lcs [simp]:
+  "y AND (x AND z) = x AND (y AND z)"
+  "y OR (x OR z) = x OR (y OR z)"
+  "y XOR (x XOR z) = x XOR (y XOR z)"
+  for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. y AND x AND z = x AND y AND z &&& y OR x OR z = x OR y OR z &&& y XOR x XOR z = x XOR y XOR z<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bbw_not_dist:
+  "NOT (x OR y) = (NOT x) AND (NOT y)"
+  "NOT (x AND y) = (NOT x) OR (NOT y)"
+  for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. NOT (x OR y) = NOT x AND NOT y &&& NOT (x AND y) = NOT x OR NOT y<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bbw_oa_dist: "(x AND y) OR z = (x OR z) AND (y OR z)"
+  for x y z :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND y OR z = (x OR z) AND (y OR z)<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bbw_ao_dist: "(x OR y) AND z = (x AND z) OR (y AND z)"
+  for x y z :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x OR y) AND z = x AND z OR y AND z<\STATESEP>by (auto simp add: bin_eq_iff bin_nth_ops)<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Simplification with numerals\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_rest_neg_numeral_BitM [simp]:
+  "(\<lambda>k::int. k div 2) (- numeral (Num.BitM w)) = - numeral w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - numeral (Num.BitM w) div 2 = - numeral w<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_neg_numeral_BitM [simp]:
+  "(odd :: int \<Rightarrow> bool) (- numeral (Num.BitM w))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (- numeral (Num.BitM w))<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Interactions with arithmetic\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma le_int_or: "bin_sign y = 0 \<Longrightarrow> x \<le> x OR y"
+  for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign y = 0 \<Longrightarrow> x \<le> x OR y<\STATESEP>by (simp add: bin_sign_def or_greater_eq split: if_splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas int_and_le =
+  xtrans(3) [OF bbw_ao_absorbs (2) [THEN conjunct2, symmetric] le_int_or]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_add_not: "x + NOT x = (-1::int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x + NOT x = - 1<\STATESEP>by (simp add: not_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma AND_mod: "x AND (2 ^ n - 1) = x mod 2 ^ n"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND 2 ^ n - 1 = x mod 2 ^ n<\STATESEP>by (simp flip: take_bit_eq_mod add: take_bit_eq_mask mask_eq_exp_minus_1)<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Truncating results of bit-wise operations\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_trunc_ao:
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x AND (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (x AND y)"
+  "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x OR (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (x OR y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n x AND take_bit n y = take_bit n (x AND y) &&& take_bit n x OR take_bit n y = take_bit n (x OR y)<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_trunc_xor: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x XOR (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (x XOR y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (take_bit n x XOR take_bit n y) = take_bit n (x XOR y)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_trunc_not: "(take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (NOT ((take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x)) = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n (NOT x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (NOT (take_bit n x)) = take_bit n (NOT x)<\STATESEP>by (fact take_bit_not_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintr_bintr_i: "x = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y \<Longrightarrow> (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x = (take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = take_bit n y \<Longrightarrow> take_bit n x = take_bit n y<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_trunc_and = bin_trunc_ao(1) [THEN bintr_bintr_i]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bin_trunc_or = bin_trunc_ao(2) [THEN bintr_bintr_i]<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>More lemmas\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma not_int_cmp_0 [simp]:
+  fixes i :: int shows
+  "0 < NOT i \<longleftrightarrow> i < -1"
+  "0 \<le> NOT i \<longleftrightarrow> i < 0"
+  "NOT i < 0 \<longleftrightarrow> i \<ge> 0"
+  "NOT i \<le> 0 \<longleftrightarrow> i \<ge> -1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((0 < NOT i) = (i < - 1) &&& (0 \<le> NOT i) = (i < 0)) &&& (NOT i < 0) = (0 \<le> i) &&& (NOT i \<le> 0) = (- 1 \<le> i)<\STATESEP>by(simp_all add: int_not_def) arith+<\STATESEP>1<\TRANSEP><\STATESEP>lemma bbw_ao_dist2: "(x :: int) AND (y OR z) = x AND y OR x AND z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND (y OR z) = x AND y OR x AND z<\STATESEP>by (fact bit.conj_disj_distrib)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas int_and_ac = bbw_lcs(1) int_and_comm int_and_assoc<\STATESEP>0<\TRANSEP><\STATESEP>lemma int_nand_same [simp]: fixes x :: int shows "x AND NOT x = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND NOT x = 0<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_nand_same_middle: fixes x :: int shows "x AND y AND NOT x = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND y AND NOT x = 0<\STATESEP>by (simp add: bit_eq_iff bit_and_iff bit_not_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma and_xor_dist: fixes x :: int shows
+  "x AND (y XOR z) = (x AND y) XOR (x AND z)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND (y XOR z) = x AND y XOR x AND z<\STATESEP>by (fact bit.conj_xor_distrib)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_lt0 [simp]:
+  \<open>x AND y < 0 \<longleftrightarrow> x < 0 \<and> y < 0\<close> for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x AND y < 0) = (x < 0 \<and> y < 0)<\STATESEP>by (fact and_negative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_ge0 [simp]:
+  \<open>x AND y \<ge> 0 \<longleftrightarrow> x \<ge> 0 \<or> y \<ge> 0\<close> for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 \<le> x AND y) = (0 \<le> x \<or> 0 \<le> y)<\STATESEP>by (fact and_nonnegative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_and_1: fixes x :: int shows "x AND 1 = x mod 2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND 1 = x mod 2<\STATESEP>by (fact and_one_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_1_and: fixes x :: int shows "1 AND x = x mod 2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 1 AND x = x mod 2<\STATESEP>by (fact one_and_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_or_lt0 [simp]:
+  \<open>x OR y < 0 \<longleftrightarrow> x < 0 \<or> y < 0\<close> for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x OR y < 0) = (x < 0 \<or> y < 0)<\STATESEP>by (fact or_negative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_or_ge0 [simp]:
+  \<open>x OR y \<ge> 0 \<longleftrightarrow> x \<ge> 0 \<and> y \<ge> 0\<close> for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 \<le> x OR y) = (0 \<le> x \<and> 0 \<le> y)<\STATESEP>by (fact or_nonnegative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_xor_lt0 [simp]:
+  \<open>x XOR y < 0 \<longleftrightarrow> (x < 0) \<noteq> (y < 0)\<close> for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x XOR y < 0) = ((x < 0) \<noteq> (y < 0))<\STATESEP>by (fact xor_negative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_xor_ge0 [simp]:
+  \<open>x XOR y \<ge> 0 \<longleftrightarrow> (x \<ge> 0 \<longleftrightarrow> y \<ge> 0)\<close> for x y :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 \<le> x XOR y) = ((0 \<le> x) = (0 \<le> y))<\STATESEP>by (fact xor_nonnegative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma even_conv_AND:
+  \<open>even i \<longleftrightarrow> i AND 1 = 0\<close> for i :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. even i = (i AND 1 = 0)<\STATESEP>by (simp add: and_one_eq mod2_eq_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_conv_AND:
+  "(odd :: int \<Rightarrow> bool) i \<longleftrightarrow> i AND 1 \<noteq> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd i = (i AND 1 \<noteq> 0)<\STATESEP>by (simp add: and_one_eq mod2_eq_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bitval_bin_last:
+  "of_bool ((odd :: int \<Rightarrow> bool) i) = i AND 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. of_bool (odd i) = i AND 1<\STATESEP>by (simp add: and_one_eq mod2_eq_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sign_and:
+  "bin_sign (i AND j) = - (bin_sign i * bin_sign j)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (i AND j) = - (bin_sign i * bin_sign j)<\STATESEP>by(simp add: bin_sign_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_not_neg_numeral: "NOT (- numeral n) = (Num.sub n num.One :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. NOT (- numeral n) = neg_numeral_class.sub n num.One<\STATESEP>by(simp add: int_not_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_neg_numeral_pOne_conv_not: "- numeral (n + num.One) = (NOT (numeral n) :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - numeral (n + num.One) = NOT (numeral n)<\STATESEP>by(simp add: int_not_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Setting and clearing bits\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma int_shiftl_BIT: fixes x :: int
+  shows int_shiftl0: "x << 0 = x"
+  and int_shiftl_Suc: "x << Suc n = 2 * x << n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x << 0 = x &&& x << Suc n = 2 * x << n<\STATESEP>by (auto simp add: shiftl_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_0_shiftl: "push_bit n 0 = (0 :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. push_bit n 0 = 0<\STATESEP>by (fact push_bit_of_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_shiftl: "odd (push_bit n x) \<longleftrightarrow> n = 0 \<and> (odd :: int \<Rightarrow> bool) x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (push_bit n x) = (n = 0 \<and> odd x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_shiftl: "(\<lambda>k::int. k div 2) (push_bit n x) = (if n > 0 then push_bit (n - 1) x else (\<lambda>k::int. k div 2) x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. push_bit n x div 2 = (if 0 < n then push_bit (n - 1) x else x div 2)<\STATESEP>by (cases n) (simp_all add: push_bit_eq_mult)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_shiftl: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (push_bit n x) m \<longleftrightarrow> n \<le> m \<and> (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x (m - n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (push_bit n x) m = (n \<le> m \<and> bit x (m - n))<\STATESEP>by (fact bit_push_bit_iff_int)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_last_shiftr: "odd (drop_bit n x) \<longleftrightarrow> bit x n" for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. odd (drop_bit n x) = bit x n<\STATESEP>by (simp add: bit_iff_odd_drop_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_rest_shiftr: "(\<lambda>k::int. k div 2) (drop_bit n x) = drop_bit (Suc n) x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. drop_bit n x div 2 = drop_bit (Suc n) x<\STATESEP>by (simp add: drop_bit_Suc drop_bit_half)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_shiftr: "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) (drop_bit n x) m = (bit :: int \<Rightarrow> nat \<Rightarrow> bool) x (n + m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (drop_bit n x) m = bit x (n + m)<\STATESEP>by (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_conv_AND:
+  fixes x :: int shows
+  "(bit :: int \<Rightarrow> nat \<Rightarrow> bool) x n \<longleftrightarrow> x AND (push_bit n 1) \<noteq> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit x n = (x AND push_bit n 1 \<noteq> 0)<\STATESEP>by (fact bit_iff_and_push_bit_not_eq_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftl_numeral [simp]:
+  "push_bit (numeral w') (numeral w :: int) = push_bit (pred_numeral w') (numeral (num.Bit0 w))"
+  "push_bit (numeral w') (- numeral w :: int) = push_bit (pred_numeral w') (- numeral (num.Bit0 w))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. push_bit (numeral w') (numeral w) = push_bit (pred_numeral w') (numeral (num.Bit0 w)) &&& push_bit (numeral w') (- numeral w) = push_bit (pred_numeral w') (- numeral (num.Bit0 w))<\STATESEP>by(simp_all add: numeral_eq_Suc shiftl_int_def)
+  (metis add_One mult_inc semiring_norm(11) semiring_norm(13) semiring_norm(2) semiring_norm(6) semiring_norm(87))+<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftl_One_numeral [simp]:
+  "push_bit (numeral w) (1::int) = push_bit (pred_numeral w) 2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. push_bit (numeral w) 1 = push_bit (pred_numeral w) 2<\STATESEP>using int_shiftl_numeral [of Num.One w]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+push_bit Numeral1 (numeral w) = push_bit (pred_numeral num.One) (numeral (num.Bit0 w))
+push_bit Numeral1 (- numeral w) = push_bit (pred_numeral num.One) (- numeral (num.Bit0 w))
+
+goal (1 subgoal):
+ 1. push_bit (numeral w) 1 = push_bit (pred_numeral w) 2<\STATESEP>by (simp only: numeral_eq_Suc push_bit_Suc) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma shiftl_ge_0: fixes i :: int shows "push_bit n i \<ge> 0 \<longleftrightarrow> i \<ge> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 \<le> push_bit n i) = (0 \<le> i)<\STATESEP>by (fact push_bit_nonnegative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma shiftl_lt_0: fixes i :: int shows "push_bit n i < 0 \<longleftrightarrow> i < 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (push_bit n i < 0) = (i < 0)<\STATESEP>by (fact push_bit_negative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftl_test_bit: "bit (push_bit i n :: int) m \<longleftrightarrow> m \<ge> i \<and> bit n (m - i)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (push_bit i n) m = (i \<le> m \<and> bit n (m - i))<\STATESEP>by (fact bit_push_bit_iff_int)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_0shiftr: "drop_bit x (0 :: int) = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. drop_bit x 0 = 0<\STATESEP>by (fact drop_bit_of_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_minus1_shiftr: "drop_bit x (-1 :: int) = -1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. drop_bit x (- 1) = - 1<\STATESEP>by (fact drop_bit_minus_one)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftr_ge_0: fixes i :: int shows "drop_bit n i \<ge> 0 \<longleftrightarrow> i \<ge> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 \<le> drop_bit n i) = (0 \<le> i)<\STATESEP>by (fact drop_bit_nonnegative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftr_lt_0 [simp]: fixes i :: int shows "drop_bit n i < 0 \<longleftrightarrow> i < 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (drop_bit n i < 0) = (i < 0)<\STATESEP>by (fact drop_bit_negative_int_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftr_numeral [simp]:
+  "drop_bit (numeral w') (1 :: int) = 0"
+  "drop_bit (numeral w') (numeral num.One :: int) = 0"
+  "drop_bit (numeral w') (numeral (num.Bit0 w) :: int) = drop_bit (pred_numeral w') (numeral w)"
+  "drop_bit (numeral w') (numeral (num.Bit1 w) :: int) = drop_bit (pred_numeral w') (numeral w)"
+  "drop_bit (numeral w') (- numeral (num.Bit0 w) :: int) = drop_bit (pred_numeral w') (- numeral w)"
+  "drop_bit (numeral w') (- numeral (num.Bit1 w) :: int) = drop_bit (pred_numeral w') (- numeral (Num.inc w))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (drop_bit (numeral w') 1 = 0 &&& drop_bit (numeral w') Numeral1 = 0 &&& drop_bit (numeral w') (numeral (num.Bit0 w)) = drop_bit (pred_numeral w') (numeral w)) &&& drop_bit (numeral w') (numeral (num.Bit1 w)) = drop_bit (pred_numeral w') (numeral w) &&& drop_bit (numeral w') (- numeral (num.Bit0 w)) = drop_bit (pred_numeral w') (- numeral w) &&& drop_bit (numeral w') (- numeral (num.Bit1 w)) = drop_bit (pred_numeral w') (- numeral (Num.inc w))<\STATESEP>by (simp_all add: numeral_eq_Suc add_One drop_bit_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma int_shiftr_numeral_Suc0 [simp]:
+  "drop_bit (Suc 0) (1 :: int) = 0"
+  "drop_bit (Suc 0) (numeral num.One :: int) = 0"
+  "drop_bit (Suc 0) (numeral (num.Bit0 w) :: int) = numeral w"
+  "drop_bit (Suc 0) (numeral (num.Bit1 w) :: int) = numeral w"
+  "drop_bit (Suc 0) (- numeral (num.Bit0 w) :: int) = - numeral w"
+  "drop_bit (Suc 0) (- numeral (num.Bit1 w) :: int) = - numeral (Num.inc w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (drop_bit (Suc 0) 1 = 0 &&& drop_bit (Suc 0) Numeral1 = 0 &&& drop_bit (Suc 0) (numeral (num.Bit0 w)) = numeral w) &&& drop_bit (Suc 0) (numeral (num.Bit1 w)) = numeral w &&& drop_bit (Suc 0) (- numeral (num.Bit0 w)) = - numeral w &&& drop_bit (Suc 0) (- numeral (num.Bit1 w)) = - numeral (Num.inc w)<\STATESEP>by (simp_all add: drop_bit_Suc add_One)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_minus_p2:
+  assumes sign: "bin_sign x = 0"
+    and y: "y = push_bit n 1"
+    and m: "m < n"
+    and x: "x < y"
+  shows "bit (x - y) m = bit x m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>from \<open>bin_sign x = 0\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bin_sign x = 0<\STATESEP>have \<open>x \<ge> 0\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bin_sign x = 0
+
+goal (1 subgoal):
+ 1. 0 \<le> x<\STATESEP>by (simp add: sign_Pls_ge_0)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+0 \<le> x
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+0 \<le> x
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>from x y<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+x < y
+y = push_bit n 1<\STATESEP>have \<open>x < 2 ^ n\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+x < y
+y = push_bit n 1
+
+goal (1 subgoal):
+ 1. x < 2 ^ n<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x < 2 ^ n
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+0 \<le> x
+x < 2 ^ n<\STATESEP>have \<open>q < n\<close> if \<open>bit x q\<close> for q<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+0 \<le> x
+x < 2 ^ n
+
+goal (1 subgoal):
+ 1. q < n<\STATESEP>using that<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+0 \<le> x
+x < 2 ^ n
+bit x q
+
+goal (1 subgoal):
+ 1. q < n<\STATESEP>by (metis bit_take_bit_iff take_bit_int_eq_self)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit x ?q \<Longrightarrow> ?q < n
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit x ?q \<Longrightarrow> ?q < n<\STATESEP>have \<open>bit (x + NOT (mask n)) m = bit x m\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit x ?q \<Longrightarrow> ?q < n
+
+goal (1 subgoal):
+ 1. bit (x + NOT (mask n)) m = bit x m<\STATESEP>using \<open>m < n\<close><\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+bit x ?q \<Longrightarrow> ?q < n
+m < n
+
+goal (1 subgoal):
+ 1. bit (x + NOT (mask n)) m = bit x m<\STATESEP>by (simp add: disjunctive_add bit_simps)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit (x + NOT (mask n)) m = bit x m
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+bit (x + NOT (mask n)) m = bit x m
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>have \<open>x + NOT (mask n) = x - y\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x + NOT (mask n) = x - y<\STATESEP>using y<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+y = push_bit n 1
+
+goal (1 subgoal):
+ 1. x + NOT (mask n) = x - y<\STATESEP>by (simp flip: minus_exp_eq_not_mask)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x + NOT (mask n) = x - y
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit (x - y) m = bit x m<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit (x - y) m = bit x m
+
+goal (1 subgoal):
+ 1. bit (x - y) m = bit x m<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit (x - y) m = bit x m
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bin_clr_conv_NAND:
+  "bin_sc n False i = i AND NOT (push_bit n 1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit i n False = i AND NOT (push_bit n 1)<\STATESEP>by (rule bit_eqI) (auto simp add: bin_sc_eq bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_set_conv_OR:
+  "bin_sc n True i = i OR (push_bit n 1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit i n True = i OR push_bit n 1<\STATESEP>by (rule bit_eqI) (auto simp add: bin_sc_eq bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>More lemmas on words\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma msb_conv_bin_sign:
+  "msb x \<longleftrightarrow> bin_sign x = -1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msb x = (bin_sign x = - 1)<\STATESEP>by (simp add: bin_sign_def not_le msb_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma msb_bin_sc:
+  "msb (bin_sc n b x) \<longleftrightarrow> msb x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msb (set_bit_class.set_bit x n b) = msb x<\STATESEP>by (simp add: msb_conv_bin_sign)<\STATESEP>1<\TRANSEP><\STATESEP>lemma msb_word_def:
+  \<open>msb a \<longleftrightarrow> bin_sign (signed_take_bit (LENGTH('a) - 1) (uint a)) = - 1\<close>
+  for a :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msb a = (bin_sign (signed_take_bit (LENGTH('a) - 1) (uint a)) = - 1)<\STATESEP>by (simp add: bin_sign_def bit_simps msb_word_iff_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_msb_def:
+  "msb a \<longleftrightarrow> bin_sign (sint a) = - 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msb a = (bin_sign (sint a) = - 1)<\STATESEP>by (simp add: msb_word_def sint_uint)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_rcat_eq:
+  \<open>word_rcat ws = word_of_int (bin_rcat (LENGTH('a::len)) (map uint ws))\<close>
+  for ws :: \<open>'a::len word list\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_rcat ws = word_of_int (bin_rcat LENGTH('a) (map uint ws))<\STATESEP>apply (simp add: word_rcat_def bin_rcat_def rev_map)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_of_int (horner_sum uint (2 ^ LENGTH('a)) (rev ws)) = word_of_int (horner_sum (take_bit LENGTH('a)) (2 ^ LENGTH('a)) (map uint (rev ws)))<\STATESEP>apply transfer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ws. take_bit LENGTH('b) (horner_sum (take_bit LENGTH('a)) (2 ^ LENGTH('a)) (rev ws)) = take_bit LENGTH('b) (horner_sum (take_bit LENGTH('a)) (2 ^ LENGTH('a)) (map (take_bit LENGTH('a)) (rev ws)))<\STATESEP>apply (simp add: horner_sum_foldr foldr_map comp_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_uint_Pls [simp]: "bin_sign (uint x) = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (uint x) = 0<\STATESEP>by (simp add: sign_Pls_ge_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bin_log_bintrs = bin_trunc_not bin_trunc_xor bin_trunc_and bin_trunc_or
+
+\<comment> \<open>following definitions require both arithmetic and bit-wise word operations\<close>
+
+\<comment> \<open>to get \<open>word_no_log_defs\<close> from \<open>word_log_defs\<close>, using \<open>bin_log_bintrs\<close>\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas wils1 = bin_log_bintrs [THEN word_of_int_eq_iff [THEN iffD2],
+  folded uint_word_of_int_eq, THEN eq_reflection]
+
+\<comment> \<open>the binary operations only\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas word_log_binary_defs =
+  word_and_def word_or_def word_xor_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma setBit_no: "Bit_Operations.set_bit n (numeral bin) = word_of_int (bin_sc n True (numeral bin))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. semiring_bit_operations_class.set_bit n (numeral bin) = word_of_int (set_bit_class.set_bit (numeral bin) n True)<\STATESEP>by (rule bit_word_eqI) (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma clearBit_no:
+  "unset_bit n (numeral bin) = word_of_int (bin_sc n False (numeral bin))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unset_bit n (numeral bin) = word_of_int (set_bit_class.set_bit (numeral bin) n False)<\STATESEP>by (rule bit_word_eqI) (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma eq_mod_iff: "0 < n \<Longrightarrow> b = b mod n \<longleftrightarrow> 0 \<le> b \<and> b < n"
+  for b n :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> (b = b mod n) = (0 \<le> b \<and> b < n)<\STATESEP>using pos_mod_sign [of n b] pos_mod_bound [of n b]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+0 < n \<Longrightarrow> 0 \<le> b mod n
+0 < n \<Longrightarrow> b mod n < n
+
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> (b = b mod n) = (0 \<le> b \<and> b < n)<\STATESEP>by (safe, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma split_uint_lem: "bin_split n (uint w) = (a, b) \<Longrightarrow>
+    a = take_bit (LENGTH('a) - n) a \<and> b = take_bit (LENGTH('a)) b"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_split n (uint w) = (a, b) \<Longrightarrow> a = take_bit (LENGTH('a) - n) a \<and> b = take_bit LENGTH('a) b<\STATESEP>by transfer (simp add: drop_bit_take_bit ac_simps)
+
+\<comment> \<open>limited hom result\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma word_cat_hom:
+  "LENGTH('a::len) \<le> LENGTH('b::len) + LENGTH('c::len) \<Longrightarrow>
+    (word_cat (word_of_int w :: 'b word) (b :: 'c word) :: 'a word) =
+    word_of_int ((\<lambda>k n l. concat_bit n l k) w (size b) (uint b))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LENGTH('a) \<le> LENGTH('b) + LENGTH('c) \<Longrightarrow> word_cat (word_of_int w) b = word_of_int (concat_bit (size b) (uint b) w)<\STATESEP>by transfer (simp add: take_bit_concat_bit_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bintrunc_shiftl:
+  "take_bit n (push_bit i m) = push_bit i (take_bit (n - i) m)"
+  for m :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit n (push_bit i m) = push_bit i (take_bit (n - i) m)<\STATESEP>by (fact take_bit_push_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma uint_shiftl:
+  "uint (push_bit i n) = take_bit (size n) (push_bit i (uint n))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. uint (push_bit i n) = take_bit (size n) (push_bit i (uint n))<\STATESEP>by (simp add: unsigned_push_bit_eq word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_mask_conv_pow2:
+  "mask n = 2 ^ n - (1 :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mask n = 2 ^ n - 1<\STATESEP>by (fact mask_eq_exp_minus_1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_mask_ge0: "mask n \<ge> (0 :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 \<le> mask n<\STATESEP>by (fact mask_nonnegative_int)<\STATESEP>1<\TRANSEP><\STATESEP>context
+  includes bit_operations_syntax
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma and_bin_mask_conv_mod: "x AND mask n = x mod 2 ^ n"
+  for x :: int<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x AND mask n = x mod 2 ^ n<\STATESEP>by (simp flip: take_bit_eq_mod add: take_bit_eq_mask)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma bin_mask_numeral:
+  "mask (numeral n) = (1 :: int) + 2 * mask (pred_numeral n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mask (numeral n) = 1 + 2 * mask (pred_numeral n)<\STATESEP>by (fact mask_numeral)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_nth_mask: "bit (mask n :: int) i \<longleftrightarrow> i < n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (mask n) i = (i < n)<\STATESEP>by (simp add: bit_mask_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sign_mask [simp]: "bin_sign (mask n) = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bin_sign (mask n) = 0<\STATESEP>by (simp add: bin_sign_def bin_mask_conv_pow2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_mask_p1_conv_shift: "mask n + 1 = push_bit n (1 :: int)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mask n + 1 = push_bit n 1<\STATESEP>by (simp add: bin_mask_conv_pow2 shiftl_int_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_eq_in_range:
+  "((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x = x) = (x \<in> range ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n))"
+  "(x = (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x) = (x \<in> range ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (signed_take_bit n x = x) = (x \<in> range (signed_take_bit n)) &&& (x = signed_take_bit n x) = (x \<in> range (signed_take_bit n))<\STATESEP>apply (simp_all add: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (signed_take_bit n x = x) = (\<exists>xa. x = signed_take_bit n xa)
+ 2. (x = signed_take_bit n x) = (\<exists>xa. x = signed_take_bit n xa)<\STATESEP>apply (metis sbintrunc_sbintrunc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sbintrunc_If:
+  "- 3 * (2 ^ n) \<le> x \<and> x < 3 * (2 ^ n)
+    \<Longrightarrow> (signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) n x = (if x < - (2 ^ n) then x + 2 * (2 ^ n)
+        else if x \<ge> 2 ^ n then x - 2 * (2 ^ n) else x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - 3 * 2 ^ n \<le> x \<and> x < 3 * 2 ^ n \<Longrightarrow> signed_take_bit n x = (if x < - (2 ^ n) then x + 2 * 2 ^ n else if 2 ^ n \<le> x then x - 2 * 2 ^ n else x)<\STATESEP>apply (simp add: no_sbintr_alt2, safe)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>- (3 * 2 ^ n) \<le> x; x < 3 * 2 ^ n; 2 ^ n \<le> x\<rbrakk> \<Longrightarrow> 2 ^ n + (x + 2 ^ n) mod (2 * 2 ^ n) = x
+ 2. \<lbrakk>- (3 * 2 ^ n) \<le> x; x < 3 * 2 ^ n; \<not> 2 ^ n \<le> x; x < - (2 ^ n)\<rbrakk> \<Longrightarrow> (x + 2 ^ n) mod (2 * 2 ^ n) = 3 * 2 ^ n + x<\STATESEP>apply (simp add: mod_pos_geq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>- (3 * 2 ^ n) \<le> x; x < 3 * 2 ^ n; \<not> 2 ^ n \<le> x; x < - (2 ^ n)\<rbrakk> \<Longrightarrow> (x + 2 ^ n) mod (2 * 2 ^ n) = 3 * 2 ^ n + x<\STATESEP>apply (subst mod_add_self1[symmetric], simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sint_range':
+  \<open>- (2 ^ (LENGTH('a) - Suc 0)) \<le> sint x \<and> sint x < 2 ^ (LENGTH('a) - Suc 0)\<close>
+  for x :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - (2 ^ (LENGTH('a) - Suc 0)) \<le> sint x \<and> sint x < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply transfer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. - (2 ^ (LENGTH('a) - Suc 0)) \<le> signed_take_bit (LENGTH('a) - Suc 0) x \<and> signed_take_bit (LENGTH('a) - Suc 0) x < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>using sbintr_ge sbintr_lt<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+- (2 ^ ?n) \<le> signed_take_bit ?n ?w
+signed_take_bit ?n ?w < 2 ^ ?n
+
+goal (1 subgoal):
+ 1. \<And>x. - (2 ^ (LENGTH('a) - Suc 0)) \<le> signed_take_bit (LENGTH('a) - Suc 0) x \<and> signed_take_bit (LENGTH('a) - Suc 0) x < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma signed_arith_eq_checks_to_ord:
+  "(sint a + sint b = sint (a + b ))
+    = ((a <=s a + b) = (0 <=s b))"
+  "(sint a - sint b = sint (a - b ))
+    = ((0 <=s a - b) = (b <=s a))"
+  "(- sint a = sint (- a)) = (0 <=s (- a) = (a <=s 0))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sint a + sint b = sint (a + b)) = ((a \<le>s a + b) = (0 \<le>s b)) &&& (sint a - sint b = sint (a - b)) = ((0 \<le>s a - b) = (b \<le>s a)) &&& (- sint a = sint (- a)) = ((0 \<le>s - a) = (a \<le>s 0))<\STATESEP>using sint_range'[where x=a] sint_range'[where x=b]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+- (2 ^ (LENGTH('a) - Suc 0)) \<le> sint a \<and> sint a < 2 ^ (LENGTH('a) - Suc 0)
+- (2 ^ (LENGTH('a) - Suc 0)) \<le> sint b \<and> sint b < 2 ^ (LENGTH('a) - Suc 0)
+
+goal (1 subgoal):
+ 1. (sint a + sint b = sint (a + b)) = ((a \<le>s a + b) = (0 \<le>s b)) &&& (sint a - sint b = sint (a - b)) = ((0 \<le>s a - b) = (b \<le>s a)) &&& (- sint a = sint (- a)) = ((0 \<le>s - a) = (a \<le>s 0))<\STATESEP>by (simp_all add: sint_word_ariths word_sle_eq word_sless_alt sbintrunc_If)<\STATESEP>1<\TRANSEP><\STATESEP>lemma signed_mult_eq_checks_double_size:
+  assumes mult_le: "(2 ^ (len_of TYPE ('a) - 1) + 1) ^ 2 \<le> (2 :: int) ^ (len_of TYPE ('b) - 1)"
+           and le: "2 ^ (LENGTH('a) - 1) \<le> (2 :: int) ^ (len_of TYPE ('b) - 1)"
+  shows "(sint (a :: 'a :: len word) * sint b = sint (a * b))
+       = (scast a * scast b = (scast (a * b) :: 'b :: len word))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>have P: "(signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (size a - 1) (sint a * sint b) \<in> range ((signed_take_bit :: nat \<Rightarrow> int \<Rightarrow> int) (size a - 1))"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit (size a - 1) (sint a * sint b) \<in> range (signed_take_bit (size a - 1))<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+signed_take_bit (size a - 1) (sint a * sint b) \<in> range (signed_take_bit (size a - 1))
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>have abs: "!! x :: 'a word. abs (sint x) < 2 ^ (size a - 1) + 1"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<bar>sint x\<bar> < 2 ^ (size a - 1) + 1<\STATESEP>apply (cut_tac x=x in sint_range')<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. - (2 ^ (LENGTH('a) - Suc 0)) \<le> sint x \<and> sint x < 2 ^ (LENGTH('a) - Suc 0) \<Longrightarrow> \<bar>sint x\<bar> < 2 ^ (size a - 1) + 1<\STATESEP>apply (simp add: abs_le_iff word_size)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<bar>sint ?x\<bar> < 2 ^ (size a - 1) + 1
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>have abs_ab: "abs (sint a * sint b) < 2 ^ (LENGTH('b) - 1)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<bar>sint a * sint b\<bar> < 2 ^ (LENGTH('b) - 1)<\STATESEP>using abs_mult_less[OF abs[where x=a] abs[where x=b]] mult_le<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+\<bar>sint a\<bar> * \<bar>sint b\<bar> < (2 ^ (size a - 1) + 1) * (2 ^ (size a - 1) + 1)
+(2 ^ (LENGTH('a) - 1) + 1)\<^sup>2 \<le> 2 ^ (LENGTH('b) - 1)
+
+goal (1 subgoal):
+ 1. \<bar>sint a * sint b\<bar> < 2 ^ (LENGTH('b) - 1)<\STATESEP>by (simp add: abs_mult power2_eq_square word_size)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<bar>sint a * sint b\<bar> < 2 ^ (LENGTH('b) - 1)
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>define r s where \<open>r = LENGTH('a) - 1\<close> \<open>s = LENGTH('b) - 1\<close><\STATESEP>2<\TRANSEP>proof (state)
+this:
+r = LENGTH('a) - 1
+s = LENGTH('b) - 1
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+r = LENGTH('a) - 1
+s = LENGTH('b) - 1<\STATESEP>have \<open>LENGTH('a) = Suc r\<close> \<open>LENGTH('b) = Suc s\<close>
+    \<open>size a = Suc r\<close> \<open>size b = Suc r\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+r = LENGTH('a) - 1
+s = LENGTH('b) - 1
+
+goal (1 subgoal):
+ 1. (LENGTH('a) = Suc r &&& LENGTH('b) = Suc s) &&& size a = Suc r &&& size b = Suc r<\STATESEP>by (simp_all add: word_size)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+LENGTH('a) = Suc r
+LENGTH('b) = Suc s
+size a = Suc r
+size b = Suc r
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+LENGTH('a) = Suc r
+LENGTH('b) = Suc s
+size a = Suc r
+size b = Suc r<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+LENGTH('a) = Suc r
+LENGTH('b) = Suc s
+size a = Suc r
+size b = Suc r
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>using P[unfolded range_sbintrunc] abs_ab le<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+LENGTH('a) = Suc r
+LENGTH('b) = Suc s
+size a = Suc r
+size b = Suc r
+signed_take_bit (size a - 1) (sint a * sint b) \<in> {i. - (2 ^ (size a - 1)) \<le> i \<and> i < 2 ^ (size a - 1)}
+\<bar>sint a * sint b\<bar> < 2 ^ (LENGTH('b) - 1)
+2 ^ (LENGTH('a) - 1) \<le> 2 ^ (LENGTH('b) - 1)
+
+goal (1 subgoal):
+ 1. (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>LENGTH('a) = Suc r; LENGTH('b) = Suc s; size a = Suc r; size b = Suc r; \<bar>sint a * sint b\<bar> < 2 ^ s; r \<le> s\<rbrakk> \<Longrightarrow> (sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))<\STATESEP>apply (transfer fixing: r s)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>LENGTH('a) = Suc r; LENGTH('b) = Suc s; LENGTH('a) = Suc r; LENGTH('a) = Suc r; \<bar>signed_take_bit (LENGTH('a) - Suc 0) a * signed_take_bit (LENGTH('a) - Suc 0) b\<bar> < 2 ^ s; r \<le> s\<rbrakk> \<Longrightarrow> (signed_take_bit (LENGTH('a) - Suc 0) a * signed_take_bit (LENGTH('a) - Suc 0) b = signed_take_bit (LENGTH('a) - Suc 0) (a * b)) = (take_bit LENGTH('b) (signed_take_bit (LENGTH('a) - Suc 0) a * signed_take_bit (LENGTH('a) - Suc 0) b) = take_bit LENGTH('b) (signed_take_bit (LENGTH('a) - Suc 0) (a * b)))<\STATESEP>apply (auto simp add: signed_take_bit_int_eq_self simp flip: signed_take_bit_eq_iff_take_bit_eq)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(sint a * sint b = sint (a * b)) = (scast a * scast b = scast (a * b))
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bintrunc_id:
+  "\<lbrakk>m \<le> int n; 0 < m\<rbrakk> \<Longrightarrow> take_bit n m = m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>m \<le> int n; 0 < m\<rbrakk> \<Longrightarrow> take_bit n m = m<\STATESEP>by (simp add: take_bit_int_eq_self_iff le_less_trans)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_cong: "concat_bit n b a = concat_bit m d c"
+  if "n = m" "a = c" "take_bit m b = take_bit m d"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n b a = concat_bit m d c<\STATESEP>using that(3)<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+take_bit m b = take_bit m d
+
+goal (1 subgoal):
+ 1. concat_bit n b a = concat_bit m d c<\STATESEP>unfolding that(1,2)<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+take_bit m b = take_bit m d
+
+goal (1 subgoal):
+ 1. concat_bit m b c = concat_bit m d c<\STATESEP>by (simp add: bin_cat_eq_push_bit_add_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_eqD1: "concat_bit n b a = concat_bit n d c \<Longrightarrow> a = c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n b a = concat_bit n d c \<Longrightarrow> a = c<\STATESEP>by (metis drop_bit_bin_cat_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_eqD2: "concat_bit n b a = concat_bit n d c \<Longrightarrow> take_bit n b = take_bit n d"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. concat_bit n b a = concat_bit n d c \<Longrightarrow> take_bit n b = take_bit n d<\STATESEP>by (metis take_bit_bin_cat_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_cat_inj: "(concat_bit n b a) = concat_bit n d c \<longleftrightarrow> a = c \<and> take_bit n b = take_bit n d"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (concat_bit n b a = concat_bit n d c) = (a = c \<and> take_bit n b = take_bit n d)<\STATESEP>by (auto intro: bin_cat_cong bin_cat_eqD1 bin_cat_eqD2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bin_sc_pos:
+  "0 \<le> i \<Longrightarrow> 0 \<le> bin_sc n b i"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 \<le> i \<Longrightarrow> 0 \<le> set_bit_class.set_bit i n b<\STATESEP>by (metis bin_sign_sc sign_Pls_ge_0)<\STATESEP>1<\TRANSEP><\STATESEP>code_identifier
+  code_module Bits_Int \<rightharpoonup>
+  (SML) Bit_Operations and (OCaml) Bit_Operations and (Haskell) Bit_Operations and (Scala) Bit_Operations<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

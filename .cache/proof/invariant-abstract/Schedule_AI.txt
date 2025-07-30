@@ -1,0 +1,310 @@
+<\STATESEP>theory Schedule_AI
+imports VSpace_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "activatable \<equiv> \<lambda>st. runnable st \<or> idle st"<\STATESEP>0<\TRANSEP><\STATESEP>locale Schedule_AI =
+    fixes state_ext :: "('a::state_ext) itself"
+    assumes dmo_mapM_storeWord_0_invs[wp]:
+      "\<And>S. valid invs (do_machine_op (mapM (\<lambda>p. storeWord p 0) S)) (\<lambda>_. (invs :: 'a state \<Rightarrow> bool))"
+    assumes arch_stt_invs [wp]:
+      "\<And>t'. \<lbrace>invs\<rbrace> arch_switch_to_thread t' \<lbrace>\<lambda>_. (invs :: 'a state \<Rightarrow> bool)\<rbrace>"
+    assumes arch_stt_tcb [wp]:
+      "\<And>t'. \<lbrace>tcb_at t'\<rbrace> arch_switch_to_thread t' \<lbrace>\<lambda>_. (tcb_at t' :: 'a state \<Rightarrow> bool)\<rbrace>"
+    assumes arch_stt_runnable:
+      "\<And>t. \<lbrace>st_tcb_at runnable t\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>r . (st_tcb_at runnable t :: 'a state \<Rightarrow> bool)\<rbrace>"
+    assumes stit_invs [wp]:
+      "\<lbrace>invs\<rbrace> switch_to_idle_thread \<lbrace>\<lambda>rv. (invs :: 'a state \<Rightarrow> bool)\<rbrace>"
+    assumes stit_activatable:
+      "\<lbrace>invs\<rbrace> switch_to_idle_thread \<lbrace>\<lambda>rv . (ct_in_state activatable :: 'a state \<Rightarrow> bool)\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_facts
+  no_irq
+  no_irq_storeWord<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch inv[wp]: schedule_switch_thread_fastfail P<\STATESEP>0<\TRANSEP><\STATESEP>lemma findM_inv'':
+  assumes p: "suffix xs xs'"
+  assumes x: "\<And>x xs. suffix (x # xs) xs' \<Longrightarrow> \<lbrace>P (x # xs)\<rbrace> m x \<lbrace>\<lambda>rv s. (rv \<longrightarrow> Q s) \<and> (\<not> rv \<longrightarrow> P xs s)\<rbrace>"
+  assumes y: "\<And>s. P [] s \<Longrightarrow> Q s"
+  shows      "\<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>using p<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+suffix xs xs'
+
+goal (1 subgoal):
+ 1. \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. suffix [] xs' \<Longrightarrow> \<lbrace>P []\<rbrace> findM m [] \<lbrace>\<lambda>rv. Q\<rbrace>
+ 2. \<And>a xs. \<lbrakk>suffix xs xs' \<Longrightarrow> \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'\<rbrakk> \<Longrightarrow> \<lbrace>P (a # xs)\<rbrace> findM m (a # xs) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>P []\<rbrace> return None \<lbrace>\<lambda>rv. Q\<rbrace>
+ 2. \<And>a xs. \<lbrakk>suffix xs xs' \<Longrightarrow> \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'\<rbrakk> \<Longrightarrow> \<lbrace>P (a # xs)\<rbrace> findM m (a # xs) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. P [] s \<Longrightarrow> Q s
+ 2. \<And>a xs. \<lbrakk>suffix xs xs' \<Longrightarrow> \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'\<rbrakk> \<Longrightarrow> \<lbrace>P (a # xs)\<rbrace> findM m (a # xs) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply (erule y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>suffix xs xs' \<Longrightarrow> \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'\<rbrakk> \<Longrightarrow> \<lbrace>P (a # xs)\<rbrace> findM m (a # xs) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply (frule suffix_ConsD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>suffix xs xs' \<Longrightarrow> \<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'; suffix xs xs'\<rbrakk> \<Longrightarrow> \<lbrace>P (a # xs)\<rbrace> findM m (a # xs) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'; suffix xs xs'\<rbrakk> \<Longrightarrow> \<lbrace>P (a # xs)\<rbrace> do r <- m a;
+if r then return (Some a) else findM m xs
+od \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'; suffix xs xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> m a \<lbrace>\<lambda>r s. (r \<longrightarrow> Q s) \<and> (\<not> r \<longrightarrow> P xs s)\<rbrace>
+ 2. \<And>a xs s. \<lbrakk>\<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'; suffix xs xs'; P (a # xs) s\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply (erule x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs s. \<lbrakk>\<lbrace>P xs\<rbrace> findM m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (a # xs) xs'; suffix xs xs'; P (a # xs) s\<rbrakk> \<Longrightarrow> P (a # xs) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas findM_inv' = findM_inv''[OF suffix_order.refl]<\STATESEP>0<\TRANSEP><\STATESEP>lemma findM_inv:
+  assumes x: "\<And>x. \<lbrace>P\<rbrace> m x \<lbrace>\<lambda>rv. P\<rbrace>"
+  shows      "\<lbrace>P\<rbrace> findM m xs \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> findM m xs \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>by (rule findM_inv', simp_all add: x)<\STATESEP>1<\TRANSEP><\STATESEP>lemma allActiveTCBs_gets:
+  "allActiveTCBs = gets (\<lambda>state. {x. getActiveTCB x state \<noteq> None})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. allActiveTCBs = gets (\<lambda>state. {x. getActiveTCB x state \<noteq> None})<\STATESEP>by (simp add: allActiveTCBs_def gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma postfix_tails:
+  "\<lbrakk> suffix (xs # ys) (tails zs) \<rbrakk>
+     \<Longrightarrow> suffix xs zs \<and> (xs # ys) = tails xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. suffix (xs # ys) (tails zs) \<Longrightarrow> suffix xs zs \<and> xs # ys = tails xs<\STATESEP>apply (induct zs arbitrary: xs ys)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xs ys. suffix (xs # ys) (tails []) \<Longrightarrow> suffix xs [] \<and> xs # ys = tails xs
+ 2. \<And>a zs xs ys. \<lbrakk>\<And>xs ys. suffix (xs # ys) (tails zs) \<Longrightarrow> suffix xs zs \<and> xs # ys = tails xs; suffix (xs # ys) (tails (a # zs))\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply (clarsimp elim!: suffixE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xs ys zs. [[]] = zs @ xs # ys \<Longrightarrow> xs = [] \<and> xs # ys = tails xs
+ 2. \<And>a zs xs ys. \<lbrakk>\<And>xs ys. suffix (xs # ys) (tails zs) \<Longrightarrow> suffix xs zs \<and> xs # ys = tails xs; suffix (xs # ys) (tails (a # zs))\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply (case_tac zs, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a zs xs ys. \<lbrakk>\<And>xs ys. suffix (xs # ys) (tails zs) \<Longrightarrow> suffix xs zs \<and> xs # ys = tails xs; suffix (xs # ys) (tails (a # zs))\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply (clarsimp elim!: suffixE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a zs xs ys zsa. \<lbrakk>\<And>xs ys. suffix (xs # ys) (tails zs) \<Longrightarrow> suffix xs zs \<and> xs # ys = tails xs; (a # zs) # tails zs = zsa @ xs # ys\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply (case_tac zsa, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a zs xs zsa. \<lbrakk>\<And>xs ys. suffix (xs # ys) (tails zs) \<Longrightarrow> suffix xs zs \<and> xs # ys = tails xs; a # zs = xs; zsa = []\<rbrakk> \<Longrightarrow> xs # tails zs = tails xs
+ 2. \<And>a zs xs ys zsa list. \<lbrakk>\<And>xsa ysa. suffix (xsa # ysa) (list @ xs # ys) \<Longrightarrow> suffix xsa zs \<and> xsa # ysa = tails xsa; tails zs = list @ xs # ys; zsa = (a # zs) # list\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a zs xs ys zsa list. \<lbrakk>\<And>xsa ysa. suffix (xsa # ysa) (list @ xs # ys) \<Longrightarrow> suffix xsa zs \<and> xsa # ysa = tails xsa; tails zs = list @ xs # ys; zsa = (a # zs) # list\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a zs xs ys list. \<lbrakk>\<And>xsa ysa. suffix (xsa # ysa) (list @ xs # ys) \<Longrightarrow> suffix xsa zs \<and> xsa # ysa = tails xsa; tails zs = list @ xs # ys\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply (erule meta_allE, erule meta_allE, drule meta_mp,
+         rule suffix_appendI[OF suffix_order.refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a zs xs ys list. \<lbrakk>tails zs = list @ xs # ys; suffix xs zs \<and> xs # ys = tails xs\<rbrakk> \<Longrightarrow> suffix xs (a # zs) \<and> xs # ys = tails xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a zs xs ys list. \<lbrakk>tails zs = list @ tails xs; suffix xs zs; xs # ys = tails xs\<rbrakk> \<Longrightarrow> suffix xs (a # zs)<\STATESEP>apply (erule suffix_ConsI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_irq_states_cur_thread_update[simp]:
+  "valid_irq_states (cur_thread_update f s) = valid_irq_states s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_irq_states (cur_thread_update f s) = valid_irq_states s<\STATESEP>by(simp add: valid_irq_states_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sct_invs:
+  "\<lbrace>invs and tcb_at t\<rbrace> modify (cur_thread_update (%_. t)) \<lbrace>\<lambda>rv. invs\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and tcb_at t\<rbrace> modify (cur_thread_update (\<lambda>_. t)) \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>by wp (clarsimp simp add: invs_def cur_tcb_def valid_state_def valid_idle_def
+                            valid_irq_node_def valid_machine_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma storeWord_valid_irq_states:
+  "\<lbrace>\<lambda>m. valid_irq_states (s\<lparr>machine_state := m\<rparr>)\<rbrace> storeWord x y
+   \<lbrace>\<lambda>a b. valid_irq_states (s\<lparr>machine_state := b\<rparr>)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>m. valid_irq_states (s\<lparr>machine_state := m\<rparr>)\<rbrace> storeWord x y \<lbrace>\<lambda>a b. valid_irq_states (s\<lparr>machine_state := b\<rparr>)\<rbrace><\STATESEP>apply (simp add: valid_irq_states_def | wp no_irq | simp add: no_irq_storeWord)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_storeWord_valid_irq_states[wp]:
+  "\<lbrace>valid_irq_states\<rbrace> do_machine_op (storeWord x y) \<lbrace>\<lambda>_. valid_irq_states\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_irq_states\<rbrace> do_machine_op (storeWord x y) \<lbrace>\<lambda>_. valid_irq_states\<rbrace><\STATESEP>apply (simp add: do_machine_op_def |  wp | wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. valid_irq_states s \<Longrightarrow> \<forall>x\<in>fst (storeWord x y (machine_state s)). \<forall>xa. x = ((), xa) \<longrightarrow> valid_irq_states (s\<lparr>machine_state := xa\<rparr>)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s xa. \<lbrakk>valid_irq_states s; ((), xa) \<in> fst (storeWord x y (machine_state s))\<rbrakk> \<Longrightarrow> valid_irq_states (s\<lparr>machine_state := xa\<rparr>)<\STATESEP>apply(erule use_valid[OF _ storeWord_valid_irq_states])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x. valid_irq_states s \<Longrightarrow> valid_irq_states (s\<lparr>machine_state := machine_state s\<rparr>)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_kheap_arch_state[wp]:
+  "\<lbrace>\<lambda>s. P (kheap s) (arch_state s)\<rbrace>
+   do_machine_op a
+   \<lbrace>\<lambda>_ s. P (kheap s) (arch_state s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (kheap s) (arch_state s)\<rbrace> do_machine_op a \<lbrace>\<lambda>_ s. P (kheap s) (arch_state s)\<rbrace><\STATESEP>by (clarsimp simp: do_machine_op_def simpler_gets_def select_f_def
+          simpler_modify_def return_def bind_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas do_machine_op_tcb[wp] =
+  do_machine_op_obj_at[where P=id and Q=is_tcb, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma (in Schedule_AI) stt_tcb [wp]:
+  "\<lbrace>tcb_at t\<rbrace> switch_to_thread t \<lbrace>\<lambda>_. (tcb_at t :: 'a state \<Rightarrow> bool)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>tcb_at t\<rbrace> switch_to_thread t \<lbrace>\<lambda>_. tcb_at t\<rbrace><\STATESEP>apply (simp add: switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>tcb_at t\<rbrace> do state <- get;
+y <- assert (\<exists>y. get_tcb t state = Some y);
+y <- arch_switch_to_thread t;
+y <- do_extended_op (tcb_sched_action tcb_sched_dequeue t);
+modify (cur_thread_update (\<lambda>_. t))
+od \<lbrace>\<lambda>_. tcb_at t\<rbrace><\STATESEP>apply (wp | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma invs_exst [iff]:
+  "invs (trans_state f s) = invs s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. invs (trans_state f s) = invs s<\STATESEP>by (simp add: invs_def valid_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in Schedule_AI) stt_invs [wp]:
+  "\<lbrace>invs :: 'a state \<Rightarrow> bool\<rbrace> switch_to_thread t' \<lbrace>\<lambda>_. invs\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> switch_to_thread t' \<lbrace>\<lambda>_. invs\<rbrace><\STATESEP>apply (simp add: switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> do state <- get;
+y <- assert (\<exists>y. get_tcb t' state = Some y);
+y <- arch_switch_to_thread t';
+y <- do_extended_op (tcb_sched_action tcb_sched_dequeue t');
+modify (cur_thread_update (\<lambda>_. t'))
+od \<lbrace>\<lambda>_. invs\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>state y ya s f. invs (trans_state f s\<lparr>cur_thread := t'\<rparr>) = invs (s\<lparr>cur_thread := t'\<rparr>)
+ 2. \<And>state y. \<lbrace>?Q'2 state y\<rbrace> arch_switch_to_thread t' \<lbrace>\<lambda>ya s. invs (s\<lparr>cur_thread := t'\<rparr>)\<rbrace>
+ 3. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t' state = Some y) \<lbrace>?Q'2 state\<rbrace>
+ 4. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 5. \<And>s. invs s \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: trans_state_update[symmetric] del: trans_state_update)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>state y. \<lbrace>?Q'2 state y\<rbrace> arch_switch_to_thread t' \<lbrace>\<lambda>ya s. invs (s\<lparr>cur_thread := t'\<rparr>)\<rbrace>
+ 2. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t' state = Some y) \<lbrace>?Q'2 state\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. invs s \<Longrightarrow> ?Q s<\STATESEP>apply (rule_tac Q="\<lambda>_. invs and tcb_at t'" in hoare_strengthen_post, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>state y rv s. (invs and tcb_at t') s \<Longrightarrow> invs (s\<lparr>cur_thread := t'\<rparr>)
+ 2. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t' state = Some y) \<lbrace>\<lambda>y s. invs s \<and> tcb_at t' s\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. invs s \<Longrightarrow> ?Q s<\STATESEP>apply (clarsimp simp: invs_def valid_state_def valid_idle_def
+                          valid_irq_node_def valid_machine_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s. \<lbrakk>valid_pspace s; valid_mdb s; valid_ioc s; idle_tcb_at (\<lambda>(st, ab). idle st \<and> (case ab of (ntfn, arch) \<Rightarrow> ntfn = None \<and> valid_arch_idle arch)) idle_thread_ptr s; idle_thread s = idle_thread_ptr; only_idle s; if_unsafe_then_cap s; valid_reply_caps s; valid_reply_masters s; valid_global_refs s; valid_arch_state s; inj (interrupt_irq_node s); \<forall>irq. cap_table_at 0 (interrupt_irq_node s irq) s; valid_irq_handlers s; valid_irq_states s; valid_ioports s; \<forall>p. in_user_frame p s \<or> underlying_memory (machine_state s) p = 0; valid_vspace_objs s; valid_arch_caps s; valid_global_objs s; valid_kernel_mappings s; equal_kernel_mappings s; valid_asid_map s; valid_global_vspace_mappings s; pspace_in_kernel_window s; cap_refs_in_kernel_window s; pspace_respects_device_region s; cap_refs_respects_device_region s; cur_tcb s; tcb_at t' s\<rbrakk> \<Longrightarrow> cur_tcb (s\<lparr>cur_thread := t'\<rparr>)
+ 2. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t' state = Some y) \<lbrace>\<lambda>y s. invs s \<and> tcb_at t' s\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. invs s \<Longrightarrow> ?Q s<\STATESEP>apply (fastforce simp: cur_tcb_def obj_at_def
+                     elim: valid_pspace_eqI ifunsafe_pspaceI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t' state = Some y) \<lbrace>\<lambda>y s. invs s \<and> tcb_at t' s\<rbrace>
+ 2. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 3. \<And>s. invs s \<Longrightarrow> ?Q s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. invs s \<Longrightarrow> (\<exists>y. get_tcb t' s = Some y) \<longrightarrow> invs s \<and> tcb_at t' s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>invs s; get_tcb t' s = Some y\<rbrakk> \<Longrightarrow> is_tcb (TCB y)<\STATESEP>apply (simp add: is_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in Schedule_AI) stt_activatable:
+  "\<lbrace>st_tcb_at runnable t\<rbrace> switch_to_thread t \<lbrace>\<lambda>rv . (ct_in_state activatable :: 'a state \<Rightarrow> bool) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>st_tcb_at runnable t\<rbrace> switch_to_thread t \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>apply (simp add: switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>st_tcb_at runnable t\<rbrace> do state <- get;
+y <- assert (\<exists>y. get_tcb t state = Some y);
+y <- arch_switch_to_thread t;
+y <- do_extended_op (tcb_sched_action tcb_sched_dequeue t);
+modify (cur_thread_update (\<lambda>_. t))
+od \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>apply (wp | simp add: ct_in_state_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>state. \<lbrace>?Q'2 state ()\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>ya. st_tcb_at activatable t\<rbrace>
+ 2. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t state = Some y) \<lbrace>?Q'2 state\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. st_tcb_at runnable t s \<Longrightarrow> ?Q s<\STATESEP>apply (rule hoare_post_imp [OF _ arch_stt_runnable])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>state rv s. st_tcb_at runnable t s \<Longrightarrow> st_tcb_at activatable t s
+ 2. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t state = Some y) \<lbrace>\<lambda>a. st_tcb_at runnable t\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. st_tcb_at runnable t s \<Longrightarrow> ?Q s<\STATESEP>apply (clarsimp elim!: pred_tcb_weakenE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>state. \<lbrace>?Q'1 state\<rbrace> assert (\<exists>y. get_tcb t state = Some y) \<lbrace>\<lambda>a. st_tcb_at runnable t\<rbrace>
+ 2. \<lbrace>?Q\<rbrace> get \<lbrace>?Q'1\<rbrace>
+ 3. \<And>s. st_tcb_at runnable t s \<Longrightarrow> ?Q s<\STATESEP>apply (rule assert_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> get \<lbrace>\<lambda>state. st_tcb_at runnable t\<rbrace>
+ 2. \<And>s. st_tcb_at runnable t s \<Longrightarrow> ?Q s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. st_tcb_at runnable t s \<Longrightarrow> st_tcb_at runnable t s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma invs_upd_cur_valid:
+  "\<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. invs\<rbrace>; \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>rv. tcb_at thread\<rbrace>\<rbrakk>
+    \<Longrightarrow> \<lbrace>P and Q\<rbrace> f \<lbrace>\<lambda>rv s. invs (s\<lparr>cur_thread := thread\<rparr>)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. invs\<rbrace>; \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>rv. tcb_at thread\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and Q\<rbrace> f \<lbrace>\<lambda>rv s. invs (s\<lparr>cur_thread := thread\<rparr>)\<rbrace><\STATESEP>by (fastforce simp: valid_def invs_def valid_state_def cur_tcb_def valid_machine_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pred_tcb_weaken_strongerE:
+  "\<lbrakk> pred_tcb_at proj P t s; \<And>tcb . P (proj tcb) \<Longrightarrow> P' (proj' tcb) \<rbrakk> \<Longrightarrow> pred_tcb_at proj' P' t s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>pred_tcb_at proj P t s; \<And>tcb. P (proj tcb) \<Longrightarrow> P' (proj' tcb)\<rbrakk> \<Longrightarrow> pred_tcb_at proj' P' t s<\STATESEP>by (auto simp: pred_tcb_at_def elim: obj_at_weakenE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma OR_choice_weak_wp:
+  "\<lbrace>P\<rbrace> f \<sqinter> g \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> OR_choice b f g \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<sqinter> g \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> OR_choice b f g \<lbrace>Q\<rbrace><\STATESEP>apply (fastforce simp add: OR_choice_def alternative_def valid_def bind_def
+                    select_f_def gets_def return_def get_def
+          split: option.splits if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>locale Schedule_AI_U = Schedule_AI "TYPE(unit)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma (in Schedule_AI_U) schedule_invs[wp]:
+  "\<lbrace>invs\<rbrace> (Schedule_A.schedule :: (unit,unit) s_monad) \<lbrace>\<lambda>rv. invs\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>apply (simp add: Schedule_A.schedule_def allActiveTCBs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> do cur <- gets cur_thread;
+state <- get;
+thread <- select {x. \<exists>y. getActiveTCB x state = Some y};
+if thread = cur then return () \<sqinter> switch_to_thread thread else switch_to_thread thread
+od \<sqinter> do cur <- gets cur_thread;
+idl <- gets idle_thread;
+if idl = cur then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread
+od \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>apply (wp OR_choice_weak_wp dmo_invs thread_get_inv
+            do_machine_op_tcb select_ext_weak_wp when_def
+          | clarsimp simp: getActiveTCB_def get_tcb_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_tcb_exst_update:
+  "get_tcb p (trans_state f s) = get_tcb p s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. get_tcb p (trans_state f s) = get_tcb p s<\STATESEP>by (simp add: get_tcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ct_in_state_trans_update[simp]: "ct_in_state st (trans_state f s) = ct_in_state st s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ct_in_state st (trans_state f s) = ct_in_state st s<\STATESEP>apply (simp add: ct_in_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in Schedule_AI_U) schedule_ct_activateable[wp]:
+  "\<lbrace>invs\<rbrace> (Schedule_A.schedule :: (unit,unit) s_monad) \<lbrace>\<lambda>rv. ct_in_state activatable \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>have P: "\<And>t s. ct_in_state activatable (cur_thread_update (\<lambda>_. t) s) = st_tcb_at activatable t s"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t s. ct_in_state activatable (s\<lparr>cur_thread := t\<rparr>) = st_tcb_at activatable t s<\STATESEP>by (fastforce simp: ct_in_state_def pred_tcb_at_def intro: obj_at_pspaceI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+ct_in_state activatable (?s\<lparr>cur_thread := ?t\<rparr>) = st_tcb_at activatable ?t ?s
+
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>have Q: "\<And>s. invs s \<longrightarrow> idle_thread s = cur_thread s \<longrightarrow> ct_in_state activatable s"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. invs s \<longrightarrow> idle_thread s = cur_thread s \<longrightarrow> ct_in_state activatable s<\STATESEP>apply (clarsimp simp: ct_in_state_def dest!: invs_valid_idle)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>valid_idle s; idle_thread s = cur_thread s\<rbrakk> \<Longrightarrow> st_tcb_at activatable (cur_thread s) s<\STATESEP>apply (clarsimp simp: valid_idle_def pred_tcb_def2)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+invs ?s1 \<longrightarrow> idle_thread ?s1 = cur_thread ?s1 \<longrightarrow> ct_in_state activatable ?s1
+
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>apply (simp add: Schedule_A.schedule_def allActiveTCBs_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> do cur <- gets cur_thread;
+state <- get;
+thread <- select {x. \<exists>y. getActiveTCB x state = Some y};
+if thread = cur then return () \<sqinter> switch_to_thread thread else switch_to_thread thread
+od \<sqinter> do cur <- gets cur_thread;
+idl <- gets idle_thread;
+if idl = cur then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread
+od \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace><\STATESEP>apply (wp select_ext_weak_wp stt_activatable stit_activatable
+           | simp add: P Q)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. invs s \<Longrightarrow> \<forall>x. (\<exists>y. getActiveTCB x s = Some y) \<longrightarrow> (x = cur_thread s \<longrightarrow> ct_in_state activatable s \<and> st_tcb_at runnable (cur_thread s) s) \<and> (x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s)<\STATESEP>apply (clarsimp simp: getActiveTCB_def ct_in_state_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> (x = cur_thread s \<longrightarrow> st_tcb_at activatable (cur_thread s) s \<and> st_tcb_at runnable (cur_thread s) s) \<and> (x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s)<\STATESEP>apply (rule conjI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> x = cur_thread s \<longrightarrow> st_tcb_at activatable (cur_thread s) s \<and> st_tcb_at runnable (cur_thread s) s
+ 2. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y. \<lbrakk>invs s; (case get_tcb (cur_thread s) s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> st_tcb_at activatable (cur_thread s) s \<and> st_tcb_at runnable (cur_thread s) s
+ 2. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply (case_tac "get_tcb (cur_thread s) s", simp_all add: ct_in_state_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y a. \<lbrakk>invs s; (if runnable (tcb_state a) then Some a else None) = Some y; get_tcb (cur_thread s) s = Some a\<rbrakk> \<Longrightarrow> st_tcb_at activatable (cur_thread s) s \<and> st_tcb_at runnable (cur_thread s) s
+ 2. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply (drule get_tcb_SomeD)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y a. \<lbrakk>invs s; (if runnable (tcb_state a) then Some a else None) = Some y; kheap s (cur_thread s) = Some (TCB a)\<rbrakk> \<Longrightarrow> st_tcb_at activatable (cur_thread s) s \<and> st_tcb_at runnable (cur_thread s) s
+ 2. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply (clarsimp simp: pred_tcb_at_def obj_at_def split: if_split_asm)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x y. \<lbrakk>invs s; (case get_tcb x s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable $ tcb_state tcb then Some tcb else None) = Some y\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply (case_tac "get_tcb x s", simp_all)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x y a. \<lbrakk>invs s; (if runnable (tcb_state a) then Some a else None) = Some y; get_tcb x s = Some a\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply (drule get_tcb_SomeD)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x y a. \<lbrakk>invs s; (if runnable (tcb_state a) then Some a else None) = Some y; kheap s x = Some (TCB a)\<rbrakk> \<Longrightarrow> x \<noteq> cur_thread s \<longrightarrow> st_tcb_at runnable x s<\STATESEP>apply (clarsimp simp: pred_tcb_at_def obj_at_def split: if_split_asm)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>invs\<rbrace> schedule \<lbrace>\<lambda>rv. ct_in_state activatable\<rbrace>
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

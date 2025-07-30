@@ -1,0 +1,58 @@
+<\STATESEP>theory LevityCatch
+imports
+  "BaseRefine.Include"
+  "Lib.LemmaBucket"
+  "Lib.Corres_Method"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>no_notation bind_drop (infixl ">>" 60)<\STATESEP>0<\TRANSEP><\STATESEP>lemma magnitudeCheck_assert:
+  "magnitudeCheck x y n = assert (case y of None \<Rightarrow> True | Some z \<Rightarrow> 1 << n \<le> z - x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. magnitudeCheck x y n = assert (case y of None \<Rightarrow> True | Some z \<Rightarrow> 1 << n \<le> z - x)<\STATESEP>apply (simp add: magnitudeCheck_def assert_def when_def
+            split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x2. (x2 - x < 2 ^ n \<longrightarrow> y = Some x2 \<longrightarrow> 2 ^ n \<le> x2 - x \<longrightarrow> fail = return ()) \<and> (\<not> x2 - x < 2 ^ n \<longrightarrow> y = Some x2 \<longrightarrow> \<not> 2 ^ n \<le> x2 - x \<longrightarrow> return () = fail)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemmas makeObject_simps =
+  makeObject_endpoint makeObject_notification makeObject_cte
+  makeObject_tcb makeObject_user_data makeObject_pde makeObject_pte
+  makeObject_asidpool<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma projectKO_inv : "\<lbrace>P\<rbrace> projectKO ko \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> projectKO ko \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>by (simp add: projectKO_def fail_def valid_def return_def
+           split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignCheck_assert:
+  "alignCheck ptr n = assert (is_aligned ptr n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignCheck ptr n = assert (is_aligned ptr n)<\STATESEP>by (simp add: is_aligned_mask alignCheck_def assert_def
+                alignError_def unless_def when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma magnitudeCheck_inv:   "\<lbrace>P\<rbrace> magnitudeCheck x y n \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> magnitudeCheck x y n \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (clarsimp simp add: magnitudeCheck_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. y = Some x2 \<Longrightarrow> \<lbrace>P\<rbrace> when (x2 - x < 2 ^ n) fail \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (wp when_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2 s. \<lbrakk>y = Some x2; P s\<rbrakk> \<Longrightarrow> (if x2 - x < 2 ^ n then \<lambda>_. True else P) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignCheck_inv:
+  "\<lbrace>P\<rbrace> alignCheck x n \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> alignCheck x n \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (simp add: alignCheck_def unless_def alignError_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> when (x && mask n \<noteq> 0) fail \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (wp when_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> (if x && mask n \<noteq> 0 then \<lambda>_. True else P) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma updateObject_default_inv:
+  "\<lbrace>P\<rbrace> updateObject_default obj ko x y n \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> updateObject_default obj ko x y n \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>unfolding updateObject_default_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> do assert (x = y);
+_ <- projectKO ko;
+alignCheck x (objBits obj);
+magnitudeCheck x n (objBits obj);
+return (injectKO obj)
+od \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>by (simp, wp magnitudeCheck_inv alignCheck_inv projectKO_inv, simp)<\STATESEP>1<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma to_from_apiType [simp]: "toAPIType (fromAPIType x) = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. toAPIType (fromAPIType x) = Some x<\STATESEP>by (cases x) (auto simp add: fromAPIType_def ARM_H.fromAPIType_def
+    toAPIType_def ARM_H.toAPIType_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

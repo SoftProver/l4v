@@ -1,0 +1,72 @@
+<\STATESEP>theory WPBang
+imports
+  WP
+  Eisbach_Tools.ProvePart
+  Nondet_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma conj_meta_forward:
+  "P \<and> Q \<Longrightarrow> (P \<Longrightarrow> P') \<Longrightarrow> (Q \<Longrightarrow> Q') \<Longrightarrow> P' \<and> Q'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<and> Q; P \<Longrightarrow> P'; Q \<Longrightarrow> Q'\<rbrakk> \<Longrightarrow> P' \<and> Q'<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+structure WP_Safe = struct
+
+fun check_has_frees_tac Ps (_ : int) thm = let
+    val fs = Term.add_frees (Thm.prop_of thm) [] |> filter (member (op =) Ps)
+  in if null fs then Seq.empty else Seq.single thm end
+
+fun wp_bang wp_safe_rules ctxt = let
+    val wp_safe_rules_conj = ((wp_safe_rules RL @{thms hoare_vcg_conj_lift hoare_vcg_R_conj})
+        RL @{thms hoare_strengthen_post hoare_strengthen_postE_R hoare_strengthen_postE_E})
+      |> map (rotate_prems 1)
+  in
+    resolve_tac ctxt wp_safe_rules_conj
+    THEN' Split_To_Conj.get_split_tac "P" ctxt
+      (fn Ps => fn i => eresolve0_tac [@{thm conj_meta_forward}] i
+        THEN (REPEAT_ALL_NEW ((CHANGED o asm_full_simp_tac ctxt)
+              ORELSE' Classical.safe_steps_tac ctxt)
+          THEN_ALL_NEW Partial_Prove.cleanup_tac ctxt Ps) i
+        THEN (Partial_Prove.finish_tac ctxt Ps THEN' (assume_tac ctxt)) i
+      )
+  end
+
+val wpe_args =
+  Attrib.thms >> curry (fn (rules, ctxt) =>
+    Method.SIMPLE_METHOD (
+      wp_bang rules ctxt 1
+    )
+  );
+
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup wpe = \<open>WP_Safe.wpe_args\<close>
+  "applies 'safe' wp rules to eliminate postcondition components"<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  assumes x: "\<lbrace> P \<rbrace> f \<lbrace> \<lambda>rv. Q \<rbrace>"
+       and y: "\<lbrace> P \<rbrace> f \<lbrace> \<lambda>rv. R \<rbrace>"
+  shows
+  "\<lbrace> P \<rbrace> f \<lbrace> \<lambda>rv s. \<forall>x y. (fst rv = Some x \<longrightarrow> Q s)
+    \<and> (snd rv = Some y \<longrightarrow> Q s )
+    \<and> R s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x y. (fst rv = Some x \<longrightarrow> Q s) \<and> (snd rv = Some y \<longrightarrow> Q s) \<and> R s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x y. (fst rv = Some x \<longrightarrow> Q s) \<and> (snd rv = Some y \<longrightarrow> Q s) \<and> R s\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: all_conj_distrib)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>\<lambda>rv s. ((\<exists>x. fst rv = Some x) \<longrightarrow> Q s) \<and> ((\<exists>y. snd rv = Some y) \<longrightarrow> Q s) \<and> R s\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> ?Q s<\STATESEP>apply (rule hoare_vcg_conj_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P6\<rbrace> f \<lbrace>\<lambda>rv s. (\<exists>x. fst rv = Some x) \<longrightarrow> Q s\<rbrace>
+ 2. \<lbrace>?P'6\<rbrace> f \<lbrace>\<lambda>rv s. ((\<exists>y. snd rv = Some y) \<longrightarrow> Q s) \<and> R s\<rbrace>
+ 3. \<And>s. P s \<Longrightarrow> ?P6 s \<and> ?P'6 s<\STATESEP>apply (wpe x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P'10\<rbrace> f \<lbrace>\<lambda>rv s. True\<rbrace>
+ 2. \<lbrace>?P'6\<rbrace> f \<lbrace>\<lambda>rv s. ((\<exists>y. snd rv = Some y) \<longrightarrow> Q s) \<and> R s\<rbrace>
+ 3. \<And>s. P s \<Longrightarrow> (P s \<and> ?P'10 s) \<and> ?P'6 s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'6\<rbrace> f \<lbrace>\<lambda>rv s. ((\<exists>y. snd rv = Some y) \<longrightarrow> Q s) \<and> R s\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> (P s \<and> True) \<and> ?P'6 s<\STATESEP>apply (wpe x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'15\<rbrace> f \<lbrace>\<lambda>rv. R\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> (P s \<and> True) \<and> P s \<and> ?P'15 s<\STATESEP>apply (wp y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> (P s \<and> True) \<and> P s \<and> P s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

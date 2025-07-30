@@ -1,0 +1,496 @@
+<\STATESEP>section \<open>Manipulating Hoare Logic Assertions\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Strengthen
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>locale strengthen_implementation begin<\STATESEP>0<\TRANSEP><\STATESEP>definition "st P rel x y = (x = y \<or> (P \<and> rel x y) \<or> (\<not> P \<and> rel y x))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  st_prop1 :: "prop \<Rightarrow> prop \<Rightarrow> prop"
+where
+  "st_prop1 (PROP P) (PROP Q) \<equiv> (PROP Q \<Longrightarrow> PROP P)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  st_prop2 :: "prop \<Rightarrow> prop \<Rightarrow> prop"
+where
+  "st_prop2 (PROP P) (PROP Q) \<equiv> (PROP P \<Longrightarrow> PROP Q)"<\STATESEP>0<\TRANSEP><\STATESEP>definition "failed == True"<\STATESEP>0<\TRANSEP><\STATESEP>definition elim :: "prop \<Rightarrow> prop"
+where
+ "elim (P :: prop) == P"<\STATESEP>0<\TRANSEP><\STATESEP>definition "oblig (P :: prop) == P"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>notation strengthen_implementation.elim ("{elim| _ |}")<\STATESEP>0<\TRANSEP><\STATESEP>notation strengthen_implementation.oblig ("{oblig| _ |}")<\STATESEP>0<\TRANSEP><\STATESEP>notation strengthen_implementation.failed ("<strg-failed>")<\STATESEP>0<\TRANSEP><\STATESEP>syntax
+  "_ap_strg_bool" :: "['a, 'a] => 'a"  ("_ =strg<--|=> _")
+  "_ap_wkn_bool" :: "['a, 'a] => 'a"  ("_ =strg-->|=> _")
+  "_ap_ge_bool" :: "['a, 'a] => 'a"  ("_ =strg<=|=> _")
+  "_ap_le_bool" :: "['a, 'a] => 'a"  ("_ =strg>=|=> _")<\STATESEP>0<\TRANSEP><\STATESEP>syntax(xsymbols)
+  "_ap_strg_bool" :: "['a, 'a] => 'a"  ("_ =strg\<longleftarrow>|=> _")
+  "_ap_wkn_bool" :: "['a, 'a] => 'a"  ("_ =strg\<longrightarrow>|=> _")
+  "_ap_ge_bool" :: "['a, 'a] => 'a"  ("_ =strg\<le>|=> _")
+  "_ap_le_bool" :: "['a, 'a] => 'a"  ("_ =strg\<ge>|=> _")<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  "P =strg\<longleftarrow>|=> Q" == "CONST strengthen_implementation.st (CONST False) (CONST HOL.implies) P Q"
+  "P =strg\<longrightarrow>|=> Q" == "CONST strengthen_implementation.st (CONST True) (CONST HOL.implies) P Q"
+  "P =strg\<le>|=> Q" == "CONST strengthen_implementation.st (CONST False) (CONST Orderings.less_eq) P Q"
+  "P =strg\<ge>|=> Q" == "CONST strengthen_implementation.st (CONST True) (CONST Orderings.less_eq) P Q"<\STATESEP>0<\TRANSEP><\STATESEP>context strengthen_implementation begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma failedI:
+  "<strg-failed>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. <strg-failed><\STATESEP>by (simp add: failed_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_refl:
+  "st P rel x x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. st P rel x x<\STATESEP>by (simp add: st_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma st_prop_refl:
+  "PROP (st_prop1 (PROP P) (PROP P))"
+  "PROP (st_prop2 (PROP P) (PROP P))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. st_prop1 PROP P PROP P &&& st_prop2 PROP P PROP P<\STATESEP>unfolding st_prop1_def st_prop2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (PROP P \<Longrightarrow> PROP P) &&& (PROP P \<Longrightarrow> PROP P)<\STATESEP>by safe<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthenI:
+  "rel x y \<Longrightarrow> st True rel x y"
+  "rel y x \<Longrightarrow> st False rel x y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (rel x y \<Longrightarrow> st True rel x y) &&& (rel y x \<Longrightarrow> st False rel x y)<\STATESEP>by (simp_all add: st_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas imp_to_strengthen = strengthenI(2)[where rel="(\<longrightarrow>)"]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas rev_imp_to_strengthen = strengthenI(1)[where rel="(\<longrightarrow>)"]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas ord_to_strengthen = strengthenI[where rel="(\<le>)"]<\STATESEP>0<\TRANSEP><\STATESEP>lemma use_strengthen_imp:
+  "st False (\<longrightarrow>) Q P \<Longrightarrow> P \<Longrightarrow> Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>Q =strg<--|=> P; P\<rbrakk> \<Longrightarrow> Q<\STATESEP>by (simp add: st_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_strengthen_prop_elim:
+  "PROP P \<Longrightarrow> PROP (st_prop2 (PROP P) (PROP Q))
+    \<Longrightarrow> (PROP Q \<Longrightarrow> PROP R) \<Longrightarrow> PROP R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; st_prop2 PROP P PROP Q; PROP Q \<Longrightarrow> PROP R\<rbrakk> \<Longrightarrow> PROP R<\STATESEP>unfolding st_prop2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP P \<Longrightarrow> PROP Q; PROP Q \<Longrightarrow> PROP R\<rbrakk> \<Longrightarrow> PROP R<\STATESEP>apply (drule(1) meta_mp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP Q; PROP R\<rbrakk> \<Longrightarrow> PROP R<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_Not:
+  "st False rel x y \<Longrightarrow> st (\<not> True) rel x y"
+  "st True rel x y \<Longrightarrow> st (\<not> False) rel x y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (st False rel x y \<Longrightarrow> st (\<not> True) rel x y) &&& (st True rel x y \<Longrightarrow> st (\<not> False) rel x y)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas gather =
+    swap_prems_eq[where A="PROP (Trueprop P)" and B="PROP (elim Q)" for P Q]
+    swap_prems_eq[where A="PROP (Trueprop P)" and B="PROP (oblig Q)" for P Q]<\STATESEP>0<\TRANSEP><\STATESEP>lemma mk_True_imp:
+  "P \<equiv> True \<longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P \<equiv> True \<longrightarrow> P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma narrow_quant:
+  "(\<And>x. PROP P \<Longrightarrow> PROP (Q x)) \<equiv> (PROP P \<Longrightarrow> (\<And>x. PROP (Q x)))"
+  "(\<And>x. (R \<longrightarrow> S x)) \<equiv> PROP (Trueprop (R \<longrightarrow> (\<forall>x. S x)))"
+  "(\<And>x. (S x \<longrightarrow> R)) \<equiv> PROP (Trueprop ((\<exists>x. S x) \<longrightarrow> R))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<And>x. PROP P \<Longrightarrow> PROP Q x) \<equiv> (PROP P \<Longrightarrow> (\<And>x. PROP Q x))) &&& ((\<And>x. R \<longrightarrow> S x) \<equiv> R \<longrightarrow> (\<forall>x. S x)) &&& (\<And>x. S x \<longrightarrow> R) \<equiv> (\<exists>x. S x) \<longrightarrow> R<\STATESEP>apply (simp_all add: atomize_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. PROP P \<Longrightarrow> PROP Q x) \<equiv> (PROP P \<Longrightarrow> (\<And>x. PROP Q x))<\STATESEP>apply rule<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>x. PROP P \<Longrightarrow> PROP Q x; PROP P\<rbrakk> \<Longrightarrow> PROP Q x
+ 2. \<And>x. \<lbrakk>\<And>x. PROP P \<Longrightarrow> PROP Q x; PROP P\<rbrakk> \<Longrightarrow> PROP Q x<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<And>x. PROP P \<Longrightarrow> PROP Q x; PROP P\<rbrakk> \<Longrightarrow> PROP Q x<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+structure Make_Strengthen_Rule = struct
+
+fun binop_conv' cv1 cv2 = Conv.combination_conv (Conv.arg_conv cv1) cv2;
+
+val mk_elim = Conv.rewr_conv @{thm elim_def[symmetric]}
+val mk_oblig = Conv.rewr_conv @{thm oblig_def[symmetric]}
+
+fun count_vars t = Term.fold_aterms
+    (fn (Var v) => Termtab.map_default (Var v, 0) (fn x => x + 1)
+        | _ => I) t Termtab.empty
+
+fun gather_to_imp ctxt drule pattern = let
+    val pattern = (if drule then "D" :: pattern else pattern)
+    fun inner pat ct = case (head_of (Thm.term_of ct), pat) of
+        (@{term Pure.imp}, ("E" :: pat)) => binop_conv' mk_elim (inner pat) ct
+      | (@{term Pure.imp}, ("A" :: pat)) => binop_conv' mk_elim (inner pat) ct
+      | (@{term Pure.imp}, ("O" :: pat)) => binop_conv' mk_oblig (inner pat) ct
+      | (@{term Pure.imp}, _) => binop_conv' (Object_Logic.atomize ctxt) (inner (drop 1 pat)) ct
+      | (_, []) => Object_Logic.atomize ctxt ct
+      | (_, pat) => raise THM ("gather_to_imp: leftover pattern: " ^ commas pat, 1, [])
+    fun simp thms = Raw_Simplifier.rewrite ctxt false thms
+    fun ensure_imp ct = case strip_comb (Thm.term_of ct) |> apsnd (map head_of)
+     of
+        (@{term Pure.imp}, _) => Conv.arg_conv ensure_imp ct
+      | (@{term HOL.Trueprop}, [@{term HOL.implies}]) => Conv.all_conv ct
+      | (@{term HOL.Trueprop}, _) => Conv.arg_conv (Conv.rewr_conv @{thm mk_True_imp}) ct
+      | _ => raise CTERM ("gather_to_imp", [ct])
+    val gather = simp @{thms gather}
+        then_conv (if drule then Conv.all_conv else simp @{thms atomize_conjL})
+        then_conv simp @{thms atomize_imp}
+        then_conv ensure_imp
+  in Conv.fconv_rule (inner pattern then_conv gather) end
+
+fun imp_list t = let
+    val (x, y) = Logic.dest_implies t
+  in x :: imp_list y end handle TERM _ => [t]
+
+fun mk_ex (xnm, T) t = HOLogic.exists_const T $ Term.lambda (Var (xnm, T)) t
+fun mk_all (xnm, T) t = HOLogic.all_const T $ Term.lambda (Var (xnm, T)) t
+
+fun quantify_vars ctxt drule thm = let
+    val (lhs, rhs) = Thm.concl_of thm |> HOLogic.dest_Trueprop
+      |> HOLogic.dest_imp
+    val all_vars = count_vars (Thm.prop_of thm)
+    val new_vars = count_vars (if drule then rhs else lhs)
+    val quant = filter (fn v => Termtab.lookup new_vars v = Termtab.lookup all_vars v)
+            (Termtab.keys new_vars)
+        |> map (Thm.cterm_of ctxt)
+  in fold Thm.forall_intr quant thm
+    |> Conv.fconv_rule (Raw_Simplifier.rewrite ctxt false @{thms narrow_quant})
+  end
+
+fun mk_strg (typ, pat) ctxt thm = let
+    val drule = typ = "D" orelse typ = "D'"
+    val imp = gather_to_imp ctxt drule pat thm
+      |> (if typ = "I'" orelse typ = "D'"
+          then quantify_vars ctxt drule else I)
+  in if typ = "I" orelse typ = "I'"
+    then imp RS @{thm imp_to_strengthen}
+    else if drule then imp RS @{thm rev_imp_to_strengthen}
+    else if typ = "lhs" then imp RS @{thm ord_to_strengthen(1)}
+    else if typ = "rhs" then imp RS @{thm ord_to_strengthen(2)}
+    else raise THM ("mk_strg: unknown type: " ^ typ, 1, [thm])
+ end
+
+fun auto_mk ctxt thm = let
+    val concl_C = try (fst o dest_Const o head_of
+        o HOLogic.dest_Trueprop) (Thm.concl_of thm)
+  in case (Thm.nprems_of thm, concl_C) of
+    (_, SOME @{const_name failed}) => thm
+  | (_, SOME @{const_name st}) => thm
+  | (0, SOME @{const_name HOL.implies}) => (thm RS @{thm imp_to_strengthen}
+      handle THM _ => @{thm failedI})
+  | _ => mk_strg ("I'", []) ctxt thm
+  end
+
+fun mk_strg_args (SOME (typ, pat)) ctxt thm = mk_strg (typ, pat) ctxt thm
+  | mk_strg_args NONE ctxt thm = auto_mk ctxt thm
+
+val arg_pars = Scan.option (Scan.first (map Args.$$$ ["I", "I'", "D", "D'", "lhs", "rhs"])
+  -- Scan.repeat (Args.$$$ "A" || Args.$$$ "E" || Args.$$$ "O" || Args.$$$ "_"))
+
+val attr_pars : attribute context_parser
+    = (Scan.lift arg_pars -- Args.context)
+        >> (fn (args, ctxt) => Thm.rule_attribute [] (K (mk_strg_args args ctxt)))
+
+
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>attribute_setup mk_strg = \<open>Make_Strengthen_Rule.attr_pars\<close>
+          "put rule in 'strengthen' form (see theory Strengthen_Demo)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas foo = nat.induct[mk_strg I O O]
+    nat.induct[mk_strg D O]
+    nat.induct[mk_strg I' E]
+    exI[mk_strg I'] exI[mk_strg I]<\STATESEP>0<\TRANSEP><\STATESEP>context strengthen_implementation begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma do_elim:
+  "PROP P \<Longrightarrow> PROP elim (PROP P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P \<Longrightarrow> {elim| PROP P |}<\STATESEP>by (simp add: elim_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intro_oblig:
+  "PROP P \<Longrightarrow> PROP oblig (PROP P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P \<Longrightarrow> {oblig| PROP P |}<\STATESEP>by (simp add: oblig_def)<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+
+structure Strengthen = struct
+
+structure Congs = Theory_Data
+(struct
+    type T = thm list
+    val empty = []
+    val merge = Thm.merge_thms;
+end);
+
+val tracing = Attrib.config_bool @{binding strengthen_trace} (K false)
+
+fun map_context_total f (Context.Theory t) = (Context.Theory (f t))
+  | map_context_total f (Context.Proof p)
+    = (Context.Proof (Context.raw_transfer (f (Proof_Context.theory_of p)) p))
+
+val strg_add = Thm.declaration_attribute
+        (fn thm => map_context_total (Congs.map (Thm.add_thm thm)));
+
+val strg_del = Thm.declaration_attribute
+        (fn thm => map_context_total (Congs.map (Thm.del_thm thm)));
+
+val setup =
+  Attrib.setup @{binding "strg"} (Attrib.add_del strg_add strg_del)
+    "strengthening congruence rules"
+    #> snd tracing;
+
+fun goal_predicate t = let
+    val gl = Logic.strip_assums_concl t
+    val cn = head_of #> dest_Const #> fst
+  in if cn gl = @{const_name oblig} then "oblig"
+    else if cn gl = @{const_name elim} then "elim"
+    else if cn gl = @{const_name st_prop1} then "st_prop1"
+    else if cn gl = @{const_name st_prop2} then "st_prop2"
+    else if cn (HOLogic.dest_Trueprop gl) = @{const_name st} then "st"
+    else ""
+  end handle TERM _ => ""
+
+fun do_elim ctxt = SUBGOAL (fn (t, i) => if goal_predicate t = "elim"
+    then eresolve_tac ctxt @{thms do_elim} i else all_tac)
+
+fun final_oblig_strengthen ctxt = SUBGOAL (fn (t, i) => case goal_predicate t of
+    "oblig" => resolve_tac ctxt @{thms intro_oblig} i
+  | "st" => resolve_tac ctxt @{thms strengthen_refl} i
+  | "st_prop1" => resolve_tac ctxt @{thms st_prop_refl} i
+  | "st_prop2" => resolve_tac ctxt @{thms st_prop_refl} i
+  | _ => all_tac)
+
+infix 1 THEN_TRY_ALL_NEW;
+
+(* Like THEN_ALL_NEW but allows failure, although at least one subsequent
+   method must succeed. *)
+fun (tac1 THEN_TRY_ALL_NEW tac2) i st = let
+    fun inner b j st = if i > j then (if b then all_tac else no_tac) st
+      else ((tac2 j THEN inner true (j - 1)) ORELSE inner b (j - 1)) st
+  in st |> (tac1 i THEN (fn st' =>
+    inner false (i + Thm.nprems_of st' - Thm.nprems_of st) st')) end
+
+fun maybe_trace_tac false _ _ = K all_tac
+  | maybe_trace_tac true ctxt msg = SUBGOAL (fn (t, _) => let
+    val tr = Pretty.big_list msg [Syntax.pretty_term ctxt t]
+  in
+    Pretty.writeln tr;
+    all_tac
+  end)
+
+fun maybe_trace_rule false _ _ rl = rl
+  | maybe_trace_rule true ctxt msg rl = let
+    val tr = Pretty.big_list msg [Syntax.pretty_term ctxt (Thm.prop_of rl)]
+  in
+    Pretty.writeln tr;
+    rl
+  end
+
+type params = {trace : bool, once : bool}
+
+fun params once ctxt = {trace = Config.get ctxt (fst tracing), once = once}
+
+fun apply_tac_as_strg ctxt (params : params) (tac : tactic)
+  = SUBGOAL (fn (t, i) => case Logic.strip_assums_concl t of
+      @{term Trueprop} $ (@{term "st False (\<longrightarrow>)"} $ x $ _)
+      => let
+    val triv = Thm.trivial (Thm.cterm_of ctxt (HOLogic.mk_Trueprop x))
+    val trace = #trace params
+  in
+    fn thm => tac triv
+        |> Seq.map (maybe_trace_rule trace ctxt "apply_tac_as_strg: making strg")
+        |> Seq.maps (Seq.try (Make_Strengthen_Rule.auto_mk ctxt))
+        |> Seq.maps (fn str_rl => resolve_tac ctxt [str_rl] i thm)
+  end | _ => no_tac)
+
+fun opt_tac f (SOME v) = f v
+  | opt_tac _ NONE = K no_tac
+
+fun apply_strg ctxt (params : params) congs rules tac = EVERY' [
+    maybe_trace_tac (#trace params) ctxt "apply_strg",
+    DETERM o TRY o resolve_tac ctxt @{thms strengthen_Not},
+    DETERM o ((resolve_tac ctxt rules THEN_ALL_NEW do_elim ctxt)
+        ORELSE' (opt_tac (apply_tac_as_strg ctxt params) tac)
+        ORELSE' (resolve_tac ctxt congs THEN_TRY_ALL_NEW
+            (fn i => apply_strg ctxt params congs rules tac i)))
+]
+
+fun setup_strg ctxt params thms meths = let
+    val congs = Congs.get (Proof_Context.theory_of ctxt)
+    val rules = map (Make_Strengthen_Rule.auto_mk ctxt) thms
+    val tac = case meths of [] => NONE
+      | _ => SOME (FIRST (map (fn meth => NO_CONTEXT_TACTIC ctxt
+        (Method.evaluate meth ctxt [])) meths))
+  in apply_strg ctxt params congs rules tac
+        THEN_ALL_NEW final_oblig_strengthen ctxt end
+
+fun strengthen ctxt asm concl thms meths = let
+    val strg = setup_strg ctxt (params false ctxt) thms meths
+  in
+    (if not concl then K no_tac
+        else resolve_tac ctxt @{thms use_strengthen_imp} THEN' strg)
+    ORELSE' (if not asm then K no_tac
+        else eresolve_tac ctxt @{thms use_strengthen_prop_elim} THEN' strg)
+  end
+
+fun default_strengthen ctxt thms = strengthen ctxt false true thms []
+
+val strengthen_args =
+  Attrib.thms >> curry (fn (rules, ctxt) =>
+    Method.CONTEXT_METHOD (fn _ =>
+      Method.RUNTIME (CONTEXT_TACTIC
+        (strengthen ctxt false true rules [] 1))
+    )
+  );
+
+val strengthen_asm_args =
+  Attrib.thms >> curry (fn (rules, ctxt) =>
+    Method.CONTEXT_METHOD (fn _ =>
+      Method.RUNTIME (CONTEXT_TACTIC
+        (strengthen ctxt true false rules [] 1))
+    )
+  );
+
+val strengthen_method_args =
+  Method.text_closure >> curry (fn (meth, ctxt) =>
+    Method.CONTEXT_METHOD (fn _ =>
+      Method.RUNTIME (CONTEXT_TACTIC
+        (strengthen ctxt true true [] [meth] 1))
+    )
+  );
+
+end
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>setup "Strengthen.setup"<\STATESEP>0<\TRANSEP><\STATESEP>method_setup strengthen = \<open>Strengthen.strengthen_args\<close>
+  "strengthen the goal (see theory Strengthen_Demo)"<\STATESEP>0<\TRANSEP><\STATESEP>method_setup strengthen_asm = \<open>Strengthen.strengthen_asm_args\<close>
+  "apply ''strengthen'' to weaken an assumption"<\STATESEP>0<\TRANSEP><\STATESEP>method_setup strengthen_method = \<open>Strengthen.strengthen_method_args\<close>
+  "use an argument method in ''strengthen'' sites"<\STATESEP>0<\TRANSEP><\STATESEP>context strengthen_implementation begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma strengthen_imp_imp[simp]:
+  "st True (\<longrightarrow>) A B = (A \<longrightarrow> B)"
+  "st False (\<longrightarrow>) A B = (B \<longrightarrow> A)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A =strg-->|=> B = (A \<longrightarrow> B) &&& A =strg<--|=> B = (B \<longrightarrow> A)<\STATESEP>by (simp_all add: st_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation(input)
+  "st_ord t \<equiv> st t ((\<le>) :: ('a :: preorder) \<Rightarrow> _)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma strengthen_imp_ord[simp]:
+  "st_ord True A B = (A \<le> B)"
+  "st_ord False A B = (B \<le> A)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A =strg>=|=> B = (A \<le> B) &&& A =strg<=|=> B = (B \<le> A)<\STATESEP>by (auto simp add: st_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_imp_conj [strg]:
+  "\<lbrakk> A' \<Longrightarrow> st F (\<longrightarrow>) B B'; B \<Longrightarrow> st F (\<longrightarrow>) A A' \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (A \<and> B) (A' \<and> B')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>A' \<Longrightarrow> st F (\<longrightarrow>) B B'; B \<Longrightarrow> st F (\<longrightarrow>) A A'\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (A \<and> B) (A' \<and> B')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_imp_disj [strg]:
+  "\<lbrakk> \<not> A' \<Longrightarrow> st F (\<longrightarrow>) B B'; \<not> B \<Longrightarrow> st F (\<longrightarrow>) A A' \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (A \<or> B) (A' \<or> B')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> A' \<Longrightarrow> st F (\<longrightarrow>) B B'; \<not> B \<Longrightarrow> st F (\<longrightarrow>) A A'\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (A \<or> B) (A' \<or> B')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_imp_implies [strg]:
+  "\<lbrakk> st (\<not> F) (\<longrightarrow>) X X'; X \<Longrightarrow> st F (\<longrightarrow>) Y Y' \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (X \<longrightarrow> Y) (X' \<longrightarrow> Y')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st (\<not> F) (\<longrightarrow>) X X'; X \<Longrightarrow> st F (\<longrightarrow>) Y Y'\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (X \<longrightarrow> Y) (X' \<longrightarrow> Y')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_all[strg]:
+  "\<lbrakk> \<And>x. st F (\<longrightarrow>) (P x) (Q x) \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (\<forall>x. P x) (\<forall>x. Q x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. st F (\<longrightarrow>) (P x) (Q x)) \<Longrightarrow> st F (\<longrightarrow>) (\<forall>x. P x) (\<forall>x. Q x)<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_ex[strg]:
+  "\<lbrakk> \<And>x. st F (\<longrightarrow>) (P x) (Q x) \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (\<exists>x. P x) (\<exists>x. Q x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. st F (\<longrightarrow>) (P x) (Q x)) \<Longrightarrow> st F (\<longrightarrow>) (\<exists>x. P x) (\<exists>x. Q x)<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_Ball[strg]:
+  "\<lbrakk> st_ord (Not F) S S';
+        \<And>x. x \<in> S \<Longrightarrow> st F (\<longrightarrow>) (P x) (Q x) \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (\<forall>x \<in> S. P x) (\<forall>x \<in> S'. Q x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st (\<not> F) (\<subseteq>) S S'; \<And>x. x \<in> S \<Longrightarrow> st F (\<longrightarrow>) (P x) (Q x)\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (\<forall>x\<in>S. P x) (\<forall>x\<in>S'. Q x)<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_Bex[strg]:
+  "\<lbrakk> st_ord F S S';
+        \<And>x. x \<in> S \<Longrightarrow> st F (\<longrightarrow>) (P x) (Q x) \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (\<exists>x \<in> S. P x) (\<exists>x \<in> S'. Q x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st F (\<subseteq>) S S'; \<And>x. x \<in> S \<Longrightarrow> st F (\<longrightarrow>) (P x) (Q x)\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (\<exists>x\<in>S. P x) (\<exists>x\<in>S'. Q x)<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_Collect[strg]:
+  "\<lbrakk> \<And>x. st F (\<longrightarrow>) (P x) (P' x) \<rbrakk>
+    \<Longrightarrow> st_ord F {x. P x} {x. P' x}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. st F (\<longrightarrow>) (P x) (P' x)) \<Longrightarrow> st F (\<subseteq>) {x. P x} {x. P' x}<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_mem[strg]:
+  "\<lbrakk> st_ord F S S' \<rbrakk>
+    \<Longrightarrow> st F (\<longrightarrow>) (x \<in> S) (x \<in> S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. st F (\<subseteq>) S S' \<Longrightarrow> st F (\<longrightarrow>) (x \<in> S) (x \<in> S')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_ord[strg]:
+  "st_ord (\<not> F) x x' \<Longrightarrow> st_ord F y y'
+    \<Longrightarrow> st F (\<longrightarrow>) (x \<le> y) (x' \<le> y')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st (\<not> F) (\<le>) x x'; st F (\<le>) y y'\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (x \<le> y) (x' \<le> y')<\STATESEP>by (cases F, simp_all, (metis order_trans)+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_strict_ord[strg]:
+  "st_ord (\<not> F) x x' \<Longrightarrow> st_ord F y y'
+    \<Longrightarrow> st F (\<longrightarrow>) (x < y) (x' < y')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st (\<not> F) (\<le>) x x'; st F (\<le>) y y'\<rbrakk> \<Longrightarrow> st F (\<longrightarrow>) (x < y) (x' < y')<\STATESEP>by (cases F, simp_all, (metis order_le_less_trans order_less_le_trans)+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_image[strg]:
+  "st_ord F S S' \<Longrightarrow> st_ord F (f ` S) (f ` S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. st F (\<subseteq>) S S' \<Longrightarrow> st F (\<subseteq>) (f ` S) (f ` S')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_vimage[strg]:
+  "st_ord F S S' \<Longrightarrow> st_ord F (f -` S) (f -` S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. st F (\<subseteq>) S S' \<Longrightarrow> st F (\<subseteq>) (f -` S) (f -` S')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_Int[strg]:
+  "st_ord F A A' \<Longrightarrow> st_ord F B B' \<Longrightarrow> st_ord F (A \<inter> B) (A' \<inter> B')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st F (\<subseteq>) A A'; st F (\<subseteq>) B B'\<rbrakk> \<Longrightarrow> st F (\<subseteq>) (A \<inter> B) (A' \<inter> B')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_Un[strg]:
+  "st_ord F A A' \<Longrightarrow> st_ord F B B' \<Longrightarrow> st_ord F (A \<union> B) (A' \<union> B')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st F (\<subseteq>) A A'; st F (\<subseteq>) B B'\<rbrakk> \<Longrightarrow> st F (\<subseteq>) (A \<union> B) (A' \<union> B')<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_UN[strg]:
+  "st_ord F A A' \<Longrightarrow> (\<And>x. x \<in> A \<Longrightarrow> st_ord F (B x) (B' x))
+    \<Longrightarrow> st_ord F (\<Union>x \<in> A. B x) (\<Union>x \<in> A'. B' x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st F (\<subseteq>) A A'; \<And>x. x \<in> A \<Longrightarrow> st F (\<subseteq>) (B x) (B' x)\<rbrakk> \<Longrightarrow> st F (\<subseteq>) (\<Union> (B ` A)) (\<Union> (B' ` A'))<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_INT[strg]:
+  "st_ord (\<not> F) A A' \<Longrightarrow> (\<And>x. x \<in> A \<Longrightarrow> st_ord F (B x) (B' x))
+    \<Longrightarrow> st_ord F (\<Inter>x \<in> A. B x) (\<Inter>x \<in> A'. B' x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st (\<not> F) (\<subseteq>) A A'; \<And>x. x \<in> A \<Longrightarrow> st F (\<subseteq>) (B x) (B' x)\<rbrakk> \<Longrightarrow> st F (\<subseteq>) (\<Inter> (B ` A)) (\<Inter> (B' ` A'))<\STATESEP>by (cases F, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_imp_strengthen_prop[strg]:
+  "st False (\<longrightarrow>) P Q \<Longrightarrow> PROP (st_prop1 (Trueprop P) (Trueprop Q))"
+  "st True (\<longrightarrow>) P Q \<Longrightarrow> PROP (st_prop2 (Trueprop P) (Trueprop Q))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P =strg<--|=> Q \<Longrightarrow> st_prop1 (P) (Q)) &&& (P =strg-->|=> Q \<Longrightarrow> st_prop2 (P) (Q))<\STATESEP>unfolding st_prop1_def st_prop2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrakk>P =strg<--|=> Q; Q\<rbrakk> \<Longrightarrow> P) &&& (\<lbrakk>P =strg-->|=> Q; P\<rbrakk> \<Longrightarrow> Q)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma st_prop_meta_imp[strg]:
+  "PROP (st_prop2 (PROP X) (PROP X'))
+    \<Longrightarrow> PROP (st_prop1 (PROP Y) (PROP Y'))
+    \<Longrightarrow> PROP (st_prop1 (PROP X \<Longrightarrow> PROP Y) (PROP X' \<Longrightarrow> PROP Y'))"
+  "PROP (st_prop1 (PROP X) (PROP X'))
+    \<Longrightarrow> PROP (st_prop2 (PROP Y) (PROP Y'))
+    \<Longrightarrow> PROP (st_prop2 (PROP X \<Longrightarrow> PROP Y) (PROP X' \<Longrightarrow> PROP Y'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrakk>st_prop2 PROP X PROP X'; st_prop1 PROP Y PROP Y'\<rbrakk> \<Longrightarrow> st_prop1 (PROP X \<Longrightarrow> PROP Y) (PROP X' \<Longrightarrow> PROP Y')) &&& (\<lbrakk>st_prop1 PROP X PROP X'; st_prop2 PROP Y PROP Y'\<rbrakk> \<Longrightarrow> st_prop2 (PROP X \<Longrightarrow> PROP Y) (PROP X' \<Longrightarrow> PROP Y'))<\STATESEP>unfolding st_prop1_def st_prop2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrakk>PROP X \<Longrightarrow> PROP X'; PROP Y' \<Longrightarrow> PROP Y; PROP X' \<Longrightarrow> PROP Y'; PROP X\<rbrakk> \<Longrightarrow> PROP Y) &&& (\<lbrakk>PROP X' \<Longrightarrow> PROP X; PROP Y \<Longrightarrow> PROP Y'; PROP X \<Longrightarrow> PROP Y; PROP X'\<rbrakk> \<Longrightarrow> PROP Y')<\STATESEP>by (erule meta_mp | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma st_prop_meta_all[strg]:
+  "(\<And>x. PROP (st_prop1 (PROP (X x)) (PROP (X' x))))
+    \<Longrightarrow> PROP (st_prop1 (\<And>x. PROP (X x)) (\<And>x. PROP (X' x)))"
+  "(\<And>x. PROP (st_prop2 (PROP (X x)) (PROP (X' x))))
+    \<Longrightarrow> PROP (st_prop2 (\<And>x. PROP (X x)) (\<And>x. PROP (X' x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<And>x. st_prop1 PROP X x PROP X' x) \<Longrightarrow> st_prop1 (\<And>x. PROP X x) (\<And>x. PROP X' x)) &&& ((\<And>x. st_prop2 PROP X x PROP X' x) \<Longrightarrow> st_prop2 (\<And>x. PROP X x) (\<And>x. PROP X' x))<\STATESEP>unfolding st_prop1_def st_prop2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrakk>\<And>x. PROP X' x \<Longrightarrow> PROP X x; Pure.all X'\<rbrakk> \<Longrightarrow> Pure.all X) &&& (\<lbrakk>\<And>x. PROP X x \<Longrightarrow> PROP X' x; Pure.all X\<rbrakk> \<Longrightarrow> Pure.all X')<\STATESEP>apply (rule Pure.asm_rl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>x. PROP X' x \<Longrightarrow> PROP X x; Pure.all X'\<rbrakk> \<Longrightarrow> PROP X x
+ 2. \<lbrakk>\<And>x. PROP X x \<Longrightarrow> PROP X' x; Pure.all X\<rbrakk> \<Longrightarrow> Pure.all X'<\STATESEP>apply (erule meta_allE, erule meta_mp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. Pure.all X' \<Longrightarrow> PROP X' x
+ 2. \<lbrakk>\<And>x. PROP X x \<Longrightarrow> PROP X' x; Pure.all X\<rbrakk> \<Longrightarrow> Pure.all X'<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. PROP X x \<Longrightarrow> PROP X' x; Pure.all X\<rbrakk> \<Longrightarrow> Pure.all X'<\STATESEP>apply (rule Pure.asm_rl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<And>x. PROP X x \<Longrightarrow> PROP X' x; Pure.all X\<rbrakk> \<Longrightarrow> PROP X' x<\STATESEP>apply (erule meta_allE, erule meta_mp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. Pure.all X \<Longrightarrow> PROP X x<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma imp_consequent:
+  "P \<longrightarrow> Q \<longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P \<longrightarrow> Q \<longrightarrow> P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  assumes x: "\<And>x. P x \<longrightarrow> Q x"
+  shows "{x. x \<noteq> None \<and> P (the x)} \<subseteq> {y. \<forall>x. y = Some x \<longrightarrow> Q x}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {x. x \<noteq> None \<and> P (the x)} \<subseteq> {y. \<forall>x. y = Some x \<longrightarrow> Q x}<\STATESEP>apply (strengthen x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {x. x \<noteq> None \<and> P (the x)} \<subseteq> {x. \<forall>xa. x = Some xa \<longrightarrow> P xa}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>locale strengthen_silly_test begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  silly :: "nat \<Rightarrow> nat \<Rightarrow> bool"
+where
+  "silly x y = (x \<le> y)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma silly_trans:
+  "silly x y \<Longrightarrow> silly y z \<Longrightarrow> silly x z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly y z\<rbrakk> \<Longrightarrow> silly x z<\STATESEP>by (simp add: silly_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma silly_refl:
+  "silly x x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. silly x x<\STATESEP>by (simp add: silly_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma foo:
+  "silly x y \<Longrightarrow> silly a b \<Longrightarrow> silly b c
+    \<Longrightarrow> silly x y \<and> (\<forall>x :: nat. silly a c )"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> silly x y \<and> (\<forall>x. silly a c)<\STATESEP>using [[strengthen_trace = true]]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> silly x y \<and> (\<forall>x. silly a c)<\STATESEP>apply (strengthen silly_trans[mk_strg I E])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> silly y y \<and> (\<forall>x. silly c c)<\STATESEP>apply (strengthen silly_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> True \<and> (\<forall>x. True)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma foo_asm:
+  "silly x y \<Longrightarrow> silly y z
+    \<Longrightarrow> (silly x z \<Longrightarrow> silly a b) \<Longrightarrow> silly z z \<Longrightarrow> silly a b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly y z; silly x z \<Longrightarrow> silly a b; silly z z\<rbrakk> \<Longrightarrow> silly a b<\STATESEP>apply (strengthen_asm silly_trans[mk_strg I A])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly y z; silly z z; silly y z \<Longrightarrow> silly a b\<rbrakk> \<Longrightarrow> silly a b<\STATESEP>apply (strengthen_asm silly_trans[mk_strg I A])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly y z; silly z z; silly z z \<Longrightarrow> silly a b\<rbrakk> \<Longrightarrow> silly a b<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma foo_method:
+  "silly x y \<Longrightarrow> silly a b \<Longrightarrow> silly b c
+    \<Longrightarrow> silly x y \<and> (\<forall>x :: nat. z \<longrightarrow> silly a c )"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> silly x y \<and> (\<forall>x. z \<longrightarrow> silly a c)<\STATESEP>using [[strengthen_trace = true]]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> silly x y \<and> (\<forall>x. z \<longrightarrow> silly a c)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> z \<longrightarrow> silly a c<\STATESEP>apply (strengthen_method \<open>rule silly_trans\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> z \<longrightarrow> (\<exists>y. silly a y \<and> silly y c)<\STATESEP>apply (strengthen_method \<open>rule exI[where x=b]\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>silly x y; silly a b; silly b c\<rbrakk> \<Longrightarrow> z \<longrightarrow> silly a b \<and> silly b c<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

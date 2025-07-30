@@ -1,0 +1,65 @@
+<\STATESEP>theory ArchInterrupt_IF
+imports Interrupt_IF
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Interrupt_IF_assms<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_invoke_irq_handler_reads_respects[Interrupt_IF_assms, wp]:
+  "reads_respects_f aag l (silc_inv aag st) (arch_invoke_irq_handler irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. reads_respects_f aag l (silc_inv aag st) (arch_invoke_irq_handler irq)<\STATESEP>apply (cases irq; wpsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1. irq = ACKIrq x1 \<Longrightarrow> reads_respects_f aag l (silc_inv aag st) (do_machine_op (maskInterrupt False x1))<\STATESEP>apply (rule reads_respects_f[OF dmo_maskInterrupt_reads_respects, where Q=\<top>, simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1. irq = ACKIrq x1 \<Longrightarrow> \<lbrace>silc_inv aag st\<rbrace> do_machine_op (maskInterrupt False x1) \<lbrace>\<lambda>_. silc_inv aag st\<rbrace><\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_control_reads_respects[Interrupt_IF_assms]:
+  "reads_respects aag (l :: 'a subject_label) (K (arch_authorised_irq_ctl_inv aag i))
+                  (arch_invoke_irq_control i)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. reads_respects aag l (K (arch_authorised_irq_ctl_inv aag i)) (arch_invoke_irq_control i)<\STATESEP>apply (cases i)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4. i = ArchIRQControlIssue x1 x2 x3 x4 \<Longrightarrow> reads_respects aag l (K (arch_authorised_irq_ctl_inv aag i)) (arch_invoke_irq_control i)<\STATESEP>apply (simp add: setIRQTrigger_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4. i = ArchIRQControlIssue x1 x2 x3 x4 \<Longrightarrow> reads_respects aag l (\<lambda>y. arch_authorised_irq_ctl_inv aag (ArchIRQControlIssue x1 x2 x3 x4)) (liftE (do y <- do_machine_op (machine_op_lift (setIRQTrigger_impl x1 x4));
+y <- set_irq_state IRQSignal x1;
+cap_insert (IRQHandlerCap x1) x3 x2
+od))<\STATESEP>apply (wp cap_insert_reads_respects set_irq_state_reads_respects dmo_mol_reads_respects | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4. \<lbrakk>i = ArchIRQControlIssue x1 x2 x3 x4; arch_authorised_irq_ctl_inv aag (ArchIRQControlIssue x1 x2 x3 x4)\<rbrakk> \<Longrightarrow> aag_can_read aag (fst x3) \<and> aag_can_read aag (fst x2)<\STATESEP>apply (clarsimp simp: arch_authorised_irq_ctl_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_control_globals_equiv[Interrupt_IF_assms]:
+  "\<lbrace>globals_equiv st and valid_arch_state and valid_global_objs\<rbrace>
+   arch_invoke_irq_control ai
+   \<lbrace>\<lambda>_. globals_equiv st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv st and valid_arch_state and valid_global_objs\<rbrace> arch_invoke_irq_control ai \<lbrace>\<lambda>_. globals_equiv st\<rbrace><\STATESEP>apply (induct ai)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1a x2a x3a x4a. \<lbrace>globals_equiv st and valid_arch_state and valid_global_objs\<rbrace> arch_invoke_irq_control (ArchIRQControlIssue x1a x2a x3a x4a) \<lbrace>\<lambda>_. globals_equiv st\<rbrace><\STATESEP>apply (simp add: setIRQTrigger_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1a x2a x3a x4a. \<lbrace>\<lambda>a. globals_equiv st a \<and> valid_arch_state a \<and> valid_global_objs a\<rbrace> liftE (do y <- do_machine_op (machine_op_lift (setIRQTrigger_impl x1a x4a));
+y <- set_irq_state IRQSignal x1a;
+cap_insert (IRQHandlerCap x1a) x3a x2a
+od) \<lbrace>\<lambda>_. globals_equiv st\<rbrace><\STATESEP>apply (wpsimp wp: set_irq_state_globals_equiv set_irq_state_valid_global_objs
+                    cap_insert_globals_equiv'' dmo_mol_globals_equiv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_handler_globals_equiv[Interrupt_IF_assms, wp]:
+  "arch_invoke_irq_handler irq \<lbrace>globals_equiv st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv st\<rbrace> arch_invoke_irq_handler irq \<lbrace>\<lambda>_. globals_equiv st\<rbrace><\STATESEP>by (cases irq; wpsimp wp: dmo_no_mem_globals_equiv simp: maskInterrupt_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Interrupt_IF_1?: Interrupt_IF_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Interrupt_IF_1 aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Interrupt_IF_1 aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Interrupt_IF_1 aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Interrupt_IF_1 aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Interrupt_IF_1 aag<\STATESEP>by (unfold_locales; (fact Interrupt_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Interrupt_IF_1 aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

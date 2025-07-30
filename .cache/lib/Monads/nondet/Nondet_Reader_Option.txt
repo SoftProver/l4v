@@ -1,0 +1,418 @@
+<\STATESEP>theory Nondet_Reader_Option
+imports
+  Nondet_No_Fail
+  Reader_Option_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>syntax
+  "_doO" :: "[dobinds, 'a] => 'a"  ("(DO (_);//   (_)//OD)" 100)<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  "_doO (_dobinds b bs) e" == "_doO b (_doO bs e)"
+  "_doO (_nobind b) e"     == "b |>> (CONST K_bind e)"
+  "DO x <- a; e OD"        == "a |>> (\<lambda>x. e)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ovalid_K_bind_wp[wp]:
+  "ovalid P f Q \<Longrightarrow> ovalid P (K_bind f x) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P\<rblot> f \<lblot>Q\<rblot> \<Longrightarrow> \<lblot>P\<rblot> K_bind f x \<lblot>Q\<rblot><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_K_bind_wp[wp]:
+  "ovalidNF P f Q \<Longrightarrow> ovalidNF P (K_bind f x) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF P f Q \<Longrightarrow> ovalidNF P (K_bind f x) Q<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_K_bind[wp]:
+  "no_ofail P f \<Longrightarrow> no_ofail P (K_bind f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail P f \<Longrightarrow> no_ofail P (K_bind f x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_gets_the_eq:
+  "no_ofail P f \<longleftrightarrow> no_fail P (gets_the (f :: ('s, 'a) lookup))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail P f = no_fail P (gets_the f)<\STATESEP>by (auto simp: no_ofail_def no_fail_def gets_the_def gets_def
+                 get_def assert_opt_def bind_def return_def fail_def
+         split: option.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas no_ofail_gets_the =
+  no_ofail_gets_the_eq[THEN iffD1]<\STATESEP>0<\TRANSEP><\STATESEP>lemma ovalid_gets_the:
+  "ovalid P f Q \<Longrightarrow> \<lbrace>P\<rbrace> gets_the f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P\<rblot> f \<lblot>Q\<rblot> \<Longrightarrow> \<lbrace>P\<rbrace> gets_the f \<lbrace>Q\<rbrace><\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>\<lblot>P\<rblot> f \<lblot>Q\<rblot>; P s; f s = Some y\<rbrakk> \<Longrightarrow> Q y s<\STATESEP>apply (fastforce dest: use_ovalid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monad_simps =
+  gets_the_def bind_def assert_def assert_opt_def
+  simpler_gets_def fail_def return_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma gets_the_opt_map:
+  "gets_the (f |> g) = do x \<leftarrow> gets_the f; assert_opt (g x) od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (f |> g) = do x <- gets_the f;
+assert_opt (g x)
+od<\STATESEP>by (rule ext) (simp add: monad_simps opt_map_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_opt_o:
+  "gets_the (f |> Some o g) = do x \<leftarrow> gets_the f; return (g x) od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (f ||> g) = do x <- gets_the f;
+return (g x)
+od<\STATESEP>by (simp add: gets_the_opt_map assert_opt_Some)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_obind:
+  "gets_the (f |>> g) = gets_the f >>= (\<lambda>x. gets_the (g x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (f >>= g) = do x <- gets_the f;
+gets_the (g x)
+od<\STATESEP>by (rule ext) (simp add: monad_simps obind_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_return:
+  "gets_the (oreturn x) = return x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (oreturn x) = return x<\STATESEP>by (simp add: monad_simps oreturn_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_fail:
+  "gets_the ofail = fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the ofail = fail<\STATESEP>by (simp add: monad_simps ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_ogets:
+  "gets_the (ogets s) = gets s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (ogets s) = gets s<\STATESEP>by (clarsimp simp: monad_simps ogets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_returnOk:
+  "gets_the (oreturnOk x) = returnOk x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (oreturnOk x) = returnOk x<\STATESEP>by (simp add: monad_simps oreturnOk_def returnOk_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_throwError:
+  "gets_the (othrow e) = throwError e"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (othrow e) = throwError e<\STATESEP>by (simp add: monad_simps othrow_def throwError_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_assert:
+  "gets_the (oassert P) = assert P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (oassert P) = assert P<\STATESEP>by (simp add: oassert_def assert_def gets_the_fail gets_the_return)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_assert_opt:
+  "gets_the (oassert_opt P) = assert_opt P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (oassert_opt P) = assert_opt P<\STATESEP>by (simp add: oassert_opt_def assert_opt_def gets_the_return gets_the_fail split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_if_distrib:
+  "gets_the (if P then f else g) = (if P then gets_the f else gets_the g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (if P then f else g) = (if P then gets_the f else gets_the g)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_oapply_comp:
+  "gets_the (oapply x \<circ> f) = gets_map f x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (oapply x \<circ> f) = gets_map f x<\STATESEP>by (fastforce simp: gets_map_def gets_the_def o_def gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_Some:
+  "gets_the (\<lambda>_. Some x) = return x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (\<lambda>_. Some x) = return x<\STATESEP>by (simp add: gets_the_def assert_opt_Some)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_oapply2_comp:
+  "gets_the (oapply2 y x \<circ> f) = gets_map (swp f y) x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (oapply2 y x \<circ> f) = gets_map (swp f y) x<\STATESEP>by (clarsimp simp: gets_map_def gets_the_def o_def gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_obind_bind_eq:
+  "(gets (f |>> (\<lambda>x. g x))) =
+   (gets f >>= (\<lambda>x. case x of None \<Rightarrow> return None | Some y \<Rightarrow> gets (g y)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets (f >>= g) = do x <- gets f;
+case x of None \<Rightarrow> return None | Some y \<Rightarrow> gets (g y)
+od<\STATESEP>by (auto simp: simpler_gets_def bind_def obind_def return_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fst_assert_opt:
+  "fst (assert_opt opt s) = (if opt = None then {} else {(the opt,s)})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (assert_opt opt s) = (if opt = None then {} else {(the opt, s)})<\STATESEP>by (clarsimp simp: assert_opt_def fail_def return_def split: option.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas omonad_simps [simp] =
+  gets_the_opt_map assert_opt_Some gets_the_obind
+  gets_the_return gets_the_fail gets_the_returnOk
+  gets_the_throwError gets_the_assert gets_the_Some
+  gets_the_oapply_comp<\STATESEP>0<\TRANSEP><\STATESEP>section "Relation between option monad loops and non-deterministic monad loops."<\STATESEP>0<\TRANSEP><\STATESEP>lemma gets_the_conv:
+  "(gets_the B s) = (case B s of Some r' \<Rightarrow> ({(r', s)}, False) | _ \<Rightarrow> ({}, True))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the B s = (case B s of None \<Rightarrow> ({}, True) | Some r' \<Rightarrow> ({(r', s)}, False))<\STATESEP>by (auto simp: gets_the_def gets_def get_def bind_def return_def fail_def assert_opt_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_loop_terminates:
+  "whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s
+    \<longleftrightarrow> (\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s))" (is "?L \<longleftrightarrow> ?R")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s = (\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s))<\STATESEP>proof<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+ 2. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>assume ?L<\STATESEP>2<\TRANSEP>proof (state)
+this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s
+
+goal (2 subgoals):
+ 1. whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+ 2. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>show ?R<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s
+
+goal (1 subgoal):
+ 1. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>proof (induct rule: whileLoop_terminates.induct[case_names 1 2])<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>r s. \<not> C r s \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+ 2. \<And>r s. \<lbrakk>C r s; \<forall>(r', s')\<in>fst (gets_the (B r) s). whileLoop_terminates C (\<lambda>a. gets_the (B a)) r' s' \<and> (\<exists>rs'. (Some r', rs') \<in> option_while' (\<lambda>a. C a s') (\<lambda>a. B a s'))\<rbrakk> \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>case (2 r s)<\STATESEP>4<\TRANSEP>proof (state)
+this:
+C r s
+\<forall>(r', s')\<in>fst (gets_the (B r) s). whileLoop_terminates C (\<lambda>a. gets_the (B a)) r' s' \<and> (\<exists>rs'. (Some r', rs') \<in> option_while' (\<lambda>a. C a s') (\<lambda>a. B a s'))
+
+goal (2 subgoals):
+ 1. \<And>r s. \<not> C r s \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+ 2. \<And>r s. \<lbrakk>C r s; \<forall>(r', s')\<in>fst (gets_the (B r) s). whileLoop_terminates C (\<lambda>a. gets_the (B a)) r' s' \<and> (\<exists>rs'. (Some r', rs') \<in> option_while' (\<lambda>a. C a s') (\<lambda>a. B a s'))\<rbrakk> \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+C r s
+\<forall>(r', s')\<in>fst (gets_the (B r) s). whileLoop_terminates C (\<lambda>a. gets_the (B a)) r' s' \<and> (\<exists>rs'. (Some r', rs') \<in> option_while' (\<lambda>a. C a s') (\<lambda>a. B a s'))<\STATESEP>show ?case<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+C r s
+\<forall>(r', s')\<in>fst (gets_the (B r) s). whileLoop_terminates C (\<lambda>a. gets_the (B a)) r' s' \<and> (\<exists>rs'. (Some r', rs') \<in> option_while' (\<lambda>a. C a s') (\<lambda>a. B a s'))
+
+goal (1 subgoal):
+ 1. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>by (cases "B r s") (auto simp: gets_the_conv intro: option_while'.intros)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. \<And>r s. \<not> C r s \<Longrightarrow> \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>qed (auto intro: option_while'.intros)<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>assume ?R<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. \<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>show ?L<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<exists>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>proof (elim exE)<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>fix rs'<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>assume "(Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. \<And>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>have "whileLoop_terminates C (\<lambda>a. gets_the (B a)) (the (Some r)) s"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. whileLoop_terminates C (\<lambda>a. gets_the (B a)) (the (Some r)) s<\STATESEP>by induct (auto intro: whileLoop_terminates.intros simp: gets_the_conv)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) (the (Some r)) s
+
+goal (1 subgoal):
+ 1. \<And>rs'. (Some r, rs') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s) \<Longrightarrow> whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) (the (Some r)) s<\STATESEP>show ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) (the (Some r)) s
+
+goal (1 subgoal):
+ 1. whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+whileLoop_terminates C (\<lambda>a. gets_the (B a)) r s
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma gets_the_whileLoop:
+  fixes C :: "'a \<Rightarrow> 's \<Rightarrow> bool"
+  shows "whileLoop C (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>fix r s r' s'<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>assume "(Some (r,s), Some (r', s')) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some (r, s), Some (r', s')) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(Some (r, s), Some (r', s')) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))<\STATESEP>have "s = s' \<and> (Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(Some (r, s), Some (r', s')) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. s = s' \<and> (Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>by (induct "Some (r, s)" "Some (r', s')" arbitrary: r s)
+       (auto intro: option_while'.intros simp: gets_the_conv split: option.splits)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+s = s' \<and> (Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some (?ra2, ?s2), Some (?r'2, ?s'2)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a)) \<Longrightarrow> ?s2 = ?s'2 \<and> (Some ?ra2, Some ?r'2) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>note wl'_Inl = this<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some (?ra2, ?s2), Some (?r'2, ?s'2)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a)) \<Longrightarrow> ?s2 = ?s'2 \<and> (Some ?ra2, Some ?r'2) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some (?ra2, ?s2), Some (?r'2, ?s'2)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a)) \<Longrightarrow> ?s2 = ?s'2 \<and> (Some ?ra2, Some ?r'2) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>fix r s<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>assume "(Some (r,s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some (r, s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(Some (r, s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))<\STATESEP>have "(Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(Some (r, s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. (Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>by (induct "Some (r, s)" "None :: (('a \<times> 's) option)" arbitrary: r s)
+         (auto intro: option_while'.intros simp: gets_the_conv split: option.splits)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+(Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some (?ra2, ?s2), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a)) \<Longrightarrow> (Some ?ra2, None) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>note wl'_Inr = this<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some (?ra2, ?s2), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a)) \<Longrightarrow> (Some ?ra2, None) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some (?ra2, ?s2), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a)) \<Longrightarrow> (Some ?ra2, None) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>fix r s r'<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>assume "(Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>have "(Some (r,s), Some (r',s)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(Some r, Some r') \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. (Some (r, s), Some (r', s)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))<\STATESEP>by (induct "Some r" "Some r'" arbitrary: r)
+       (auto intro: whileLoop_results.intros simp: gets_the_conv)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+(Some (r, s), Some (r', s)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some ?ra2, Some ?r'2) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2) \<Longrightarrow> (Some (?ra2, ?s2), Some (?r'2, ?s2)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>note option_while'_Some = this<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some ?ra2, Some ?r'2) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2) \<Longrightarrow> (Some (?ra2, ?s2), Some (?r'2, ?s2)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some ?ra2, Some ?r'2) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2) \<Longrightarrow> (Some (?ra2, ?s2), Some (?r'2, ?s2)) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>fix r s<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>assume "(Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)<\STATESEP>have "(Some (r,s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(Some r, None) \<in> option_while' (\<lambda>a. C a s) (\<lambda>a. B a s)
+
+goal (1 subgoal):
+ 1. (Some (r, s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))<\STATESEP>by (induct "Some r" "None :: 'a option" arbitrary: r)
+       (auto intro: whileLoop_results.intros simp: gets_the_conv)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+(Some (r, s), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(Some ?ra2, None) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2) \<Longrightarrow> (Some (?ra2, ?s2), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>note option_while'_None = this<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Some ?ra2, None) \<in> option_while' (\<lambda>a. C a ?s2) (\<lambda>a. B a ?s2) \<Longrightarrow> (Some (?ra2, ?s2), None) \<in> whileLoop_results C (\<lambda>a. gets_the (B a))
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>have "\<And>s. owhile C B r s = None
+          \<Longrightarrow> whileLoop C (\<lambda>a. gets_the (B a)) r s = ({}, True)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. owhile C B r s = None \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r s = ({}, True)<\STATESEP>by (auto simp: whileLoop_def owhile_def option_while_def option_while'_THE gets_the_loop_terminates
+      split: if_split_asm dest: option_while'_None wl'_Inl option_while'_inj)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+owhile C B r ?s = None \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({}, True)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+owhile C B r ?s = None \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({}, True)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>have "\<And>s r'. owhile C B r s = Some r'
+          \<Longrightarrow> whileLoop C (\<lambda>a. gets_the (B a)) r s = ({(r', s)}, False)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s r'. owhile C B r s = Some r' \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r s = ({(r', s)}, False)<\STATESEP>by (auto simp: whileLoop_def owhile_def option_while_def option_while'_THE gets_the_loop_terminates
+      split: if_split_asm dest: wl'_Inl wl'_Inr option_while'_inj intro: option_while'_Some)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+owhile C B r ?s = Some ?r' \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({(?r', ?s)}, False)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+owhile C B r ?s = None \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({}, True)
+owhile C B r ?s = Some ?r' \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({(?r', ?s)}, False)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+owhile C B r ?s = None \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({}, True)
+owhile C B r ?s = Some ?r' \<Longrightarrow> whileLoop C
+  (\<lambda>a. gets_the (B a)) r ?s = ({(?r', ?s)}, False)
+
+goal (1 subgoal):
+ 1. whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)<\STATESEP>by (auto simp: fun_eq_iff gets_the_conv split: option.split)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+whileLoop C
+  (\<lambda>a. gets_the (B a)) r = gets_the (owhile C B r)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

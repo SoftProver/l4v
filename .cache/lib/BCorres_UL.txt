@@ -1,0 +1,236 @@
+<\STATESEP>theory BCorres_UL
+imports
+  Monads.Nondet_VCG
+  Crunch_Instances_NonDet
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition s_bcorres_underlying where
+  "s_bcorres_underlying t f g s \<equiv> (\<lambda>(x,y). (x, t y)) ` (fst (f s)) \<subseteq> (fst (g (t s)))"<\STATESEP>0<\TRANSEP><\STATESEP>definition bcorres_underlying where
+  "bcorres_underlying t f g \<equiv> \<forall>s. s_bcorres_underlying t f g s"<\STATESEP>0<\TRANSEP><\STATESEP>lemma wpc_helper_bcorres:
+  "bcorres_underlying t f g \<Longrightarrow>  wpc_helper P Q (bcorres_underlying t f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t f g \<Longrightarrow> wpc_helper P Q (bcorres_underlying t f g)<\STATESEP>by (simp add: wpc_helper_def split: prod.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpc_helper_s_bcorres:
+  "s_bcorres_underlying t f g s \<Longrightarrow>  wpc_helper P Q (s_bcorres_underlying t f g s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t f g s \<Longrightarrow> wpc_helper P Q (s_bcorres_underlying t f g s)<\STATESEP>by (simp add: wpc_helper_def split: prod.split)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>f. bcorres_underlying t f g" wpc_helper_bcorres<\STATESEP>0<\TRANSEP><\STATESEP>wpc_setup "\<lambda>f. s_bcorres_underlying t f g s" wpc_helper_bcorres<\STATESEP>0<\TRANSEP><\STATESEP>lemma s_bcorres_underlying_split[wp_split]:
+  "(\<And>r s'. (r,s') \<in> fst (f s) \<Longrightarrow>  (s_bcorres_underlying t (g r) (g' r) s')) \<Longrightarrow>
+   s_bcorres_underlying t f f' s \<Longrightarrow>
+   s_bcorres_underlying t (f >>= g) (f' >>= g') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r s'. (r, s') \<in> fst (f s) \<Longrightarrow> s_bcorres_underlying t (g r) (g' r) s'; s_bcorres_underlying t f f' s\<rbrakk> \<Longrightarrow> s_bcorres_underlying t (f >>= g) (f' >>= g') s<\STATESEP>by (clarsimp simp: s_bcorres_underlying_def bind_def) force<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_split[wp_split]:
+  "(\<And>r. (bcorres_underlying t (g r) (g' r))) \<Longrightarrow>
+   bcorres_underlying t f f' \<Longrightarrow>
+   bcorres_underlying t (f >>= g) (f' >>= g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. bcorres_underlying t (g r) (g' r); bcorres_underlying t f f'\<rbrakk> \<Longrightarrow> bcorres_underlying t (f >>= g) (f' >>= g')<\STATESEP>by (simp add: bcorres_underlying_def s_bcorres_underlying_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_s_bcorres_underlying[wp]:
+  "s_bcorres_underlying t (f s) (f' (t s)) s \<Longrightarrow> s_bcorres_underlying t (get >>= f) (get >>= f') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t (f s) (f' (t s)) s \<Longrightarrow> s_bcorres_underlying t (get >>= f) (get >>= f') s<\STATESEP>by (simp add: gets_def s_bcorres_underlying_def get_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_bcorres[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' (t x))) \<Longrightarrow> bcorres_underlying t (get >>= f) (get >>= f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' (t x))) \<Longrightarrow> bcorres_underlying t (get >>= f) (get >>= f')<\STATESEP>by (simp add: bcorres_underlying_def get_s_bcorres_underlying)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_s_bcorres_underlying[wp]:
+  "x' (t s) = x s \<Longrightarrow>  s_bcorres_underlying t (gets x) (gets x') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x' (t s) = x s \<Longrightarrow> s_bcorres_underlying t (gets x) (gets x') s<\STATESEP>by (simp add: s_bcorres_underlying_def gets_def get_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_bcorres_underlying[wp]:
+  "(\<And>s. x' (t s) = x s) \<Longrightarrow> bcorres_underlying t (gets x) (gets x')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. x' (t s) = x s) \<Longrightarrow> bcorres_underlying t (gets x) (gets x')<\STATESEP>by (simp add: bcorres_underlying_def gets_s_bcorres_underlying)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_map_bcorres_underlying[wp]:
+  "(\<And>s. f' (t s) p = f s p) \<Longrightarrow> bcorres_underlying t (gets_map f p) (gets_map f' p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. f' (t s) p = f s p) \<Longrightarrow> bcorres_underlying t (gets_map f p) (gets_map f' p)<\STATESEP>by (simp add: gets_map_def bcorres_underlying_def s_bcorres_underlying_def simpler_gets_def
+                bind_def assert_opt_def fail_def return_def
+        split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_bcorres_underlying':
+  "(\<And>xa. bcorres_underlying t (f (x xa)) (f' (x' (t xa)))) \<Longrightarrow>
+  bcorres_underlying t (gets x >>= f) (gets x' >>= f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>xa. bcorres_underlying t (f (x xa)) (f' (x' (t xa)))) \<Longrightarrow> bcorres_underlying t (gets x >>= f) (gets x' >>= f')<\STATESEP>by (wpsimp simp: gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_bcorres_underlying[wp]:
+  "f = f' \<Longrightarrow> bcorres_underlying t (assert f) (assert f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f = f' \<Longrightarrow> bcorres_underlying t (assert f) (assert f')<\STATESEP>by (simp add: assert_def bcorres_underlying_def return_def s_bcorres_underlying_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_bcorres[wp]:
+  "bcorres_underlying t (return x) (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (return x) (return x)<\STATESEP>by (simp add:return_def bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma drop_sbcorres_underlying:
+  "bcorres_underlying t f g \<Longrightarrow> s_bcorres_underlying t f g s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t f g \<Longrightarrow> s_bcorres_underlying t f g s<\STATESEP>by (simp add: bcorres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_sbcorres_underlying:
+  "(\<And>s. s_bcorres_underlying t f g s) \<Longrightarrow> bcorres_underlying t f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. s_bcorres_underlying t f g s) \<Longrightarrow> bcorres_underlying t f g<\STATESEP>by (simp add: bcorres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_throwError[wp]:
+  "bcorres_underlying t (throwError a) (throwError a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (throwError a) (throwError a)<\STATESEP>by (wpsimp simp: throwError_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma s_bcorres_underlying_splitE[wp_split]:
+  "(\<And>r s'. (Inr r,s') \<in> fst (f s) \<Longrightarrow> s_bcorres_underlying t (g r) (g' r) s') \<Longrightarrow>
+   s_bcorres_underlying t f f' s \<Longrightarrow>
+   s_bcorres_underlying t (f >>=E g) (f' >>=E g') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r s'. (Inr r, s') \<in> fst (f s) \<Longrightarrow> s_bcorres_underlying t (g r) (g' r) s'; s_bcorres_underlying t f f' s\<rbrakk> \<Longrightarrow> s_bcorres_underlying t (f >>=E g) (f' >>=E g') s<\STATESEP>by (wpsimp simp: bindE_def lift_def split: sum.splits | rule conjI drop_sbcorres_underlying)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_s_bcorres_underlyingE[wp]:
+  "s_bcorres_underlying t (f s) (f' (t s)) s \<Longrightarrow>
+   s_bcorres_underlying t (liftE get >>=E f) (liftE get >>=E f') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t (f s) (f' (t s)) s \<Longrightarrow> s_bcorres_underlying t (liftE get >>=E f) (liftE get >>=E f') s<\STATESEP>by (simp add: gets_def s_bcorres_underlying_def get_def bindE_def bind_def return_def liftE_def lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_splitE[wp_split]:
+  "(\<And>r. bcorres_underlying t (g r) (g' r)) \<Longrightarrow>
+   bcorres_underlying t f f' \<Longrightarrow>
+   bcorres_underlying t (f >>=E g) (f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. bcorres_underlying t (g r) (g' r); bcorres_underlying t f f'\<rbrakk> \<Longrightarrow> bcorres_underlying t (f >>=E g) (f' >>=E g')<\STATESEP>by (simp add: bcorres_underlying_def s_bcorres_underlying_splitE)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas return_s_bcorres_underlying[wp] = drop_sbcorres_underlying[OF return_bcorres]<\STATESEP>0<\TRANSEP><\STATESEP>lemma liftE_s_bcorres_underlying[wp]:
+  "s_bcorres_underlying t f f' s \<Longrightarrow> s_bcorres_underlying t (liftE f) (liftE f') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t f f' s \<Longrightarrow> s_bcorres_underlying t (liftE f) (liftE f') s<\STATESEP>by (wpsimp simp: liftE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_bcorres_underlying[wp]:
+  "bcorres_underlying t f f' \<Longrightarrow>  bcorres_underlying t (liftE f) (liftE f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (liftE f) (liftE f')<\STATESEP>by (simp add: bcorres_underlying_def liftE_s_bcorres_underlying)<\STATESEP>1<\TRANSEP><\STATESEP>lemma returnOk_bcorres_underlying[wp]:
+  "bcorres_underlying t (returnOk x) (returnOk x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (returnOk x) (returnOk x)<\STATESEP>by (wpsimp simp: returnOk_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_s_bcorres_underlying[wp]:
+  "\<lbrakk> \<lbrakk>P = P'; P\<rbrakk> \<Longrightarrow> s_bcorres_underlying t f f' s; P = P' \<rbrakk> \<Longrightarrow>
+   s_bcorres_underlying t (whenE P f) (whenE P' f') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrakk>P = P'; P\<rbrakk> \<Longrightarrow> s_bcorres_underlying t f f' s; P = P'\<rbrakk> \<Longrightarrow> s_bcorres_underlying t (whenE P f) (whenE P' f') s<\STATESEP>by (wpsimp simp: whenE_def|rule drop_sbcorres_underlying)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_s_bcorres_underlying[wp]:
+  "A \<subseteq> B \<Longrightarrow> s_bcorres_underlying t (select A) (select B) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<subseteq> B \<Longrightarrow> s_bcorres_underlying t (select A) (select B) s<\STATESEP>by (simp add: s_bcorres_underlying_def select_def image_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_s_bcorres_underlying[wp]:
+  "s_bcorres_underlying t fail fail s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t fail fail s<\STATESEP>by (simp add: s_bcorres_underlying_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_bcorres_underlying[wp]:
+  "bcorres_underlying t fail fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t fail fail<\STATESEP>by (simp add: bcorres_underlying_def fail_s_bcorres_underlying)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assertE_bcorres_underlying[wp]:
+  "bcorres_underlying t (assertE P) (assertE P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (assertE P) (assertE P)<\STATESEP>by (wpsimp simp: assertE_def returnOk_def|rule conjI)+<\STATESEP>1<\TRANSEP><\STATESEP>lemmas assertE_s_bcorres_underlying[wp] = drop_sbcorres_underlying[OF assertE_bcorres_underlying]<\STATESEP>0<\TRANSEP><\STATESEP>lemma when_s_bcorres_underlying[wp]:
+  "(P \<Longrightarrow> s_bcorres_underlying t f f' s) \<Longrightarrow> s_bcorres_underlying t (when P f) (when P f') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> s_bcorres_underlying t f f' s) \<Longrightarrow> s_bcorres_underlying t (when P f) (when P f') s<\STATESEP>by (simp add: return_s_bcorres_underlying when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_bcorres_underlying[wp]:
+  "(P \<Longrightarrow> bcorres_underlying t f f') \<Longrightarrow> bcorres_underlying t (when P f) (when P f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> bcorres_underlying t f f') \<Longrightarrow> bcorres_underlying t (when P f) (when P f')<\STATESEP>by (simp add: bcorres_underlying_def when_s_bcorres_underlying)<\STATESEP>1<\TRANSEP><\STATESEP>lemma put_bcorres_underlying[wp]:
+  "t f = f' \<Longrightarrow> bcorres_underlying t (put f) (put f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. t f = f' \<Longrightarrow> bcorres_underlying t (put f) (put f')<\STATESEP>by (simp add: bcorres_underlying_def s_bcorres_underlying_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_bcorres_underlying[wp]:
+  "(\<And>x. t (f x) = f' (t x)) \<Longrightarrow> bcorres_underlying t (modify f) (modify f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. t (f x) = f' (t x)) \<Longrightarrow> bcorres_underlying t (modify f) (modify f')<\STATESEP>by (wpsimp simp: modify_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftM_bcorres_underlying[wp]:
+  "bcorres_underlying t m m' \<Longrightarrow> bcorres_underlying t (liftM f m) (liftM f m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t m m' \<Longrightarrow> bcorres_underlying t (liftM f m) (liftM f m')<\STATESEP>by (wpsimp simp: liftM_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sequence_x_bcorres_underlying[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow>
+   bcorres_underlying t (sequence_x (map f xs)) (sequence_x (map f' xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (sequence_x (map f xs)) (sequence_x (map f' xs))<\STATESEP>by (induct xs; wpsimp simp: sequence_x_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sequence_bcorres_underlying[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow>
+   bcorres_underlying t (sequence (map f xs)) (sequence (map f' xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (sequence (map f xs)) (sequence (map f' xs))<\STATESEP>by (induct xs; wpsimp simp: sequence_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_bcorres_underlying[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapM_x f xs) (mapM_x f' xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapM_x f xs) (mapM_x f' xs)<\STATESEP>by (wpsimp simp: mapM_x_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_bcorres_underlying[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapM f xs) (mapM f' xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapM f xs) (mapM f' xs)<\STATESEP>by (simp add: mapM_def | wp)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_s_bcorres_underlyingE':
+  "s_bcorres_underlying t (f (x s)) (f' (x' (t s))) s \<Longrightarrow>
+   s_bcorres_underlying t (liftE (gets x) >>=E f) (liftE (gets x') >>=E f') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t (f (x s)) (f' (x' (t s))) s \<Longrightarrow> s_bcorres_underlying t (liftE (gets x) >>=E f) (liftE (gets x') >>=E f') s<\STATESEP>by (simp add: gets_def liftE_def lift_def bindE_def) wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_filterM[wp]:
+  "(\<And>x. bcorres_underlying t (a x) (a' x)) \<Longrightarrow> bcorres_underlying t (filterM a b) (filterM a' b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (a x) (a' x)) \<Longrightarrow> bcorres_underlying t (filterM a b) (filterM a' b)<\STATESEP>by (induct b; wpsimp simp: filterM_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma option_rec_bcorres_underlying[wp_split]:
+  "(\<And>x y. bcorres_underlying t (g x y) (g' x y)) \<Longrightarrow>
+   (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow>
+   bcorres_underlying t (rec_option f g a b) (rec_option f' g' a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x y. bcorres_underlying t (g x y) (g' x y); \<And>x. bcorres_underlying t (f x) (f' x)\<rbrakk> \<Longrightarrow> bcorres_underlying t (rec_option f g a b) (rec_option f' g' a b)<\STATESEP>by (cases a, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_mapME[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapME f r) (mapME f' r)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapME f r) (mapME f' r)<\STATESEP>by (induct r; wpsimp simp: mapME_def sequenceE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handle2_bcorres_underlying[wp]:
+  "bcorres_underlying t f f' \<Longrightarrow>
+   (\<And>x. bcorres_underlying t (g x) (g' x)) \<Longrightarrow>
+   bcorres_underlying t (f <handle2> g) (f' <handle2> g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres_underlying t f f'; \<And>x. bcorres_underlying t (g x) (g' x)\<rbrakk> \<Longrightarrow> bcorres_underlying t (f <handle2> g) (f' <handle2> g')<\STATESEP>by (wpsimp simp: handleE'_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftME_bcorres_underlying[wp]:
+  "bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (liftME a f) (liftME a f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (liftME a f) (liftME a f')<\STATESEP>by (wpsimp simp: liftME_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma zipWithM_x_bcorres[wp]:
+  "(\<And>x y. bcorres_underlying t (f x y) (f' x y) ) \<Longrightarrow>
+   bcorres_underlying t (zipWithM_x f xs ys) (zipWithM_x f' xs ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. bcorres_underlying t (f x y) (f' x y)) \<Longrightarrow> bcorres_underlying t (zipWithM_x f xs ys) (zipWithM_x f' xs ys)<\STATESEP>by (wpsimp simp: zipWithM_x_def zipWith_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_x_bcorres_underlying[wp]:
+  "(\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapME_x f xs) (mapME_x f' xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. bcorres_underlying t (f x) (f' x)) \<Longrightarrow> bcorres_underlying t (mapME_x f xs) (mapME_x f' xs)<\STATESEP>by (induct xs; wpsimp simp: mapME_x_def sequenceE_x_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_bind_bcorres[wp]:
+  "bcorres_underlying t (f >>= g) (f' >>= g') \<Longrightarrow>
+   bcorres_underlying t (liftE f >>=E g) (liftE f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (f >>= g) (f' >>= g') \<Longrightarrow> bcorres_underlying t (liftE f >>=E g) (liftE f' >>=E g')<\STATESEP>by (simp add: gets_def bcorres_underlying_def s_bcorres_underlying_def get_def bind_def return_def
+                split_def liftE_def bindE_def lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_f_bcorres[wp]: "bcorres_underlying t (select_f f) (select_f f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (select_f f) (select_f f)<\STATESEP>by (fastforce simp: select_f_def bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_if[wp]:
+  "(b \<Longrightarrow> bcorres_underlying t f f') \<Longrightarrow>
+   (\<not>b \<Longrightarrow> bcorres_underlying t g g') \<Longrightarrow>
+   bcorres_underlying t (if b then f else g) (if b then f' else g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b \<Longrightarrow> bcorres_underlying t f f'; \<not> b \<Longrightarrow> bcorres_underlying t g g'\<rbrakk> \<Longrightarrow> bcorres_underlying t (if b then f else g) (if b then f' else g')<\STATESEP>by (case_tac b; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_opt_bcorres_underlying[wp]:
+  "bcorres_underlying t (assert_opt f) (assert_opt f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t (assert_opt f) (assert_opt f)<\STATESEP>by (wpsimp simp: assert_opt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessb_corres_underlying[wp]:
+  "bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (unless a f) (unless a f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (unless a f) (unless a f')<\STATESEP>by (wpsimp simp: unless_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_bcorres_underlying[wp]:
+  "A \<subseteq> B \<Longrightarrow> bcorres_underlying t (select A) (select B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<subseteq> B \<Longrightarrow> bcorres_underlying t (select A) (select B)<\STATESEP>by (fastforce simp: bcorres_underlying_def select_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma catch_bcorres[wp]:
+  "bcorres_underlying t f f' \<Longrightarrow>
+   (\<And>x. bcorres_underlying t (g x) (g' x)) \<Longrightarrow>
+   bcorres_underlying t (f <catch> g) (f' <catch> g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres_underlying t f f'; \<And>x. bcorres_underlying t (g x) (g' x)\<rbrakk> \<Longrightarrow> bcorres_underlying t (f <catch> g) (f' <catch> g')<\STATESEP>unfolding catch_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres_underlying t f f'; \<And>x. bcorres_underlying t (g x) (g' x)\<rbrakk> \<Longrightarrow> bcorres_underlying t (do x <- f;
+case x of Inl e \<Rightarrow> g e | Inr b \<Rightarrow> return b
+od) (do x <- f';
+case x of Inl e \<Rightarrow> g' e | Inr b \<Rightarrow> return b
+od)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_bcorres_underlying[wp]:
+  "\<lbrakk> \<lbrakk>P = P'; P\<rbrakk> \<Longrightarrow> bcorres_underlying t f f'; P = P' \<rbrakk> \<Longrightarrow>
+  bcorres_underlying t (whenE P f) (whenE P' f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrakk>P = P'; P\<rbrakk> \<Longrightarrow> bcorres_underlying t f f'; P = P'\<rbrakk> \<Longrightarrow> bcorres_underlying t (whenE P f) (whenE P' f')<\STATESEP>unfolding whenE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrakk>P = P'; P\<rbrakk> \<Longrightarrow> bcorres_underlying t f f'; P = P'\<rbrakk> \<Longrightarrow> bcorres_underlying t (if P then f else returnOk ()) (if P' then f' else returnOk ())<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessE_bcorres[wp]:
+  "bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (unlessE P f) (unlessE P f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying t f f' \<Longrightarrow> bcorres_underlying t (unlessE P f) (unlessE P f')<\STATESEP>by (wpsimp simp: unlessE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_bcorres[wp]:
+  "\<lbrakk> bcorres_underlying t f f';  bcorres_underlying t g g' \<rbrakk> \<Longrightarrow>
+  bcorres_underlying t (f \<sqinter> g) (f' \<sqinter> g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres_underlying t f f'; bcorres_underlying t g g'\<rbrakk> \<Longrightarrow> bcorres_underlying t (f \<sqinter> g) (f' \<sqinter> g')<\STATESEP>by (fastforce simp: alternative_def bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_bcorres_underlying[wp]:
+  "(\<And>s. f' (t s) = f s) \<Longrightarrow> bcorres_underlying t (gets_the f) (gets_the f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. f' (t s) = f s) \<Longrightarrow> bcorres_underlying t (gets_the f) (gets_the f')<\STATESEP>by (wpsimp simp: gets_the_def)<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+structure CrunchBCorresInstance : CrunchInstance =
+struct
+  val name = "bcorres";
+  val prefix_name_scheme = false;
+  type extra = term;
+  val eq_extra = ae_conv;
+  fun parse_extra ctxt extra
+        = case extra of
+             "" => error "bcorres needs truncate function"
+             | e =>(Syntax.parse_term ctxt "%_. True", Syntax.parse_term ctxt e);
+  val has_preconds = false;
+  fun mk_term _ body extra =
+    (Syntax.parse_term @{context} "bcorres_underlying") $ extra $ body $ body;
+  fun dest_term (Const (@{const_name "bcorres_underlying"}, _) $ extra $ body $ _)
+        = SOME (Term.dummy, body, extra)
+    | dest_term _ = NONE;
+  fun put_precond _ ((v as Const (@{const_name "bcorres_underlying"}, _)) $ extra $ body $ body')
+        = v $ extra $ body $ body'
+    | put_precond _ _ = error "put_precond: not an bcorres term";
+  val pre_thms = [];
+  val wpc_tactic = WeakestPreCases.wp_cases_tac @{thms wpc_processors};
+  fun wps_tactic _ _ _ = no_tac;
+  val magic = Syntax.parse_term @{context}
+    "\<lambda>mapp_lambda_ignore. bcorres_underlying t_free_ignore mapp_lambda_ignore g_free_ignore";
+  val get_monad_state_type = get_nondet_monad_state_type;
+end;
+
+structure CrunchBCorres : CRUNCH = Crunch(CrunchBCorresInstance);
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>setup \<open>
+  add_crunch_instance "bcorres" (CrunchBCorres.crunch_x, CrunchBCorres.crunch_ignore_add_dels)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

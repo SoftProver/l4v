@@ -1,0 +1,133 @@
+<\STATESEP>theory ArchStructures_H
+imports
+  "Lib.Lib"
+  Types_H
+  Hardware_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_H<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym asid = "word32"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ASID :: "asid \<Rightarrow> asid"
+where ASID_def[simp]:
+ "ASID \<equiv> id"<\STATESEP>0<\TRANSEP><\STATESEP>datatype arch_capability =
+    ASIDPoolCap (capASIDPool : machine_word) (capASIDBase : asid)
+  | ASIDControlCap
+  | PageCap (capVPIsDevice : bool) (capVPBasePtr : machine_word) (capVPRights : vmrights) (capVPSize : vmpage_size) (capVPMappedAddress : "(asid * vptr) option")
+  | PageTableCap (capPTBasePtr : machine_word) (capPTMappedAddress : "(asid * vptr) option")
+  | PageDirectoryCap (capPDBasePtr : machine_word) (capPDMappedASID : "asid option")<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capASIDPool_update :: "(machine_word \<Rightarrow> machine_word) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capASIDPool_update f (ASIDPoolCap v0 v1) = ASIDPoolCap (f v0) v1"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capASIDBase_update :: "(asid \<Rightarrow> asid) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capASIDBase_update f (ASIDPoolCap v0 v1) = ASIDPoolCap v0 (f v1)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capVPIsDevice_update :: "(bool \<Rightarrow> bool) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capVPIsDevice_update f (PageCap v0 v1 v2 v3 v4) = PageCap (f v0) v1 v2 v3 v4"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capVPBasePtr_update :: "(machine_word \<Rightarrow> machine_word) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capVPBasePtr_update f (PageCap v0 v1 v2 v3 v4) = PageCap v0 (f v1) v2 v3 v4"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capVPRights_update :: "(vmrights \<Rightarrow> vmrights) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capVPRights_update f (PageCap v0 v1 v2 v3 v4) = PageCap v0 v1 (f v2) v3 v4"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capVPSize_update :: "(vmpage_size \<Rightarrow> vmpage_size) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capVPSize_update f (PageCap v0 v1 v2 v3 v4) = PageCap v0 v1 v2 (f v3) v4"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capVPMappedAddress_update :: "(((asid * vptr) option) \<Rightarrow> ((asid * vptr) option)) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capVPMappedAddress_update f (PageCap v0 v1 v2 v3 v4) = PageCap v0 v1 v2 v3 (f v4)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capPTBasePtr_update :: "(machine_word \<Rightarrow> machine_word) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capPTBasePtr_update f (PageTableCap v0 v1) = PageTableCap (f v0) v1"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capPTMappedAddress_update :: "(((asid * vptr) option) \<Rightarrow> ((asid * vptr) option)) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capPTMappedAddress_update f (PageTableCap v0 v1) = PageTableCap v0 (f v1)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capPDBasePtr_update :: "(machine_word \<Rightarrow> machine_word) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capPDBasePtr_update f (PageDirectoryCap v0 v1) = PageDirectoryCap (f v0) v1"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  capPDMappedASID_update :: "((asid option) \<Rightarrow> (asid option)) \<Rightarrow> arch_capability \<Rightarrow> arch_capability"
+where
+  "capPDMappedASID_update f (PageDirectoryCap v0 v1) = PageDirectoryCap v0 (f v1)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  ASIDPoolCap_trans :: "(machine_word) \<Rightarrow> (asid) \<Rightarrow> arch_capability" ("ASIDPoolCap'_ \<lparr> capASIDPool= _, capASIDBase= _ \<rparr>")
+where
+  "ASIDPoolCap_ \<lparr> capASIDPool= v0, capASIDBase= v1 \<rparr> == ASIDPoolCap v0 v1"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  PageCap_trans :: "(bool) \<Rightarrow> (machine_word) \<Rightarrow> (vmrights) \<Rightarrow> (vmpage_size) \<Rightarrow> ((asid * vptr) option) \<Rightarrow> arch_capability" ("PageCap'_ \<lparr> capVPIsDevice= _, capVPBasePtr= _, capVPRights= _, capVPSize= _, capVPMappedAddress= _ \<rparr>")
+where
+  "PageCap_ \<lparr> capVPIsDevice= v0, capVPBasePtr= v1, capVPRights= v2, capVPSize= v3, capVPMappedAddress= v4 \<rparr> == PageCap v0 v1 v2 v3 v4"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  PageTableCap_trans :: "(machine_word) \<Rightarrow> ((asid * vptr) option) \<Rightarrow> arch_capability" ("PageTableCap'_ \<lparr> capPTBasePtr= _, capPTMappedAddress= _ \<rparr>")
+where
+  "PageTableCap_ \<lparr> capPTBasePtr= v0, capPTMappedAddress= v1 \<rparr> == PageTableCap v0 v1"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  PageDirectoryCap_trans :: "(machine_word) \<Rightarrow> (asid option) \<Rightarrow> arch_capability" ("PageDirectoryCap'_ \<lparr> capPDBasePtr= _, capPDMappedASID= _ \<rparr>")
+where
+  "PageDirectoryCap_ \<lparr> capPDBasePtr= v0, capPDMappedASID= v1 \<rparr> == PageDirectoryCap v0 v1"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  isASIDPoolCap :: "arch_capability \<Rightarrow> bool"
+where
+ "isASIDPoolCap v \<equiv> case v of
+    ASIDPoolCap v0 v1 \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  isASIDControlCap :: "arch_capability \<Rightarrow> bool"
+where
+ "isASIDControlCap v \<equiv> case v of
+    ASIDControlCap \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  isPageCap :: "arch_capability \<Rightarrow> bool"
+where
+ "isPageCap v \<equiv> case v of
+    PageCap v0 v1 v2 v3 v4 \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  isPageTableCap :: "arch_capability \<Rightarrow> bool"
+where
+ "isPageTableCap v \<equiv> case v of
+    PageTableCap v0 v1 \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  isPageDirectoryCap :: "arch_capability \<Rightarrow> bool"
+where
+ "isPageDirectoryCap v \<equiv> case v of
+    PageDirectoryCap v0 v1 \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>datatype asidpool =
+    ASIDPool "asid \<Rightarrow> ((machine_word) option)"<\STATESEP>0<\TRANSEP><\STATESEP>datatype arch_kernel_object =
+    KOASIDPool asidpool
+  | KOPTE pte
+  | KOPDE pde<\STATESEP>0<\TRANSEP><\STATESEP>datatype arch_tcb =
+    ArchThread (atcbContext : user_context)<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  atcbContext_update :: "(user_context \<Rightarrow> user_context) \<Rightarrow> arch_tcb \<Rightarrow> arch_tcb"
+where
+  "atcbContext_update f (ArchThread v0) = ArchThread (f v0)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  ArchThread_trans :: "(user_context) \<Rightarrow> arch_tcb" ("ArchThread'_ \<lparr> atcbContext= _ \<rparr>")
+where
+  "ArchThread_ \<lparr> atcbContext= v0 \<rparr> == ArchThread v0"<\STATESEP>0<\TRANSEP><\STATESEP>lemma atcbContext_atcbContext_update [simp]:
+  "atcbContext (atcbContext_update f v) = f (atcbContext v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. atcbContext (atcbContext_update f v) = f (atcbContext v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>consts'
+minUntypedSizeBits :: "nat"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+maxUntypedSizeBits :: "nat"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+archObjSize :: "arch_kernel_object \<Rightarrow> nat"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+atcbContextSet :: "user_context \<Rightarrow> arch_tcb \<Rightarrow> arch_tcb"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+atcbContextGet :: "arch_tcb \<Rightarrow> user_context"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+asidHighBits :: "nat"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+asidLowBits :: "nat"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+asidBits :: "nat"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+asidRange :: "(asid * asid)"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+asidHighBitsOf :: "asid \<Rightarrow> asid"<\STATESEP>0<\TRANSEP><\STATESEP>defs minUntypedSizeBits_def:
+"minUntypedSizeBits \<equiv> 4"<\STATESEP>0<\TRANSEP><\STATESEP>defs maxUntypedSizeBits_def:
+"maxUntypedSizeBits \<equiv> 29"<\STATESEP>0<\TRANSEP><\STATESEP>defs archObjSize_def:
+"archObjSize a\<equiv> (case a of
+                  KOASIDPool v10 \<Rightarrow>   pageBits
+                | KOPTE v11 \<Rightarrow>   pteBits
+                | KOPDE v12 \<Rightarrow>   pdeBits
+                )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+"newArchTCB \<equiv> ArchThread_ \<lparr>
+    atcbContext= newContext
+    \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>defs atcbContextSet_def:
+"atcbContextSet uc atcb \<equiv> atcb \<lparr> atcbContext := uc \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>defs atcbContextGet_def:
+"atcbContextGet \<equiv> atcbContext"<\STATESEP>0<\TRANSEP><\STATESEP>defs asidHighBits_def:
+"asidHighBits \<equiv> 7"<\STATESEP>0<\TRANSEP><\STATESEP>defs asidLowBits_def:
+"asidLowBits \<equiv> 10"<\STATESEP>0<\TRANSEP><\STATESEP>defs asidBits_def:
+"asidBits \<equiv> asidHighBits + asidLowBits"<\STATESEP>0<\TRANSEP><\STATESEP>defs asidRange_def:
+"asidRange\<equiv> (0, (1 `~shiftL~` asidBits) - 1)"<\STATESEP>0<\TRANSEP><\STATESEP>defs asidHighBitsOf_def:
+"asidHighBitsOf asid\<equiv> (asid `~shiftR~` asidLowBits) && mask asidHighBits"<\STATESEP>0<\TRANSEP><\STATESEP>datatype arch_kernel_object_type =
+    PDET
+  | PTET
+  | ASIDPoolT<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  archTypeOf :: "arch_kernel_object \<Rightarrow> arch_kernel_object_type"
+where
+  "archTypeOf (KOPDE e) = PDET"
+| "archTypeOf (KOPTE e) = PTET"
+| "archTypeOf (KOASIDPool e) = ASIDPoolT"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

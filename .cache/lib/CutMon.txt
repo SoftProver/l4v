@@ -1,0 +1,65 @@
+<\STATESEP>theory CutMon
+  imports
+    Monads.Nondet_Empty_Fail
+    Monads.Nondet_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cutMon :: "('s \<Rightarrow> bool) \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad" where
+ "cutMon P f \<equiv> \<lambda>s. if P s then f s else fail s"<\STATESEP>0<\TRANSEP><\STATESEP>lemma cutMon_walk_bind:
+  "cutMon ((=) s) (f >>= g) =
+   (cutMon ((=) s) f >>= (\<lambda>rv. cutMon (\<lambda>s'. (rv, s') \<in> fst (f s)) (g rv)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cutMon ((=) s) (f >>= g) = do rv <- cutMon ((=) s) f;
+cutMon (\<lambda>s'. (rv, s') \<in> fst (f s)) (g rv)
+od<\STATESEP>apply (rule ext, simp add: cutMon_def bind_def fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. s = x \<longrightarrow> (\<Union>a\<in>fst (f x). fst (case a of (x, xa) \<Rightarrow> g x xa)) = (\<Union>xa\<in>fst (f x). fst (case xa of (rv, s) \<Rightarrow> if (rv, s) \<in> fst (f x) then g rv s else fail s)) \<and> ((\<exists>x\<in>fst (f x). snd (case x of (x, xa) \<Rightarrow> g x xa)) \<or> snd (f x)) = ((\<exists>xa\<in>fst (f x). snd (case xa of (rv, s) \<Rightarrow> if (rv, s) \<in> fst (f x) then g rv s else fail s)) \<or> snd (f x))<\STATESEP>apply (auto simp: split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cutMon_walk_bindE:
+  "cutMon ((=) s) (f >>=E g) =
+   (cutMon ((=) s) f >>=E (\<lambda>rv. cutMon (\<lambda>s'. (Inr rv, s') \<in> fst (f s)) (g rv)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cutMon ((=) s) (f >>=E g) = doE rv <- cutMon ((=) s) f;
+cutMon (\<lambda>s'. (Inr rv, s') \<in> fst (f s)) (g rv)
+odE<\STATESEP>apply (simp add: bindE_def cutMon_walk_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do rv <- cutMon ((=) s) f;
+cutMon (\<lambda>s'. (rv, s') \<in> fst (f s)) (lift g rv)
+od = cutMon ((=) s) f >>= lift (\<lambda>rv. cutMon (\<lambda>s'. (Inr rv, s') \<in> fst (f s)) (g rv))<\STATESEP>apply (rule bind_cong, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>v sa s'. (v, s') \<in> fst (cutMon ((=) s) f sa) \<Longrightarrow> cutMon (\<lambda>s'. (v, s') \<in> fst (f s)) (lift g v) s' = lift (\<lambda>rv. cutMon (\<lambda>s'. (Inr rv, s') \<in> fst (f s)) (g rv)) v s'<\STATESEP>apply (simp add: cutMon_def lift_def fail_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>v sa s'. \<lbrakk>s = sa; (v, s') \<in> fst (f sa)\<rbrakk> \<Longrightarrow> (case v of Inl x \<Rightarrow> throwError x | Inr x \<Rightarrow> g x) s' = (case v of Inl x \<Rightarrow> throwError x | Inr v' \<Rightarrow> \<lambda>sa. if (Inr v', sa) \<in> fst (f s) then g v' sa else fail sa) s'<\STATESEP>apply (clarsimp split: sum.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cutMon_walk_if:
+  "cutMon ((=) s) (if P then f else g) = (if P then cutMon ((=) s) f else cutMon ((=) s) g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cutMon ((=) s) (if P then f else g) = (if P then cutMon ((=) s) f else cutMon ((=) s) g)<\STATESEP>by (simp add: cutMon_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cutMon_valid_drop:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> cutMon R f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> cutMon R f \<lbrace>Q\<rbrace><\STATESEP>by (simp add: cutMon_def valid_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cutMon_validE_drop:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> cutMon R f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> cutMon R f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: validE_def cutMon_valid_drop)<\STATESEP>1<\TRANSEP><\STATESEP>lemma snd_cutMon:
+  "snd (cutMon P f s) = (P s \<longrightarrow> snd (f s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. snd (cutMon P f s) = (P s \<longrightarrow> snd (f s))<\STATESEP>by (simp add: cutMon_def fail_def split: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cutMon_assert_opt:
+  "cutMon P (gets_the f >>= g) = gets_the (\<lambda>s. if P s then f s else None) >>= g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cutMon P (gets_the f >>= g) = gets_the (\<lambda>s. if P s then f s else None) >>= g<\STATESEP>by (simp add: cutMon_def gets_the_def exec_gets
+                bind_assoc fun_eq_iff assert_opt_def
+         split: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_use_cutMon:
+  "\<lbrakk> \<And>s. empty_fail (cutMon ((=) s) f) \<rbrakk> \<Longrightarrow> empty_fail f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. empty_fail (cutMon ((=) s) f)) \<Longrightarrow> empty_fail f<\STATESEP>by (fastforce simp add: empty_fail_def cutMon_def split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_drop_cutMon:
+  "empty_fail f \<Longrightarrow> empty_fail (cutMon P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> empty_fail (cutMon P f)<\STATESEP>by (simp add: empty_fail_def fail_def cutMon_def split: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cutMon:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> empty_fail (cutMon ((=) s) f) \<rbrakk> \<Longrightarrow> empty_fail (cutMon P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> empty_fail (cutMon ((=) s) f)) \<Longrightarrow> empty_fail (cutMon P f)<\STATESEP>by (fastforce simp: empty_fail_def cutMon_def fail_def split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas empty_fail_cutMon_intros =
+     cutMon_walk_bind[THEN arg_cong[where f=empty_fail], THEN iffD2,
+                      OF empty_fail_bind, OF _ empty_fail_cutMon]
+     cutMon_walk_bindE[THEN arg_cong[where f=empty_fail], THEN iffD2,
+                       OF empty_fail_bindE, OF _ empty_fail_cutMon]
+     cutMon_walk_if[THEN arg_cong[where f=empty_fail], THEN iffD2,
+                    OF empty_fail_If]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

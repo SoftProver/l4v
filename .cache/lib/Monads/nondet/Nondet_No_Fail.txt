@@ -1,0 +1,179 @@
+<\STATESEP>theory Nondet_No_Fail
+  imports
+    Nondet_In_Monad
+    Nondet_VCG
+    WPSimp
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Non-Failure"<\STATESEP>0<\TRANSEP><\STATESEP>definition no_fail :: "('s \<Rightarrow> bool) \<Rightarrow> ('s,'a) nondet_monad \<Rightarrow> bool" where
+  "no_fail P m \<equiv> \<forall>s. P s \<longrightarrow> \<not>snd (m s)"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>@{method wpc} setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma no_fail_pre[wp_pre]:
+  "\<lbrakk> no_fail P f; \<And>s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> no_fail Q f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P f; \<And>s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> no_fail Q f<\STATESEP>by (simp add: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpc_helper_no_fail_final:
+  "no_fail Q f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (no_fail P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail Q f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (no_fail P f)<\STATESEP>by (clarsimp simp: wpc_helper_def elim!: no_fail_pre)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. no_fail P m" wpc_helper_no_fail_final<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Bundles\<close><\STATESEP>0<\TRANSEP><\STATESEP>bundle no_pre = hoare_pre [wp_pre del] no_fail_pre [wp_pre del]<\STATESEP>0<\TRANSEP><\STATESEP>bundle classic_wp_pre =
+  hoare_pre [wp_pre del]
+  all_classic_wp_combs[wp_comb del]
+  all_classic_wp_combs[wp_comb]<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Lemmas\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma no_failD:
+  "\<lbrakk> no_fail P m; P s \<rbrakk> \<Longrightarrow> \<not>(snd (m s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P m; P s\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>by (simp add: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_return[simp, wp]:
+  "no_fail \<top> (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (return x)<\STATESEP>by (simp add: return_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_bind[wp]:
+  "\<lbrakk> \<And>rv. no_fail (R rv) (g rv); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>; no_fail P f \<rbrakk> \<Longrightarrow> no_fail (P and Q) (f >>= (\<lambda>rv. g rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. no_fail (R rv) (g rv); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>; no_fail P f\<rbrakk> \<Longrightarrow> no_fail (P and Q) (f >>= g)<\STATESEP>unfolding no_fail_def bind_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<forall>s. R rv s \<longrightarrow> \<not> snd (g rv s); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>; \<forall>s. P s \<longrightarrow> \<not> snd (f s)\<rbrakk> \<Longrightarrow> \<forall>s. (P and Q) s \<longrightarrow> \<not> snd (\<Union> (fst ` (\<lambda>(x, y). g x y) ` fst (f s)), True \<in> snd ` (\<lambda>(x, y). g x y) ` fst (f s) \<or> snd (f s))<\STATESEP>using post_by_hoare<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>\<lbrace>?P\<rbrace> ?f \<lbrace>?Q\<rbrace>; ?P ?s; (?r, ?s') \<in> fst (?f ?s)\<rbrakk> \<Longrightarrow> ?Q ?r ?s'
+
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<forall>s. R rv s \<longrightarrow> \<not> snd (g rv s); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>; \<forall>s. P s \<longrightarrow> \<not> snd (f s)\<rbrakk> \<Longrightarrow> \<forall>s. (P and Q) s \<longrightarrow> \<not> snd (\<Union> (fst ` (\<lambda>(x, y). g x y) ` fst (f s)), True \<in> snd ` (\<lambda>(x, y). g x y) ` fst (f s) \<or> snd (f s))<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_get[simp, wp]:
+  "no_fail \<top> get"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) get<\STATESEP>by (simp add: get_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_put[simp, wp]:
+  "no_fail \<top> (put s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (put s)<\STATESEP>by (simp add: put_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_modify[wp,simp]:
+  "no_fail \<top> (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (modify f)<\STATESEP>by (wpsimp simp: modify_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_gets_simp[simp]:
+  "no_fail P (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P (gets f)<\STATESEP>by (wpsimp simp: gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_gets[wp]:
+  "no_fail \<top> (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (gets f)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_select[wp,simp]:
+  "no_fail \<top> (select S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (select S)<\STATESEP>by (simp add: no_fail_def select_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_alt[wp]:
+  "\<lbrakk> no_fail P f; no_fail Q g \<rbrakk> \<Longrightarrow> no_fail (P and Q) (f \<sqinter> g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P f; no_fail Q g\<rbrakk> \<Longrightarrow> no_fail (P and Q) (f \<sqinter> g)<\STATESEP>by (simp add: no_fail_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_when[wp]:
+  "(P \<Longrightarrow> no_fail Q f) \<Longrightarrow> no_fail (if P then Q else \<top>) (when P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> no_fail Q f) \<Longrightarrow> no_fail (if P then Q else (\<lambda>_. True)) (when P f)<\STATESEP>by (simp add: when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_unless[wp]:
+  "(\<not>P \<Longrightarrow> no_fail Q f) \<Longrightarrow> no_fail (if P then \<top> else Q) (unless P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> no_fail Q f) \<Longrightarrow> no_fail (if P then \<lambda>_. True else Q) (unless P f)<\STATESEP>by (simp add: unless_def when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_fail[simp, wp]:
+  "no_fail \<bottom> fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. False) fail<\STATESEP>by (simp add: fail_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_assert[simp, wp]:
+  "no_fail (\<lambda>_. P) (assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. P) (assert P)<\STATESEP>by (simp add: assert_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_assert_opt[simp, wp]:
+  "no_fail (\<lambda>_. P \<noteq> None) (assert_opt P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. P \<noteq> None) (assert_opt P)<\STATESEP>by (simp add: assert_opt_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_case_option[wp]:
+  assumes f: "no_fail P f"
+  assumes g: "\<And>x. no_fail (Q x) (g x)"
+  shows "no_fail (if x = None then P else Q (the x)) (case_option f g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (if x = None then P else Q (the x)) (case x of None \<Rightarrow> f | Some x \<Rightarrow> g x)<\STATESEP>by (clarsimp simp add: f g)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_if[wp]:
+  "\<lbrakk> P \<Longrightarrow> no_fail Q f; \<not>P \<Longrightarrow> no_fail R g \<rbrakk> \<Longrightarrow> no_fail (if P then Q else R) (if P then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> no_fail Q f; \<not> P \<Longrightarrow> no_fail R g\<rbrakk> \<Longrightarrow> no_fail (if P then Q else R) (if P then f else g)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_apply[wp]:
+  "no_fail P (f (g x)) \<Longrightarrow> no_fail P (f $ g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P (f (g x)) \<Longrightarrow> no_fail P (f $ g x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_undefined[simp, wp]:
+  "no_fail \<bottom> undefined"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. False) undefined<\STATESEP>by (simp add: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_returnOK[simp, wp]:
+  "no_fail \<top> (returnOk x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (returnOk x)<\STATESEP>by (simp add: returnOk_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_assume_pre:
+  "(\<And>s. P s \<Longrightarrow> no_fail P f) \<Longrightarrow> no_fail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> no_fail P f) \<Longrightarrow> no_fail P f<\STATESEP>by (simp add: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_liftM_eq[simp]:
+  "no_fail P (liftM f m) = no_fail P m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P (liftM f m) = no_fail P m<\STATESEP>by (auto simp: liftM_def no_fail_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_select_f[wp]:
+  "no_fail (\<lambda>s. \<not>snd S) (select_f S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>s. \<not> snd S) (select_f S)<\STATESEP>by (simp add: select_f_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_liftM[wp]:
+  "no_fail P m \<Longrightarrow> no_fail P (liftM f m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P m \<Longrightarrow> no_fail P (liftM f m)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_pre_and:
+  "no_fail P f \<Longrightarrow> no_fail (P and Q) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P f \<Longrightarrow> no_fail (P and Q) f<\STATESEP>by (erule no_fail_pre) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_spec:
+  "\<lbrakk> \<And>s. no_fail (((=) s) and P) f \<rbrakk> \<Longrightarrow> no_fail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. no_fail ((=) s and P) f) \<Longrightarrow> no_fail P f<\STATESEP>by (simp add: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_assertE[wp]:
+  "no_fail (\<lambda>_. P) (assertE P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. P) (assertE P)<\STATESEP>by (simp add: assertE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_spec_pre:
+  "\<lbrakk> no_fail (((=) s) and P') f; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> no_fail (((=) s) and P) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail ((=) s and P') f; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> no_fail ((=) s and P) f<\STATESEP>by (erule no_fail_pre, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_whenE[wp]:
+  "\<lbrakk> G \<Longrightarrow> no_fail P f \<rbrakk> \<Longrightarrow> no_fail (\<lambda>s. G \<longrightarrow> P s) (whenE G f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (G \<Longrightarrow> no_fail P f) \<Longrightarrow> no_fail (\<lambda>s. G \<longrightarrow> P s) (whenE G f)<\STATESEP>by (simp add: whenE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_unlessE[wp]:
+  "\<lbrakk> \<not> G \<Longrightarrow> no_fail P f \<rbrakk> \<Longrightarrow> no_fail (\<lambda>s. \<not> G \<longrightarrow> P s) (unlessE G f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> G \<Longrightarrow> no_fail P f) \<Longrightarrow> no_fail (\<lambda>s. \<not> G \<longrightarrow> P s) (unlessE G f)<\STATESEP>by (simp add: unlessE_def split: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_throwError[wp]:
+  "no_fail \<top> (throwError e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (throwError e)<\STATESEP>by (simp add: throwError_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_liftE[wp]:
+  "no_fail P f \<Longrightarrow> no_fail P (liftE f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P f \<Longrightarrow> no_fail P (liftE f)<\STATESEP>unfolding liftE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P f \<Longrightarrow> no_fail P (do r <- f;
+return (Inr r)
+od)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_gets_the[wp]:
+  "no_fail (\<lambda>s. f s \<noteq> None) (gets_the f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>s. f s \<noteq> None) (gets_the f)<\STATESEP>unfolding gets_the_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>s. f s \<noteq> None) (gets f >>= assert_opt)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_lift:
+  "(\<And>y. x = Inr y \<Longrightarrow> no_fail P (f y)) \<Longrightarrow> no_fail (\<lambda>s. \<not>isl x \<longrightarrow> P s) (lift f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>y. x = Inr y \<Longrightarrow> no_fail P (f y)) \<Longrightarrow> no_fail (\<lambda>s. \<not> isl x \<longrightarrow> P s) (lift f x)<\STATESEP>unfolding lift_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>y. x = Inr y \<Longrightarrow> no_fail P (f y)) \<Longrightarrow> no_fail (\<lambda>s. \<not> isl x \<longrightarrow> P s) (case x of Inl e \<Rightarrow> throwError e | Inr v' \<Rightarrow> f v')<\STATESEP>by (wpsimp wp: no_fail_throwError split: sum.splits | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_R_valid_eq:
+  "\<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, - = \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>rv s. \<not> isl rv \<longrightarrow> R (projr rv) s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, - = \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>rv s. \<not> isl rv \<longrightarrow> R (projr rv) s\<rbrace><\STATESEP>unfolding validE_R_def validE_def valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>s. Q s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> True | Inr r \<Rightarrow> R r s')) = (\<forall>s. Q s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). \<not> isl r \<longrightarrow> R (projr r) s'))<\STATESEP>by (fastforce split: sum.splits prod.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_bindE[wp]:
+  "\<lbrakk> no_fail P f; \<And>rv. no_fail (R rv) (g rv); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>,- \<rbrakk>
+     \<Longrightarrow> no_fail (P and Q) (f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P f; \<And>rv. no_fail (R rv) (g rv); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, -\<rbrakk> \<Longrightarrow> no_fail (P and Q) (f >>=E g)<\STATESEP>unfolding bindE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P f; \<And>rv. no_fail (R rv) (g rv); \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, -\<rbrakk> \<Longrightarrow> no_fail (P and Q) (f >>= lift g)<\STATESEP>by (wpsimp wp: no_fail_lift simp: validE_R_valid_eq | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_False[simp]:
+  "no_fail (\<lambda>_. False) X"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. False) X<\STATESEP>by (clarsimp simp: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_gets_map[wp]:
+  "no_fail (\<lambda>s. f s p \<noteq> None) (gets_map f p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>s. f s p \<noteq> None) (gets_map f p)<\STATESEP>unfolding gets_map_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>s. f s p \<noteq> None) (do m <- gets f;
+assert_opt (m p)
+od)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_or:
+  "\<lbrakk>no_fail P a; no_fail Q a\<rbrakk> \<Longrightarrow> no_fail (P or Q) a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P a; no_fail Q a\<rbrakk> \<Longrightarrow> no_fail (P or Q) a<\STATESEP>by (clarsimp simp: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_state_assert[wp]:
+  "no_fail P (state_assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P (state_assert P)<\STATESEP>unfolding state_assert_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P (do s <- get;
+assert (P s)
+od)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_condition[wp]:
+  "\<lbrakk>no_fail Q A; no_fail R B\<rbrakk> \<Longrightarrow> no_fail (\<lambda>s. (C s \<longrightarrow> Q s) \<and> (\<not> C s \<longrightarrow> R s)) (condition C A B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail Q A; no_fail R B\<rbrakk> \<Longrightarrow> no_fail (\<lambda>s. (C s \<longrightarrow> Q s) \<and> (\<not> C s \<longrightarrow> R s)) condition C
+  A
+  B<\STATESEP>unfolding condition_def no_fail_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. Q s \<longrightarrow> \<not> snd (A s); \<forall>s. R s \<longrightarrow> \<not> snd (B s)\<rbrakk> \<Longrightarrow> \<forall>s. (C s \<longrightarrow> Q s) \<and> (\<not> C s \<longrightarrow> R s) \<longrightarrow> \<not> snd (if C s then A s else B s)<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_ex_lift:
+  "(\<And>x. no_fail (P x) f) \<Longrightarrow> no_fail (\<lambda>s. \<exists>x. P x s) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. no_fail (P x) f) \<Longrightarrow> no_fail (\<lambda>s. \<exists>x. P x s) f<\STATESEP>by (clarsimp simp: no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_grab_asm:
+  "(G \<Longrightarrow> no_fail P f) \<Longrightarrow> no_fail (\<lambda>s. G \<and> P s) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (G \<Longrightarrow> no_fail P f) \<Longrightarrow> no_fail (\<lambda>s. G \<and> P s) f<\STATESEP>by (cases G; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

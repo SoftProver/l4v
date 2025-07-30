@@ -1,0 +1,306 @@
+<\STATESEP>theory Reader_Option_VCG
+imports
+  Reader_Option_Monad
+  WPSimp
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition ovalid :: "('s \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 'a option) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+  ("\<lblot>_\<rblot>/ _ /\<lblot>_\<rblot>") where
+  "\<lblot>P\<rblot> f \<lblot>Q\<rblot> \<equiv> \<forall>s r. P s \<and> f s = Some r \<longrightarrow> Q r s"<\STATESEP>0<\TRANSEP><\STATESEP>definition ovalidNF :: "('s \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 'a option) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool" where
+  "ovalidNF P f Q \<equiv> \<forall>s. P s \<longrightarrow> (f s \<noteq> None \<and> (\<forall>r. f s = Some r \<longrightarrow> Q r s))"<\STATESEP>0<\TRANSEP><\STATESEP>definition no_ofail where "no_ofail P f \<equiv> \<forall>s. P s \<longrightarrow> f s \<noteq> None"<\STATESEP>0<\TRANSEP><\STATESEP>lemma no_ofail_is_ovalidNF: "no_ofail P f \<equiv> ovalidNF P f (\<lambda>_ _. True)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail P f \<equiv> ovalidNF P f (\<lambda>_ _. True)<\STATESEP>by (simp add: no_ofail_def ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_combine: "\<lbrakk> ovalid P f Q; no_ofail P f \<rbrakk> \<Longrightarrow> ovalidNF P f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>P\<rblot> f \<lblot>Q\<rblot>; no_ofail P f\<rbrakk> \<Longrightarrow> ovalidNF P f Q<\STATESEP>by (auto simp: ovalidNF_def ovalid_def no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_ovalidE:
+  "\<lbrakk>ovalid P f Q; P s; f s = Some r; Q r s \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>P\<rblot> f \<lblot>Q\<rblot>; P s; f s = Some r; Q r s \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (clarsimp simp: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_ovalid:
+  "\<lbrakk>ovalid P f Q; f s = Some r; P s \<rbrakk> \<Longrightarrow> Q r s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>P\<rblot> f \<lblot>Q\<rblot>; f s = Some r; P s\<rbrakk> \<Longrightarrow> Q r s<\STATESEP>by (clarsimp simp: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition owhile_inv ::
+  "('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> 'a option) \<Rightarrow> 'a
+   \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> nat) \<Rightarrow> 's \<Rightarrow> 'a option"
+  where "owhile_inv C B x I M = owhile C B x"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas owhile_add_inv = owhile_inv_def[symmetric]<\STATESEP>0<\TRANSEP><\STATESEP>lemma ovalid_post_taut[wp]:
+  "\<lblot>P\<rblot> f \<lblot>\<top>\<top>\<rblot>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P\<rblot> f \<lblot>\<lambda>_ _. True\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_inv[wp]:
+  "ovalid P f (\<lambda>_. P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P\<rblot> f \<lblot>\<lambda>_. P\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma obind_wp[wp]:
+  "\<lbrakk> \<And>r. ovalid (R r) (g r) Q; ovalid P f R \<rbrakk> \<Longrightarrow> ovalid P (obind f g) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. \<lblot>R r\<rblot> g r \<lblot>Q\<rblot>; \<lblot>P\<rblot> f \<lblot>R\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>P\<rblot> f >>= g \<lblot>Q\<rblot><\STATESEP>by (simp add: ovalid_def obind_def split: option.splits, fast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma oreturn_wp[wp]:
+  "ovalid (P x) (oreturn x) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P x\<rblot> oreturn x \<lblot>P\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ocondition_wp[wp]:
+  "\<lbrakk> ovalid L l Q; ovalid R r Q \<rbrakk>
+   \<Longrightarrow> ovalid (\<lambda>s. if C s then L s else R s) (ocondition C l r) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>L\<rblot> l \<lblot>Q\<rblot>; \<lblot>R\<rblot> r \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>\<lambda>s. if C s then L s else R s\<rblot> ocondition C l r \<lblot>Q\<rblot><\STATESEP>by (auto simp: ovalid_def ocondition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ofail_wp[wp]:
+  "ovalid (\<lambda>_. True) ofail Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>_. True\<rblot> ofail \<lblot>Q\<rblot><\STATESEP>by (simp add: ovalid_def ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma asks_wp[wp]:
+  "ovalid (\<lambda>s. P (f s) s) (asks f) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>s. P (f s) s\<rblot> ogets f \<lblot>P\<rblot><\STATESEP>by (simp add: split_def asks_def oreturn_def obind_def ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma asks_SomeD:
+  "\<lbrakk>asks f s = Some r; Q (f s) s\<rbrakk> \<Longrightarrow> Q r s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ogets f s = Some r; Q (f s) s\<rbrakk> \<Longrightarrow> Q r s<\STATESEP>by (rule use_ovalid[OF asks_wp])<\STATESEP>1<\TRANSEP><\STATESEP>lemma oassert_wp[wp]:
+  "\<lblot>\<lambda>s. Q \<longrightarrow> P () s\<rblot> oassert Q \<lblot>P\<rblot>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>s. Q \<longrightarrow> P () s\<rblot> oassert Q \<lblot>P\<rblot><\STATESEP>apply (simp add: oassert_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Q \<longrightarrow> \<lblot>P ()\<rblot> oreturn () \<lblot>P\<rblot>) \<and> (\<not> Q \<longrightarrow> \<lblot>\<lambda>s. True\<rblot> ofail \<lblot>P\<rblot>)<\STATESEP>apply (intro conjI; wpsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ogets_wp[wp]:
+  "ovalid (\<lambda>s. P (f s) s) (ogets f) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>s. P (f s) s\<rblot> ogets f \<lblot>P\<rblot><\STATESEP>by wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma oguard_wp[wp]:
+  "ovalid (\<lambda>s. f s \<longrightarrow> P () s) (oguard f) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>s. f s \<longrightarrow> P () s\<rblot> oguard f \<lblot>P\<rblot><\STATESEP>by (simp add: ovalid_def oguard_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma oskip_wp[wp]:
+  "ovalid (\<lambda>s. P () s) oskip P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P ()\<rblot> oskip \<lblot>P\<rblot><\STATESEP>by (simp add: ovalid_def oskip_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_if_split:
+  "\<lbrakk> P \<Longrightarrow> \<lblot>Q\<rblot> f \<lblot>S\<rblot>; \<not>P \<Longrightarrow> \<lblot>R\<rblot> g \<lblot>S\<rblot> \<rbrakk> \<Longrightarrow> \<lblot>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not>P \<longrightarrow> R s)\<rblot> if P then f else g \<lblot>S\<rblot>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> \<lblot>Q\<rblot> f \<lblot>S\<rblot>; \<not> P \<Longrightarrow> \<lblot>R\<rblot> g \<lblot>S\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)\<rblot> if P then f else g \<lblot>S\<rblot><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma reader_case_option_wp[wp]:
+  "\<lbrakk>\<And>x. \<lblot>P x\<rblot> m x \<lblot>Q\<rblot>; \<lblot>P'\<rblot> m' \<lblot>Q\<rblot>\<rbrakk>
+   \<Longrightarrow> \<lblot>\<lambda>s. (x = None \<longrightarrow> P' s) \<and> (\<forall>y. x = Some y \<longrightarrow> P y s)\<rblot> case_option m' m x \<lblot>Q\<rblot>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lblot>P x\<rblot> m x \<lblot>Q\<rblot>; \<lblot>P'\<rblot> m' \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>\<lambda>s. (x = None \<longrightarrow> P' s) \<and> (\<forall>y. x = Some y \<longrightarrow> P y s)\<rblot> case x of None \<Rightarrow> m' | Some x \<Rightarrow> m x \<lblot>Q\<rblot><\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_case_prod[wp]:
+  assumes "(\<And>x y. ovalid (P x y) (B x y) Q)"
+  shows "ovalid (case v of (x, y) \<Rightarrow> P x y) (case v of (x, y) \<Rightarrow> B x y) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>case v of (x, y) \<Rightarrow> P x y\<rblot> case v of (x, y) \<Rightarrow> B x y \<lblot>Q\<rblot><\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lblot>P ?x ?y\<rblot> B ?x ?y \<lblot>Q\<rblot>
+
+goal (1 subgoal):
+ 1. \<lblot>case v of (x, y) \<Rightarrow> P x y\<rblot> case v of (x, y) \<Rightarrow> B x y \<lblot>Q\<rblot><\STATESEP>unfolding ovalid_def<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>s r. P ?x ?y s \<and> B ?x ?y s = Some r \<longrightarrow> Q r s
+
+goal (1 subgoal):
+ 1. \<forall>s r. (case v of (x, xa) \<Rightarrow> P x xa) s \<and> (case v of (x, xa) \<Rightarrow> B x xa) s = Some r \<longrightarrow> Q r s<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma owhile_ovalid[wp]:
+  "\<lbrakk>\<And>a. ovalid (\<lambda>s. I a s \<and> C a s) (B a) I;
+    \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s\<rbrakk>
+   \<Longrightarrow> ovalid (I a) (owhile_inv C B a I M) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. \<lblot>\<lambda>s. I a s \<and> C a s\<rblot> B a \<lblot>I\<rblot>; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s\<rbrakk> \<Longrightarrow> \<lblot>I a\<rblot> owhile_inv C B a I M \<lblot>Q\<rblot><\STATESEP>unfolding owhile_inv_def owhile_def ovalid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. \<forall>s r. (I a s \<and> C a s) \<and> B a s = Some r \<longrightarrow> I r s; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s\<rbrakk> \<Longrightarrow> \<forall>s r. I a s \<and> option_while (\<lambda>a. C a s) (\<lambda>a. B a s) a = Some r \<longrightarrow> Q r s<\STATESEP>apply clarify<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s r. \<lbrakk>\<And>a. \<forall>s r. (I a s \<and> C a s) \<and> B a s = Some r \<longrightarrow> I r s; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; option_while (\<lambda>a. C a s) (\<lambda>a. B a s) a = Some r\<rbrakk> \<Longrightarrow> Q r s<\STATESEP>apply (frule (1) option_while_rule[where I = "\<lambda>a. I a s" for s])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s r sa s'. \<lbrakk>\<And>a. \<forall>s r. (I a s \<and> C a s) \<and> B a s = Some r \<longrightarrow> I r s; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; option_while (\<lambda>a. C a s) (\<lambda>a. B a s) a = Some r; C sa s; I sa s; B sa s = Some s'\<rbrakk> \<Longrightarrow> I s' s
+ 2. \<And>s r. \<lbrakk>\<And>a. \<forall>s r. (I a s \<and> C a s) \<and> B a s = Some r \<longrightarrow> I r s; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; option_while (\<lambda>a. C a s) (\<lambda>a. B a s) a = Some r; I r s \<and> \<not> C r s\<rbrakk> \<Longrightarrow> Q r s<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma oassert_opt_ovalid[wp]:
+  "\<lblot>\<lambda>s. \<forall>y. x = Some y \<longrightarrow> Q y s\<rblot> oassert_opt x \<lblot>Q\<rblot>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>s. \<forall>y. x = Some y \<longrightarrow> Q y s\<rblot> oassert_opt x \<lblot>Q\<rblot><\STATESEP>unfolding oassert_opt_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>\<lambda>s. \<forall>y. x = Some y \<longrightarrow> Q y s\<rblot> case x of None \<Rightarrow> ofail | Some x \<Rightarrow> oreturn x \<lblot>Q\<rblot><\STATESEP>by (case_tac x; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>definition ovalid_property where "ovalid_property P x = (\<lambda>s f. (\<forall>r. Some r = x s f \<longrightarrow> P r s))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ovalid_is_triple[wp_trip]:
+  "ovalid P f Q = triple_judgement P f (ovalid_property Q (\<lambda>s f. f s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lblot>P\<rblot> f \<lblot>Q\<rblot> = triple_judgement P f (ovalid_property Q (\<lambda>s f. f s))<\STATESEP>by (auto simp: triple_judgement_def ovalid_def ovalid_property_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_wp_comb1[wp_comb]:
+  "\<lbrakk> ovalid P' f Q; ovalid P f Q'; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> ovalid P f (\<lambda>r s. Q r s \<and> Q' r s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>P'\<rblot> f \<lblot>Q\<rblot>; \<lblot>P\<rblot> f \<lblot>Q'\<rblot>; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lblot>P\<rblot> f \<lblot>\<lambda>r s. Q r s \<and> Q' r s\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_wp_comb2[wp_comb]:
+  "\<lbrakk> ovalid P f Q; \<And>s. P' s \<Longrightarrow> P s \<rbrakk> \<Longrightarrow> ovalid P' f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>P\<rblot> f \<lblot>Q\<rblot>; \<And>s. P' s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> \<lblot>P'\<rblot> f \<lblot>Q\<rblot><\STATESEP>by (auto simp: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_wp_comb3[wp_comb]:
+  "\<lbrakk> ovalid P f Q; ovalid P' f Q' \<rbrakk> \<Longrightarrow> ovalid (\<lambda>s. P s \<and> P' s) f (\<lambda>r s. Q r s \<and> Q' r s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lblot>P\<rblot> f \<lblot>Q\<rblot>; \<lblot>P'\<rblot> f \<lblot>Q'\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>\<lambda>s. P s \<and> P' s\<rblot> f \<lblot>\<lambda>r s. Q r s \<and> Q' r s\<rblot><\STATESEP>by (auto simp: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma obind_NF_wp[wp]:
+  "\<lbrakk> \<And>r. ovalidNF (R r) (g r) Q; ovalidNF P f R \<rbrakk> \<Longrightarrow> ovalidNF P (obind f g) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. ovalidNF (R r) (g r) Q; ovalidNF P f R\<rbrakk> \<Longrightarrow> ovalidNF P (f >>= g) Q<\STATESEP>by (auto simp: ovalidNF_def obind_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma oreturn_NF_wp[wp]:
+  "ovalidNF (P x) (oreturn x) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF (P x) (oreturn x) P<\STATESEP>by (simp add: ovalidNF_def oreturn_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ocondition_NF_wp[wp]:
+  "\<lbrakk> ovalidNF L l Q; ovalidNF R r Q \<rbrakk>
+   \<Longrightarrow> ovalidNF (\<lambda>s. if C s then L s else R s) (ocondition C l r) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ovalidNF L l Q; ovalidNF R r Q\<rbrakk> \<Longrightarrow> ovalidNF (\<lambda>s. if C s then L s else R s) (ocondition C l r) Q<\STATESEP>by (simp add: ovalidNF_def ocondition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ofail_NF_wp[wp]:
+  "ovalidNF (\<lambda>_. False) ofail Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF (\<lambda>_. False) ofail Q<\STATESEP>by (simp add: ovalidNF_def ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ogets_NF_wp[wp]:
+  "ovalidNF (\<lambda>s. P (f s) s) (ogets f) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF (\<lambda>s. P (f s) s) (ogets f) P<\STATESEP>by (simp add: ovalidNF_def ogets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma oguard_NF_wp[wp]:
+  "ovalidNF (\<lambda>s. f s \<and> P () s) (oguard f) P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF (\<lambda>s. f s \<and> P () s) (oguard f) P<\STATESEP>by (simp add: ovalidNF_def oguard_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma oskip_NF_wp[wp]:
+  "ovalidNF (\<lambda>s. P () s) oskip P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF (P ()) oskip P<\STATESEP>by (simp add: ovalidNF_def oskip_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_NF_case_prod[wp]:
+  assumes "(\<And>x y. ovalidNF (P x y) (B x y) Q)"
+  shows "ovalidNF (case v of (x, y) \<Rightarrow> P x y) (case v of (x, y) \<Rightarrow> B x y) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF (case v of (x, y) \<Rightarrow> P x y) (case v of (x, y) \<Rightarrow> B x y) Q<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+ovalidNF (P ?x ?y) (B ?x ?y) Q
+
+goal (1 subgoal):
+ 1. ovalidNF (case v of (x, y) \<Rightarrow> P x y) (case v of (x, y) \<Rightarrow> B x y) Q<\STATESEP>unfolding ovalidNF_def<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>s. P ?x ?y s \<longrightarrow> B ?x ?y s \<noteq> None \<and> (\<forall>r. B ?x ?y s = Some r \<longrightarrow> Q r s)
+
+goal (1 subgoal):
+ 1. \<forall>s. (case v of (x, xa) \<Rightarrow> P x xa) s \<longrightarrow> (case v of (x, xa) \<Rightarrow> B x xa) s \<noteq> None \<and> (\<forall>r. (case v of (x, xa) \<Rightarrow> B x xa) s = Some r \<longrightarrow> Q r s)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma owhile_NF[wp]:
+  "\<lbrakk>\<And>a. ovalidNF (\<lambda>s. I a s \<and> C a s) (B a) I;
+    \<And>a m. ovalid (\<lambda>s. I a s \<and> C a s \<and> M a s = m) (B a) (\<lambda>r s. M r s < m);
+    \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s\<rbrakk>
+   \<Longrightarrow> ovalidNF (I a) (owhile_inv C B a I M) Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. ovalidNF (\<lambda>s. I a s \<and> C a s) (B a) I; \<And>a m. \<lblot>\<lambda>s. I a s \<and> C a s \<and> M a s = m\<rblot> B a \<lblot>\<lambda>r s. M r s < m\<rblot>; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s\<rbrakk> \<Longrightarrow> ovalidNF (I a) (owhile_inv C B a I M) Q<\STATESEP>unfolding owhile_inv_def ovalidNF_def ovalid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s\<rbrakk> \<Longrightarrow> \<forall>s. I a s \<longrightarrow> owhile C B a s \<noteq> None \<and> (\<forall>r. owhile C B a s = Some r \<longrightarrow> Q r s)<\STATESEP>apply clarify<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s\<rbrakk> \<Longrightarrow> owhile C B a s \<noteq> None \<and> (\<forall>r. owhile C B a s = Some r \<longrightarrow> Q r s)<\STATESEP>apply (rule owhile_rule[where I = I and M = "measure (\<lambda>r. M r s)" and s = s for s])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s\<rbrakk> \<Longrightarrow> I a s
+ 2. \<And>s. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s\<rbrakk> \<Longrightarrow> wf (measure (\<lambda>r. M r s))
+ 3. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> (r', r) \<in> measure (\<lambda>r. M r s)
+ 4. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> I r' s
+ 5. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = None\<rbrakk> \<Longrightarrow> None \<noteq> None \<and> (\<forall>r. None = Some r \<longrightarrow> Q r s)
+ 6. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; \<not> C r s\<rbrakk> \<Longrightarrow> Some r \<noteq> None \<and> (\<forall>ra. Some r = Some ra \<longrightarrow> Q ra s)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s\<rbrakk> \<Longrightarrow> wf (measure (\<lambda>r. M r s))
+ 2. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> (r', r) \<in> measure (\<lambda>r. M r s)
+ 3. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> I r' s
+ 4. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = None\<rbrakk> \<Longrightarrow> None \<noteq> None \<and> (\<forall>r. None = Some r \<longrightarrow> Q r s)
+ 5. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; \<not> C r s\<rbrakk> \<Longrightarrow> Some r \<noteq> None \<and> (\<forall>ra. Some r = Some ra \<longrightarrow> Q ra s)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> (r', r) \<in> measure (\<lambda>r. M r s)
+ 2. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> I r' s
+ 3. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = None\<rbrakk> \<Longrightarrow> None \<noteq> None \<and> (\<forall>r. None = Some r \<longrightarrow> Q r s)
+ 4. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; \<not> C r s\<rbrakk> \<Longrightarrow> Some r \<noteq> None \<and> (\<forall>ra. Some r = Some ra \<longrightarrow> Q ra s)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s r r'. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = Some r'\<rbrakk> \<Longrightarrow> I r' s
+ 2. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; C r s; B r s = None\<rbrakk> \<Longrightarrow> None \<noteq> None \<and> (\<forall>r. None = Some r \<longrightarrow> Q r s)
+ 3. \<And>s r. \<lbrakk>\<And>a. \<forall>s. I a s \<and> C a s \<longrightarrow> B a s \<noteq> None \<and> (\<forall>r. B a s = Some r \<longrightarrow> I r s); \<And>a m. \<forall>s r. (I a s \<and> C a s \<and> M a s = m) \<and> B a s = Some r \<longrightarrow> M r s < m; \<And>a s. \<lbrakk>I a s; \<not> C a s\<rbrakk> \<Longrightarrow> Q a s; I a s; I r s; \<not> C r s\<rbrakk> \<Longrightarrow> Some r \<noteq> None \<and> (\<forall>ra. Some r = Some ra \<longrightarrow> Q ra s)<\STATESEP>apply blast+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition ovalidNF_property where
+  "ovalidNF_property P x = (\<lambda>s f. (x s f \<noteq> None \<and> (\<forall>r. Some r = x s f \<longrightarrow> P r s)))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ovalidNF_is_triple[wp_trip]:
+  "ovalidNF P f Q = triple_judgement P f (ovalidNF_property Q (\<lambda>s f. f s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ovalidNF P f Q = triple_judgement P f (ovalidNF_property Q (\<lambda>s f. f s))<\STATESEP>by (auto simp: triple_judgement_def ovalidNF_def ovalidNF_property_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_wp_comb1[wp_comb]:
+  "\<lbrakk> ovalidNF P' f Q; ovalidNF P f Q'; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> ovalidNF P f (\<lambda>r s. Q r s \<and> Q' r s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ovalidNF P' f Q; ovalidNF P f Q'; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> ovalidNF P f (\<lambda>r s. Q r s \<and> Q' r s)<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_wp_comb2[wp_comb]:
+  "\<lbrakk> ovalidNF P f Q; \<And>s. P' s \<Longrightarrow> P s \<rbrakk> \<Longrightarrow> ovalidNF P' f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ovalidNF P f Q; \<And>s. P' s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> ovalidNF P' f Q<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_wp_comb3[wp_comb]:
+  "\<lbrakk> ovalidNF P f Q; ovalidNF P' f Q' \<rbrakk> \<Longrightarrow> ovalidNF (\<lambda>s. P s \<and> P' s) f (\<lambda>r s. Q r s \<and> Q' r s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ovalidNF P f Q; ovalidNF P' f Q'\<rbrakk> \<Longrightarrow> ovalidNF (\<lambda>s. P s \<and> P' s) f (\<lambda>r s. Q r s \<and> Q' r s)<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofailD:
+  "\<lbrakk> no_ofail P m; P s \<rbrakk> \<Longrightarrow> \<exists>y. m s = Some y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_ofail P m; P s\<rbrakk> \<Longrightarrow> \<exists>y. m s = Some y<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_obind2[simp]:
+  assumes f: "no_ofail P f"
+  assumes v: "ovalid Q f R"
+  assumes g: "\<And>r. no_ofail (R r) (g r)"
+  shows "no_ofail (P and Q) (f |>> g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (P and Q) (f >>= g)<\STATESEP>using v g<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lblot>Q\<rblot> f \<lblot>R\<rblot>
+no_ofail (R ?r) (g ?r)
+
+goal (1 subgoal):
+ 1. no_ofail (P and Q) (f >>= g)<\STATESEP>by (fastforce simp: no_ofail_def obind_def pred_conj_def ovalid_def dest: no_ofailD [OF f])<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_ofail[wp]:
+  "no_ofail \<bottom> ofail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. False) ofail<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_asks_simp[simp]:
+  "no_ofail P (asks f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail P (ogets f)<\STATESEP>unfolding asks_def oreturn_def obind_def no_ofail_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (case Some s of None \<Rightarrow> None | Some x \<Rightarrow> (K \<circ> Some) (f x) s) \<noteq> None<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_asks[wp]:
+  "no_ofail \<top> (asks f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. True) (ogets f)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_ogets[wp]:
+  "no_ofail \<top> (ogets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. True) (ogets f)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_obind[wp]:
+  "\<lbrakk> \<And>r. no_ofail (R r) (g r); \<lblot>Q\<rblot> f \<lblot>R\<rblot>; no_ofail P f \<rbrakk> \<Longrightarrow> no_ofail (P and Q) (f |>> g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. no_ofail (R r) (g r); \<lblot>Q\<rblot> f \<lblot>R\<rblot>; no_ofail P f\<rbrakk> \<Longrightarrow> no_ofail (P and Q) (f >>= g)<\STATESEP>by (auto simp: no_ofail_def obind_def ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_oguard[wp]:
+  "no_ofail (\<lambda>s. f s) (oguard f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail f (oguard f)<\STATESEP>by (auto simp: no_ofail_def oguard_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_ocondition[wp]:
+  "\<lbrakk> no_ofail L l; no_ofail R r \<rbrakk>
+     \<Longrightarrow> no_ofail (\<lambda>s. if C s then L s else R s) (ocondition C l r)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_ofail L l; no_ofail R r\<rbrakk> \<Longrightarrow> no_ofail (\<lambda>s. if C s then L s else R s) (ocondition C l r)<\STATESEP>by (simp add: no_ofail_def ocondition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_oreturn[wp]:
+  "no_ofail (\<lambda>_. True) (oreturn x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. True) (oreturn x)<\STATESEP>by (simp add: no_ofail_def oreturn_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_oskip[wp]:
+  "no_ofail (\<lambda>_. True) oskip"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. True) oskip<\STATESEP>by (simp add: no_ofail_def oskip_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_oassert_opt[simp, wp]:
+  "no_ofail (\<lambda>_. P \<noteq> None) (oassert_opt P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. P \<noteq> None) (oassert_opt P)<\STATESEP>by (simp add: no_ofail_def oassert_opt_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_if[wp]:
+  "\<lbrakk> P \<Longrightarrow> no_ofail Q f; \<not> P \<Longrightarrow> no_ofail R g \<rbrakk>
+   \<Longrightarrow> no_ofail (if P then Q else R) (if P then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> no_ofail Q f; \<not> P \<Longrightarrow> no_ofail R g\<rbrakk> \<Longrightarrow> no_ofail (if P then Q else R) (if P then f else g)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_owhen[wp]:
+  "(P \<Longrightarrow> no_ofail Q f) \<Longrightarrow> no_ofail (if P then Q else \<top>) (owhen P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> no_ofail Q f) \<Longrightarrow> no_ofail (if P then Q else (\<lambda>_. True)) (owhen P f)<\STATESEP>by (simp add: no_ofail_def owhen_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_ounless[wp]:
+  "(\<not>P \<Longrightarrow> no_ofail Q f) \<Longrightarrow> no_ofail (if P then \<top> else Q) (ounless P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> no_ofail Q f) \<Longrightarrow> no_ofail (if P then \<lambda>_. True else Q) (ounless P f)<\STATESEP>by (simp add: no_ofail_def ounless_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_oassert[simp, wp]:
+  "no_ofail (\<lambda>_. P) (oassert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail (\<lambda>_. P) (oassert P)<\STATESEP>by (simp add: oassert_def no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_is_triple[wp_trip]:
+  "no_ofail P f = triple_judgement P f (\<lambda>s f. f s \<noteq> None)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_ofail P f = triple_judgement P f (\<lambda>s f. f s \<noteq> None)<\STATESEP>by (auto simp: triple_judgement_def no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_wp_comb1[wp_comb]:
+  "\<lbrakk> no_ofail P f; \<And>s. P' s \<Longrightarrow> P s \<rbrakk> \<Longrightarrow> no_ofail P' f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_ofail P f; \<And>s. P' s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> no_ofail P' f<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_wp_comb2[wp_comb]:
+  "\<lbrakk> no_ofail P f; no_ofail P' f \<rbrakk> \<Longrightarrow> no_ofail (\<lambda>s. P s \<and> P' s) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_ofail P f; no_ofail P' f\<rbrakk> \<Longrightarrow> no_ofail (\<lambda>s. P s \<and> P' s) f<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_grab_asm:
+  "(G \<Longrightarrow> ovalid P f Q) \<Longrightarrow> ovalid (\<lambda>s. G \<and> P s) f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (G \<Longrightarrow> \<lblot>P\<rblot> f \<lblot>Q\<rblot>) \<Longrightarrow> \<lblot>\<lambda>s. G \<and> P s\<rblot> f \<lblot>Q\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_grab_asm:
+  "(G \<Longrightarrow> ovalidNF P f Q) \<Longrightarrow> ovalidNF (\<lambda>s. G \<and> P s) f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (G \<Longrightarrow> ovalidNF P f Q) \<Longrightarrow> ovalidNF (\<lambda>s. G \<and> P s) f Q<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_grab_asm:
+  "(G \<Longrightarrow> no_ofail P f) \<Longrightarrow> no_ofail (\<lambda>s. G \<and> P s) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (G \<Longrightarrow> no_ofail P f) \<Longrightarrow> no_ofail (\<lambda>s. G \<and> P s) f<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_assume_pre:
+  "(\<And>s. P s \<Longrightarrow> ovalid P f Q) \<Longrightarrow> ovalid P f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> \<lblot>P\<rblot> f \<lblot>Q\<rblot>) \<Longrightarrow> \<lblot>P\<rblot> f \<lblot>Q\<rblot><\STATESEP>by (auto simp: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_assume_pre:
+  "(\<And>s. P s \<Longrightarrow> ovalidNF P f Q) \<Longrightarrow> ovalidNF P f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> ovalidNF P f Q) \<Longrightarrow> ovalidNF P f Q<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_assume_pre:
+  "(\<And>s. P s \<Longrightarrow> no_ofail P f) \<Longrightarrow> no_ofail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> no_ofail P f) \<Longrightarrow> no_ofail P f<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_pre_imp:
+  "\<lbrakk> \<And>s. P' s \<Longrightarrow> P s; ovalid P f Q \<rbrakk> \<Longrightarrow> ovalid P' f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. P' s \<Longrightarrow> P s; \<lblot>P\<rblot> f \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>P'\<rblot> f \<lblot>Q\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_pre_imp:
+  "\<lbrakk> \<And>s. P' s \<Longrightarrow> P s; ovalidNF P f Q \<rbrakk> \<Longrightarrow> ovalidNF P' f Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. P' s \<Longrightarrow> P s; ovalidNF P f Q\<rbrakk> \<Longrightarrow> ovalidNF P' f Q<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_ofail_pre_imp[wp_pre]:
+  "\<lbrakk> no_ofail P f; \<And>s. P' s \<Longrightarrow> P s \<rbrakk> \<Longrightarrow> no_ofail P' f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_ofail P f; \<And>s. P' s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> no_ofail P' f<\STATESEP>by (simp add: no_ofail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_post_imp:
+  "\<lbrakk> \<And>r s. Q r s \<Longrightarrow> Q' r s; ovalid P f Q \<rbrakk> \<Longrightarrow> ovalid P f Q'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r s. Q r s \<Longrightarrow> Q' r s; \<lblot>P\<rblot> f \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>P\<rblot> f \<lblot>Q'\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_post_imp:
+  "\<lbrakk> \<And>r s. Q r s \<Longrightarrow> Q' r s; ovalidNF P f Q \<rbrakk> \<Longrightarrow> ovalidNF P f Q'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r s. Q r s \<Longrightarrow> Q' r s; ovalidNF P f Q\<rbrakk> \<Longrightarrow> ovalidNF P f Q'<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalid_post_imp_assuming_pre:
+  "\<lbrakk> \<And>r s. \<lbrakk> P s; Q r s \<rbrakk> \<Longrightarrow> Q' r s; ovalid P f Q \<rbrakk> \<Longrightarrow> ovalid P f Q'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r s. \<lbrakk>P s; Q r s\<rbrakk> \<Longrightarrow> Q' r s; \<lblot>P\<rblot> f \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lblot>P\<rblot> f \<lblot>Q'\<rblot><\STATESEP>by (simp add: ovalid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ovalidNF_post_imp_assuming_pre:
+  "\<lbrakk> \<And>r s. \<lbrakk> P s; Q r s \<rbrakk> \<Longrightarrow> Q' r s; ovalidNF P f Q \<rbrakk> \<Longrightarrow> ovalidNF P f Q'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r s. \<lbrakk>P s; Q r s\<rbrakk> \<Longrightarrow> Q' r s; ovalidNF P f Q\<rbrakk> \<Longrightarrow> ovalidNF P f Q'<\STATESEP>by (simp add: ovalidNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

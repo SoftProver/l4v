@@ -1,0 +1,80 @@
+<\STATESEP>theory RangeMap_Test
+imports
+  Lib.RangeMap
+  Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Examples for RangeMap\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Basic usage\<close><\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+RangeMap.define_map
+  (* Specification of names to generate. "name_opts_default" generates qualified names
+     starting with the given string i.e. "test_map.foo". *)
+  (RangeMap.name_opts_default "test_map")
+
+  (* List of ((start key, end key), value).
+     Key ranges include the start but not the end points. *)
+  [((@{cterm "1::nat"}, @{cterm "2::nat"}), @{cterm "True"}),
+   ((@{cterm "2::nat"}, @{cterm "3::nat"}), @{cterm "False"}),
+   ((@{cterm "5::nat"}, @{cterm "8::nat"}), @{cterm "True \<and> False"}),
+   (* Key ranges are allowed to be empty, such as this one *)
+   ((@{cterm "8::nat"}, @{cterm "8::nat"}), @{cterm "True \<or> False"}),
+   (* Test for input preservation; see below *)
+   ((@{cterm "if True then 8::nat else undefined"}, @{cterm "6 + 7 :: nat"}),
+    @{cterm "False \<longrightarrow> True"})
+  ]
+
+  (* Key and value types. *)
+  @{typ nat} @{typ bool}
+  (* Key comparison solver. This should be a conversion that converts
+     key comparisons to True or False. *)
+  (Simplifier.rewrite @{context})
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>print_theorems<\STATESEP>0<\TRANSEP><\STATESEP>thm test_map.tree_def test_map.list_def<\STATESEP>0<\TRANSEP><\STATESEP>thm test_map.lookups<\STATESEP>0<\TRANSEP><\STATESEP>thm test_map.start_lookups<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+@{assert}
+  (Thm.prop_of @{thm test_map.lookups(5)[where x=x]}
+   = @{term "Trueprop (((if True then 8 else undefined) \<le> x \<and> x < 6 + 7)
+             = (RangeMap.lookup_range_tree test_map.tree x
+                = Some ((if True then 8 else undefined, 6 + 7), False \<longrightarrow> True)))"});
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>thm test_map.domain test_map.domain_compact<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Test that empty maps are supported\<close><\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+RangeMap.define_map
+  (RangeMap.name_opts_default "empty_test")
+  []
+  @{typ int} @{typ int}
+  Thm.reflexive (* unused *)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>print_theorems<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Stress testing\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun range_map_test_legendre n =
+  let fun P q x = if q*q > x then true else x mod q <> 0 andalso P (q+1) x;
+  in (1 upto n)
+     |> map (fn k => ((k*k, (k+1)*(k+1)), hd (filter (P 2) (k*k+1 upto (k+1)*(k+1))))) end;
+
+fun range_map_test_legendre_ct T n =
+  let fun cterm_of_num T n = Thm.cterm_of @{context} (HOLogic.mk_number T n);
+  in range_map_test_legendre n
+     |> map (fn ((ks, ke), v) => ((cterm_of_num T ks, cterm_of_num T ke), cterm_of_num T v)) end;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+RangeMap.define_map
+  (RangeMap.name_opts_default "legendre_10")
+  (range_map_test_legendre_ct @{typ nat} 10)
+  @{typ nat} @{typ nat}
+  (FP_Eval.eval_conv @{context} (FP_Eval.make_rules @{thms rel_simps} []))
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+RangeMap.define_map
+  (RangeMap.name_opts_default "legendre_100")
+  (range_map_test_legendre_ct @{typ nat} 100)
+  @{typ nat} @{typ nat}
+  (FP_Eval.eval_conv @{context} (FP_Eval.make_rules @{thms rel_simps} []))
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+RangeMap.define_map
+  (RangeMap.name_opts_default "legendre_1000")
+  (range_map_test_legendre_ct @{typ nat} 1000)
+  @{typ nat} @{typ nat}
+  (FP_Eval.eval_conv @{context} (FP_Eval.make_rules @{thms rel_simps} []))
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma legendre_100_values:
+  "RangeMap.lookup_range_tree legendre_100.tree k = Some ((start, end), v)
+   \<Longrightarrow> start < v \<and> v < end"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. RangeMap.lookup_range_tree legendre_100.tree k = Some ((start, end), v) \<Longrightarrow> start < v \<and> v < end<\STATESEP>apply (subst (asm) legendre_100.tree_list_lookup_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. RangeMap.range_map_of legendre_100.list k = Some ((start, end), v) \<Longrightarrow> start < v \<and> v < end<\STATESEP>apply (drule RangeMap.range_map_of_Some)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((start, end), v) \<in> set legendre_100.list \<and> start \<le> k \<and> k < end \<Longrightarrow> start < v \<and> v < end<\STATESEP>apply (clarsimp simp: legendre_100.list_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>start = Suc 0 \<and> end = 4 \<and> v = 2 \<or> start = 4 \<and> end = 9 \<and> v = 5 \<or> start = 9 \<and> end = 16 \<and> v = 11 \<or> start = 16 \<and> end = 25 \<and> v = 17 \<or> start = 25 \<and> end = 36 \<and> v = 29 \<or> start = 36 \<and> end = 49 \<and> v = 37 \<or> start = 49 \<and> end = 64 \<and> v = 53 \<or> start = 64 \<and> end = 81 \<and> v = 67 \<or> start = 81 \<and> end = 100 \<and> v = 83 \<or> start = 100 \<and> end = 121 \<and> v = 101 \<or> start = 121 \<and> end = 144 \<and> v = 127 \<or> start = 144 \<and> end = 169 \<and> v = 149 \<or> start = 169 \<and> end = 196 \<and> v = 173 \<or> start = 196 \<and> end = 225 \<and> v = 197 \<or> start = 225 \<and> end = 256 \<and> v = 227 \<or> start = 256 \<and> end = 289 \<and> v = 257 \<or> start = 289 \<and> end = 324 \<and> v = 293 \<or> start = 324 \<and> end = 361 \<and> v = 331 \<or> start = 361 \<and> end = 400 \<and> v = 367 \<or> start = 400 \<and> end = 441 \<and> v = 401 \<or> start = 441 \<and> end = 484 \<and> v = 443 \<or> start = 484 \<and> end = 529 \<and> v = 487 \<or> start = 529 \<and> end = 576 \<and> v = 541 \<or> start = 576 \<and> end = 625 \<and> v = 577 \<or> start = 625 \<and> end = 676 \<and> v = 631 \<or> start = 676 \<and> end = 729 \<and> v = 677 \<or> start = 729 \<and> end = 784 \<and> v = 733 \<or> start = 784 \<and> end = 841 \<and> v = 787 \<or> start = 841 \<and> end = 900 \<and> v = 853 \<or> start = 900 \<and> end = 961 \<and> v = 907 \<or> start = 961 \<and> end = 1024 \<and> v = 967 \<or> start = 1024 \<and> end = 1089 \<and> v = 1031 \<or> start = 1089 \<and> end = 1156 \<and> v = 1091 \<or> start = 1156 \<and> end = 1225 \<and> v = 1163 \<or> start = 1225 \<and> end = 1296 \<and> v = 1229 \<or> start = 1296 \<and> end = 1369 \<and> v = 1297 \<or> start = 1369 \<and> end = 1444 \<and> v = 1373 \<or> start = 1444 \<and> end = 1521 \<and> v = 1447 \<or> start = 1521 \<and> end = 1600 \<and> v = 1523 \<or> start = 1600 \<and> end = 1681 \<and> v = 1601 \<or> start = 1681 \<and> end = 1764 \<and> v = 1693 \<or> start = 1764 \<and> end = 1849 \<and> v = 1777 \<or> start = 1849 \<and> end = 1936 \<and> v = 1861 \<or> start = 1936 \<and> end = 2025 \<and> v = 1949 \<or> start = 2025 \<and> end = 2116 \<and> v = 2027 \<or> start = 2116 \<and> end = 2209 \<and> v = 2129 \<or> start = 2209 \<and> end = 2304 \<and> v = 2213 \<or> start = 2304 \<and> end = 2401 \<and> v = 2309 \<or> start = 2401 \<and> end = 2500 \<and> v = 2411 \<or> start = 2500 \<and> end = 2601 \<and> v = 2503 \<or> start = 2601 \<and> end = 2704 \<and> v = 2609 \<or> start = 2704 \<and> end = 2809 \<and> v = 2707 \<or> start = 2809 \<and> end = 2916 \<and> v = 2819 \<or> start = 2916 \<and> end = 3025 \<and> v = 2917 \<or> start = 3025 \<and> end = 3136 \<and> v = 3037 \<or> start = 3136 \<and> end = 3249 \<and> v = 3137 \<or> start = 3249 \<and> end = 3364 \<and> v = 3251 \<or> start = 3364 \<and> end = 3481 \<and> v = 3371 \<or> start = 3481 \<and> end = 3600 \<and> v = 3491 \<or> start = 3600 \<and> end = 3721 \<and> v = 3607 \<or> start = 3721 \<and> end = 3844 \<and> v = 3727 \<or> start = 3844 \<and> end = 3969 \<and> v = 3847 \<or> start = 3969 \<and> end = 4096 \<and> v = 3989 \<or> start = 4096 \<and> end = 4225 \<and> v = 4099 \<or> start = 4225 \<and> end = 4356 \<and> v = 4229 \<or> start = 4356 \<and> end = 4489 \<and> v = 4357 \<or> start = 4489 \<and> end = 4624 \<and> v = 4493 \<or> start = 4624 \<and> end = 4761 \<and> v = 4637 \<or> start = 4761 \<and> end = 4900 \<and> v = 4783 \<or> start = 4900 \<and> end = 5041 \<and> v = 4903 \<or> start = 5041 \<and> end = 5184 \<and> v = 5051 \<or> start = 5184 \<and> end = 5329 \<and> v = 5189 \<or> start = 5329 \<and> end = 5476 \<and> v = 5333 \<or> start = 5476 \<and> end = 5625 \<and> v = 5477 \<or> start = 5625 \<and> end = 5776 \<and> v = 5639 \<or> start = 5776 \<and> end = 5929 \<and> v = 5779 \<or> start = 5929 \<and> end = 6084 \<and> v = 5939 \<or> start = 6084 \<and> end = 6241 \<and> v = 6089 \<or> start = 6241 \<and> end = 6400 \<and> v = 6247 \<or> start = 6400 \<and> end = 6561 \<and> v = 6421 \<or> start = 6561 \<and> end = 6724 \<and> v = 6563 \<or> start = 6724 \<and> end = 6889 \<and> v = 6733 \<or> start = 6889 \<and> end = 7056 \<and> v = 6899 \<or> start = 7056 \<and> end = 7225 \<and> v = 7057 \<or> start = 7225 \<and> end = 7396 \<and> v = 7229 \<or> start = 7396 \<and> end = 7569 \<and> v = 7411 \<or> start = 7569 \<and> end = 7744 \<and> v = 7573 \<or> start = 7744 \<and> end = 7921 \<and> v = 7753 \<or> start = 7921 \<and> end = 8100 \<and> v = 7927 \<or> start = 8100 \<and> end = 8281 \<and> v = 8101 \<or> start = 8281 \<and> end = 8464 \<and> v = 8287 \<or> start = 8464 \<and> end = 8649 \<and> v = 8467 \<or> start = 8649 \<and> end = 8836 \<and> v = 8663 \<or> start = 8836 \<and> end = 9025 \<and> v = 8837 \<or> start = 9025 \<and> end = 9216 \<and> v = 9029 \<or> start = 9216 \<and> end = 9409 \<and> v = 9221 \<or> start = 9409 \<and> end = 9604 \<and> v = 9413 \<or> start = 9604 \<and> end = 9801 \<and> v = 9613 \<or> start = 9801 \<and> end = 10000 \<and> v = 9803 \<or> start = 10000 \<and> end = 10201 \<and> v = 10007; start \<le> k; k < end\<rbrakk> \<Longrightarrow> start < v \<and> v < end<\STATESEP>apply linarith<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

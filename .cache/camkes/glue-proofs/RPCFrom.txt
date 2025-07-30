@@ -1,0 +1,514 @@
+<\STATESEP>theory RPCFrom imports
+  "CParser.CTranslation"
+  "AutoCorres.AutoCorres"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>declare [[allow_underscore_idents=true]]<\STATESEP>0<\TRANSEP><\STATESEP>external_file "RPCFrom.c"<\STATESEP>0<\TRANSEP><\STATESEP>install_C_file "RPCFrom.c"<\STATESEP>0<\TRANSEP><\STATESEP>autocorres [ts_rules = nondet, no_heap_abs = seL4_SetMR] "RPCFrom.c"<\STATESEP>0<\TRANSEP><\STATESEP>context RPCFrom begin<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "seL4_MsgMaxLength \<equiv> 120"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  seL4_SetMR_lifted' :: "int \<Rightarrow> word32 \<Rightarrow> lifted_globals \<Rightarrow> (unit \<times> lifted_globals) set \<times> bool"
+where
+  "seL4_SetMR_lifted' i val \<equiv>
+   do
+     ret' \<leftarrow> seL4_GetIPCBuffer';
+     guard (\<lambda>s. i < seL4_MsgMaxLength);
+     guard (\<lambda>s. 0 \<le> i);
+     modify (\<lambda>s. s \<lparr>heap_seL4_IPCBuffer__C :=
+       (heap_seL4_IPCBuffer__C s)(ret' :=
+          msg_C_update (\<lambda>a. Arrays.update a (nat i) val)
+             (heap_seL4_IPCBuffer__C s ret'))
+     \<rparr>)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>locale RPCFrom_glue = RPCFrom +
+  assumes seL4_SetMR_axiom: "exec_concrete lift_global_heap (seL4_SetMR' i val) = seL4_SetMR_lifted' i val"
+  assumes swi_safe_to_ignore[simplified, simp]:
+    "asm_semantics_ok_to_ignore TYPE(nat) true (''swi '' @ x)"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>chapter \<open>Assumptions\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  globals_frame_intact :: "lifted_globals \<Rightarrow> bool"
+where
+  "globals_frame_intact s \<equiv>
+    is_valid_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ipc_buffer_valid :: "lifted_globals \<Rightarrow> bool"
+where
+  "ipc_buffer_valid s \<equiv> is_valid_seL4_IPCBuffer__C s
+    (heap_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame)))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  seL4_SetMR_lifted
+where
+  "seL4_SetMR_lifted i val \<equiv>
+     do
+       ret' \<leftarrow> seL4_GetIPCBuffer';
+       guard (\<lambda>s. i < seL4_MsgMaxLength);
+       guard (\<lambda>s. 0 \<le> i);
+       modify (\<lambda>s. s \<lparr>heap_seL4_IPCBuffer__C :=
+         (heap_seL4_IPCBuffer__C s)(ret' :=
+            msg_C_update (\<lambda>a. Arrays.update a (nat i) val)
+               (heap_seL4_IPCBuffer__C s ret'))
+       \<rparr>)
+    od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tls_ptr :: "lifted_globals \<Rightarrow> camkes_tls_t_C ptr"
+where
+  "tls_ptr s \<equiv> Ptr (ptr_val (heap_seL4_IPCBuffer__C'ptr s
+     (Ptr (scast seL4_GlobalsFrame))) && 0xFFFFF000)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tls :: "lifted_globals \<Rightarrow> camkes_tls_t_C"
+where
+  "tls s \<equiv> heap_camkes_tls_t_C s (tls_ptr s)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tls_valid :: "lifted_globals \<Rightarrow> bool"
+where
+  "tls_valid s \<equiv> is_valid_camkes_tls_t_C s (tls_ptr s)"<\STATESEP>0<\TRANSEP><\STATESEP>chapter \<open>System Calls\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  setMR :: "lifted_globals \<Rightarrow> nat \<Rightarrow> word32 \<Rightarrow> lifted_globals"
+where
+  "setMR s i v \<equiv>
+      s\<lparr>heap_seL4_IPCBuffer__C := (heap_seL4_IPCBuffer__C s)
+        (heap_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame)) :=
+          msg_C_update (\<lambda>a. Arrays.update a i v)
+            (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s
+              (Ptr (scast seL4_GlobalsFrame)))))\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  setMRs :: "lifted_globals \<Rightarrow> word32 \<Rightarrow> word32 \<Rightarrow>
+             word32 \<Rightarrow> word32 \<Rightarrow> lifted_globals"
+where
+  "setMRs s mr0 mr1 mr2 mr3 \<equiv>
+    setMR (setMR (setMR (setMR s 0 mr0) 1 mr1) 2 mr2) 3 mr3"<\STATESEP>0<\TRANSEP><\STATESEP>lemma seL4_GetIPCBuffer_wp':
+  "\<forall>s'. \<lbrace>\<lambda>s. globals_frame_intact s \<and>
+             s = s'\<rbrace>
+         seL4_GetIPCBuffer'
+        \<lbrace>\<lambda>r s. r = heap_seL4_IPCBuffer__C'ptr s
+                 (Ptr (scast seL4_GlobalsFrame)) \<and>
+               s = s'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s'. \<lbrace>\<lambda>s. globals_frame_intact s \<and> s = s'\<rbrace> seL4_GetIPCBuffer' \<lbrace>\<lambda>r s. r = heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) \<and> s = s'\<rbrace>!<\STATESEP>apply (rule allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s'. \<lbrace>\<lambda>s. globals_frame_intact s \<and> s = s'\<rbrace> seL4_GetIPCBuffer' \<lbrace>\<lambda>r s. r = heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) \<and> s = s'\<rbrace>!<\STATESEP>apply (simp add:seL4_GetIPCBuffer'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s'. \<lbrace>\<lambda>s. globals_frame_intact s \<and> s = s'\<rbrace> do y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)));
+gets (\<lambda>s. heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))
+od \<lbrace>\<lambda>r s. r = heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) \<and> s = s'\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s' s. globals_frame_intact s \<and> s = s' \<Longrightarrow> (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) = heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) \<and> s = s') \<and> is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))<\STATESEP>apply (clarsimp simp:globals_frame_intact_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas seL4_GetIPCBuffer_wp[wp_unsafe] =
+  seL4_GetIPCBuffer_wp'[THEN validNF_make_schematic_post, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma seL4_SetMR_wp[wp_unsafe]:
+  notes seL4_SetMR_axiom[simp]
+  shows
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        i \<ge> 0 \<and>
+        i < seL4_MsgMaxLength \<and>
+        (\<forall>x. P x (setMR s (nat i) v))\<rbrace>
+    exec_concrete lift_global_heap (seL4_SetMR' i v)
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> i \<and> i < 120 \<and> (\<forall>x. P x (setMR s (nat i) v))\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' i v) \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_SetMR_lifted'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> i \<and> i < 120 \<and> P () (setMR s (nat i) v)\<rbrace> do ret' <- seL4_GetIPCBuffer';
+y <- guard (\<lambda>s. i < 120);
+y <- guard (\<lambda>s. 0 \<le> i);
+modify (\<lambda>s. s\<lparr>heap_seL4_IPCBuffer__C := (heap_seL4_IPCBuffer__C s)(ret' := msg_C_update (\<lambda>a. Arrays.update a (nat i) v) (heap_seL4_IPCBuffer__C s ret'))\<rparr>)
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_GetIPCBuffer_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> i \<and> i < 120 \<and> P () (setMR s (nat i) v) \<Longrightarrow> globals_frame_intact s \<and> (P () (s\<lparr>heap_seL4_IPCBuffer__C := (heap_seL4_IPCBuffer__C s)(heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) := msg_C_update (\<lambda>a. Arrays.update a (nat i) v) (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))))\<rparr>) \<and> 0 \<le> i) \<and> i < 120<\STATESEP>apply (simp add:setMR_def globals_frame_intact_def ipc_buffer_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_GetMR_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. \<forall>x. i \<ge> 0 \<and>
+            i < seL4_MsgMaxLength \<and>
+            globals_frame_intact s \<and>
+            ipc_buffer_valid s \<and>
+            P x s\<rbrace>
+    seL4_GetMR' i
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. 0 \<le> i \<and> i < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> P x s\<rbrace> seL4_GetMR' i \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_GetMR'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 \<le> i \<and> i < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x. P x s)\<rbrace> do ret' <- seL4_GetIPCBuffer';
+y <- guard (\<lambda>s. i < 120);
+y <- guard (\<lambda>s. 0 \<le> i);
+y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C s ret');
+gets (\<lambda>s. msg_C (heap_seL4_IPCBuffer__C s ret').[unat (word_of_int i)])
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_GetIPCBuffer_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. 0 \<le> i \<and> i < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x. P x s) \<Longrightarrow> globals_frame_intact s \<and> ((P (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[unat (word_of_int i)]) s \<and> is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))) \<and> 0 \<le> i) \<and> i < 120<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma abort_wp[wp]:
+  "\<lbrace>\<lambda>_. False\<rbrace> abort' \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. False\<rbrace> abort' \<lbrace>P\<rbrace>!<\STATESEP>by (rule validNF_false_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_Call_wp[wp_unsafe]:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace>
+    seL4_Call' cap info
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> seL4_Call' cap info \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_Call'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> do ret' <- seL4_GetMR' 0;
+ret'a <- seL4_GetMR' 1;
+ret'b <- seL4_GetMR' 2;
+ret'c <- seL4_GetMR' 3;
+y <- exec_concrete lift_global_heap (seL4_SetMR' 0 ret');
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 ret'a);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 ret'b);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 3 ret'c);
+return info
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_GetIPCBuffer_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3)) \<Longrightarrow> \<forall>x. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>xa. 0 \<le> 1 \<and> 1 < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>xb. 0 \<le> 2 \<and> 2 < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>xc. 0 \<le> 3 \<and> 3 < 120 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xd. globals_frame_intact (setMR s (nat 0) x) \<and> ipc_buffer_valid (setMR s (nat 0) x) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xd. globals_frame_intact (setMR (setMR s (nat 0) x) (nat 1) xa) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) x) (nat 1) xa) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>xd. globals_frame_intact (setMR (setMR (setMR s (nat 0) x) (nat 1) xa) (nat 2) xb) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) x) (nat 1) xa) (nat 2) xb) \<and> 0 \<le> 3 \<and> 3 < 120 \<and> (\<forall>xd. P info (setMR (setMR (setMR (setMR s (nat 0) x) (nat 1) xa) (nat 2) xb) (nat 3) xc))))))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def
+                  setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_Notify_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace>
+    seL4_Notify' cap data
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> seL4_Notify' cap data \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_Notify'_def seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+guard (\<lambda>s. True)
+od \<lbrace>P\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P () s \<Longrightarrow> \<forall>x. P () s \<and> True<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_Poll_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update
+          (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and>
+        badge \<noteq> NULL \<and>
+        is_valid_w32 s badge\<rbrace>
+    seL4_Poll' cap badge
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and> badge \<noteq> NULL \<and> is_valid_w32 s badge\<rbrace> seL4_Poll' cap badge \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_Poll'_def seL4_GetIPCBuffer'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and> badge \<noteq> NULL \<and> is_valid_w32 s badge\<rbrace> do info___struct_seL4_MessageInfo_C <- unknown;
+msg0___unsigned <- unknown;
+msg1___unsigned <- unknown;
+msg2___unsigned <- unknown;
+msg3___unsigned <- unknown;
+y <- exec_concrete lift_global_heap (seL4_SetMR' 0 msg0___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 msg1___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 msg2___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 3 msg3___unsigned);
+y <- when (badge \<noteq> NULL) (do y <- guard (\<lambda>s. is_valid_w32 s badge);
+modify (heap_w32_update (\<lambda>a. a(badge := cap)))
+od);
+return info___struct_seL4_MessageInfo_C
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_SetMR_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and> badge \<noteq> NULL \<and> is_valid_w32 s badge \<Longrightarrow> \<forall>x xa xb xc xd. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR s (nat 0) xa) \<and> ipc_buffer_valid (setMR s (nat 0) xa) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> 0 \<le> 3 \<and> 3 < 120 \<and> (\<forall>xe. if badge \<noteq> NULL then P x (heap_w32_update (\<lambda>a. a(badge := cap)) (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd)) \<and> is_valid_w32 (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd) badge else P x (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd)))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def
+                  setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_ReplyWait_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace>
+    seL4_ReplyWait' cap info NULL
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> seL4_ReplyWait' cap info NULL \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_ReplyWait'_def seL4_GetMR'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> do ret' <- do ret' <- seL4_GetIPCBuffer';
+y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C s ret');
+gets (\<lambda>s. msg_C (heap_seL4_IPCBuffer__C s ret').[0])
+od;
+ret'a <- do ret' <- seL4_GetIPCBuffer';
+y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C s ret');
+gets (\<lambda>s. msg_C (heap_seL4_IPCBuffer__C s ret').[Suc 0])
+od;
+ret'b <- do ret' <- seL4_GetIPCBuffer';
+y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C s ret');
+gets (\<lambda>s. msg_C (heap_seL4_IPCBuffer__C s ret').[2])
+od;
+ret'c <- do ret' <- seL4_GetIPCBuffer';
+y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C s ret');
+gets (\<lambda>s. msg_C (heap_seL4_IPCBuffer__C s ret').[3])
+od;
+y <- exec_concrete lift_global_heap (seL4_SetMR' 0 ret');
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 ret'a);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 ret'b);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 3 ret'c);
+return info
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_SetMR_wp seL4_GetIPCBuffer_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3)) \<Longrightarrow> globals_frame_intact s \<and> (globals_frame_intact s \<and> (globals_frame_intact s \<and> (globals_frame_intact s \<and> (globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>x. globals_frame_intact (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) \<and> ipc_buffer_valid (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>x. globals_frame_intact (setMR (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) (nat 1) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[Suc 0])) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) (nat 1) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[Suc 0])) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>x. globals_frame_intact (setMR (setMR (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) (nat 1) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[Suc 0])) (nat 2) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[2])) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) (nat 1) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[Suc 0])) (nat 2) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[2])) \<and> 0 \<le> 3 \<and> 3 < 120 \<and> (\<forall>x. P info (setMR (setMR (setMR (setMR s (nat 0) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[0])) (nat 1) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[Suc 0])) (nat 2) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[2])) (nat 3) (msg_C (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))).[3]))))))) \<and> is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))) \<and> is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))) \<and> is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))) \<and> is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def
+                  setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_Wait_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace>
+    seL4_Wait' cap NULL
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> seL4_Wait' cap NULL \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_Wait'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> do info___struct_seL4_MessageInfo_C <- unknown;
+msg0___unsigned <- unknown;
+msg1___unsigned <- unknown;
+msg2___unsigned <- unknown;
+msg3___unsigned <- unknown;
+y <- exec_concrete lift_global_heap (seL4_SetMR' 0 msg0___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 msg1___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 msg2___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 3 msg3___unsigned);
+return info___struct_seL4_MessageInfo_C
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_SetMR_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3)) \<Longrightarrow> \<forall>x xa xb xc xd. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR s (nat 0) xa) \<and> ipc_buffer_valid (setMR s (nat 0) xa) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> 0 \<le> 3 \<and> 3 < 120 \<and> (\<forall>xe. P x (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd)))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def
+                  setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  thread_count :: word32
+where
+  "thread_count \<equiv> 2"<\STATESEP>0<\TRANSEP><\STATESEP>chapter \<open>RPC Send\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma RPCFrom_run_nf: "\<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> RPCFrom__run' \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> RPCFrom__run' \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add: RPCFrom__run'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> return 0 \<lbrace>P\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>r. P r s \<Longrightarrow> P 0 s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RPCFrom_echo_int_nf:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s0'. globals_frame_intact s0' \<and>
+          ipc_buffer_valid s0'\<rbrace>
+   RPCFrom_echo_int' i
+  \<lbrace>\<lambda>_ s0'. globals_frame_intact s0' \<and>
+           ipc_buffer_valid s0'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s0'. globals_frame_intact s0' \<and> ipc_buffer_valid s0'\<rbrace> RPCFrom_echo_int' i \<lbrace>\<lambda>_ s0'. globals_frame_intact s0' \<and> ipc_buffer_valid s0'\<rbrace>!<\STATESEP>apply (simp add:RPCFrom_echo_int'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s0'. globals_frame_intact s0' \<and> ipc_buffer_valid s0'\<rbrace> do y <- exec_concrete lift_global_heap (seL4_SetMR' 0 0);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 (word_of_int i));
+ret' <- seL4_MessageInfo_new' 0 0 0 2;
+ret' <- seL4_Call' 6 ret';
+ret' <- seL4_GetMR' 0;
+return (sint (UCAST(32 \<rightarrow> 32 signed) ret'))
+od \<lbrace>\<lambda>_ s0'. globals_frame_intact s0' \<and> ipc_buffer_valid s0'\<rbrace>!<\STATESEP>apply (wp seL4_Call_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y. \<lbrace>?B5 x y\<rbrace> seL4_MessageInfo_new' 0 0 0 2 \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3 xa. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3))\<rbrace>!
+ 2. \<And>x. \<lbrace>?B4 x\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 (word_of_int i)) \<lbrace>?B5 x\<rbrace>!
+ 3. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 0) \<lbrace>?B4\<rbrace>!
+ 4. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply (simp add:seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?B5 () ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+return (seL4_MessageInfo_C.words_C_update (\<lambda>x. Arrays.update (seL4_MessageInfo_C.words_C seL4_MessageInfo___struct_seL4_MessageInfo_C) 0 2) seL4_MessageInfo___struct_seL4_MessageInfo_C)
+od \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3))\<rbrace>!
+ 2. \<And>x. \<lbrace>?B4 x\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 (word_of_int i)) \<lbrace>?B5 x\<rbrace>!
+ 3. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 0) \<lbrace>?B4\<rbrace>!
+ 4. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>x. globals_frame_intact (setMR s (nat 0) 0) \<and> ipc_buffer_valid (setMR s (nat 0) 0) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>x xa. globals_frame_intact (setMR (setMR s (nat 0) 0) (nat 1) (word_of_int i)) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) 0) (nat 1) (word_of_int i)) \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs (setMR (setMR s (nat 0) 0) (nat 1) (word_of_int i)) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 0) (nat 1) (word_of_int i)) v0 v1 v2 v3) \<and> globals_frame_intact (setMRs (setMR (setMR s (nat 0) 0) (nat 1) (word_of_int i)) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 0) (nat 1) (word_of_int i)) v0 v1 v2 v3))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def
+                  setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RPCFrom_echo_parameter_nf:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s1'. globals_frame_intact s1' \<and>
+          is_valid_w32 s1' (ptr_coerce pout) \<and>
+          ipc_buffer_valid s1'\<rbrace>
+   RPCFrom_echo_parameter' pin pout
+  \<lbrace>\<lambda>_ s1'. globals_frame_intact s1' \<and>
+           is_valid_w32 s1' (ptr_coerce pout) \<and>
+           ipc_buffer_valid s1'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s1'. globals_frame_intact s1' \<and> is_valid_w32 s1' (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s1'\<rbrace> RPCFrom_echo_parameter' pin pout \<lbrace>\<lambda>_ s1'. globals_frame_intact s1' \<and> is_valid_w32 s1' (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s1'\<rbrace>!<\STATESEP>apply (simp add:RPCFrom_echo_parameter'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s1'. globals_frame_intact s1' \<and> is_valid_w32 s1' (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s1'\<rbrace> do y <- exec_concrete lift_global_heap (seL4_SetMR' 0 1);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 (word_of_int pin));
+ret' <- seL4_MessageInfo_new' 0 0 0 2;
+ret' <- seL4_Call' 6 ret';
+ret' <- seL4_GetMR' 0;
+ret'a <- seL4_GetMR' 1;
+y <- guard (\<lambda>s. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout));
+y <- modify (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := ret'a)));
+return (sint (UCAST(32 \<rightarrow> 32 signed) ret'))
+od \<lbrace>\<lambda>_ s1'. globals_frame_intact s1' \<and> is_valid_w32 s1' (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s1'\<rbrace>!<\STATESEP>apply (wp seL4_Call_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y. \<lbrace>?B5 x y\<rbrace> seL4_MessageInfo_new' 0 0 0 2 \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3 xa. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (\<forall>x. 0 \<le> 1 \<and> 1 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs s v0 v1 v2 v3)) (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs s v0 v1 v2 v3))) \<and> is_valid_w32 (setMRs s v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout)))\<rbrace>!
+ 2. \<And>x. \<lbrace>?B4 x\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 (word_of_int pin)) \<lbrace>?B5 x\<rbrace>!
+ 3. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 1) \<lbrace>?B4\<rbrace>!
+ 4. \<And>s. globals_frame_intact s \<and> is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply (simp add:seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?B5 () ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+return (seL4_MessageInfo_C.words_C_update (\<lambda>x. Arrays.update (seL4_MessageInfo_C.words_C seL4_MessageInfo___struct_seL4_MessageInfo_C) 0 2) seL4_MessageInfo___struct_seL4_MessageInfo_C)
+od \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (\<forall>x. globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs s v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs s v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout)))\<rbrace>!
+ 2. \<And>x. \<lbrace>?B4 x\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 (word_of_int pin)) \<lbrace>?B5 x\<rbrace>!
+ 3. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 1) \<lbrace>?B4\<rbrace>!
+ 4. \<And>s. globals_frame_intact s \<and> is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>x. globals_frame_intact (setMR s (nat 0) 1) \<and> ipc_buffer_valid (setMR s (nat 0) 1) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>x xa. globals_frame_intact (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3) \<and> globals_frame_intact (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3) \<and> (\<forall>x. globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) pout := x)) (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs (setMR (setMR s (nat 0) 1) (nat 1) (word_of_int pin)) v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) pout)))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def
+                  setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RPCFrom_echo_char_nf:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s2'. globals_frame_intact s2' \<and>
+          ipc_buffer_valid s2'\<rbrace>
+   RPCFrom_echo_char' i
+  \<lbrace>\<lambda>_ s2'. globals_frame_intact s2' \<and>
+           ipc_buffer_valid s2'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s2'. globals_frame_intact s2' \<and> ipc_buffer_valid s2'\<rbrace> RPCFrom_echo_char' i \<lbrace>\<lambda>_ s2'. globals_frame_intact s2' \<and> ipc_buffer_valid s2'\<rbrace>!<\STATESEP>apply (simp add:RPCFrom_echo_char'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s2'. globals_frame_intact s2' \<and> ipc_buffer_valid s2'\<rbrace> do y <- exec_concrete lift_global_heap (seL4_SetMR' 0 2);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 (UCAST(8 \<rightarrow> 32) i));
+ret' <- seL4_MessageInfo_new' 0 0 0 2;
+ret' <- seL4_Call' 6 ret';
+ret' <- seL4_GetMR' 0;
+return (sint (UCAST(32 \<rightarrow> 32 signed) ret'))
+od \<lbrace>\<lambda>_ s2'. globals_frame_intact s2' \<and> ipc_buffer_valid s2'\<rbrace>!<\STATESEP>apply (wp seL4_Call_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y. \<lbrace>?B5 x y\<rbrace> seL4_MessageInfo_new' 0 0 0 2 \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3 xa. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3))\<rbrace>!
+ 2. \<And>x. \<lbrace>?B4 x\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 (UCAST(8 \<rightarrow> 32) i)) \<lbrace>?B5 x\<rbrace>!
+ 3. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 2) \<lbrace>?B4\<rbrace>!
+ 4. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply (simp add:seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?B5 () ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+return (seL4_MessageInfo_C.words_C_update (\<lambda>x. Arrays.update (seL4_MessageInfo_C.words_C seL4_MessageInfo___struct_seL4_MessageInfo_C) 0 2) seL4_MessageInfo___struct_seL4_MessageInfo_C)
+od \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3))\<rbrace>!
+ 2. \<And>x. \<lbrace>?B4 x\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 (UCAST(8 \<rightarrow> 32) i)) \<lbrace>?B5 x\<rbrace>!
+ 3. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 2) \<lbrace>?B4\<rbrace>!
+ 4. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>x. globals_frame_intact (setMR s (nat 0) 2) \<and> ipc_buffer_valid (setMR s (nat 0) 2) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>x xa. globals_frame_intact (setMR (setMR s (nat 0) 2) (nat 1) (UCAST(8 \<rightarrow> 32) i)) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) 2) (nat 1) (UCAST(8 \<rightarrow> 32) i)) \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs (setMR (setMR s (nat 0) 2) (nat 1) (UCAST(8 \<rightarrow> 32) i)) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 2) (nat 1) (UCAST(8 \<rightarrow> 32) i)) v0 v1 v2 v3) \<and> globals_frame_intact (setMRs (setMR (setMR s (nat 0) 2) (nat 1) (UCAST(8 \<rightarrow> 32) i)) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 2) (nat 1) (UCAST(8 \<rightarrow> 32) i)) v0 v1 v2 v3))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def
+                  setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RPCFrom_increment_char_nf:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s3'. globals_frame_intact s3' \<and>
+          is_valid_w8 s3' (ptr_coerce x) \<and>
+          ipc_buffer_valid s3'\<rbrace>
+   RPCFrom_increment_char' x
+  \<lbrace>\<lambda>_ s3'. globals_frame_intact s3' \<and>
+           is_valid_w8 s3' (ptr_coerce x) \<and>
+           ipc_buffer_valid s3'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s3'. globals_frame_intact s3' \<and> is_valid_w8 s3' (PTR_COERCE(8 word \<rightarrow> 8 word) x) \<and> ipc_buffer_valid s3'\<rbrace> RPCFrom_increment_char' x \<lbrace>\<lambda>_ s3'. globals_frame_intact s3' \<and> is_valid_w8 s3' (PTR_COERCE(8 word \<rightarrow> 8 word) x) \<and> ipc_buffer_valid s3'\<rbrace>!<\STATESEP>apply (simp add:RPCFrom_increment_char'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s3'. globals_frame_intact s3' \<and> is_valid_w8 s3' x \<and> ipc_buffer_valid s3'\<rbrace> do y <- exec_concrete lift_global_heap (seL4_SetMR' 0 3);
+y <- guard (\<lambda>s. is_valid_w8 s x);
+mr___unsigned'param <- gets (\<lambda>s. UCAST(8 \<rightarrow> 32) (heap_w8 s x));
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param);
+ret' <- seL4_MessageInfo_new' 0 0 0 2;
+ret' <- seL4_Call' 6 ret';
+ret' <- seL4_GetMR' 0;
+y <- guard (\<lambda>s. is_valid_w8 s x);
+modify (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) ret')))
+od \<lbrace>\<lambda>_ s3'. globals_frame_intact s3' \<and> is_valid_w8 s3' x \<and> ipc_buffer_valid s3'\<rbrace>!<\STATESEP>apply (wp seL4_Call_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>xa y mr___unsigned'param ya. \<lbrace>?B7 xa y mr___unsigned'param ya\<rbrace> seL4_MessageInfo_new' 0 0 0 2 \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>xa v0 v1 v2 v3 xb. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (globals_frame_intact (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xb)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w8 (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xb)) (setMRs s v0 v1 v2 v3)) x \<and> ipc_buffer_valid (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xb)) (setMRs s v0 v1 v2 v3))) \<and> is_valid_w8 (setMRs s v0 v1 v2 v3) x)\<rbrace>!
+ 2. \<And>x y mr___unsigned'param. \<lbrace>?B6 x y mr___unsigned'param\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param) \<lbrace>?B7 x y mr___unsigned'param\<rbrace>!
+ 3. \<And>xa y. \<lbrace>?B5 xa y\<rbrace> gets (\<lambda>s. UCAST(8 \<rightarrow> 32) (heap_w8 s x)) \<lbrace>?B6 xa y\<rbrace>!
+ 4. \<And>xa. \<lbrace>?B4 xa\<rbrace> guard (\<lambda>s. is_valid_w8 s x) \<lbrace>?B5 xa\<rbrace>!
+ 5. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 3) \<lbrace>?B4\<rbrace>!
+ 6. \<And>s. globals_frame_intact s \<and> is_valid_w8 s x \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply (simp add:seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>mr___unsigned'param. \<lbrace>?B7 () () mr___unsigned'param ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+return (seL4_MessageInfo_C.words_C_update (\<lambda>x. Arrays.update (seL4_MessageInfo_C.words_C seL4_MessageInfo___struct_seL4_MessageInfo_C) 0 2) seL4_MessageInfo___struct_seL4_MessageInfo_C)
+od \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (\<forall>xa. globals_frame_intact (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xa)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w8 (setMRs s v0 v1 v2 v3) x \<and> ipc_buffer_valid (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xa)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w8 (setMRs s v0 v1 v2 v3) x))\<rbrace>!
+ 2. \<And>x y mr___unsigned'param. \<lbrace>?B6 x y mr___unsigned'param\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param) \<lbrace>?B7 x y mr___unsigned'param\<rbrace>!
+ 3. \<And>xa y. \<lbrace>?B5 xa y\<rbrace> gets (\<lambda>s. UCAST(8 \<rightarrow> 32) (heap_w8 s x)) \<lbrace>?B6 xa y\<rbrace>!
+ 4. \<And>xa. \<lbrace>?B4 xa\<rbrace> guard (\<lambda>s. is_valid_w8 s x) \<lbrace>?B5 xa\<rbrace>!
+ 5. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 3) \<lbrace>?B4\<rbrace>!
+ 6. \<And>s. globals_frame_intact s \<and> is_valid_w8 s x \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> is_valid_w8 s x \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xa. (globals_frame_intact (setMR s (nat 0) 3) \<and> ipc_buffer_valid (setMR s (nat 0) 3) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xa xb. globals_frame_intact (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) v0 v1 v2 v3) \<and> (\<forall>xa. globals_frame_intact (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xa)) (setMRs (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) v0 v1 v2 v3)) \<and> is_valid_w8 (setMRs (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) v0 v1 v2 v3) x \<and> ipc_buffer_valid (heap_w8_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 8) xa)) (setMRs (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) v0 v1 v2 v3)) \<and> is_valid_w8 (setMRs (setMR (setMR s (nat 0) 3) (nat 1) (UCAST(8 \<rightarrow> 32) (heap_w8 (setMR s (nat 0) 3) x))) v0 v1 v2 v3) x)))) \<and> is_valid_w8 (setMR s (nat 0) 3) x)<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def
+                  setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RPCFrom_increment_parameter_nf:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s4'. globals_frame_intact s4' \<and>
+          is_valid_w32 s4' (ptr_coerce x) \<and>
+          ipc_buffer_valid s4'\<rbrace>
+   RPCFrom_increment_parameter' x
+  \<lbrace>\<lambda>_ s4'. globals_frame_intact s4' \<and>
+           is_valid_w32 s4' (ptr_coerce x) \<and>
+           ipc_buffer_valid s4'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s4'. globals_frame_intact s4' \<and> is_valid_w32 s4' (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s4'\<rbrace> RPCFrom_increment_parameter' x \<lbrace>\<lambda>_ s4'. globals_frame_intact s4' \<and> is_valid_w32 s4' (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s4'\<rbrace>!<\STATESEP>apply (simp add:RPCFrom_increment_parameter'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s4'. globals_frame_intact s4' \<and> is_valid_w32 s4' (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s4'\<rbrace> do y <- exec_concrete lift_global_heap (seL4_SetMR' 0 4);
+y <- guard (\<lambda>s. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x));
+mr___unsigned'param <- gets (\<lambda>s. heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x));
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param);
+ret' <- seL4_MessageInfo_new' 0 0 0 2;
+ret' <- seL4_Call' 6 ret';
+ret' <- seL4_GetMR' 0;
+y <- guard (\<lambda>s. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x));
+modify (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := ret')))
+od \<lbrace>\<lambda>_ s4'. globals_frame_intact s4' \<and> is_valid_w32 s4' (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s4'\<rbrace>!<\STATESEP>apply (wp seL4_Call_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>xa y mr___unsigned'param ya. \<lbrace>?B7 xa y mr___unsigned'param ya\<rbrace> seL4_MessageInfo_new' 0 0 0 2 \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>xa v0 v1 v2 v3 xb. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xb)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xb)) (setMRs s v0 v1 v2 v3)) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xb)) (setMRs s v0 v1 v2 v3))) \<and> is_valid_w32 (setMRs s v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))\<rbrace>!
+ 2. \<And>x y mr___unsigned'param. \<lbrace>?B6 x y mr___unsigned'param\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param) \<lbrace>?B7 x y mr___unsigned'param\<rbrace>!
+ 3. \<And>xa y. \<lbrace>?B5 xa y\<rbrace> gets (\<lambda>s. heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x)) \<lbrace>?B6 xa y\<rbrace>!
+ 4. \<And>xa. \<lbrace>?B4 xa\<rbrace> guard (\<lambda>s. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x)) \<lbrace>?B5 xa\<rbrace>!
+ 5. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 4) \<lbrace>?B4\<rbrace>!
+ 6. \<And>s. globals_frame_intact s \<and> is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply (simp add:seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>mr___unsigned'param. \<lbrace>?B7 () () mr___unsigned'param ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+return (seL4_MessageInfo_C.words_C_update (\<lambda>x. Arrays.update (seL4_MessageInfo_C.words_C seL4_MessageInfo___struct_seL4_MessageInfo_C) 0 2) seL4_MessageInfo___struct_seL4_MessageInfo_C)
+od \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (\<forall>xa. globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xa)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs s v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xa)) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs s v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x)))\<rbrace>!
+ 2. \<And>x y mr___unsigned'param. \<lbrace>?B6 x y mr___unsigned'param\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param) \<lbrace>?B7 x y mr___unsigned'param\<rbrace>!
+ 3. \<And>xa y. \<lbrace>?B5 xa y\<rbrace> gets (\<lambda>s. heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x)) \<lbrace>?B6 xa y\<rbrace>!
+ 4. \<And>xa. \<lbrace>?B4 xa\<rbrace> guard (\<lambda>s. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x)) \<lbrace>?B5 xa\<rbrace>!
+ 5. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 4) \<lbrace>?B4\<rbrace>!
+ 6. \<And>s. globals_frame_intact s \<and> is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xa. (globals_frame_intact (setMR s (nat 0) 4) \<and> ipc_buffer_valid (setMR s (nat 0) 4) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xa xb. globals_frame_intact (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) v0 v1 v2 v3) \<and> (\<forall>xa. globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xa)) (setMRs (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR_COERCE(32 signed word \<rightarrow> 32 word) x := xa)) (setMRs (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) v0 v1 v2 v3)) \<and> is_valid_w32 (setMRs (setMR (setMR s (nat 0) 4) (nat 1) (heap_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))) v0 v1 v2 v3) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))))) \<and> is_valid_w32 (setMR s (nat 0) 4) (PTR_COERCE(32 signed word \<rightarrow> 32 word) x))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def
+                  setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RPCFrom_increment_64_nf:
+  notes seL4_SetMR_wp[wp] seL4_GetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s5'. globals_frame_intact s5' \<and>
+          is_valid_w64 s5' (ptr_coerce x) \<and>
+          ipc_buffer_valid s5'\<rbrace>
+   RPCFrom_increment_64' x
+  \<lbrace>\<lambda>_ s5'. globals_frame_intact s5' \<and>
+           is_valid_w64 s5' (ptr_coerce x) \<and>
+           ipc_buffer_valid s5'\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s5'. globals_frame_intact s5' \<and> is_valid_w64 s5' (PTR_COERCE(64 word \<rightarrow> 64 word) x) \<and> ipc_buffer_valid s5'\<rbrace> RPCFrom_increment_64' x \<lbrace>\<lambda>_ s5'. globals_frame_intact s5' \<and> is_valid_w64 s5' (PTR_COERCE(64 word \<rightarrow> 64 word) x) \<and> ipc_buffer_valid s5'\<rbrace>!<\STATESEP>apply (simp add:RPCFrom_increment_64'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s5'. globals_frame_intact s5' \<and> is_valid_w64 s5' x \<and> ipc_buffer_valid s5'\<rbrace> do y <- exec_concrete lift_global_heap (seL4_SetMR' 0 5);
+y <- guard (\<lambda>s. is_valid_w64 s x);
+mr___unsigned'param <- gets (\<lambda>s. UCAST(64 \<rightarrow> 32) (heap_w64 s x));
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param);
+y <- guard (\<lambda>s. is_valid_w64 s x);
+mr___unsigned'param <- gets (\<lambda>s. UCAST(64 \<rightarrow> 32) (heap_w64 s x >> 32));
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 mr___unsigned'param);
+ret' <- seL4_MessageInfo_new' 0 0 0 3;
+ret' <- seL4_Call' 6 ret';
+ret' <- seL4_GetMR' 0;
+y <- guard (\<lambda>s. is_valid_w64 s x);
+y <- modify (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) ret')));
+ret' <- seL4_GetMR' 1;
+y <- guard (\<lambda>s. is_valid_w64 s x);
+modify (\<lambda>s. heap_w64_update (\<lambda>a. a(x := heap_w64 s x || (UCAST(32 \<rightarrow> 64) ret' << 32))) s)
+od \<lbrace>\<lambda>_ s5'. globals_frame_intact s5' \<and> is_valid_w64 s5' x \<and> ipc_buffer_valid s5'\<rbrace>!<\STATESEP>apply (wp seL4_Call_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>xa y mr___unsigned'param ya yb mr___unsigned'parama yc. \<lbrace>?B10 xa y mr___unsigned'param ya yb mr___unsigned'parama yc\<rbrace> seL4_MessageInfo_new' 0 0 0 3 \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>xa v0 v1 v2 v3 xb. 0 \<le> 0 \<and> 0 < 120 \<and> globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (\<forall>xa. 0 \<le> 1 \<and> 1 < 120 \<and> globals_frame_intact (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)) \<and> ipc_buffer_valid (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)) \<and> (globals_frame_intact (heap_w64_update (\<lambda>a. a(x := heap_w64 (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)) x || (UCAST(32 \<rightarrow> 64) xa << 32))) (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3))) \<and> is_valid_w64 (heap_w64_update (\<lambda>a. a(x := heap_w64 (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)) x || (UCAST(32 \<rightarrow> 64) xa << 32))) (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3))) x \<and> ipc_buffer_valid (heap_w64_update (\<lambda>a. a(x := heap_w64 (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)) x || (UCAST(32 \<rightarrow> 64) xa << 32))) (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)))) \<and> is_valid_w64 (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xb)) (setMRs s v0 v1 v2 v3)) x) \<and> is_valid_w64 (setMRs s v0 v1 v2 v3) x)\<rbrace>!
+ 2. \<And>x y mr___unsigned'param ya yb mr___unsigned'parama. \<lbrace>?B9 x y mr___unsigned'param ya yb mr___unsigned'parama\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 2 mr___unsigned'parama) \<lbrace>?B10 x y mr___unsigned'param ya yb mr___unsigned'parama\<rbrace>!
+ 3. \<And>xa y mr___unsigned'param ya yb. \<lbrace>?B8 xa y mr___unsigned'param ya yb\<rbrace> gets (\<lambda>s. UCAST(64 \<rightarrow> 32) (heap_w64 s x >> 32)) \<lbrace>?B9 xa y mr___unsigned'param ya yb\<rbrace>!
+ 4. \<And>xa y mr___unsigned'param ya. \<lbrace>?B7 xa y mr___unsigned'param ya\<rbrace> guard (\<lambda>s. is_valid_w64 s x) \<lbrace>?B8 xa y mr___unsigned'param ya\<rbrace>!
+ 5. \<And>x y mr___unsigned'param. \<lbrace>?B6 x y mr___unsigned'param\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param) \<lbrace>?B7 x y mr___unsigned'param\<rbrace>!
+ 6. \<And>xa y. \<lbrace>?B5 xa y\<rbrace> gets (\<lambda>s. UCAST(64 \<rightarrow> 32) (heap_w64 s x)) \<lbrace>?B6 xa y\<rbrace>!
+ 7. \<And>xa. \<lbrace>?B4 xa\<rbrace> guard (\<lambda>s. is_valid_w64 s x) \<lbrace>?B5 xa\<rbrace>!
+ 8. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 5) \<lbrace>?B4\<rbrace>!
+ 9. \<And>s. globals_frame_intact s \<and> is_valid_w64 s x \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply (simp add:seL4_MessageInfo_new'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>mr___unsigned'param mr___unsigned'parama. \<lbrace>?B10 () () mr___unsigned'param () () mr___unsigned'parama ()\<rbrace> do seL4_MessageInfo___struct_seL4_MessageInfo_C <- unknown;
+return (seL4_MessageInfo_C.words_C_update (\<lambda>x. Arrays.update (seL4_MessageInfo_C.words_C seL4_MessageInfo___struct_seL4_MessageInfo_C) 0 3) seL4_MessageInfo___struct_seL4_MessageInfo_C)
+od \<lbrace>\<lambda>ret' s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3) \<and> (\<forall>xa. globals_frame_intact (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa)) (setMRs s v0 v1 v2 v3)) \<and> ipc_buffer_valid (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa)) (setMRs s v0 v1 v2 v3)) \<and> (\<forall>xb. globals_frame_intact (heap_w64_update ((\<lambda>a. a(x := ((heap_w64 (setMRs s v0 v1 v2 v3))(x := UCAST(32 \<rightarrow> 64) xa)) x || (UCAST(32 \<rightarrow> 64) xb << 32))) \<circ> (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa))) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w64 (setMRs s v0 v1 v2 v3) x \<and> ipc_buffer_valid (heap_w64_update ((\<lambda>a. a(x := ((heap_w64 (setMRs s v0 v1 v2 v3))(x := UCAST(32 \<rightarrow> 64) xa)) x || (UCAST(32 \<rightarrow> 64) xb << 32))) \<circ> (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa))) (setMRs s v0 v1 v2 v3)) \<and> is_valid_w64 (setMRs s v0 v1 v2 v3) x) \<and> is_valid_w64 (setMRs s v0 v1 v2 v3) x))\<rbrace>!
+ 2. \<And>x y mr___unsigned'param ya yb mr___unsigned'parama. \<lbrace>?B9 x y mr___unsigned'param ya yb mr___unsigned'parama\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 2 mr___unsigned'parama) \<lbrace>?B10 x y mr___unsigned'param ya yb mr___unsigned'parama\<rbrace>!
+ 3. \<And>xa y mr___unsigned'param ya yb. \<lbrace>?B8 xa y mr___unsigned'param ya yb\<rbrace> gets (\<lambda>s. UCAST(64 \<rightarrow> 32) (heap_w64 s x >> 32)) \<lbrace>?B9 xa y mr___unsigned'param ya yb\<rbrace>!
+ 4. \<And>xa y mr___unsigned'param ya. \<lbrace>?B7 xa y mr___unsigned'param ya\<rbrace> guard (\<lambda>s. is_valid_w64 s x) \<lbrace>?B8 xa y mr___unsigned'param ya\<rbrace>!
+ 5. \<And>x y mr___unsigned'param. \<lbrace>?B6 x y mr___unsigned'param\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 1 mr___unsigned'param) \<lbrace>?B7 x y mr___unsigned'param\<rbrace>!
+ 6. \<And>xa y. \<lbrace>?B5 xa y\<rbrace> gets (\<lambda>s. UCAST(64 \<rightarrow> 32) (heap_w64 s x)) \<lbrace>?B6 xa y\<rbrace>!
+ 7. \<And>xa. \<lbrace>?B4 xa\<rbrace> guard (\<lambda>s. is_valid_w64 s x) \<lbrace>?B5 xa\<rbrace>!
+ 8. \<lbrace>?Q3\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' 0 5) \<lbrace>?B4\<rbrace>!
+ 9. \<And>s. globals_frame_intact s \<and> is_valid_w64 s x \<and> ipc_buffer_valid s \<Longrightarrow> ?Q3 s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> is_valid_w64 s x \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xa. (globals_frame_intact (setMR s (nat 0) 5) \<and> ipc_buffer_valid (setMR s (nat 0) 5) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xa. (globals_frame_intact (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>xa xb. globals_frame_intact (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) \<and> (\<forall>v0 v1 v2 v3. globals_frame_intact (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3) \<and> (\<forall>xa. globals_frame_intact (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa)) (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3)) \<and> ipc_buffer_valid (heap_w64_update (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa)) (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3)) \<and> (\<forall>xb. globals_frame_intact (heap_w64_update ((\<lambda>a. a(x := ((heap_w64 (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3))(x := UCAST(32 \<rightarrow> 64) xa)) x || (UCAST(32 \<rightarrow> 64) xb << 32))) \<circ> (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa))) (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3)) \<and> is_valid_w64 (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3) x \<and> ipc_buffer_valid (heap_w64_update ((\<lambda>a. a(x := ((heap_w64 (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3))(x := UCAST(32 \<rightarrow> 64) xa)) x || (UCAST(32 \<rightarrow> 64) xb << 32))) \<circ> (\<lambda>a. a(x := UCAST(32 \<rightarrow> 64) xa))) (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3)) \<and> is_valid_w64 (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3) x) \<and> is_valid_w64 (setMRs (setMR (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) (nat 2) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x >> 32))) v0 v1 v2 v3) x)))) \<and> is_valid_w64 (setMR (setMR s (nat 0) 5) (nat 1) (UCAST(64 \<rightarrow> 32) (heap_w64 (setMR s (nat 0) 5) x))) x)) \<and> is_valid_w64 (setMR s (nat 0) 5) x)<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def
+                  setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

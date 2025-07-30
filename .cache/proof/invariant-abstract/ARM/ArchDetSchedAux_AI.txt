@@ -1,0 +1,238 @@
+<\STATESEP>theory ArchDetSchedAux_AI
+imports DetSchedAux_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems DetSchedAux_AI_assms<\STATESEP>0<\TRANSEP><\STATESEP>crunches init_arch_objects
+  for exst[wp]: "\<lambda>s. P (exst s)"
+  and ct[wp]: "\<lambda>s. P (cur_thread s)"
+  and valid_etcbs[wp, DetSchedAux_AI_assms]: valid_etcbs
+  (wp: crunch_wps unless_wp valid_etcbs_lift)<\STATESEP>0<\TRANSEP><\STATESEP>crunch ct[wp, DetSchedAux_AI_assms]: invoke_untyped "\<lambda>s. P (cur_thread s)"
+  (wp: crunch_wps dxo_wp_weak preemption_point_inv mapME_x_inv_wp
+   simp: crunch_simps do_machine_op_def detype_def mapM_x_defsym unless_def
+   ignore: freeMemory retype_region_ext)<\STATESEP>0<\TRANSEP><\STATESEP>crunch ready_queues[wp, DetSchedAux_AI_assms]: invoke_untyped "\<lambda>s. P (ready_queues s)"
+  (wp: crunch_wps mapME_x_inv_wp preemption_point_inv'
+   simp: detype_def detype_ext_def crunch_simps
+          wrap_ext_det_ext_ext_def mapM_x_defsym
+   ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch scheduler_action[wp, DetSchedAux_AI_assms]: invoke_untyped "\<lambda>s. P (scheduler_action s)"
+  (wp: crunch_wps mapME_x_inv_wp preemption_point_inv'
+   simp: detype_def detype_ext_def crunch_simps
+         wrap_ext_det_ext_ext_def mapM_x_defsym
+   ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch cur_domain[wp, DetSchedAux_AI_assms]: invoke_untyped "\<lambda>s. P (cur_domain s)"
+  (wp: crunch_wps mapME_x_inv_wp preemption_point_inv'
+   simp: detype_def detype_ext_def crunch_simps
+         wrap_ext_det_ext_ext_def mapM_x_defsym
+   ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch idle_thread[wp, DetSchedAux_AI_assms]: invoke_untyped "\<lambda>s. P (idle_thread s)"
+  (wp: crunch_wps mapME_x_inv_wp preemption_point_inv dxo_wp_weak
+   simp: detype_def detype_ext_def crunch_simps
+         wrap_ext_det_ext_ext_def mapM_x_defsym
+   ignore: freeMemory retype_region_ext)<\STATESEP>0<\TRANSEP><\STATESEP>lemma tcb_sched_action_valid_idle_etcb:
+  "\<lbrace>valid_idle_etcb\<rbrace>
+     tcb_sched_action foo thread
+   \<lbrace>\<lambda>_. valid_idle_etcb\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_idle_etcb\<rbrace> tcb_sched_action foo thread \<lbrace>\<lambda>_. valid_idle_etcb\<rbrace><\STATESEP>apply (rule valid_idle_etcb_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P t. \<lbrace>etcb_at P t\<rbrace> tcb_sched_action foo thread \<lbrace>\<lambda>_. etcb_at P t\<rbrace><\STATESEP>apply (simp add: tcb_sched_action_def set_tcb_queue_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P t. \<lbrace>etcb_at P t\<rbrace> do d <- ethread_get tcb_domain thread;
+prio <- ethread_get tcb_priority thread;
+queue <- get_tcb_queue d prio;
+modify (\<lambda>es. ready_queues_update (\<lambda>_ d' p. if d' = d \<and> p = prio then foo thread queue else ready_queues es d' p) es)
+od \<lbrace>\<lambda>_. etcb_at P t\<rbrace><\STATESEP>apply (wp | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma delete_objects_etcb_at[wp, DetSchedAux_AI_assms]:
+  "\<lbrace>\<lambda>s::det_ext state. etcb_at P t s\<rbrace> delete_objects a b \<lbrace>\<lambda>r s. etcb_at P t s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>etcb_at P t\<rbrace> delete_objects a b \<lbrace>\<lambda>r. etcb_at P t\<rbrace><\STATESEP>apply (simp add: delete_objects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>etcb_at P t\<rbrace> do y <- do_machine_op (freeMemory a b);
+modify (detype {a..a + 2 ^ b - 1})
+od \<lbrace>\<lambda>r. etcb_at P t\<rbrace><\STATESEP>apply (wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> do_machine_op (freeMemory a b) \<lbrace>\<lambda>y s. etcb_at P t (detype {a..a + 2 ^ b - 1} s)\<rbrace>
+ 2. \<And>s. etcb_at P t s \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: detype_def detype_ext_def wrap_ext_det_ext_ext_def etcb_at_def|wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch etcb_at[wp]: reset_untyped_cap "etcb_at P t"
+  (wp: preemption_point_inv' mapME_x_inv_wp crunch_wps
+    simp: unless_def)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_etcbs[wp]: reset_untyped_cap "valid_etcbs"
+  (wp: preemption_point_inv' mapME_x_inv_wp crunch_wps
+    simp: unless_def)<\STATESEP>0<\TRANSEP><\STATESEP>lemma invoke_untyped_etcb_at [DetSchedAux_AI_assms]:
+  "\<lbrace>(\<lambda>s :: det_ext state. etcb_at P t s) and valid_etcbs\<rbrace> invoke_untyped ui \<lbrace>\<lambda>r s. st_tcb_at (Not o inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>etcb_at P t and valid_etcbs\<rbrace> invoke_untyped ui \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace><\STATESEP>apply (cases ui)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4 x5 x6 x7 x8. ui = Retype x1 x2 x3 x4 x5 x6 x7 x8 \<Longrightarrow> \<lbrace>etcb_at P t and valid_etcbs\<rbrace> invoke_untyped ui \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace><\STATESEP>apply (simp add: mapM_x_def[symmetric] invoke_untyped_def whenE_def
+           split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4 x5 x6 x7 x8. ui = Retype x1 x2 x3 x4 x5 x6 x7 x8 \<Longrightarrow> \<lbrace>etcb_at P t and valid_etcbs\<rbrace> doE y <- if x2 then reset_untyped_cap x1 else returnOk ();
+liftE (do cap <- get_cap x1;
+y <- set_cap (UntypedCap x8 x3 (bits_of cap) (unat (x4 + (word_of_nat (length x7) << obj_bits_api x5 x6) - x3))) x1;
+orefs <- retype_region x4 (length x7) x6 x5 x8;
+y <- init_arch_objects x5 x4 (length x7) x6 orefs;
+mapM_x (create_cap x5 x6 x1 x8) (zip x7 orefs)
+od)
+odE \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace><\STATESEP>apply (wp retype_region_etcb_at mapM_x_wp'
+            create_cap_no_pred_tcb_at typ_at_pred_tcb_at_lift
+            hoare_convert_imp[OF create_cap_no_pred_tcb_at]
+            hoare_convert_imp[OF _ init_arch_objects_exst]
+      | simp
+      | (wp (once) hoare_drop_impE_E))+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch valid_blocked[wp, DetSchedAux_AI_assms]: init_arch_objects valid_blocked
+  (wp: valid_blocked_lift set_cap_typ_at)<\STATESEP>0<\TRANSEP><\STATESEP>lemma perform_asid_control_etcb_at:"\<lbrace>(\<lambda>s. etcb_at P t s) and valid_etcbs\<rbrace>
+          perform_asid_control_invocation aci
+          \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>etcb_at P t and valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace><\STATESEP>apply (simp add: perform_asid_control_invocation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>etcb_at P t and valid_etcbs\<rbrace> case aci of MakePool frame slot parent base \<Rightarrow> do delete_objects frame page_bits;
+pcap <- get_cap parent;
+set_cap (max_free_index_update pcap) parent;
+retype_region frame 1 0 (ArchObject ASIDPoolObj) False;
+cap_insert (ArchObjectCap $ ASIDPoolCap frame base) parent slot;
+assert (base && mask local.asid_low_bits = 0);
+asid_table <- gets (arm_asid_table \<circ> arch_state);
+asid_table' <- return (asid_table(asid_high_bits_of base \<mapsto> frame));
+modify (\<lambda>s. s\<lparr>arch_state := arch_state s\<lparr>arm_asid_table := asid_table'\<rparr>\<rparr>)
+od \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> case aci of MakePool frame slot parent base \<Rightarrow> do delete_objects frame page_bits;
+pcap <- get_cap parent;
+set_cap (max_free_index_update pcap) parent;
+retype_region frame 1 0 (ArchObject ASIDPoolObj) False;
+cap_insert (ArchObjectCap $ ASIDPoolCap frame base) parent slot;
+assert (base && mask local.asid_low_bits = 0);
+asid_table <- gets (arm_asid_table \<circ> arch_state);
+asid_table' <- return (asid_table(asid_high_bits_of base \<mapsto> frame));
+modify (\<lambda>s. s\<lparr>arch_state := arch_state s\<lparr>arm_asid_table := asid_table'\<rparr>\<rparr>)
+od \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>
+ 2. \<And>s. (etcb_at P t and valid_etcbs) s \<Longrightarrow> ?Q s<\STATESEP>apply (wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x1 x2 x3 x4 pcap rvb. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'19 x1 x2 x3 x4 () pcap () rvb\<rbrace> cap_insert (ArchObjectCap (ASIDPoolCap x1 x4)) x3 x2 \<lbrace>\<lambda>rvc s. x4 && mask local.asid_low_bits = 0 \<longrightarrow> st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>
+ 2. \<And>x1 x2 x3 x4 rv pcap rva. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'17 x1 x2 x3 x4 rv pcap rva\<rbrace> retype_region x1 1 0 (ArchObject ASIDPoolObj) False \<lbrace>?Q'19 x1 x2 x3 x4 rv pcap rva\<rbrace>
+ 3. \<And>x1 x2 x3 x4 rv pcap. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'16 x1 x2 x3 x4 rv pcap\<rbrace> set_cap (max_free_index_update pcap) x3 \<lbrace>?Q'17 x1 x2 x3 x4 rv pcap\<rbrace>
+ 4. \<And>x1 x2 x3 x4 rv. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'14 x1 x2 x3 x4 rv\<rbrace> get_cap x3 \<lbrace>?Q'16 x1 x2 x3 x4 rv\<rbrace>
+ 5. \<And>x1 x2 x3 x4. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?R12 x1 x2 x3 x4\<rbrace> delete_objects x1 page_bits \<lbrace>?Q'14 x1 x2 x3 x4\<rbrace>
+ 6. \<And>s. (etcb_at P t and valid_etcbs) s \<Longrightarrow> \<forall>x xa xb xc. aci = MakePool x xa xb xc \<longrightarrow> ?R12 x xa xb xc s<\STATESEP>apply (wp hoare_imp_lift_something typ_at_pred_tcb_at_lift)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x1 x2 x3 x4 rv pcap rva. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'17 x1 x2 x3 x4 rv pcap rva\<rbrace> retype_region x1 1 0 (ArchObject ASIDPoolObj) False \<lbrace>\<lambda>a b. x4 && mask local.asid_low_bits = 0 \<longrightarrow> st_tcb_at (Not \<circ> inactive) t b \<longrightarrow> etcb_at P t b\<rbrace>
+ 2. \<And>x1 x2 x3 x4 rv pcap. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'16 x1 x2 x3 x4 rv pcap\<rbrace> set_cap (max_free_index_update pcap) x3 \<lbrace>?Q'17 x1 x2 x3 x4 rv pcap\<rbrace>
+ 3. \<And>x1 x2 x3 x4 rv. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'14 x1 x2 x3 x4 rv\<rbrace> get_cap x3 \<lbrace>?Q'16 x1 x2 x3 x4 rv\<rbrace>
+ 4. \<And>x1 x2 x3 x4. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?R12 x1 x2 x3 x4\<rbrace> delete_objects x1 page_bits \<lbrace>?Q'14 x1 x2 x3 x4\<rbrace>
+ 5. \<And>s. (etcb_at P t and valid_etcbs) s \<Longrightarrow> \<forall>x xa xb xc. aci = MakePool x xa xb xc \<longrightarrow> ?R12 x xa xb xc s<\STATESEP>apply (rule hoare_drop_imps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x1 x2 x3 x4 rv pcap rva. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'17 x1 x2 x3 x4 rv pcap rva\<rbrace> retype_region x1 1 0 (ArchObject ASIDPoolObj) False \<lbrace>\<lambda>rv s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>
+ 2. \<And>x1 x2 x3 x4 rv pcap. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'16 x1 x2 x3 x4 rv pcap\<rbrace> set_cap (max_free_index_update pcap) x3 \<lbrace>?Q'17 x1 x2 x3 x4 rv pcap\<rbrace>
+ 3. \<And>x1 x2 x3 x4 rv. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?Q'14 x1 x2 x3 x4 rv\<rbrace> get_cap x3 \<lbrace>?Q'16 x1 x2 x3 x4 rv\<rbrace>
+ 4. \<And>x1 x2 x3 x4. aci = MakePool x1 x2 x3 x4 \<Longrightarrow> \<lbrace>?R12 x1 x2 x3 x4\<rbrace> delete_objects x1 page_bits \<lbrace>?Q'14 x1 x2 x3 x4\<rbrace>
+ 5. \<And>s. (etcb_at P t and valid_etcbs) s \<Longrightarrow> \<forall>x xa xb xc. aci = MakePool x xa xb xc \<longrightarrow> ?R12 x xa xb xc s<\STATESEP>apply (wp retype_region_etcb_at)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (etcb_at P t and valid_etcbs) s \<Longrightarrow> \<forall>x xa xb xc. aci = MakePool x xa xb xc \<longrightarrow> etcb_at P t s \<and> valid_etcbs s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch ct[wp]: perform_asid_control_invocation "\<lambda>s. P (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch idle_thread[wp]: perform_asid_control_invocation "\<lambda>s. P (idle_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_etcbs[wp]: perform_asid_control_invocation valid_etcbs (wp: hoare_weak_lift_imp)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_blocked[wp]: perform_asid_control_invocation valid_blocked (wp: hoare_weak_lift_imp)<\STATESEP>0<\TRANSEP><\STATESEP>crunch schedact[wp]: perform_asid_control_invocation "\<lambda>s :: det_ext state. P (scheduler_action s)" (wp: crunch_wps simp: detype_def detype_ext_def wrap_ext_det_ext_ext_def cap_insert_ext_def ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch rqueues[wp]: perform_asid_control_invocation "\<lambda>s :: det_ext state. P (ready_queues s)" (wp: crunch_wps simp: detype_def detype_ext_def wrap_ext_det_ext_ext_def cap_insert_ext_def ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch cur_domain[wp]: perform_asid_control_invocation "\<lambda>s :: det_ext state. P (cur_domain s)" (wp: crunch_wps simp: detype_def detype_ext_def wrap_ext_det_ext_ext_def cap_insert_ext_def ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>lemma perform_asid_control_invocation_valid_sched:
+  "\<lbrace>ct_active and invs and valid_aci aci and valid_sched and valid_idle\<rbrace>
+     perform_asid_control_invocation aci
+   \<lbrace>\<lambda>_. valid_sched\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>ct_active and invs and valid_aci aci and valid_sched and valid_idle\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_sched\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_sched\<rbrace>
+ 2. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> ?Q s<\STATESEP>apply (rule_tac I="invs and ct_active and valid_aci aci" in valid_sched_tcb_state_preservation)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>P t. \<lbrace>invs and ct_active and valid_aci aci and ct_active and st_tcb_at (P and Not \<circ> inactive and Not \<circ> idle) t\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. st_tcb_at P t\<rbrace>
+ 2. \<And>P t. \<lbrace>etcb_at P t and valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>
+ 3. \<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (cur_thread s)\<rbrace>
+ 4. \<And>P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (idle_thread s)\<rbrace>
+ 5. \<lbrace>valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_etcbs\<rbrace>
+ 6. \<lbrace>valid_blocked\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_blocked\<rbrace>
+ 7. \<lbrace>invs and ct_active and valid_aci aci\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_idle\<rbrace>
+ 8. \<And>P. \<lbrace>\<lambda>s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace>
+ 9. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (wp perform_asid_control_invocation_st_tcb_at)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>P t s. (invs and ct_active and valid_aci aci and ct_active and st_tcb_at (P and Not \<circ> inactive and Not \<circ> idle) t) s \<Longrightarrow> (st_tcb_at (P and Not \<circ> inactive and Not \<circ> idle) t and ct_active and invs and valid_aci aci) s
+ 2. \<And>P t. \<lbrace>etcb_at P t and valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>
+ 3. \<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (cur_thread s)\<rbrace>
+ 4. \<And>P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (idle_thread s)\<rbrace>
+ 5. \<lbrace>valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_etcbs\<rbrace>
+ 6. \<lbrace>valid_blocked\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_blocked\<rbrace>
+ 7. \<lbrace>invs and ct_active and valid_aci aci\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_idle\<rbrace>
+ 8. \<And>P. \<lbrace>\<lambda>s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace>
+ 9. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>P t. \<lbrace>etcb_at P t and valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. st_tcb_at (Not \<circ> inactive) t s \<longrightarrow> etcb_at P t s\<rbrace>
+ 2. \<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (cur_thread s)\<rbrace>
+ 3. \<And>P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (idle_thread s)\<rbrace>
+ 4. \<lbrace>valid_etcbs\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_etcbs\<rbrace>
+ 5. \<lbrace>valid_blocked\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_blocked\<rbrace>
+ 6. \<lbrace>invs and ct_active and valid_aci aci\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_idle\<rbrace>
+ 7. \<And>P. \<lbrace>\<lambda>s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace>
+ 8. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (wp perform_asid_control_etcb_at)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>invs and ct_active and valid_aci aci\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_. valid_idle\<rbrace>
+ 2. \<And>P. \<lbrace>\<lambda>s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace>
+ 3. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (rule hoare_strengthen_post, rule aci_invs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv s. invs s \<Longrightarrow> valid_idle s
+ 2. \<And>P. \<lbrace>\<lambda>s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace>
+ 3. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (simp add: invs_def valid_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P. \<lbrace>\<lambda>s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>r s. P (scheduler_action s) (ready_queues s) (cur_domain s)\<rbrace>
+ 2. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. scheduler_action s"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>P x. \<lbrace>\<lambda>s. P x (ready_queues s) (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ a. P x (ready_queues a) (cur_domain a)\<rbrace>
+ 2. \<And>P Pa. \<lbrace>\<lambda>s. Pa (scheduler_action s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ s. Pa (scheduler_action s)\<rbrace>
+ 3. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. cur_domain s"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>P x xa. \<lbrace>\<lambda>s. P x (ready_queues s) xa\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ a. P x (ready_queues a) xa\<rbrace>
+ 2. \<And>P x Pa. \<lbrace>\<lambda>s. Pa (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ s. Pa (cur_domain s)\<rbrace>
+ 3. \<And>P Pa. \<lbrace>\<lambda>s. Pa (scheduler_action s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ s. Pa (scheduler_action s)\<rbrace>
+ 4. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. idle_thread s"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>P x xa xb. \<lbrace>\<lambda>s. P x (ready_queues s) xa\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ a. P x (ready_queues a) xa\<rbrace>
+ 2. \<And>P x xa Pa. \<lbrace>\<lambda>s. Pa (idle_thread s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ s. Pa (idle_thread s)\<rbrace>
+ 3. \<And>P x Pa. \<lbrace>\<lambda>s. Pa (cur_domain s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ s. Pa (cur_domain s)\<rbrace>
+ 4. \<And>P Pa. \<lbrace>\<lambda>s. Pa (scheduler_action s)\<rbrace> perform_asid_control_invocation aci \<lbrace>\<lambda>_ s. Pa (scheduler_action s)\<rbrace>
+ 5. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (ct_active and invs and valid_aci aci and valid_sched and valid_idle) s \<Longrightarrow> (invs and ct_active and valid_aci aci and ct_active and valid_sched and valid_idle) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch valid_queues[wp]: init_arch_objects valid_queues (wp: valid_queues_lift)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_sched_action[wp]: init_arch_objects valid_sched_action (wp: valid_sched_action_lift)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_sched[wp]: init_arch_objects valid_sched (wp: valid_sched_lift)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemmas tcb_sched_action_valid_idle_etcb
+    = ARM.tcb_sched_action_valid_idle_etcb<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation DetSchedAux_AI_det_ext?: DetSchedAux_AI_det_ext<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedAux_AI_det_ext<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedAux_AI_det_ext<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedAux_AI_det_ext<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. DetSchedAux_AI_det_ext<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedAux_AI_det_ext<\STATESEP>by (unfold_locales; (fact DetSchedAux_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+DetSchedAux_AI_det_ext
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>global_interpretation DetSchedAux_AI?: DetSchedAux_AI<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedAux_AI TYPE('a)<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedAux_AI TYPE('a)<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedAux_AI TYPE('a)<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. DetSchedAux_AI TYPE('a)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedAux_AI TYPE('a)<\STATESEP>by (unfold_locales; (fact DetSchedAux_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+DetSchedAux_AI TYPE('a)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

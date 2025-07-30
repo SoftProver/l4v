@@ -1,0 +1,101 @@
+<\STATESEP>chapter \<open>\label{h:procbase}Example -- Procedures\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory GenSimpleBase
+imports "Types" "Abbreviations" "Connector"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{ssec:procbase}Generated Base Theory\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:procbasetypes}Types\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype channel
+  = simple<\STATESEP>0<\TRANSEP><\STATESEP>datatype inst
+  = client
+  | echo<\STATESEP>0<\TRANSEP><\STATESEP>datatype Client_channel
+  = Client_s<\STATESEP>0<\TRANSEP><\STATESEP>datatype Echo_channel
+  = Echo_s<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:procbaseprim}Interface Primitives\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Call_Client_s_echo_string :: "(Client_channel \<Rightarrow> channel) \<Rightarrow>
+    ('cs local_state \<Rightarrow> string) \<Rightarrow>
+    ('cs local_state \<Rightarrow> string \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Call_Client_s_echo_string ch s\<^sub>P embed_data \<equiv>
+    Request (\<lambda>s. {\<lparr>q_channel = ch Client_s,
+      q_data = Call 0 (String (s\<^sub>P s) # [])\<rparr>}) discard ;;
+    Response (\<lambda>q s. case q_data q of Return xs \<Rightarrow>
+      {(embed_data s (case hd xs of String v \<Rightarrow> v),
+      \<lparr>a_channel = ch Client_s, a_data = Void\<rparr>)} | _ \<Rightarrow> {})"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Call_Client_s_echo_int :: "(Client_channel \<Rightarrow> channel) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Call_Client_s_echo_int ch i\<^sub>P embed_data \<equiv>
+    Request (\<lambda>s. {\<lparr>q_channel = ch Client_s,
+      q_data = Call 1 (Integer (i\<^sub>P s) # [])\<rparr>}) discard ;;
+    Response (\<lambda>q s. case q_data q of Return xs \<Rightarrow>
+      {(embed_data s (case hd xs of Integer v \<Rightarrow> v),
+      \<lparr>a_channel = ch Client_s, a_data = Void\<rparr>)} | _ \<Rightarrow> {})"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Call_Client_s_echo_parameter :: "(Client_channel \<Rightarrow> channel) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Call_Client_s_echo_parameter ch pin\<^sub>P embed_data \<equiv>
+    Request (\<lambda>s. {\<lparr>q_channel = ch Client_s,
+      q_data = Call 2 (Integer (pin\<^sub>P s) # [])\<rparr>}) discard ;;
+    Response (\<lambda>q s. case q_data q of Return xs \<Rightarrow>
+      {(embed_data s (case hd xs of Integer v \<Rightarrow> v) (case xs ! 1 of Integer v \<Rightarrow> v),
+      \<lparr>a_channel = ch Client_s, a_data = Void\<rparr>)} | _ \<Rightarrow> {})"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Recv_Echo_s :: "(Echo_channel \<Rightarrow> channel) \<Rightarrow>
+    ('cs local_state \<Rightarrow> string \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp \<Rightarrow> ('cs local_state \<Rightarrow> string) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp \<Rightarrow> ('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow> (channel, 'cs) comp \<Rightarrow>
+    ('cs local_state \<Rightarrow> int) \<Rightarrow> ('cs local_state \<Rightarrow> int) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Recv_Echo_s ch echo_string\<^sub>E Echo_s_echo_string echo_string_return\<^sub>P
+     echo_int\<^sub>E Echo_s_echo_int echo_int_return\<^sub>P echo_parameter\<^sub>E
+     Echo_s_echo_parameter echo_parameter_return\<^sub>P echo_parameter_pout\<^sub>P \<equiv>
+    (Response (\<lambda>q s. case q_data q of Call n xs \<Rightarrow>
+      (if n = 0 then {(echo_string\<^sub>E s (case xs ! 0 of String v \<Rightarrow> v),
+        \<lparr>a_channel = ch Echo_s, a_data = Void\<rparr>)} else {}) | _ \<Rightarrow> {}) ;;
+     Echo_s_echo_string ;;
+     Request (\<lambda>s. {\<lparr>q_channel = ch Echo_s,
+       q_data = Return (String (echo_string_return\<^sub>P s) # [])\<rparr>}) discard)
+    \<squnion>
+    (Response (\<lambda>q s. case q_data q of Call n xs \<Rightarrow>
+      (if n = 1 then {(echo_int\<^sub>E s (case xs ! 0 of Integer v \<Rightarrow> v),
+        \<lparr>a_channel = ch Echo_s, a_data = Void\<rparr>)} else {}) | _ \<Rightarrow> {}) ;;
+     Echo_s_echo_int ;;
+     Request (\<lambda>s. {\<lparr>q_channel = ch Echo_s,
+       q_data = Return (Integer (echo_int_return\<^sub>P s) # [])\<rparr>}) discard)
+    \<squnion>
+    (Response (\<lambda>q s. case q_data q of Call n xs \<Rightarrow>
+      (if n = 2 then {(echo_parameter\<^sub>E s (case xs ! 0 of Integer v \<Rightarrow> v),
+        \<lparr>a_channel = ch Echo_s, a_data = Void\<rparr>)} else {}) | _ \<Rightarrow> {}) ;;
+     Echo_s_echo_parameter ;;
+     Request (\<lambda>s. {\<lparr>q_channel = ch Echo_s,
+       q_data = Return (Integer (echo_parameter_return\<^sub>P s) #
+                        Integer (echo_parameter_pout\<^sub>P s) # [])\<rparr>}) discard)"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:procbaseinst}Instantiations of Primitives\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Call_client_s_echo_string :: "('cs local_state \<Rightarrow> string) \<Rightarrow>
+    ('cs local_state \<Rightarrow> string \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Call_client_s_echo_string \<equiv>
+    Call_Client_s_echo_string (\<lambda>c. case c of Client_s \<Rightarrow> simple)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Call_client_s_echo_int :: "('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Call_client_s_echo_int \<equiv>
+    Call_Client_s_echo_int (\<lambda>c. case c of Client_s \<Rightarrow> simple)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Call_client_s_echo_parameter :: "('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp"
+where
+  "Call_client_s_echo_parameter \<equiv>
+    Call_Client_s_echo_parameter (\<lambda>c. case c of Client_s \<Rightarrow> simple)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Recv_echo_s :: "('cs local_state \<Rightarrow> string \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp \<Rightarrow> ('cs local_state \<Rightarrow> string) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp \<Rightarrow> ('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int \<Rightarrow> 'cs local_state) \<Rightarrow>
+    (channel, 'cs) comp \<Rightarrow> ('cs local_state \<Rightarrow> int) \<Rightarrow>
+    ('cs local_state \<Rightarrow> int) \<Rightarrow> (channel, 'cs) comp"
+where
+  "Recv_echo_s \<equiv> Recv_Echo_s (\<lambda>c. case c of Echo_s \<Rightarrow> simple)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

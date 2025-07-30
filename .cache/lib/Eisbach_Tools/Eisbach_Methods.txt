@@ -1,0 +1,684 @@
+<\STATESEP>theory Eisbach_Methods
+imports
+  Subgoal_Methods
+  "HOL-Eisbach.Eisbach_Tools"
+  Rule_By_Method
+  Local_Method
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Warnings\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup not_visible =
+  \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+     let
+       val ctxt' = Context_Position.set_visible false ctxt
+       fun tac st' = method_evaluate m ctxt' facts st'
+     in SIMPLE_METHOD tac facts end)\<close>
+  \<open>set context visibility to false for suppressing warnings in method execution\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Debugging methods\<close><\STATESEP>0<\TRANSEP><\STATESEP>method print_concl = (match conclusion in P for P \<Rightarrow> \<open>print_term P\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method_setup print_raw_goal = \<open>Scan.succeed (fn ctxt => fn facts =>
+  (fn (ctxt, st) => (Output.writeln (Thm.string_of_thm ctxt st);
+    Seq.make_results (Seq.single (ctxt, st)))))\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>fun method_evaluate text ctxt facts =
+  NO_CONTEXT_TACTIC ctxt
+    (Method.evaluate_runtime text ctxt facts)\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup print_headgoal =
+  \<open>Scan.succeed (fn ctxt =>
+    fn _ => fn (ctxt', thm) =>
+    ((SUBGOAL (fn (t,_) =>
+     (Output.writeln
+     (Pretty.string_of (Syntax.pretty_term ctxt t)); all_tac)) 1 thm);
+     (Seq.make_results (Seq.single (ctxt', thm)))))\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Simple Combinators\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup defer_tac = \<open>Scan.succeed (fn _ => SIMPLE_METHOD (defer_tac 1))\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup prefer_last = \<open>Scan.succeed (fn _ => SIMPLE_METHOD (PRIMITIVE (Thm.permute_prems 0 ~1)))\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup all =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun tac i st' =
+       Goal.restrict i 1 st'
+       |> method_evaluate m ctxt facts
+       |> Seq.map (Goal.unrestrict i)
+
+   in SIMPLE_METHOD (ALLGOALS tac) facts end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup determ =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun tac st' = method_evaluate m ctxt facts st'
+
+   in SIMPLE_METHOD (DETERM tac) facts end)
+\<close> \<open>Run the given method, but only yield the first result\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun require_determ (method : Method.method) facts st =
+  case method facts st |> Seq.filter_results |> Seq.pull of
+    NONE => Seq.empty
+  | SOME (r1, rs) =>
+      (case Seq.pull rs of
+         NONE => Seq.single r1 |> Seq.make_results
+       | _ => Method.fail facts st);
+
+fun require_determ_method text ctxt =
+  require_determ (Method.evaluate_runtime text ctxt);
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup require_determ =
+  \<open>Method.text_closure >> require_determ_method\<close>
+  \<open>Run the given method, but fail if it returns more than one result\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup changed =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun tac st' = method_evaluate m ctxt facts st'
+
+   in SIMPLE_METHOD (CHANGED tac) facts end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup timeit =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun timed_tac st seq = Seq.make (fn () => Option.map (apsnd (timed_tac st))
+       (timeit (fn () => (Seq.pull seq))));
+
+     fun tac st' =
+       timed_tac st' (method_evaluate m ctxt facts st');
+
+   in SIMPLE_METHOD tac [] end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup timeout =
+ \<open>Scan.lift Parse.int -- Method.text_closure >> (fn (i,m) => fn ctxt => fn facts =>
+   let
+     fun str_of_goal th = Pretty.string_of (Goal_Display.pretty_goal ctxt th);
+
+     fun limit st f x = Timeout.apply (Time.fromSeconds i) f x
+       handle Timeout.TIMEOUT _ => error ("Method timed out:\n" ^ (str_of_goal st));
+
+     fun timed_tac st seq = Seq.make (limit st (fn () => Option.map (apsnd (timed_tac st))
+       (Seq.pull seq)));
+
+     fun tac st' =
+       timed_tac st' (method_evaluate m ctxt facts st');
+
+   in SIMPLE_METHOD tac [] end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method repeat_new methods m = (m ; (repeat_new \<open>m\<close>)?)<\STATESEP>0<\TRANSEP><\STATESEP>method_setup fails =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun fail_tac st' =
+       (case Seq.pull (method_evaluate m ctxt facts st') of
+          SOME _ => Seq.empty
+        | NONE => Seq.single st')
+
+   in SIMPLE_METHOD fail_tac facts end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup succeeds =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun can_tac st' =
+       (case Seq.pull (method_evaluate m ctxt facts st') of
+          SOME (st'',_) => Seq.single st'
+        | NONE => Seq.empty)
+
+   in SIMPLE_METHOD can_tac facts end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method focus_concl methods m =
+  ((fails \<open>erule thin_rl\<close>, match conclusion in _ \<Rightarrow> \<open>m\<close>)
+  | match premises (local) in H:_ (multi) \<Rightarrow> \<open>m\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  fun repeat_tac count tactic =
+    if count = 0
+    then all_tac
+    else tactic THEN (repeat_tac (count - 1) tactic)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup repeat = \<open>
+  Scan.lift Parse.nat -- Method.text_closure >> (fn (count, text) => fn ctxt => fn facts =>
+    let val tactic = method_evaluate text ctxt facts
+    in SIMPLE_METHOD (repeat_tac count tactic) facts end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix A B C<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume assms: A B C<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A
+B
+C<\STATESEP>have "A \<and> B \<and> C \<and> True"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<and> B \<and> C \<and> True<\STATESEP>apply (fails \<open>repeat 4 \<open>rule conjI, rule assms\<close>\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<and> B \<and> C \<and> True<\STATESEP>apply (repeat 3 \<open>rule conjI, rule assms\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>by (rule TrueI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+A \<and> B \<and> C \<and> True<\STATESEP>have "A \<and> A" "B \<and> B" "C \<and> C"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<and> A &&& B \<and> B &&& C \<and> C<\STATESEP>apply -<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. A \<and> A
+ 2. B \<and> B
+ 3. C \<and> C<\STATESEP>apply (repeat 2 \<open>rule conjI, (rule assms)+\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. C \<and> C<\STATESEP>apply (rule conjI, (rule assms)+)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+A \<and> A
+B \<and> B
+C \<and> C<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>setup \<open>
+  Method.setup \<^binding>\<open>prop_tac\<close>
+    (Args.goal_spec -- Scan.lift (Scan.repeat1 Parse.embedded_inner_syntax -- Parse.for_fixes) >>
+      (fn (quant, (props, fixes)) => fn ctxt =>
+        (SIMPLE_METHOD'' quant
+          (EVERY' (map (fn prop => Rule_Insts.subgoal_tac ctxt prop fixes) props)
+            THEN'
+            (K (prefer_tac 2))))))
+    "insert prop (dynamic instantiation), introducing prop subgoal first"
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>fix xs<\STATESEP>4<\TRANSEP>proof (state)<\STATESEP>assume assms: "list_all even (xs :: nat list)"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+list_all even xs<\STATESEP>from assms<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+list_all even xs<\STATESEP>have "even (sum_list xs)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+list_all even xs
+
+goal (1 subgoal):
+ 1. even (sum_list xs)<\STATESEP>apply (induct xs)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. list_all even [] \<Longrightarrow> even (sum_list [])
+ 2. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs)\<rbrakk> \<Longrightarrow> even (sum_list (a # xs))<\STATESEP>apply simp<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs)\<rbrakk> \<Longrightarrow> even (sum_list (a # xs))<\STATESEP>apply (prop_tac "list_all even xs")<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs)\<rbrakk> \<Longrightarrow> list_all even xs
+ 2. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs); list_all even xs\<rbrakk> \<Longrightarrow> even (sum_list (a # xs))<\STATESEP>subgoal<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>list_all even xs_ \<Longrightarrow> even (sum_list xs_); list_all even (a_ # xs_)\<rbrakk> \<Longrightarrow> list_all even xs_<\STATESEP>by simp<\STATESEP>8<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs); list_all even xs\<rbrakk> \<Longrightarrow> even (sum_list (a # xs))<\STATESEP>apply (prop_tac "even (sum_list xs)")<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs); list_all even xs\<rbrakk> \<Longrightarrow> even (sum_list xs)
+ 2. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs); list_all even xs; even (sum_list xs)\<rbrakk> \<Longrightarrow> even (sum_list (a # xs))<\STATESEP>subgoal<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>list_all even xs_ \<Longrightarrow> even (sum_list xs_); list_all even (a_ # xs_); list_all even xs_\<rbrakk> \<Longrightarrow> even (sum_list xs_)<\STATESEP>by simp<\STATESEP>8<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>list_all even xs \<Longrightarrow> even (sum_list xs); list_all even (a # xs); list_all even xs; even (sum_list xs)\<rbrakk> \<Longrightarrow> even (sum_list (a # xs))<\STATESEP>apply clarsimp<\STATESEP>5<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>5<\TRANSEP>proof (state)
+this:
+even (sum_list xs)<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+list_all even ?xs2 \<Longrightarrow> even (sum_list ?xs2)<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>section \<open>Advanced combinators\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Protecting goal elements (assumptions or conclusion) from methods\<close><\STATESEP>0<\TRANSEP><\STATESEP>context
+begin<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "protect_concl x \<equiv> \<not> x"<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "protect_false \<equiv> False"<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma protect_start: "(protect_concl P \<Longrightarrow> protect_false) \<Longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (protect_concl P \<Longrightarrow> protect_false) \<Longrightarrow> P<\STATESEP>by (simp add: protect_concl_def protect_false_def) (rule ccontr)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma protect_end: "protect_concl P \<Longrightarrow> P \<Longrightarrow> protect_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>protect_concl P; P\<rbrakk> \<Longrightarrow> protect_false<\STATESEP>by (simp add: protect_concl_def protect_false_def)<\STATESEP>1<\TRANSEP><\STATESEP>method only_asm methods m =
+  (match premises in H[thin]:_ (multi,cut) \<Rightarrow>
+    \<open>rule protect_start,
+     match premises in H'[thin]:"protect_concl _" \<Rightarrow>
+       \<open>insert H,m;rule protect_end[OF H']\<close>\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method only_concl methods m = (focus_concl \<open>m\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix D C<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume DC:"D \<Longrightarrow> C"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+D \<Longrightarrow> C<\STATESEP>have "D \<and> D \<Longrightarrow> C \<and> C"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D \<and> D \<Longrightarrow> C \<and> C<\STATESEP>apply (only_asm \<open>simp\<close>) \<comment> \<open>stash conclusion before applying method\<close><\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D \<Longrightarrow> C \<and> C<\STATESEP>apply (only_concl \<open>simp add: DC\<close>) \<comment> \<open>hide premises from method\<close><\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D \<Longrightarrow> C<\STATESEP>by (rule DC)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+D \<and> D \<Longrightarrow> C \<and> C<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>subsection \<open>Safe subgoal folding (avoids expanding meta-conjuncts)\<close><\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  conjunction' :: "prop \<Rightarrow> prop \<Rightarrow> prop" (infixr "&^&" 2) where
+  "conjunction' A B \<equiv> (PROP A &&& PROP B)"<\STATESEP>0<\TRANSEP><\STATESEP>method safe_meta_conjuncts =
+  raw_tactic
+   \<open>REPEAT_DETERM
+     (CHANGED_PROP
+      (PRIMITIVE
+        (Conv.gconv_rule ((Conv.top_sweep_conv (K (Conv.rewr_conv @{thm conjunction'_def[symmetric]})) @{context})) 1)))\<close><\STATESEP>0<\TRANSEP><\STATESEP>method safe_fold_subgoals = (fold_subgoals (prefix), safe_meta_conjuncts)<\STATESEP>0<\TRANSEP><\STATESEP>lemma atomize_conj' [atomize]: "(A &^& B) == Trueprop (A & B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (A &^& B) \<equiv> A \<and> B<\STATESEP>by (simp add: conjunction'_def, rule atomize_conj)<\STATESEP>1<\TRANSEP><\STATESEP>lemma context_conjunction'I:
+  "PROP P \<Longrightarrow> (PROP P \<Longrightarrow> PROP Q) \<Longrightarrow> PROP P &^& PROP Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP P \<Longrightarrow> PROP Q\<rbrakk> \<Longrightarrow> PROP P &^& PROP Q<\STATESEP>apply (simp add: conjunction'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP P \<Longrightarrow> PROP Q\<rbrakk> \<Longrightarrow> PROP P &&& PROP Q<\STATESEP>apply (rule conjunctionI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>PROP P; PROP P \<Longrightarrow> PROP Q\<rbrakk> \<Longrightarrow> PROP P
+ 2. \<lbrakk>PROP P; PROP P \<Longrightarrow> PROP Q\<rbrakk> \<Longrightarrow> PROP Q<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP P \<Longrightarrow> PROP Q\<rbrakk> \<Longrightarrow> PROP Q<\STATESEP>apply (erule meta_mp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P \<Longrightarrow> PROP P<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma conjunction'I:
+  "PROP P \<Longrightarrow> PROP Q \<Longrightarrow> PROP P &^& PROP Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP Q\<rbrakk> \<Longrightarrow> PROP P &^& PROP Q<\STATESEP>by (rule context_conjunction'I; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma conjunction'E:
+  assumes PQ: "PROP P &^& PROP Q"
+  assumes PQR: "PROP P \<Longrightarrow> PROP Q \<Longrightarrow> PROP R"
+  shows
+  "PROP R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP R<\STATESEP>apply (rule PQR)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. PROP P
+ 2. PROP Q<\STATESEP>apply (rule PQ[simplified conjunction'_def, THEN conjunctionD1])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP Q<\STATESEP>by (rule PQ[simplified conjunction'_def, THEN conjunctionD2])<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix D C E<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume DC: "D \<and> C"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+D \<and> C<\STATESEP>have "D" "C \<and> C"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D &&& C \<and> C<\STATESEP>apply -<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. D
+ 2. C \<and> C<\STATESEP>apply (safe_fold_subgoals, simp, atomize (full))<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D \<and> C<\STATESEP>apply (rule DC)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+D
+C \<and> C<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>section \<open>Utility methods\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Instantiations\<close><\STATESEP>0<\TRANSEP><\STATESEP>method spec for x :: "_ :: type" = (erule allE[of _ x])<\STATESEP>0<\TRANSEP><\STATESEP>method bspec for x :: "_ :: type" = (erule ballE[of _ _ x])<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Finding a goal based on successful application of a method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup find_goal =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun prefer_first i = SELECT_GOAL
+       (fn st' =>
+         (case Seq.pull (method_evaluate m ctxt facts st') of
+           SOME (st'',_) => Seq.single st''
+         | NONE => Seq.empty)) i THEN prefer_tac i
+
+   in SIMPLE_METHOD (FIRSTGOAL prefer_first) facts end)\<close><\STATESEP>0<\TRANSEP><\STATESEP>method in_case for x = match premises in "t = x" for t \<Rightarrow> succeed<\STATESEP>0<\TRANSEP><\STATESEP>method find_case for x = find_goal \<open>in_case x\<close><\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix A B<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume A: "A" and B: "B"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A
+B<\STATESEP>have "A" "A" "B"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A &&& A &&& B<\STATESEP>apply (find_goal \<open>match conclusion in B \<Rightarrow> \<open>-\<close>\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. B
+ 2. A
+ 3. A<\STATESEP>apply (rule B)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. A
+ 2. A<\STATESEP>by (rule A)+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+A
+A
+B<\STATESEP>have "A \<and> A" "A \<and> A" "B"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<and> A &&& A \<and> A &&& B<\STATESEP>apply (find_goal \<open>fails \<open>simp\<close>\<close>) \<comment> \<open>find the first goal which cannot be simplified\<close><\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. B
+ 2. A \<and> A
+ 3. A \<and> A<\STATESEP>apply (rule B)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. A \<and> A
+ 2. A \<and> A<\STATESEP>by (simp add: A)+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+A \<and> A
+A \<and> A
+B<\STATESEP>have  "B" "A" "A \<and> A"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. B &&& A &&& A \<and> A<\STATESEP>apply (find_goal \<open>succeeds \<open>simp\<close>\<close>) \<comment> \<open>find the first goal which can be simplified (without doing so)\<close><\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. A \<and> A
+ 2. B
+ 3. A<\STATESEP>apply (rule conjI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. A
+ 2. A
+ 3. B
+ 4. A<\STATESEP>by (rule A B)+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+B
+A
+A \<and> A<\STATESEP>fix x::'a and S :: "nat \<Rightarrow> 'a" and T R<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>have
+    "x = T \<Longrightarrow> A"
+    "x = S 10 \<Longrightarrow> B"
+    "x = R \<Longrightarrow> B"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x = T \<Longrightarrow> A) &&& (x = S 10 \<Longrightarrow> B) &&& (x = R \<Longrightarrow> B)<\STATESEP>apply -<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = T \<Longrightarrow> A
+ 2. x = S 10 \<Longrightarrow> B
+ 3. x = R \<Longrightarrow> B<\STATESEP>apply (find_case "S ?n")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = S 10 \<Longrightarrow> B
+ 2. x = T \<Longrightarrow> A
+ 3. x = R \<Longrightarrow> B<\STATESEP>apply (fails \<open>in_case R\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = S 10 \<Longrightarrow> B
+ 2. x = T \<Longrightarrow> A
+ 3. x = R \<Longrightarrow> B<\STATESEP>apply (in_case "S ?n")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = S 10 \<Longrightarrow> B
+ 2. x = T \<Longrightarrow> A
+ 3. x = R \<Longrightarrow> B<\STATESEP>by (rule A B)+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x = T \<Longrightarrow> A
+x = S 10 \<Longrightarrow> B
+x = R \<Longrightarrow> B<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>subsection \<open>Remove redundant subgoals\<close><\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>definition "protect (PROP P) \<equiv> P"<\STATESEP>0<\TRANSEP><\STATESEP>lemma protectE: "PROP protect P \<Longrightarrow> (PROP P \<Longrightarrow> PROP R) \<Longrightarrow> PROP R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>protect PROP P; PROP P \<Longrightarrow> PROP R\<rbrakk> \<Longrightarrow> PROP R<\STATESEP>by (simp add: protect_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas protect_thin = thin_rl[where V="PROP protect P" for P]<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma context_conjunction'I_protected:
+  assumes P: "PROP P"
+  assumes PQ: "PROP protect (PROP P) \<Longrightarrow> PROP Q"
+  shows
+  "PROP P &^& PROP Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P &^& PROP Q<\STATESEP>apply (simp add: conjunction'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P &&& PROP Q<\STATESEP>apply (rule P)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP Q<\STATESEP>apply (rule PQ)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. protect PROP P<\STATESEP>apply (simp add: protect_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P<\STATESEP>by (rule P)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma conjunction'_sym: "PROP P &^& PROP Q \<Longrightarrow> PROP Q &^& PROP P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P &^& PROP Q \<Longrightarrow> PROP Q &^& PROP P<\STATESEP>apply (simp add: conjunction'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. PROP P &&& PROP Q \<Longrightarrow> PROP Q &&& PROP P<\STATESEP>apply (frule conjunctionD1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P &&& PROP Q; PROP P\<rbrakk> \<Longrightarrow> PROP Q &&& PROP P<\STATESEP>apply (drule conjunctionD2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>PROP P; PROP Q\<rbrakk> \<Longrightarrow> PROP Q &&& PROP P<\STATESEP>apply (rule conjunctionI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>PROP P; PROP Q\<rbrakk> \<Longrightarrow> PROP Q
+ 2. \<lbrakk>PROP P; PROP Q\<rbrakk> \<Longrightarrow> PROP P<\STATESEP>by assumption+<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas context_conjuncts'I =
+  context_conjunction'I_protected
+  context_conjunction'I_protected[THEN conjunction'_sym]<\STATESEP>0<\TRANSEP><\STATESEP>method distinct_subgoals_strong methods m =
+  (safe_fold_subgoals,
+   (intro context_conjuncts'I;
+     (((elim protectE conjunction'E)?, solves \<open>m\<close>)
+     | (elim protect_thin)?)))?<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>method forward_solve methods fwd m =
+  (fwd, prefer_last, fold_subgoals, safe_meta_conjuncts, rule conjunction'I,
+   defer_tac, ((intro conjunction'I)?; solves \<open>m\<close>))[1]<\STATESEP>0<\TRANSEP><\STATESEP>method frule_solve methods m uses rule = (forward_solve \<open>frule rule\<close> \<open>m\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method drule_solve methods m uses rule = (forward_solve \<open>drule rule\<close> \<open>m\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>fix A B C D E<\STATESEP>4<\TRANSEP>proof (state)<\STATESEP>assume ABCD: "A \<Longrightarrow> B \<Longrightarrow> C \<Longrightarrow> D"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>A; B; C\<rbrakk> \<Longrightarrow> D<\STATESEP>assume ACD: "A \<Longrightarrow> C \<Longrightarrow> D"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>A; C\<rbrakk> \<Longrightarrow> D<\STATESEP>assume DE: "D \<Longrightarrow> E"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+D \<Longrightarrow> E<\STATESEP>assume B C<\STATESEP>4<\TRANSEP>proof (state)
+this:
+B
+C<\STATESEP>have "A \<Longrightarrow> D"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<Longrightarrow> D<\STATESEP>apply (frule_solve \<open>simp add: \<open>B\<close> \<open>C\<close>\<close> rule: ABCD)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>A; D\<rbrakk> \<Longrightarrow> D<\STATESEP>apply (drule_solve \<open>simp add: \<open>B\<close> \<open>C\<close>\<close> rule: ACD)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>D; D\<rbrakk> \<Longrightarrow> D<\STATESEP>apply (match premises in A \<Rightarrow> \<open>fail\<close> \<bar> _ \<Rightarrow> \<open>-\<close>)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>D; D\<rbrakk> \<Longrightarrow> D<\STATESEP>apply assumption<\STATESEP>5<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>5<\TRANSEP>proof (state)
+this:
+A \<Longrightarrow> D<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<lbrakk>?A2; ?B2; ?C2\<rbrakk> \<Longrightarrow> ?D2; \<lbrakk>?A2; ?C2\<rbrakk> \<Longrightarrow> ?D2; ?D2 \<Longrightarrow> ?E2; ?B2; ?C2; ?A2\<rbrakk> \<Longrightarrow> ?D2<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>fix A B C<\STATESEP>4<\TRANSEP>proof (state)<\STATESEP>assume A: "A"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+A<\STATESEP>have "A" "B \<Longrightarrow> A"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A &&& (B \<Longrightarrow> A)<\STATESEP>apply -<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. A
+ 2. B \<Longrightarrow> A<\STATESEP>apply (distinct_subgoals_strong \<open>assumption\<close>)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A<\STATESEP>by (rule A)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+A
+B \<Longrightarrow> A<\STATESEP>have "B \<Longrightarrow> A" "A"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (B \<Longrightarrow> A) &&& A<\STATESEP>by (distinct_subgoals_strong \<open>assumption\<close>, rule A) \<comment> \<open>backtracking required here\<close><\STATESEP>5<\TRANSEP>proof (state)
+this:
+B \<Longrightarrow> A
+A<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>?A2; ?B2\<rbrakk> \<Longrightarrow> ?A2
+?A2 \<Longrightarrow> ?A2<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>?A2; ?B2\<rbrakk> \<Longrightarrow> ?A2
+?A2 \<Longrightarrow> ?A2<\STATESEP>fix A B C<\STATESEP>4<\TRANSEP>proof (state)<\STATESEP>assume B: "B"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+B<\STATESEP>assume BC: "B \<Longrightarrow> C" "B \<Longrightarrow> A"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+B \<Longrightarrow> C
+B \<Longrightarrow> A<\STATESEP>have "A" "B \<longrightarrow> (A \<and> C)" "B"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A &&& B \<longrightarrow> A \<and> C &&& B<\STATESEP>apply (distinct_subgoals_strong \<open>simp\<close>, rule B) \<comment> \<open>backtracking required here\<close><\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. B \<longrightarrow> A \<and> C<\STATESEP>by (simp add: BC)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+A
+B \<longrightarrow> A \<and> C
+B<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>?B2; ?B2 \<Longrightarrow> ?C2; ?B2 \<Longrightarrow> ?A2\<rbrakk> \<Longrightarrow> ?A2
+\<lbrakk>?B2; ?B2 \<Longrightarrow> ?C2; ?B2 \<Longrightarrow> ?A2\<rbrakk> \<Longrightarrow> ?B2 \<longrightarrow> ?A2 \<and> ?C2
+\<lbrakk>?B2; ?B2 \<Longrightarrow> ?C2; ?B2 \<Longrightarrow> ?A2\<rbrakk> \<Longrightarrow> ?B2<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>section \<open>Attribute methods (for use with rule_by_method attributes)\<close><\STATESEP>0<\TRANSEP><\STATESEP>method prove_prop_raw for P :: "prop" methods m =
+  (erule thin_rl, rule revcut_rl[of "PROP P"],
+    solves \<open>match conclusion in _ \<Rightarrow> \<open>m\<close>\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method prove_prop for P :: "prop" = (prove_prop_raw "PROP P" \<open>auto\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma assumes A[simp]:A shows A<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A<\STATESEP>by (rule [[@\<open>prove_prop A\<close>]])<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Shortcuts for prove_prop. Note these are less efficient than using the raw syntax because
+ the facts are re-proven every time.\<close><\STATESEP>0<\TRANSEP><\STATESEP>method ruleP for P :: "prop" = (catch \<open>rule [[@\<open>prove_prop "PROP P"\<close>]]\<close> \<open>fail\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method insertP for P :: "prop" = (catch \<open>insert [[@\<open>prove_prop "PROP P"\<close>]]\<close> \<open>fail\<close>)[1]<\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma assumes A[simp]:A shows A<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A<\STATESEP>by (ruleP False | ruleP A)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assumes A:A shows A<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A<\STATESEP>by (ruleP "\<And>P. P \<Longrightarrow> P \<Longrightarrow> P", rule A, rule A)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "bool_protect (b::bool) \<equiv> b"<\STATESEP>0<\TRANSEP><\STATESEP>lemma bool_protectD:
+  "bool_protect P \<Longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bool_protect P \<Longrightarrow> P<\STATESEP>unfolding bool_protect_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P \<Longrightarrow> P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma bool_protectI:
+  "P \<Longrightarrow> bool_protect P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P \<Longrightarrow> bool_protect P<\STATESEP>unfolding bool_protect_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P \<Longrightarrow> P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>method solves_emerging methods m1 m2 = (rule bool_protectD, (m1 ; (rule bool_protectI | (m2; fail))))<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>method repeat_unless methods stop cont
+  = (stop | (cont, repeat_unless stop cont))<\STATESEP>0<\TRANSEP><\STATESEP>method if_then_else methods test true false =
+  (test, true) | (fails test, false)<\STATESEP>0<\TRANSEP><\STATESEP>method has_concl for pattern::bool = match conclusion in pattern \<Rightarrow> succeed<\STATESEP>0<\TRANSEP><\STATESEP>method if_concl for pattern::bool methods m =
+  if_then_else \<open>has_concl pattern\<close> m succeed<\STATESEP>0<\TRANSEP><\STATESEP>method case_concl for pattern::bool methods m =
+  has_concl pattern, m<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+local
+
+fun restrict_goal i n tac =
+  (PRIMITIVE (Goal.restrict i n)) THEN
+  tac THEN
+  (PRIMITIVE (Goal.unrestrict i));
+
+(* apply tac to all goals from i going forwards, taking into account any goals solved or generated *)
+fun tac_in_order (tac : int -> tactic) i thm =
+  if i > Thm.nprems_of thm orelse i < 1
+  then Seq.single thm
+  else
+    let
+      val st = restrict_goal i 1 (tac 1) thm (* only allow tac1 run on goal i *)
+    in
+      (* if the goal was solved, we want to stay on the same goal,
+         if the goal was transformed, we want to move to the next one, skipping any new
+         goals that were generated *)
+      Seq.maps (fn thm' => tac_in_order tac (i + 1 + Thm.nprems_of thm' - Thm.nprems_of thm) thm')
+               st
+    end
+
+in
+
+fun ALLGOALS_FWD tac = tac_in_order tac 1;
+
+infix 1 FWD_ALL_NEW;
+
+(* this is like THEN_ALL_NEW but expressed with goal restriction and ALLGOALS_FWD *)
+fun ((tac1 : int -> tactic) FWD_ALL_NEW (tac2 : int -> tactic)) (i : int) thm =
+  Seq.maps (fn thm' =>
+              if Thm.nprems_of thm' < Thm.nprems_of thm
+              then Seq.single thm'
+              else restrict_goal i (i + Thm.nprems_of thm' - Thm.nprems_of thm) (ALLGOALS_FWD tac2) thm'
+           ) (tac1 1 thm)
+
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup fwd_all =
+  \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun tac i st' =
+       Goal.restrict i 1 st'
+       |> method_evaluate m ctxt facts
+       |> Seq.map (Goal.unrestrict i)
+   in SIMPLE_METHOD (ALLGOALS_FWD tac) facts end)\<close>
+  \<open>Apply a method to all goals in forwards order (reverse of "all" method) taking into account
+   goals solved and added\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup fwd_all_new = \<open>
+  Method.text_closure -- Method.text_closure >> (fn (m1,m2) => fn ctxt => fn facts =>
+  let
+    fun restrict_goal i n tac =
+      (PRIMITIVE (Goal.restrict i n)) THEN
+      tac THEN
+      (PRIMITIVE (Goal.unrestrict i));
+    val tac1 = method_evaluate m1 ctxt facts
+    val tac2 = method_evaluate m2 ctxt facts
+    (* Restricting tac1 is here for consistency with ";".
+       (all \<open>simp?\<close>; tac2) does not do what one might expect *)
+    val tac = ((K (restrict_goal 1 1 tac1)) FWD_ALL_NEW (fn i => restrict_goal i 1 tac2))
+  in
+    SIMPLE_METHOD (tac 1) facts
+  end)\<close>
+  \<open>forwards version of ";" - second method is applied to all goals produced by the first\<close><\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix P Q :: "nat \<Rightarrow> bool"<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume a: "\<And>x. P x"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P ?x<\STATESEP>assume b: "\<And>x. Q x"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+Q ?x<\STATESEP>assume c: "\<And>x. P x \<Longrightarrow> P x"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P ?x \<Longrightarrow> P ?x<\STATESEP>assume goal_multiplicity2: "\<And>n. \<lbrakk> P (n+10);P (n+20) \<rbrakk> \<Longrightarrow> P n"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>P (?n + 10); P (?n + 20)\<rbrakk> \<Longrightarrow> P ?n<\STATESEP>assume goal_multiplicity5: "\<And>n. \<lbrakk> P (n+1);P (n+2);P (n+3);P (n+4);P (n+5) \<rbrakk> \<Longrightarrow> P n"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>P (?n + 1); P (?n + 2); P (?n + 3); P (?n + 4); P (?n + 5)\<rbrakk> \<Longrightarrow> P ?n<\STATESEP>assume goal_multiplicity2x: "\<And>n. \<lbrakk> P n;Q n \<rbrakk> \<Longrightarrow> P n"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>P ?n; Q ?n\<rbrakk> \<Longrightarrow> P ?n<\STATESEP>have "P 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P 0<\STATESEP>apply (rule goal_multiplicity2; (rule goal_multiplicity5
+         (* invoked only on P goals, results in 20 subgoals *)
+         ; rule goal_multiplicity2x
+         (* does not change number of goals *)
+         ; (rule c)?))<\STATESEP>3<\TRANSEP>proof (prove)
+goal (20 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. Q (0 + 10 + 1)
+ 3. P (0 + 10 + 2)
+ 4. Q (0 + 10 + 2)
+ 5. P (0 + 10 + 3)
+ 6. Q (0 + 10 + 3)
+ 7. P (0 + 10 + 4)
+ 8. Q (0 + 10 + 4)
+ 9. P (0 + 10 + 5)
+ 10. Q (0 + 10 + 5)
+A total of 20 subgoals...<\STATESEP>by (repeat 20 \<open>rule a b\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P 0<\STATESEP>have "P 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P 0<\STATESEP>apply (rule goal_multiplicity2; rule c)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. P (0 + 10)
+ 2. P (0 + 20)<\STATESEP>apply (rule goal_multiplicity5; rule c)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. P (0 + 10 + 2)
+ 3. P (0 + 10 + 3)
+ 4. P (0 + 10 + 4)
+ 5. P (0 + 10 + 5)
+ 6. P (0 + 20)<\STATESEP>apply (fails \<open>rule goal_multiplicity2x; rule c\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. P (0 + 10 + 2)
+ 3. P (0 + 10 + 3)
+ 4. P (0 + 10 + 4)
+ 5. P (0 + 10 + 5)
+ 6. P (0 + 20)<\STATESEP>apply (succeeds \<open>rule goal_multiplicity2x; (rule c)?\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. P (0 + 10 + 2)
+ 3. P (0 + 10 + 3)
+ 4. P (0 + 10 + 4)
+ 5. P (0 + 10 + 5)
+ 6. P (0 + 20)<\STATESEP>by (repeat 6 \<open>rule a b\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P 0<\STATESEP>have "P 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P 0<\STATESEP>apply (
+      fwd_all_new \<open>rule goal_multiplicity2\<close>
+        \<open>fwd_all_new \<open>rule goal_multiplicity5\<close>
+                     \<open>fwd_all_new \<open>rule goal_multiplicity2x\<close> \<open>(rule c)?\<close>\<close>\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (20 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. Q (0 + 10 + 1)
+ 3. P (0 + 10 + 2)
+ 4. Q (0 + 10 + 2)
+ 5. P (0 + 10 + 3)
+ 6. Q (0 + 10 + 3)
+ 7. P (0 + 10 + 4)
+ 8. Q (0 + 10 + 4)
+ 9. P (0 + 10 + 5)
+ 10. Q (0 + 10 + 5)
+A total of 20 subgoals...<\STATESEP>by (repeat 20 \<open>rule a b\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P 0<\STATESEP>have "P 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P 0<\STATESEP>apply (fwd_all_new \<open>rule goal_multiplicity2\<close> \<open>rule c\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. P (0 + 10)
+ 2. P (0 + 20)<\STATESEP>apply (fwd_all_new \<open>rule goal_multiplicity5\<close> \<open>rule c\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. P (0 + 10 + 2)
+ 3. P (0 + 10 + 3)
+ 4. P (0 + 10 + 4)
+ 5. P (0 + 10 + 5)
+ 6. P (0 + 20)<\STATESEP>apply (fails \<open>fwd_all_new \<open>rule goal_multiplicity2x\<close> \<open>rule c\<close>\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. P (0 + 10 + 2)
+ 3. P (0 + 10 + 3)
+ 4. P (0 + 10 + 4)
+ 5. P (0 + 10 + 5)
+ 6. P (0 + 20)<\STATESEP>apply (succeeds \<open>fwd_all_new \<open>rule goal_multiplicity2x\<close> \<open>(rule c)?\<close>\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. P (0 + 10 + 2)
+ 3. P (0 + 10 + 3)
+ 4. P (0 + 10 + 4)
+ 5. P (0 + 10 + 5)
+ 6. P (0 + 20)<\STATESEP>by (repeat 6 \<open>rule a b\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P 0<\STATESEP>have "P 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P 0<\STATESEP>by (
+      fwd_all_new
+        \<open>fwd_all_new \<open>rule goal_multiplicity2\<close>
+          \<open>fwd_all_new \<open>rule goal_multiplicity5\<close>
+          \<open>rule goal_multiplicity2x\<close>\<close>\<close>
+        \<open>rule a b\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P 0<\STATESEP>have "P 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P 0<\STATESEP>apply (rule goal_multiplicity2, fwd_all \<open>rule goal_multiplicity5\<close>,
+           fwd_all \<open>rule goal_multiplicity2x\<close>, all \<open>(rule c)?\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (20 subgoals):
+ 1. P (0 + 10 + 1)
+ 2. Q (0 + 10 + 1)
+ 3. P (0 + 10 + 2)
+ 4. Q (0 + 10 + 2)
+ 5. P (0 + 10 + 3)
+ 6. Q (0 + 10 + 3)
+ 7. P (0 + 10 + 4)
+ 8. Q (0 + 10 + 4)
+ 9. P (0 + 10 + 5)
+ 10. Q (0 + 10 + 5)
+A total of 20 subgoals...<\STATESEP>by (repeat 20 \<open>rule a b\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P 0<\STATESEP>fix x :: 'a<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>have "x = x"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = x<\STATESEP>apply (simp; fail)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x = x<\STATESEP>have "x = x"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = x<\STATESEP>apply (fwd_all_new simp fail)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x = x<\STATESEP>have "True"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (succeeds \<open>succeed; succeed\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (fails \<open>succeed; fail\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (fails \<open>fail; succeed\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (fails \<open>fail; fail\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (rule TrueI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+True<\STATESEP>have "True"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (succeeds \<open>fwd_all_new succeed succeed\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (fails \<open>fwd_all_new succeed fail\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (fails \<open>fwd_all_new fail succeed\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (fails \<open>fwd_all_new fail fail\<close>)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True<\STATESEP>apply (rule TrueI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+True<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,232 @@
+<\STATESEP>theory ArchSyscall_AC
+imports
+  Syscall_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Syscall_AC_assms<\STATESEP>0<\TRANSEP><\STATESEP>declare prepare_thread_delete_idle_thread[Syscall_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>declare arch_finalise_cap_idle_thread[Syscall_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>declare cap_move_idle_thread[Syscall_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>declare cancel_badged_sends_idle_thread[Syscall_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>lemma invs_irq_state_update[Syscall_AC_assms, simp]:
+  "invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>) = invs (s\<lparr>machine_state := sa\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>) = invs (s\<lparr>machine_state := sa\<rparr>)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>) \<Longrightarrow> invs (s\<lparr>machine_state := sa\<rparr>)
+ 2. invs (s\<lparr>machine_state := sa\<rparr>) \<Longrightarrow> invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>)<\STATESEP>apply (subst invs_irq_state_independent[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>) \<Longrightarrow> invs (s\<lparr>machine_state := sa, machine_state := machine_state (s\<lparr>machine_state := sa\<rparr>)\<lparr>irq_state := ?f4 (irq_state (machine_state (s\<lparr>machine_state := sa\<rparr>)))\<rparr>\<rparr>)
+ 2. invs (s\<lparr>machine_state := sa\<rparr>) \<Longrightarrow> invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>)<\STATESEP>apply (subst ARM.fold_congs(2); fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. invs (s\<lparr>machine_state := sa\<rparr>) \<Longrightarrow> invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>)<\STATESEP>apply (subst (asm) invs_irq_state_independent[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. invs (s\<lparr>machine_state := sa, machine_state := machine_state (s\<lparr>machine_state := sa\<rparr>)\<lparr>irq_state := ?f23 (irq_state (machine_state (s\<lparr>machine_state := sa\<rparr>)))\<rparr>\<rparr>) \<Longrightarrow> invs (s\<lparr>machine_state := irq_state_update f sa\<rparr>)<\STATESEP>apply (subst ARM.fold_congs(2); fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunches prepare_thread_delete, arch_finalise_cap
+  for cur_thread[Syscall_AC_assms, wp]: "\<lambda>s. P (cur_thread s)"
+  (wp: crunch_wps simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>crunches set_original
+  for idle_thread[wp]: "\<lambda>s. P (idle_thread s)"
+  and cur_thread[wp]: "\<lambda>s. P (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_move_cur_thread[Syscall_AC_assms, wp]:
+  "cap_move new_cap src_slot dest_slot \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> cap_move new_cap src_slot dest_slot \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace><\STATESEP>unfolding cap_move_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do set_cap new_cap dest_slot;
+set_cap NullCap src_slot;
+src_p <- gets (\<lambda>s. cdt s src_slot);
+dest_p <- gets (\<lambda>s. cdt s dest_slot);
+cdt <- gets cdt;
+parent <- return $ cdt src_slot;
+cdt' <- return $ cdt(dest_slot := parent, src_slot := None);
+set_cdt (\<lambda>r. if cdt' r = Some src_slot then Some dest_slot else cdt' r);
+do_extended_op (cap_move_ext src_slot dest_slot src_p dest_p);
+is_original <- gets is_original_cap;
+set_original dest_slot (is_original src_slot);
+set_original src_slot False
+od \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace><\STATESEP>by (wpsimp wp: dxo_wp_weak)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cancel_badged_sends_cur_thread[Syscall_AC_assms, wp]:
+  "cancel_badged_sends epptr badge \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> cancel_badged_sends epptr badge \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace><\STATESEP>unfolding cancel_badged_sends_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do ep <- get_endpoint epptr;
+case ep of SendEP queue \<Rightarrow> do set_endpoint epptr IdleEP;
+queue' <- swp filterM queue (\<lambda>t. do st <- get_thread_state t;
+if blocking_ipc_badge st = badge then do set_thread_state t Restart;
+do_extended_op (tcb_sched_action tcb_sched_enqueue t);
+return False
+od else return True
+od);
+ep' <- return (case queue' of [] \<Rightarrow> IdleEP | a # list \<Rightarrow> SendEP queue');
+set_endpoint epptr ep';
+do_extended_op reschedule_required
+od | _ \<Rightarrow> return ()
+od \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace><\STATESEP>by (wpsimp wp: dxo_wp_weak filterM_preserved crunch_wps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma state_vrefs_cur_thread_update[Syscall_AC_assms, simp]:
+  "state_vrefs (cur_thread_update f s) = state_vrefs s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. state_vrefs (cur_thread_update f s) = state_vrefs s<\STATESEP>by (simp add: state_vrefs_def)<\STATESEP>1<\TRANSEP><\STATESEP>crunches arch_mask_irq_signal, handle_reserved_irq
+  for pas_refined[Syscall_AC_assms, wp]: "pas_refined aag"<\STATESEP>0<\TRANSEP><\STATESEP>crunches handle_hypervisor_fault
+  for pas_refined[Syscall_AC_assms, wp]: "pas_refined aag"
+  and cur_thread[Syscall_AC_assms, wp]: "\<lambda>s. P (cur_thread s)"
+  and integrity[Syscall_AC_assms, wp]: "integrity aag X st"<\STATESEP>0<\TRANSEP><\STATESEP>crunches handle_vm_fault
+  for pas_refined[Syscall_AC_assms, wp]: "pas_refined aag"
+  and cur_thread[Syscall_AC_assms, wp]: "\<lambda>s. P (cur_thread s)"
+  and state_refs_of[Syscall_AC_assms, wp]: "\<lambda>s. P (state_refs_of s)"
+  (wp: as_user_getRestart_invs ignore: as_user)<\STATESEP>0<\TRANSEP><\STATESEP>lemma handle_vm_fault_integrity[Syscall_AC_assms]:
+  "\<lbrace>integrity aag X st and K (is_subject aag thread)\<rbrace>
+   handle_vm_fault thread vmfault_type
+   \<lbrace>\<lambda>rv. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and K (is_subject aag thread)\<rbrace> handle_vm_fault thread vmfault_type \<lbrace>\<lambda>rv. integrity aag X st\<rbrace><\STATESEP>apply (cases vmfault_type, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. vmfault_type = ARMDataAbort \<Longrightarrow> \<lbrace>integrity aag X st and (\<lambda>y. is_subject aag thread)\<rbrace> doE addr <- liftE (do_machine_op getFAR);
+fault <- liftE (do_machine_op getDFSR);
+throwError (ArchFault (VMFault addr [0, fault && mask 14]))
+odE \<lbrace>\<lambda>rv. integrity aag X st\<rbrace>
+ 2. vmfault_type = ARMPrefetchAbort \<Longrightarrow> \<lbrace>integrity aag X st and (\<lambda>y. is_subject aag thread)\<rbrace> doE pc <- liftE (as_user thread getRestartPC);
+fault <- liftE (do_machine_op getIFSR);
+throwError (ArchFault (VMFault pc [1, fault && mask 14]))
+odE \<lbrace>\<lambda>rv. integrity aag X st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. vmfault_type = ARMDataAbort \<Longrightarrow> \<lbrace>?Q2\<rbrace> doE addr <- liftE (do_machine_op getFAR);
+fault <- liftE (do_machine_op getDFSR);
+throwError (ArchFault (VMFault addr [0, fault && mask 14]))
+odE \<lbrace>\<lambda>rv. integrity aag X st\<rbrace>
+ 2. \<And>s. \<lbrakk>vmfault_type = ARMDataAbort; (integrity aag X st and (\<lambda>y. is_subject aag thread)) s\<rbrakk> \<Longrightarrow> ?Q2 s
+ 3. vmfault_type = ARMPrefetchAbort \<Longrightarrow> \<lbrace>integrity aag X st and (\<lambda>y. is_subject aag thread)\<rbrace> doE pc <- liftE (as_user thread getRestartPC);
+fault <- liftE (do_machine_op getIFSR);
+throwError (ArchFault (VMFault pc [1, fault && mask 14]))
+odE \<lbrace>\<lambda>rv. integrity aag X st\<rbrace><\STATESEP>apply (wp as_user_integrity_autarch dmo_wp | simp add: getDFSR_def getFAR_def getIFSR_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunches ackInterrupt, resetTimer
+  for underlying_memory_inv[Syscall_AC_assms, wp]: "\<lambda>s. P (underlying_memory s)"
+  (simp: maskInterrupt_def)<\STATESEP>0<\TRANSEP><\STATESEP>crunches arch_mask_irq_signal, handle_reserved_irq
+  for integrity[Syscall_AC_assms, wp]: "integrity aag X st"
+  (wp: dmo_no_mem_respects)<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_thread_state_restart_to_running_respects[Syscall_AC_assms]:
+  "\<lbrace>integrity aag X st and st_tcb_at ((=) Restart) thread and K (pasMayActivate aag)\<rbrace>
+   do pc \<leftarrow> as_user thread getRestartPC;
+            as_user thread $ setNextPC pc;
+            set_thread_state thread Structures_A.thread_state.Running
+   od
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and st_tcb_at ((=) Restart) thread and K (pasMayActivate aag)\<rbrace> do pc <- as_user thread getRestartPC;
+as_user thread $ setNextPC pc;
+set_thread_state thread Running
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (simp add: set_thread_state_def as_user_def split_def setNextPC_def
+                   getRestartPC_def setRegister_def bind_assoc getRegister_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and st_tcb_at ((=) Restart) thread and (\<lambda>y. pasMayActivate aag)\<rbrace> do x <- gets_the (get_tcb thread);
+xa <- select_f (gets (\<lambda>s. user_regs s FaultIP) (arch_tcb_context_get (tcb_arch x)));
+y <- set_object thread (TCB (x\<lparr>tcb_arch := arch_tcb_context_set (snd xa) (tcb_arch x)\<rparr>));
+x <- gets_the (get_tcb thread);
+xa <- select_f (modify (\<lambda>s. UserContext ((user_regs s)(NextIP := fst xa))) (arch_tcb_context_get (tcb_arch x)));
+y <- set_object thread (TCB (x\<lparr>tcb_arch := arch_tcb_context_set (snd xa) (tcb_arch x)\<rparr>));
+tcb <- gets_the (get_tcb thread);
+y <- set_object thread (TCB (tcb\<lparr>tcb_state := Running\<rparr>));
+set_thread_state_ext thread
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wpsimp wp: set_object_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b y ba ya yb. \<lbrakk>integrity_subjects {pasSubject aag} aag True X st s; st_tcb_at ((=) Restart) thread s; pasMayActivate aag; (a, b) \<in> fst (gets (\<lambda>s. user_regs s FaultIP) (arch_tcb_context_get (tcb_arch y))); get_tcb thread s = Some y; ((), ba) \<in> fst (modify (\<lambda>s. UserContext (\<lambda>b. if b = NextIP then a else user_regs s b)) (arch_tcb_context_get (tcb_arch ya))); get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (y\<lparr>tcb_arch := arch_tcb_context_set b (tcb_arch y)\<rparr>))\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := \<lambda>a. if a = thread then Some (TCB (ya\<lparr>tcb_arch := arch_tcb_context_set ba (tcb_arch ya)\<rparr>)) else kheap s a\<rparr>) = Some yb\<rbrakk> \<Longrightarrow> integrity_subjects {pasSubject aag} aag True X st (s\<lparr>kheap := \<lambda>a. if a = thread then Some (TCB (yb\<lparr>tcb_state := Running\<rparr>)) else kheap s a\<rparr>)<\STATESEP>apply (clarsimp simp: in_monad fun_upd_def[symmetric] cong: if_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y ya yb. \<lbrakk>integrity_subjects {pasSubject aag} aag True X st s; st_tcb_at ((=) Restart) thread s; pasMayActivate aag; get_tcb thread s = Some y; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB y)\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch y)) FaultIP))) (tcb_arch ya)\<rparr>))\<rparr>) = Some yb\<rbrakk> \<Longrightarrow> integrity_subjects {pasSubject aag} aag True X st (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (yb\<lparr>tcb_state := Running\<rparr>))\<rparr>)<\STATESEP>apply (cases "is_subject aag thread")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y ya yb. \<lbrakk>integrity_subjects {pasSubject aag} aag True X st s; st_tcb_at ((=) Restart) thread s; pasMayActivate aag; get_tcb thread s = Some y; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB y)\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch y)) FaultIP))) (tcb_arch ya)\<rparr>))\<rparr>) = Some yb; is_subject aag thread\<rbrakk> \<Longrightarrow> integrity_subjects {pasSubject aag} aag True X st (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (yb\<lparr>tcb_state := Running\<rparr>))\<rparr>)
+ 2. \<And>s y ya yb. \<lbrakk>integrity_subjects {pasSubject aag} aag True X st s; st_tcb_at ((=) Restart) thread s; pasMayActivate aag; get_tcb thread s = Some y; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB y)\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch y)) FaultIP))) (tcb_arch ya)\<rparr>))\<rparr>) = Some yb; pasObjectAbs aag thread \<noteq> pasSubject aag\<rbrakk> \<Longrightarrow> integrity_subjects {pasSubject aag} aag True X st (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (yb\<lparr>tcb_state := Running\<rparr>))\<rparr>)<\STATESEP>apply (cut_tac aag=aag in integrity_update_autarch, simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y ya yb. \<lbrakk>integrity_subjects {pasSubject aag} aag True X st s; st_tcb_at ((=) Restart) thread s; pasMayActivate aag; get_tcb thread s = Some y; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB y)\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch y)) FaultIP))) (tcb_arch ya)\<rparr>))\<rparr>) = Some yb; pasObjectAbs aag thread \<noteq> pasSubject aag\<rbrakk> \<Longrightarrow> integrity_subjects {pasSubject aag} aag True X st (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (yb\<lparr>tcb_state := Running\<rparr>))\<rparr>)<\STATESEP>apply (erule integrity_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y ya yb. \<lbrakk>st_tcb_at ((=) Restart) thread s; pasMayActivate aag; get_tcb thread s = Some y; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB y)\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch y)) FaultIP))) (tcb_arch ya)\<rparr>))\<rparr>) = Some yb; pasObjectAbs aag thread \<noteq> pasSubject aag\<rbrakk> \<Longrightarrow> integrity_subjects {pasSubject aag} aag True X s (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (yb\<lparr>tcb_state := Running\<rparr>))\<rparr>)<\STATESEP>apply (clarsimp simp: integrity_def obj_at_def st_tcb_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y ya yb tcb. \<lbrakk>pasMayActivate aag; get_tcb thread s = Some y; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB y)\<rparr>) = Some ya; get_tcb thread (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch y)) FaultIP))) (tcb_arch ya)\<rparr>))\<rparr>) = Some yb; pasObjectAbs aag thread \<noteq> pasSubject aag; kheap s thread = Some (TCB tcb); Restart = tcb_state tcb\<rbrakk> \<Longrightarrow> integrity_obj aag True {pasSubject aag} (pasObjectAbs aag thread) (Some (TCB tcb)) (Some (TCB (yb\<lparr>tcb_state := Running\<rparr>)))<\STATESEP>apply (clarsimp dest!: get_tcb_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s ya. \<lbrakk>pasMayActivate aag; pasObjectAbs aag thread \<noteq> pasSubject aag; Restart = tcb_state ya; kheap s thread = Some (TCB ya)\<rbrakk> \<Longrightarrow> integrity_obj aag True {pasSubject aag} (pasObjectAbs aag thread) (Some (TCB ya)) (Some (TCB (ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch ya)) FaultIP))) (tcb_arch ya), tcb_state := Running\<rparr>)))<\STATESEP>apply (rule_tac tro_tcb_activate[OF refl refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s ya. \<lbrakk>pasMayActivate aag; pasObjectAbs aag thread \<noteq> pasSubject aag; Restart = tcb_state ya; kheap s thread = Some (TCB ya)\<rbrakk> \<Longrightarrow> ya\<lparr>tcb_arch := arch_tcb_context_set (UserContext ((user_regs (arch_tcb_context_get (tcb_arch ya)))(NextIP := user_regs (arch_tcb_context_get (tcb_arch ya)) FaultIP))) (tcb_arch ya), tcb_state := Running\<rparr> = ya\<lparr>tcb_arch := arch_tcb_context_set (ctxt_IP_update (arch_tcb_context_get (tcb_arch ya))) (tcb_arch ya), tcb_state := Running\<rparr>
+ 2. \<And>s ya. \<lbrakk>pasMayActivate aag; pasObjectAbs aag thread \<noteq> pasSubject aag; Restart = tcb_state ya; kheap s thread = Some (TCB ya)\<rbrakk> \<Longrightarrow> tcb_state ya = Restart
+ 3. \<And>s ya. \<lbrakk>pasMayActivate aag; pasObjectAbs aag thread \<noteq> pasSubject aag; Restart = tcb_state ya; kheap s thread = Some (TCB ya)\<rbrakk> \<Longrightarrow> True<\STATESEP>apply (simp add: tcb_bound_notification_reset_integrity_def ctxt_IP_update_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_inv[Syscall_AC_assms]:
+  "\<forall>f s. P s \<longrightarrow> P (irq_state_update f s) \<Longrightarrow>
+   \<lbrace>P\<rbrace> getActiveIRQ irq \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>f s. P s \<longrightarrow> P (irq_state_update f s) \<Longrightarrow> \<lbrace>P\<rbrace> getActiveIRQ irq \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>by (wpsimp simp: irq_state_independent_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_rv_None[Syscall_AC_assms]:
+  "\<lbrace>\<top>\<rbrace> getActiveIRQ True \<lbrace>\<lambda>rv ms. (rv \<noteq> None \<longrightarrow> the rv \<notin> non_kernel_IRQs)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> getActiveIRQ True \<lbrace>\<lambda>rv ms. rv \<noteq> None \<longrightarrow> the rv \<notin> non_kernel_IRQs\<rbrace><\STATESEP>by (wpsimp simp: getActiveIRQ_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_activate_idle_thread_respects[Syscall_AC_assms, wp]:
+  "arch_activate_idle_thread t \<lbrace>integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> arch_activate_idle_thread t \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>unfolding arch_activate_idle_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> return () \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_activate_idle_thread_pas_refined[Syscall_AC_assms, wp]:
+  "arch_activate_idle_thread t \<lbrace>pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> arch_activate_idle_thread t \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>unfolding arch_activate_idle_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> return () \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma integrity_exclusive_state_update[Syscall_AC_assms, simp]:
+  "integrity aag X st (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) =
+   integrity aag X st s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. integrity aag X st (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) = integrity aag X st s<\STATESEP>unfolding integrity_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (integrity_obj_state aag (pasMayActivate aag) {pasSubject aag} st (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) \<and> (\<forall>x. integrity_eobj aag {pasSubject aag} (pasObjectAbs aag x) (ekheap st x) (ekheap (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) x)) \<and> integrity_cdt_state aag {pasSubject aag} st (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) \<and> (\<forall>x. cdt_list_integrity aag (cdt st) (tcb_states_of_state st) x (cdt_list st x) (cdt_list (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) x)) \<and> (\<forall>x. integrity_interrupts aag {pasSubject aag} x (interrupt_irq_node st x, interrupt_states st x) (interrupt_irq_node (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) x, interrupt_states (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) x)) \<and> (\<forall>d p. integrity_ready_queues aag {pasSubject aag} (pasDomainAbs aag d) (ready_queues st d p) (ready_queues (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>) d p)) \<and> (\<forall>x. memory_integrity X aag x (tcb_states_of_state st) (tcb_states_of_state (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>)) (auth_ipc_buffers st) (underlying_memory (machine_state st) x) (underlying_memory (machine_state (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>)) x)) \<and> (\<forall>x. integrity_device aag {pasSubject aag} x (tcb_states_of_state st) (tcb_states_of_state (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>)) (device_state (machine_state st) x) (device_state (machine_state (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>)) x)) \<and> (\<forall>x a. integrity_asids aag {pasSubject aag} x a st (s\<lparr>machine_state := exclusive_state_update f (machine_state s)\<rparr>))) = (integrity_obj_state aag (pasMayActivate aag) {pasSubject aag} st s \<and> (\<forall>x. integrity_eobj aag {pasSubject aag} (pasObjectAbs aag x) (ekheap st x) (ekheap s x)) \<and> integrity_cdt_state aag {pasSubject aag} st s \<and> (\<forall>x. cdt_list_integrity aag (cdt st) (tcb_states_of_state st) x (cdt_list st x) (cdt_list s x)) \<and> (\<forall>x. integrity_interrupts aag {pasSubject aag} x (interrupt_irq_node st x, interrupt_states st x) (interrupt_irq_node s x, interrupt_states s x)) \<and> (\<forall>d p. integrity_ready_queues aag {pasSubject aag} (pasDomainAbs aag d) (ready_queues st d p) (ready_queues s d p)) \<and> (\<forall>x. memory_integrity X aag x (tcb_states_of_state st) (tcb_states_of_state s) (auth_ipc_buffers st) (underlying_memory (machine_state st) x) (underlying_memory (machine_state s) x)) \<and> (\<forall>x. integrity_device aag {pasSubject aag} x (tcb_states_of_state st) (tcb_states_of_state s) (device_state (machine_state st) x) (device_state (machine_state s) x)) \<and> (\<forall>x a. integrity_asids aag {pasSubject aag} x a st s))<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_clearExMonitor_respects_globals[Syscall_AC_assms, wp]:
+  "do_machine_op clearExMonitor \<lbrace>integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> do_machine_op clearExMonitor \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by (wpsimp wp: dmo_wp simp: clearExMonitor_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_respects[Syscall_AC_assms, wp]:
+  "arch_switch_to_thread t \<lbrace>integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>unfolding arch_switch_to_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> do set_vm_root t;
+do_machine_op $ clearExMonitor
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_pas_refined[Syscall_AC_assms, wp]:
+  "arch_switch_to_thread t \<lbrace>pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>unfolding arch_switch_to_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> do set_vm_root t;
+do_machine_op $ clearExMonitor
+od \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_idle_thread_respects[Syscall_AC_assms, wp]:
+  "arch_switch_to_idle_thread \<lbrace>integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>unfolding arch_switch_to_idle_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st\<rbrace> gets idle_thread >>= set_vm_root \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_idle_thread_pas_refined[Syscall_AC_assms, wp]:
+  "arch_switch_to_idle_thread \<lbrace>pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>unfolding arch_switch_to_idle_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> gets idle_thread >>= set_vm_root \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_mask_irq_signal_arch_state[Syscall_AC_assms, wp]:
+  "arch_mask_irq_signal irq \<lbrace>\<lambda>s :: det_ext state. P (arch_state s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (arch_state s)\<rbrace> arch_mask_irq_signal irq \<lbrace>\<lambda>_ s. P (arch_state s)\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma handle_reserved_irq_arch_state[Syscall_AC_assms, wp]:
+  "handle_reserved_irq irq \<lbrace>\<lambda>s :: det_ext state. P (arch_state s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (arch_state s)\<rbrace> handle_reserved_irq irq \<lbrace>\<lambda>_ s. P (arch_state s)\<rbrace><\STATESEP>unfolding handle_reserved_irq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (arch_state s)\<rbrace> return () \<lbrace>\<lambda>_ s. P (arch_state s)\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>crunch arch_state[Syscall_AC_assms, wp]: init_arch_objects "\<lambda>s. P (arch_state s)"
+  (wp: crunch_wps)<\STATESEP>0<\TRANSEP><\STATESEP>crunch ct_active [Syscall_AC_assms, wp]: arch_post_cap_deletion "ct_active"
+  (wp: crunch_wps filterM_preserved unless_wp
+   simp: crunch_simps ignore: do_extended_op)<\STATESEP>0<\TRANSEP><\STATESEP>crunches
+  arch_post_modify_registers, arch_invoke_irq_control,
+  arch_invoke_irq_handler, arch_perform_invocation, arch_mask_irq_signal,
+  handle_reserved_irq, handle_vm_fault, handle_hypervisor_fault, handle_arch_fault_reply
+  for cur_thread[Syscall_AC_assms, wp]: "\<lambda>s. P (cur_thread s)"
+  and idle_thread[Syscall_AC_assms, wp]: "\<lambda>s. P (idle_thread s)"
+  and cur_domain[Syscall_AC_assms, wp]:  "\<lambda>s. P (cur_domain s)"
+  (wp: crunch_wps)
+
+\<comment> \<open>These aren't proved in the previous crunch, and hence need to be declared\<close><\STATESEP>0<\TRANSEP><\STATESEP>declare handle_arch_fault_reply_cur_thread[Syscall_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>declare handle_arch_fault_reply_it[Syscall_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Syscall_AC_1?: Syscall_AC_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Syscall_AC_1 aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Syscall_AC_1 aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Syscall_AC_1 aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Syscall_AC_1 aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Syscall_AC_1 aag<\STATESEP>by (unfold_locales; (fact Syscall_AC_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Syscall_AC_1 aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

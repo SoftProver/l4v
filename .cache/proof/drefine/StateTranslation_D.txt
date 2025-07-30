@@ -1,0 +1,1116 @@
+<\STATESEP>theory StateTranslation_D
+imports Lemmas_D
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>type_synonym kernel_object = Structures_A.kernel_object<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym tcb = Structures_A.tcb<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym pte = ARM_A.pte<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_cptr :: "word32 \<Rightarrow> cdl_cptr" where
+  "transform_cptr w \<equiv> w"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_recv_slot :: "(word32 \<times> word32 \<times> word8) \<Rightarrow>
+                          (cdl_cptr \<times> word32 \<times> word8)"
+where
+  "transform_recv_slot x \<equiv> let (cap,w32,w8) = x in (transform_cptr cap,w32,w8)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_type :: "word32 \<Rightarrow> cdl_object_type option"
+where
+  "transform_type x \<equiv>
+         if x = 0  then Some UntypedType
+    else if x = 1  then Some TcbType
+    else if x = 2  then Some EndpointType
+    else if x = 3  then Some NotificationType
+    else if x = 4  then Some CNodeType
+    else if x = 5  then Some PageDirectoryType
+    else if x = 6  then Some (FrameType 12)
+    else if x = 7  then Some (FrameType 16)
+    else if x = 8  then Some (FrameType 20)
+    else if x = 9  then Some (FrameType 24)
+    else if x = 10 then Some PageTableType
+    else None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_untyped_retype :: "word32 list \<Rightarrow> cdl_untyped_intent option"
+where
+  "transform_intent_untyped_retype args =
+    (case args of
+      type#size_bits#index#depth#offset#window#_ \<Rightarrow>
+        (case transform_type type of
+             Some x \<Rightarrow>
+               Some (UntypedRetypeIntent x size_bits index depth offset window)
+           | _ \<Rightarrow>
+               None)
+      | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_read_registers :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_read_registers args =
+  (case args of flags#n#_ \<Rightarrow>
+    Some (TcbReadRegistersIntent (flags !! 0) 0 n)
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_write_registers :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_write_registers args =
+  (case args of flags#n#values \<Rightarrow>
+    Some (TcbWriteRegistersIntent (flags !! 0) 0 n values)
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_copy_registers :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_copy_registers args =
+  (case args of flags#_ \<Rightarrow>
+    Some (TcbCopyRegistersIntent (flags !! 0) (flags !! 1) (flags !! 2) (flags !! 3) 0)
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  prio_from_arg :: "word32 \<Rightarrow> word8"
+where
+  "prio_from_arg _ = 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_configure :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_configure args =
+  (case args of fault_ep#croot_data#vroot_data#buffer#_ \<Rightarrow>
+    Some (TcbConfigureIntent fault_ep
+                             croot_data vroot_data buffer)
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_set_priority :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_set_priority args =
+  (case args of prio#_ \<Rightarrow>
+    Some (TcbSetPriorityIntent (prio_from_arg prio))
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_set_mcpriority :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_set_mcpriority args =
+  (case args of mcp#_ \<Rightarrow>
+    Some (TcbSetMCPriorityIntent (prio_from_arg mcp))
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_set_sched_params :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_set_sched_params args =
+  (case args of mcp#priority#_ \<Rightarrow>
+    Some (TcbSetSchedParamsIntent (prio_from_arg mcp) (prio_from_arg priority))
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_set_ipc_buffer :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_set_ipc_buffer args =
+  (case args of buffer#_ \<Rightarrow>
+    Some (TcbSetIPCBufferIntent buffer)
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_tcb_set_space :: "word32 list \<Rightarrow> cdl_tcb_intent option"
+where
+  "transform_intent_tcb_set_space args =
+  (case args of fault_ep#croot_data#vroot_data#_ \<Rightarrow>
+    Some (TcbSetSpaceIntent fault_ep croot_data vroot_data)
+   | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_cnode_index_and_depth :: "(word32 \<Rightarrow> word32 \<Rightarrow> 'a) \<Rightarrow> word32 list \<Rightarrow> 'a option"
+where
+  "transform_cnode_index_and_depth func args \<equiv>
+  case args of index#depth#_ \<Rightarrow>
+    Some (func index depth)
+   | _ \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_cnode_copy :: "word32 list \<Rightarrow> cdl_cnode_intent option"
+where
+  "transform_intent_cnode_copy args \<equiv>
+  case args of destindex#destdepth#srcindex#srcdepth#rightsWord#_ \<Rightarrow>
+     Some (CNodeCopyIntent destindex destdepth
+                           srcindex srcdepth (data_to_rights rightsWord))
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_cnode_mint :: "word32 list \<Rightarrow> cdl_cnode_intent option"
+where
+  "transform_intent_cnode_mint args \<equiv>
+  case args of destindex#destdepth#srcindex#srcdepth#rightsWord#capData#_ \<Rightarrow>
+     Some (CNodeMintIntent destindex destdepth
+             srcindex srcdepth (data_to_rights rightsWord) capData)
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_cnode_move :: "word32 list \<Rightarrow> cdl_cnode_intent option"
+where
+  "transform_intent_cnode_move args \<equiv>
+  case args of destindex#destdepth#srcindex#srcdepth#rest \<Rightarrow>
+     Some (CNodeMoveIntent destindex destdepth
+                           srcindex srcdepth)
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_cnode_mutate :: "word32 list \<Rightarrow> cdl_cnode_intent option"
+where
+  "transform_intent_cnode_mutate args \<equiv>
+  case args of destindex#destdepth#srcindex#srcdepth#capData#_ \<Rightarrow>
+     Some (CNodeMutateIntent destindex destdepth
+                             srcindex srcdepth capData)
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_cnode_rotate :: "word32 list \<Rightarrow> cdl_cnode_intent option"
+where
+  "transform_intent_cnode_rotate args \<equiv>
+  case args of destindex#destdepth#pivotbadge#pivotindex#
+               pivotdepth#srcbadge#srcindex#srcdepth#_ \<Rightarrow>
+     Some (CNodeRotateIntent destindex destdepth
+                             pivotindex pivotdepth pivotbadge
+                             srcindex srcdepth srcbadge)
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_issue_irq_handler :: "word32 list \<Rightarrow> cdl_irq_control_intent option"
+where
+  "transform_intent_issue_irq_handler args \<equiv>
+   case args of
+      irqW#index#depth#_ \<Rightarrow>
+         Some (IrqControlIssueIrqHandlerIntent ((ucast irqW)::10 word) index depth)
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  arch_transform_intent_issue_irq_handler :: "word32 list \<Rightarrow> cdl_irq_control_intent option"
+where
+  "arch_transform_intent_issue_irq_handler args \<equiv>
+   case args of
+      irqW#trigger#index#depth#_ \<Rightarrow>
+         Some (IrqControlIssueIrqHandlerIntent ((ucast irqW)::10 word) index depth)
+    | _ \<Rightarrow> Nothing"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_page_table_map :: "word32 list \<Rightarrow> cdl_page_table_intent option"
+where
+  "transform_intent_page_table_map args =
+    (case args of
+      vaddr#attr#_ \<Rightarrow>
+         Some (PageTableMapIntent vaddr attr)
+    | _ \<Rightarrow> Nothing)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_page_map :: "word32 list \<Rightarrow> cdl_page_intent option"
+where
+  "transform_intent_page_map args =
+    (case args of
+      vaddr#rightsW#attr#_ \<Rightarrow>
+         Some (PageMapIntent vaddr (data_to_rights rightsW) attr)
+    | _ \<Rightarrow> Nothing)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent_domain :: "word32 list \<Rightarrow> cdl_domain_intent option"
+where
+  "transform_intent_domain args =
+     (case args of
+         d#_ \<Rightarrow> Some (DomainSetIntent (ucast d :: word8))
+       | _   \<Rightarrow> Nothing)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  to_bool :: "word32 \<Rightarrow> bool"
+where
+  "to_bool w \<equiv> w \<noteq> 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_intent :: "invocation_label \<Rightarrow> word32 list \<Rightarrow> cdl_intent option" where
+  "transform_intent label args \<equiv>
+    case label of
+      GenInvocationLabel InvalidInvocation \<Rightarrow> None
+    | GenInvocationLabel UntypedRetype \<Rightarrow>
+        map_option UntypedIntent (transform_intent_untyped_retype args)
+    | GenInvocationLabel TCBReadRegisters \<Rightarrow>
+        map_option TcbIntent
+                   (transform_intent_tcb_read_registers args)
+    | GenInvocationLabel TCBWriteRegisters \<Rightarrow>
+        map_option TcbIntent
+                   (transform_intent_tcb_write_registers args)
+    | GenInvocationLabel TCBCopyRegisters \<Rightarrow>
+         map_option TcbIntent
+                   (transform_intent_tcb_copy_registers args)
+    | GenInvocationLabel TCBConfigure \<Rightarrow>
+         map_option TcbIntent
+                   (transform_intent_tcb_configure args)
+    | GenInvocationLabel TCBSetPriority \<Rightarrow>
+         map_option TcbIntent
+                   (transform_intent_tcb_set_priority args)
+    | GenInvocationLabel TCBSetMCPriority \<Rightarrow>
+         map_option TcbIntent
+                   (transform_intent_tcb_set_mcpriority args)
+    | GenInvocationLabel TCBSetSchedParams \<Rightarrow>
+         map_option TcbIntent
+                   (transform_intent_tcb_set_sched_params args)
+    | GenInvocationLabel TCBSetIPCBuffer \<Rightarrow>
+          map_option TcbIntent
+                   (transform_intent_tcb_set_ipc_buffer args)
+    | GenInvocationLabel TCBSetSpace \<Rightarrow>
+          map_option TcbIntent
+                   (transform_intent_tcb_set_space args)
+    | GenInvocationLabel TCBSuspend \<Rightarrow> Some (TcbIntent TcbSuspendIntent)
+    | GenInvocationLabel TCBResume \<Rightarrow> Some (TcbIntent TcbResumeIntent)
+    | GenInvocationLabel TCBBindNotification \<Rightarrow> Some (TcbIntent TcbBindNTFNIntent)
+    | GenInvocationLabel TCBUnbindNotification \<Rightarrow> Some (TcbIntent TcbUnbindNTFNIntent)
+    | GenInvocationLabel TCBSetTLSBase \<Rightarrow> Some (TcbIntent TcbSetTLSBaseIntent)
+    | GenInvocationLabel CNodeRevoke \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_cnode_index_and_depth CNodeRevokeIntent args)
+    | GenInvocationLabel CNodeDelete \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_cnode_index_and_depth CNodeDeleteIntent args)
+    | GenInvocationLabel CNodeCancelBadgedSends \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_cnode_index_and_depth CNodeCancelBadgedSendsIntent args)
+    | GenInvocationLabel CNodeCopy \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_intent_cnode_copy args)
+    | GenInvocationLabel CNodeMint \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_intent_cnode_mint args)
+    | GenInvocationLabel CNodeMove \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_intent_cnode_move args)
+    | GenInvocationLabel CNodeMutate \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_intent_cnode_mutate args)
+    | GenInvocationLabel CNodeRotate \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_intent_cnode_rotate args)
+    | GenInvocationLabel CNodeSaveCaller \<Rightarrow>
+          map_option CNodeIntent
+                   (transform_cnode_index_and_depth CNodeSaveCallerIntent args)
+    | GenInvocationLabel IRQIssueIRQHandler \<Rightarrow>
+          map_option IrqControlIntent
+                   (transform_intent_issue_irq_handler args)
+    | GenInvocationLabel IRQAckIRQ \<Rightarrow> Some (IrqHandlerIntent IrqHandlerAckIntent)
+    | GenInvocationLabel IRQSetIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerSetEndpointIntent)
+    | GenInvocationLabel IRQClearIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerClearIntent)
+    | ArchInvocationLabel ARMPageTableMap \<Rightarrow>
+                          map_option PageTableIntent
+                                   (transform_intent_page_table_map args)
+    | ArchInvocationLabel ARMPageTableUnmap \<Rightarrow> Some (PageTableIntent PageTableUnmapIntent)
+    | ArchInvocationLabel ARMPageMap \<Rightarrow>
+                          map_option PageIntent
+                                   (transform_intent_page_map args)
+    | ArchInvocationLabel ARMPageUnmap \<Rightarrow> Some (PageIntent PageUnmapIntent)
+    | ArchInvocationLabel ARMPageClean_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent )
+    | ArchInvocationLabel ARMPageInvalidate_Data  \<Rightarrow> Some (PageIntent PageFlushCachesIntent )
+    | ArchInvocationLabel ARMPageCleanInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent )
+    | ArchInvocationLabel ARMPageUnify_Instruction \<Rightarrow> Some (PageIntent PageFlushCachesIntent )
+    | ArchInvocationLabel ARMPageGetAddress \<Rightarrow> Some (PageIntent PageGetAddressIntent )
+    | ArchInvocationLabel ARMPDClean_Data \<Rightarrow> Some (PageDirectoryIntent PageDirectoryFlushIntent )
+    | ArchInvocationLabel ARMPDInvalidate_Data \<Rightarrow>  Some (PageDirectoryIntent PageDirectoryFlushIntent )
+    | ArchInvocationLabel ARMPDCleanInvalidate_Data \<Rightarrow>  Some (PageDirectoryIntent PageDirectoryFlushIntent)
+    | ArchInvocationLabel ARMPDUnify_Instruction \<Rightarrow>  Some (PageDirectoryIntent PageDirectoryFlushIntent )
+    | ArchInvocationLabel ARMASIDControlMakePool \<Rightarrow>
+                          map_option AsidControlIntent
+                                  (transform_cnode_index_and_depth AsidControlMakePoolIntent args)
+    | ArchInvocationLabel ARMASIDPoolAssign \<Rightarrow> Some (AsidPoolIntent AsidPoolAssignIntent )
+    | ArchInvocationLabel ARMIRQIssueIRQHandler \<Rightarrow>
+                          map_option IrqControlIntent
+                                   (arch_transform_intent_issue_irq_handler args)
+    | GenInvocationLabel DomainSetSet \<Rightarrow> map_option DomainIntent (transform_intent_domain args)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas transform_intent_tcb_defs =
+  transform_intent_tcb_read_registers_def
+  transform_intent_tcb_write_registers_def
+  transform_intent_tcb_copy_registers_def
+  transform_intent_tcb_configure_def
+  transform_intent_tcb_set_priority_def
+  transform_intent_tcb_set_mcpriority_def
+  transform_intent_tcb_set_sched_params_def
+  transform_intent_tcb_set_ipc_buffer_def
+  transform_intent_tcb_set_space_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma transform_tcb_intent_invocation:
+  "transform_intent label args = Some (TcbIntent ti)
+   \<Longrightarrow>
+   (
+   ((label = GenInvocationLabel TCBReadRegisters) = (ti = (TcbReadRegistersIntent ((args ! 0)!!0) 0 (args ! 1)) \<and> length args \<ge> 2)) \<and>
+   ((label = GenInvocationLabel TCBWriteRegisters) = (ti = (TcbWriteRegistersIntent ((args ! 0)!!0) 0 (args ! 1) (drop 2 args)) \<and> length args \<ge> 2)) \<and>
+   ((label = GenInvocationLabel TCBCopyRegisters) = (ti = (TcbCopyRegistersIntent ((args ! 0)!!0) ((args ! 0)!!1) ((args ! 0)!!2) ((args ! 0)!!3) 0) \<and> length args \<ge> 1)) \<and>
+   ((label = GenInvocationLabel TCBConfigure) = (ti = (TcbConfigureIntent (args ! 0) (args ! 1) (args ! 2) (args ! 3)) \<and> length args \<ge> 4)) \<and>
+   ((label = GenInvocationLabel TCBSetPriority) = (ti = (TcbSetPriorityIntent (prio_from_arg (args ! 0))) \<and> length args \<ge> 1)) \<and>
+   ((label = GenInvocationLabel TCBSetMCPriority) = (ti = (TcbSetMCPriorityIntent (prio_from_arg (args ! 0))) \<and> length args \<ge> 1)) \<and>
+   ((label = GenInvocationLabel TCBSetSchedParams) = (ti = (TcbSetSchedParamsIntent (prio_from_arg (args ! 0)) (prio_from_arg (args ! 1))) \<and> length args \<ge> 2)) \<and>
+   ((label = GenInvocationLabel TCBSetSpace) = (ti = (TcbSetSpaceIntent (args ! 0) (args ! 1) (args ! 2)) \<and> length args \<ge> 3)) \<and>
+   ((label = GenInvocationLabel TCBSuspend) = (ti = TcbSuspendIntent)) \<and>
+   ((label = GenInvocationLabel TCBResume) = (ti = TcbResumeIntent)) \<and>
+   ((label = GenInvocationLabel TCBBindNotification) = (ti = TcbBindNTFNIntent)) \<and>
+   ((label = GenInvocationLabel TCBUnbindNotification) = (ti = TcbUnbindNTFNIntent)) \<and>
+   ((label = GenInvocationLabel TCBSetTLSBase) = (ti = TcbSetTLSBaseIntent))
+   ) \<and>
+   (
+    label \<noteq> GenInvocationLabel InvalidInvocation \<and>
+    label \<noteq> GenInvocationLabel UntypedRetype \<and>
+    label \<noteq> GenInvocationLabel CNodeRevoke \<and>
+    label \<noteq> GenInvocationLabel CNodeDelete \<and>
+    label \<noteq> GenInvocationLabel CNodeCancelBadgedSends \<and>
+    label \<noteq> GenInvocationLabel CNodeCopy \<and>
+    label \<noteq> GenInvocationLabel CNodeMint \<and>
+    label \<noteq> GenInvocationLabel CNodeMove \<and>
+    label \<noteq> GenInvocationLabel CNodeMutate \<and>
+    label \<noteq> GenInvocationLabel CNodeRotate \<and>
+    label \<noteq> GenInvocationLabel CNodeSaveCaller \<and>
+    label \<noteq> GenInvocationLabel IRQIssueIRQHandler \<and>
+    label \<noteq> GenInvocationLabel IRQAckIRQ \<and>
+    label \<noteq> GenInvocationLabel IRQSetIRQHandler \<and>
+    label \<noteq> GenInvocationLabel IRQClearIRQHandler \<and>
+    label \<noteq> ArchInvocationLabel ARMPageTableMap \<and>
+    label \<noteq> ArchInvocationLabel ARMPageTableUnmap \<and>
+    label \<noteq> ArchInvocationLabel ARMPageMap \<and>
+    label \<noteq> ArchInvocationLabel ARMPageUnmap \<and>
+    label \<noteq> ArchInvocationLabel ARMPageClean_Data \<and>
+    label \<noteq> ArchInvocationLabel ARMPageInvalidate_Data \<and>
+    label \<noteq> ArchInvocationLabel ARMPageCleanInvalidate_Data \<and>
+    label \<noteq> ArchInvocationLabel ARMPageUnify_Instruction \<and>
+    label \<noteq> ArchInvocationLabel ARMPageGetAddress \<and>
+    label \<noteq> ArchInvocationLabel ARMPDClean_Data \<and>
+    label \<noteq> ArchInvocationLabel ARMPDInvalidate_Data \<and>
+    label \<noteq> ArchInvocationLabel ARMPDCleanInvalidate_Data \<and>
+    label \<noteq> ArchInvocationLabel ARMPDUnify_Instruction \<and>
+    label \<noteq> ArchInvocationLabel ARMASIDControlMakePool \<and>
+    label \<noteq> GenInvocationLabel DomainSetSet)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> ((label = GenInvocationLabel TCBReadRegisters) = (ti = TcbReadRegistersIntent (args ! 0 !! 0) 0 (args ! 1) \<and> 2 \<le> length args) \<and> (label = GenInvocationLabel TCBWriteRegisters) = (ti = TcbWriteRegistersIntent (args ! 0 !! 0) 0 (args ! 1) (drop 2 args) \<and> 2 \<le> length args) \<and> (label = GenInvocationLabel TCBCopyRegisters) = (ti = TcbCopyRegistersIntent (args ! 0 !! 0) (args ! 0 !! 1) (args ! 0 !! 2) (args ! 0 !! 3) 0 \<and> 1 \<le> length args) \<and> (label = GenInvocationLabel TCBConfigure) = (ti = TcbConfigureIntent (args ! 0) (args ! 1) (args ! 2) (args ! 3) \<and> 4 \<le> length args) \<and> (label = GenInvocationLabel TCBSetPriority) = (ti = TcbSetPriorityIntent (prio_from_arg (args ! 0)) \<and> 1 \<le> length args) \<and> (label = GenInvocationLabel TCBSetMCPriority) = (ti = TcbSetMCPriorityIntent (prio_from_arg (args ! 0)) \<and> 1 \<le> length args) \<and> (label = GenInvocationLabel TCBSetSchedParams) = (ti = TcbSetSchedParamsIntent (prio_from_arg (args ! 0)) (prio_from_arg (args ! 1)) \<and> 2 \<le> length args) \<and> (label = GenInvocationLabel TCBSetSpace) = (ti = TcbSetSpaceIntent (args ! 0) (args ! 1) (args ! 2) \<and> 3 \<le> length args) \<and> (label = GenInvocationLabel TCBSuspend) = (ti = TcbSuspendIntent) \<and> (label = GenInvocationLabel TCBResume) = (ti = TcbResumeIntent) \<and> (label = GenInvocationLabel TCBBindNotification) = (ti = TcbBindNTFNIntent) \<and> (label = GenInvocationLabel TCBUnbindNotification) = (ti = TcbUnbindNTFNIntent) \<and> (label = GenInvocationLabel TCBSetTLSBase) = (ti = TcbSetTLSBaseIntent)) \<and> label \<noteq> GenInvocationLabel InvalidInvocation \<and> label \<noteq> GenInvocationLabel UntypedRetype \<and> label \<noteq> GenInvocationLabel CNodeRevoke \<and> label \<noteq> GenInvocationLabel CNodeDelete \<and> label \<noteq> GenInvocationLabel CNodeCancelBadgedSends \<and> label \<noteq> GenInvocationLabel CNodeCopy \<and> label \<noteq> GenInvocationLabel CNodeMint \<and> label \<noteq> GenInvocationLabel CNodeMove \<and> label \<noteq> GenInvocationLabel CNodeMutate \<and> label \<noteq> GenInvocationLabel CNodeRotate \<and> label \<noteq> GenInvocationLabel CNodeSaveCaller \<and> label \<noteq> GenInvocationLabel IRQIssueIRQHandler \<and> label \<noteq> GenInvocationLabel IRQAckIRQ \<and> label \<noteq> GenInvocationLabel IRQSetIRQHandler \<and> label \<noteq> GenInvocationLabel IRQClearIRQHandler \<and> label \<noteq> ArchInvocationLabel ARMPageTableMap \<and> label \<noteq> ArchInvocationLabel ARMPageTableUnmap \<and> label \<noteq> ArchInvocationLabel ARMPageMap \<and> label \<noteq> ArchInvocationLabel ARMPageUnmap \<and> label \<noteq> ArchInvocationLabel ARMPageClean_Data \<and> label \<noteq> ArchInvocationLabel ARMPageInvalidate_Data \<and> label \<noteq> ArchInvocationLabel ARMPageCleanInvalidate_Data \<and> label \<noteq> ArchInvocationLabel ARMPageUnify_Instruction \<and> label \<noteq> ArchInvocationLabel ARMPageGetAddress \<and> label \<noteq> ArchInvocationLabel ARMPDClean_Data \<and> label \<noteq> ArchInvocationLabel ARMPDInvalidate_Data \<and> label \<noteq> ArchInvocationLabel ARMPDCleanInvalidate_Data \<and> label \<noteq> ArchInvocationLabel ARMPDUnify_Instruction \<and> label \<noteq> ArchInvocationLabel ARMASIDControlMakePool \<and> label \<noteq> GenInvocationLabel DomainSetSet<\STATESEP>apply(intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (43 subgoals):
+ 1. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBReadRegisters) = (ti = TcbReadRegistersIntent (args ! 0 !! 0) 0 (args ! 1) \<and> 2 \<le> length args)
+ 2. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBWriteRegisters) = (ti = TcbWriteRegistersIntent (args ! 0 !! 0) 0 (args ! 1) (drop 2 args) \<and> 2 \<le> length args)
+ 3. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBCopyRegisters) = (ti = TcbCopyRegistersIntent (args ! 0 !! 0) (args ! 0 !! 1) (args ! 0 !! 2) (args ! 0 !! 3) 0 \<and> 1 \<le> length args)
+ 4. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBConfigure) = (ti = TcbConfigureIntent (args ! 0) (args ! 1) (args ! 2) (args ! 3) \<and> 4 \<le> length args)
+ 5. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBSetPriority) = (ti = TcbSetPriorityIntent (prio_from_arg (args ! 0)) \<and> 1 \<le> length args)
+ 6. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBSetMCPriority) = (ti = TcbSetMCPriorityIntent (prio_from_arg (args ! 0)) \<and> 1 \<le> length args)
+ 7. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBSetSchedParams) = (ti = TcbSetSchedParamsIntent (prio_from_arg (args ! 0)) (prio_from_arg (args ! 1)) \<and> 2 \<le> length args)
+ 8. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBSetSpace) = (ti = TcbSetSpaceIntent (args ! 0) (args ! 1) (args ! 2) \<and> 3 \<le> length args)
+ 9. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBSuspend) = (ti = TcbSuspendIntent)
+ 10. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> (label = GenInvocationLabel TCBResume) = (ti = TcbResumeIntent)
+A total of 43 subgoals...<\STATESEP>apply(rule iffI,
+         simp add: transform_intent_def transform_intent_tcb_defs split: list.split_asm,
+         simp add: transform_intent_def transform_intent_tcb_defs
+              split: gen_invocation_labels.split_asm invocation_label.split_asm
+                     arch_invocation_label.split_asm list.split_asm)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (30 subgoals):
+ 1. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel InvalidInvocation
+ 2. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel UntypedRetype
+ 3. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeRevoke
+ 4. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeDelete
+ 5. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeCancelBadgedSends
+ 6. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeCopy
+ 7. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeMint
+ 8. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeMove
+ 9. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeMutate
+ 10. transform_intent label args = Some (TcbIntent ti) \<Longrightarrow> label \<noteq> GenInvocationLabel CNodeRotate
+A total of 30 subgoals...<\STATESEP>apply(simp add: transform_intent_def transform_intent_tcb_defs
+                                          split: gen_invocation_labels.split_asm invocation_label.split_asm
+                                                 arch_invocation_label.split_asm)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma transform_intent_isnot_UntypedIntent:
+      "(\<not> (\<exists> ui. Some (UntypedIntent ui) = transform_intent label args))
+       = ((label \<noteq> GenInvocationLabel UntypedRetype) \<or>
+           (label = GenInvocationLabel UntypedRetype \<and> length args < 6) \<or>
+           (label = GenInvocationLabel UntypedRetype \<and> length args \<ge> 6 \<and> args ! 0 > 10))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<nexists>ui. Some (UntypedIntent ui) = transform_intent label args) = (label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0)<\STATESEP>apply(rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args \<Longrightarrow> label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply(erule contrapos_np)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<not> (label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0) \<Longrightarrow> \<exists>ui. Some (UntypedIntent ui) = transform_intent label args
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply(clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>label = GenInvocationLabel UntypedRetype; \<not> length args < 6; \<not> 0xA < args ! 0\<rbrakk> \<Longrightarrow> \<exists>ui. Some (UntypedIntent ui) = transform_intent (GenInvocationLabel UntypedRetype) args
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply(simp add: transform_intent_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>label = GenInvocationLabel UntypedRetype; \<not> length args < 6; \<not> 0xA < args ! 0\<rbrakk> \<Longrightarrow> \<exists>ui. Some (UntypedIntent ui) = map_option UntypedIntent (transform_intent_untyped_retype args)
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply(unfold transform_intent_untyped_retype_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>label = GenInvocationLabel UntypedRetype; \<not> length args < 6; \<not> 0xA < args ! 0\<rbrakk> \<Longrightarrow> \<exists>ui. Some (UntypedIntent ui) = map_option UntypedIntent (case args of [] \<Rightarrow> None | [type] \<Rightarrow> None | [type, size_bits] \<Rightarrow> None | [type, size_bits, index] \<Rightarrow> None | [type, size_bits, index, depth] \<Rightarrow> None | [type, size_bits, index, depth, offset] \<Rightarrow> None | type # size_bits # index # depth # offset # window # xa \<Rightarrow> case transform_type type of None \<Rightarrow> None | Some x \<Rightarrow> Some (UntypedRetypeIntent x size_bits index depth offset window))
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply (clarsimp split: list.split, safe, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x21 x21a x21b x21c x21d x21e x22e. \<lbrakk>label = GenInvocationLabel UntypedRetype; \<not> 0xA < x21; args = x21 # x21a # x21b # x21c # x21d # x21e # x22e\<rbrakk> \<Longrightarrow> \<exists>ui. Some (UntypedIntent ui) = map_option UntypedIntent (case transform_type x21 of None \<Rightarrow> None | Some x \<Rightarrow> Some (UntypedRetypeIntent x x21a x21b x21c x21d x21e))
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply (clarsimp simp: transform_type_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x21 x21a x21b x21c x21d x21e x22e. \<lbrakk>label = GenInvocationLabel UntypedRetype; \<not> 0xA < x21; args = x21 # x21a # x21b # x21c # x21d # x21e # x22e; x21 \<noteq> 0xA; x21 \<noteq> 9; x21 \<noteq> 8; x21 \<noteq> 7; x21 \<noteq> 6; x21 \<noteq> 5; x21 \<noteq> 4; x21 \<noteq> 3; x21 \<noteq> 2; x21 \<noteq> 1\<rbrakk> \<Longrightarrow> x21 = 0
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply (simp add: unat_arith_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x21 x21a x21b x21c x21d x21e x22e. \<lbrakk>label = GenInvocationLabel UntypedRetype; \<not> 10 < unat x21; args = x21 # x21a # x21b # x21c # x21d # x21e # x22e; unat x21 \<noteq> 10; unat x21 \<noteq> 9; unat x21 \<noteq> 8; unat x21 \<noteq> 7; unat x21 \<noteq> 6; unat x21 \<noteq> 5; unat x21 \<noteq> 4; unat x21 \<noteq> 3; unat x21 \<noteq> 2; unat x21 \<noteq> Suc 0\<rbrakk> \<Longrightarrow> unat x21 = 0
+ 2. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply (simp add: eval_nat_numeral linorder_not_less le_Suc_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. label \<noteq> GenInvocationLabel UntypedRetype \<or> label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply(erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. label \<noteq> GenInvocationLabel UntypedRetype \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args
+ 2. label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply(auto simp: transform_intent_def option_map_def
+              split: gen_invocation_labels.split invocation_label.split arch_invocation_label.split
+                     option.split_asm)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<or> label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. label = GenInvocationLabel UntypedRetype \<and> length args < 6 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args
+ 2. label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply (auto simp: transform_intent_def transform_intent_untyped_retype_def
+         option_map_def split: invocation_label.split option.split_asm list.split)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. label = GenInvocationLabel UntypedRetype \<and> 6 \<le> length args \<and> 0xA < args ! 0 \<Longrightarrow> \<nexists>ui. Some (UntypedIntent ui) = transform_intent label args<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ui. \<lbrakk>label = GenInvocationLabel UntypedRetype; 6 \<le> length args; 0xA < args ! 0; Some (UntypedIntent ui) = transform_intent (GenInvocationLabel UntypedRetype) args\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: transform_intent_def transform_type_def transform_intent_untyped_retype_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ui. \<lbrakk>label = GenInvocationLabel UntypedRetype; 6 \<le> length args; 0xA < args ! 0; Some (UntypedIntent ui) = map_option UntypedIntent (case args of [] \<Rightarrow> None | [type] \<Rightarrow> None | [type, size_bits] \<Rightarrow> None | [type, size_bits, index] \<Rightarrow> None | [type, size_bits, index, depth] \<Rightarrow> None | [type, size_bits, index, depth, offset] \<Rightarrow> None | type # size_bits # index # depth # offset # window # x \<Rightarrow> case transform_type type of None \<Rightarrow> None | Some x \<Rightarrow> Some (UntypedRetypeIntent x size_bits index depth offset window))\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: option_map_def
+                  split: invocation_label.splits arch_invocation_label.splits option.splits list.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x21 x21a x21b x21c x21d x21e x22e x2a. \<lbrakk>label = GenInvocationLabel UntypedRetype; 0xA < x21; args = x21 # x21a # x21b # x21c # x21d # x21e # x22e; transform_type x21 = Some x2a\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: transform_type_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma transform_cnode_index_and_depth_success:
+       "(\<exists>ci. Some (C ci) =
+            map_option C
+             (transform_cnode_index_and_depth C2 args)) =
+       (\<not> length args < 2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<exists>ci. Some (C ci) = map_option C (transform_cnode_index_and_depth C2 args)) = (\<not> length args < 2)<\STATESEP>apply(rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<exists>ci. Some (C ci) = map_option C (transform_cnode_index_and_depth C2 args) \<Longrightarrow> \<not> length args < 2
+ 2. \<not> length args < 2 \<Longrightarrow> \<exists>ci. Some (C ci) = map_option C (transform_cnode_index_and_depth C2 args)<\STATESEP>apply(unfold option_map_def transform_cnode_index_and_depth_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<exists>ci. Some (C ci) = (case case args of [] \<Rightarrow> None | [index] \<Rightarrow> None | index # depth # xa \<Rightarrow> Some (C2 index depth) of None \<Rightarrow> None | Some x \<Rightarrow> Some (C x)) \<Longrightarrow> \<not> length args < 2
+ 2. \<not> length args < 2 \<Longrightarrow> \<exists>ci. Some (C ci) = (case case args of [] \<Rightarrow> None | [index] \<Rightarrow> None | index # depth # xa \<Rightarrow> Some (C2 index depth) of None \<Rightarrow> None | Some x \<Rightarrow> Some (C x))<\STATESEP>apply(case_tac args)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>\<exists>ci. Some (C ci) = (case case args of [] \<Rightarrow> None | [index] \<Rightarrow> None | index # depth # xa \<Rightarrow> Some (C2 index depth) of None \<Rightarrow> None | Some x \<Rightarrow> Some (C x)); args = []\<rbrakk> \<Longrightarrow> \<not> length args < 2
+ 2. \<And>a list. \<lbrakk>\<exists>ci. Some (C ci) = (case case args of [] \<Rightarrow> None | [index] \<Rightarrow> None | index # depth # xa \<Rightarrow> Some (C2 index depth) of None \<Rightarrow> None | Some x \<Rightarrow> Some (C x)); args = a # list\<rbrakk> \<Longrightarrow> \<not> length args < 2
+ 3. \<not> length args < 2 \<Longrightarrow> \<exists>ci. Some (C ci) = (case case args of [] \<Rightarrow> None | [index] \<Rightarrow> None | index # depth # xa \<Rightarrow> Some (C2 index depth) of None \<Rightarrow> None | Some x \<Rightarrow> Some (C x))<\STATESEP>apply(auto split: list.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas transform_intent_cnode_defs =
+  transform_cnode_index_and_depth_def
+  transform_intent_cnode_copy_def
+  transform_intent_cnode_mint_def
+  transform_intent_cnode_move_def
+  transform_intent_cnode_mutate_def
+  transform_intent_cnode_rotate_def<\STATESEP>0<\TRANSEP><\STATESEP>method case_labels for label :: invocation_label =
+  (cases label,
+   find_goal \<open>match premises in "label = GenInvocationLabel x" for x \<Rightarrow> \<open>cases x\<close>\<close>,
+   find_goal \<open>match premises in "label = ArchInvocationLabel x" for x \<Rightarrow> \<open>cases x\<close>\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>lemma transform_intent_isnot_CNodeIntent:
+      "(\<not> (\<exists> ui. Some (CNodeIntent ui) = transform_intent label args))
+       = ((label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and>
+          (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and>
+          (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and>
+          (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and>
+          (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and>
+          (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and>
+          (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and>
+          (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and>
+          (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<nexists>ui. Some (CNodeIntent ui) = transform_intent label args) = ((label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2))<\STATESEP>apply(rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args \<Longrightarrow> (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2)
+ 2. (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2) \<Longrightarrow> \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args<\STATESEP>apply(erule contrapos_np)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<not> ((label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2)) \<Longrightarrow> \<exists>ui. Some (CNodeIntent ui) = transform_intent label args
+ 2. (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2) \<Longrightarrow> \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args<\STATESEP>apply(clarsimp simp: transform_intent_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. label = GenInvocationLabel CNodeRevoke \<and> \<not> length args < 2 \<or> label = GenInvocationLabel CNodeDelete \<and> \<not> length args < 2 \<or> label = GenInvocationLabel CNodeCancelBadgedSends \<and> \<not> length args < 2 \<or> label = GenInvocationLabel CNodeCopy \<and> \<not> length args < 5 \<or> label = GenInvocationLabel CNodeMint \<and> \<not> length args < 6 \<or> label = GenInvocationLabel CNodeMove \<and> \<not> length args < 4 \<or> label = GenInvocationLabel CNodeMutate \<and> \<not> length args < 5 \<or> label = GenInvocationLabel CNodeRotate \<and> \<not> length args < 8 \<or> label = GenInvocationLabel CNodeSaveCaller \<and> \<not> length args < 2 \<Longrightarrow> \<exists>ui. Some (CNodeIntent ui) = (case label of GenInvocationLabel InvalidInvocation \<Rightarrow> None | GenInvocationLabel UntypedRetype \<Rightarrow> map_option UntypedIntent (transform_intent_untyped_retype args) | GenInvocationLabel TCBReadRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_read_registers args) | GenInvocationLabel TCBWriteRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_write_registers args) | GenInvocationLabel TCBCopyRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_copy_registers args) | GenInvocationLabel TCBConfigure \<Rightarrow> map_option TcbIntent (transform_intent_tcb_configure args) | GenInvocationLabel TCBSetPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_priority args) | GenInvocationLabel TCBSetMCPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_mcpriority args) | GenInvocationLabel TCBSetSchedParams \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_sched_params args) | GenInvocationLabel TCBSetIPCBuffer \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_ipc_buffer args) | GenInvocationLabel TCBSetSpace \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_space args) | GenInvocationLabel TCBSuspend \<Rightarrow> Some (TcbIntent TcbSuspendIntent) | GenInvocationLabel TCBResume \<Rightarrow> Some (TcbIntent TcbResumeIntent) | GenInvocationLabel TCBBindNotification \<Rightarrow> Some (TcbIntent TcbBindNTFNIntent) | GenInvocationLabel TCBUnbindNotification \<Rightarrow> Some (TcbIntent TcbUnbindNTFNIntent) | GenInvocationLabel TCBSetTLSBase \<Rightarrow> Some (TcbIntent TcbSetTLSBaseIntent) | GenInvocationLabel CNodeRevoke \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeRevokeIntent args) | GenInvocationLabel CNodeDelete \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeDeleteIntent args) | GenInvocationLabel CNodeCancelBadgedSends \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeCancelBadgedSendsIntent args) | GenInvocationLabel CNodeCopy \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_copy args) | GenInvocationLabel CNodeMint \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mint args) | GenInvocationLabel CNodeMove \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_move args) | GenInvocationLabel CNodeMutate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mutate args) | GenInvocationLabel CNodeRotate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_rotate args) | GenInvocationLabel CNodeSaveCaller \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeSaveCallerIntent args) | GenInvocationLabel IRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (transform_intent_issue_irq_handler args) | GenInvocationLabel IRQAckIRQ \<Rightarrow> Some (IrqHandlerIntent IrqHandlerAckIntent) | GenInvocationLabel IRQSetIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerSetEndpointIntent) | GenInvocationLabel IRQClearIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerClearIntent) | GenInvocationLabel DomainSetSet \<Rightarrow> map_option DomainIntent (transform_intent_domain args) | ArchInvocationLabel ARMPageTableMap \<Rightarrow> map_option PageTableIntent (transform_intent_page_table_map args) | ArchInvocationLabel ARMPageTableUnmap \<Rightarrow> Some (PageTableIntent PageTableUnmapIntent) | ArchInvocationLabel ARMPageMap \<Rightarrow> map_option PageIntent (transform_intent_page_map args) | ArchInvocationLabel ARMPageUnmap \<Rightarrow> Some (PageIntent PageUnmapIntent) | ArchInvocationLabel ARMPageClean_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageCleanInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageUnify_Instruction \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageGetAddress \<Rightarrow> Some (PageIntent PageGetAddressIntent) | ArchInvocationLabel ARMASIDControlMakePool \<Rightarrow> map_option AsidControlIntent (transform_cnode_index_and_depth AsidControlMakePoolIntent args) | ArchInvocationLabel ARMASIDPoolAssign \<Rightarrow> Some (AsidPoolIntent AsidPoolAssignIntent) | ArchInvocationLabel ARMIRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (arch_transform_intent_issue_irq_handler args) | ArchInvocationLabel _ \<Rightarrow> Some (PageDirectoryIntent PageDirectoryFlushIntent))
+ 2. (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2) \<Longrightarrow> \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args<\STATESEP>apply(cases label; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x1. \<lbrakk>x1 = CNodeRevoke \<and> \<not> length args < 2 \<or> x1 = CNodeDelete \<and> \<not> length args < 2 \<or> x1 = CNodeCancelBadgedSends \<and> \<not> length args < 2 \<or> x1 = CNodeCopy \<and> \<not> length args < 5 \<or> x1 = CNodeMint \<and> \<not> length args < 6 \<or> x1 = CNodeMove \<and> \<not> length args < 4 \<or> x1 = CNodeMutate \<and> \<not> length args < 5 \<or> x1 = CNodeRotate \<and> \<not> length args < 8 \<or> x1 = CNodeSaveCaller \<and> \<not> length args < 2; label = GenInvocationLabel x1\<rbrakk> \<Longrightarrow> \<exists>ui. Some (CNodeIntent ui) = (case x1 of InvalidInvocation \<Rightarrow> None | UntypedRetype \<Rightarrow> map_option UntypedIntent (transform_intent_untyped_retype args) | TCBReadRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_read_registers args) | TCBWriteRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_write_registers args) | TCBCopyRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_copy_registers args) | TCBConfigure \<Rightarrow> map_option TcbIntent (transform_intent_tcb_configure args) | TCBSetPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_priority args) | TCBSetMCPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_mcpriority args) | TCBSetSchedParams \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_sched_params args) | TCBSetIPCBuffer \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_ipc_buffer args) | TCBSetSpace \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_space args) | TCBSuspend \<Rightarrow> Some (TcbIntent TcbSuspendIntent) | TCBResume \<Rightarrow> Some (TcbIntent TcbResumeIntent) | TCBBindNotification \<Rightarrow> Some (TcbIntent TcbBindNTFNIntent) | TCBUnbindNotification \<Rightarrow> Some (TcbIntent TcbUnbindNTFNIntent) | TCBSetTLSBase \<Rightarrow> Some (TcbIntent TcbSetTLSBaseIntent) | CNodeRevoke \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeRevokeIntent args) | CNodeDelete \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeDeleteIntent args) | CNodeCancelBadgedSends \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeCancelBadgedSendsIntent args) | CNodeCopy \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_copy args) | CNodeMint \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mint args) | CNodeMove \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_move args) | CNodeMutate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mutate args) | CNodeRotate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_rotate args) | CNodeSaveCaller \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeSaveCallerIntent args) | IRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (transform_intent_issue_irq_handler args) | IRQAckIRQ \<Rightarrow> Some (IrqHandlerIntent IrqHandlerAckIntent) | IRQSetIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerSetEndpointIntent) | IRQClearIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerClearIntent) | DomainSetSet \<Rightarrow> map_option DomainIntent (transform_intent_domain args))
+ 2. (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2) \<Longrightarrow> \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args<\STATESEP>apply(rename_tac gen_label, case_tac gen_label;
+           simp add: transform_intent_cnode_defs option_map_def
+                split: list.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeRevoke; gen_label = CNodeRevoke\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 2. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeDelete; gen_label = CNodeDelete\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 3. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeCancelBadgedSends; gen_label = CNodeCancelBadgedSends\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 4. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeCopy; gen_label = CNodeCopy\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 5. \<And>gen_label. \<lbrakk>\<not> length args < 6; label = GenInvocationLabel CNodeMint; gen_label = CNodeMint\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d. x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d])))))
+ 6. \<And>gen_label. \<lbrakk>\<not> length args < 4; label = GenInvocationLabel CNodeMove; gen_label = CNodeMove\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b. x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b])))
+ 7. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeMutate; gen_label = CNodeMutate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 8. \<And>gen_label. \<lbrakk>\<not> length args < 8; label = GenInvocationLabel CNodeRotate; gen_label = CNodeRotate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d x22d. (x22d = [] \<longrightarrow> x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d]) \<and> (\<forall>x21e x22e. (x22e = [] \<longrightarrow> x22d = [x21e] \<longrightarrow> x22c = [x21d, x21e] \<longrightarrow> x22b = [x21c, x21d, x21e] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e]) \<and> (\<forall>x21f. x22e = [x21f] \<longrightarrow> x22d = [x21e, x21f] \<longrightarrow> x22c = [x21d, x21e, x21f] \<longrightarrow> x22b = [x21c, x21d, x21e, x21f] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e, x21f] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e, x21f] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e, x21f])))))))
+ 9. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeSaveCaller; gen_label = CNodeSaveCaller\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 10. (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2) \<Longrightarrow> \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args<\STATESEP>prefer 10<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. (label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6) \<and> (label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5) \<and> (label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8) \<and> (label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2) \<Longrightarrow> \<nexists>ui. Some (CNodeIntent ui) = transform_intent label args
+ 2. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeRevoke; gen_label = CNodeRevoke\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 3. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeDelete; gen_label = CNodeDelete\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 4. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeCancelBadgedSends; gen_label = CNodeCancelBadgedSends\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 5. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeCopy; gen_label = CNodeCopy\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 6. \<And>gen_label. \<lbrakk>\<not> length args < 6; label = GenInvocationLabel CNodeMint; gen_label = CNodeMint\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d. x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d])))))
+ 7. \<And>gen_label. \<lbrakk>\<not> length args < 4; label = GenInvocationLabel CNodeMove; gen_label = CNodeMove\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b. x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b])))
+ 8. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeMutate; gen_label = CNodeMutate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 9. \<And>gen_label. \<lbrakk>\<not> length args < 8; label = GenInvocationLabel CNodeRotate; gen_label = CNodeRotate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d x22d. (x22d = [] \<longrightarrow> x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d]) \<and> (\<forall>x21e x22e. (x22e = [] \<longrightarrow> x22d = [x21e] \<longrightarrow> x22c = [x21d, x21e] \<longrightarrow> x22b = [x21c, x21d, x21e] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e]) \<and> (\<forall>x21f. x22e = [x21f] \<longrightarrow> x22d = [x21e, x21f] \<longrightarrow> x22c = [x21d, x21e, x21f] \<longrightarrow> x22b = [x21c, x21d, x21e, x21f] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e, x21f] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e, x21f] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e, x21f])))))))
+ 10. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeSaveCaller; gen_label = CNodeSaveCaller\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])<\STATESEP>apply(clarify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>ui. \<lbrakk>label = GenInvocationLabel CNodeRevoke \<longrightarrow> length args < 2; label = GenInvocationLabel CNodeDelete \<longrightarrow> length args < 2; label = GenInvocationLabel CNodeCancelBadgedSends \<longrightarrow> length args < 2; label = GenInvocationLabel CNodeCopy \<longrightarrow> length args < 5; label = GenInvocationLabel CNodeMint \<longrightarrow> length args < 6; label = GenInvocationLabel CNodeMove \<longrightarrow> length args < 4; label = GenInvocationLabel CNodeMutate \<longrightarrow> length args < 5; label = GenInvocationLabel CNodeRotate \<longrightarrow> length args < 8; label = GenInvocationLabel CNodeSaveCaller \<longrightarrow> length args < 2; Some (CNodeIntent ui) = transform_intent label args\<rbrakk> \<Longrightarrow> False
+ 2. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeRevoke; gen_label = CNodeRevoke\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 3. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeDelete; gen_label = CNodeDelete\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 4. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeCancelBadgedSends; gen_label = CNodeCancelBadgedSends\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 5. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeCopy; gen_label = CNodeCopy\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 6. \<And>gen_label. \<lbrakk>\<not> length args < 6; label = GenInvocationLabel CNodeMint; gen_label = CNodeMint\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d. x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d])))))
+ 7. \<And>gen_label. \<lbrakk>\<not> length args < 4; label = GenInvocationLabel CNodeMove; gen_label = CNodeMove\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b. x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b])))
+ 8. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeMutate; gen_label = CNodeMutate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 9. \<And>gen_label. \<lbrakk>\<not> length args < 8; label = GenInvocationLabel CNodeRotate; gen_label = CNodeRotate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d x22d. (x22d = [] \<longrightarrow> x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d]) \<and> (\<forall>x21e x22e. (x22e = [] \<longrightarrow> x22d = [x21e] \<longrightarrow> x22c = [x21d, x21e] \<longrightarrow> x22b = [x21c, x21d, x21e] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e]) \<and> (\<forall>x21f. x22e = [x21f] \<longrightarrow> x22d = [x21e, x21f] \<longrightarrow> x22c = [x21d, x21e, x21f] \<longrightarrow> x22b = [x21c, x21d, x21e, x21f] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e, x21f] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e, x21f] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e, x21f])))))))
+ 10. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeSaveCaller; gen_label = CNodeSaveCaller\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])<\STATESEP>apply(case_labels label;
+                   clarsimp simp: transform_intent_def option_map_def transform_intent_cnode_defs
+                            split: list.split_asm option.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeRevoke; gen_label = CNodeRevoke\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 2. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeDelete; gen_label = CNodeDelete\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 3. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeCancelBadgedSends; gen_label = CNodeCancelBadgedSends\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])
+ 4. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeCopy; gen_label = CNodeCopy\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 5. \<And>gen_label. \<lbrakk>\<not> length args < 6; label = GenInvocationLabel CNodeMint; gen_label = CNodeMint\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d. x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d])))))
+ 6. \<And>gen_label. \<lbrakk>\<not> length args < 4; label = GenInvocationLabel CNodeMove; gen_label = CNodeMove\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b. x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b])))
+ 7. \<And>gen_label. \<lbrakk>\<not> length args < 5; label = GenInvocationLabel CNodeMutate; gen_label = CNodeMutate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c. x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]))))
+ 8. \<And>gen_label. \<lbrakk>\<not> length args < 8; label = GenInvocationLabel CNodeRotate; gen_label = CNodeRotate\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21 x22. (x22 = [] \<longrightarrow> args \<noteq> [x21]) \<and> (\<forall>x21a x22a. (x22a = [] \<longrightarrow> x22 = [x21a] \<longrightarrow> args \<noteq> [x21, x21a]) \<and> (\<forall>x21b x22b. (x22b = [] \<longrightarrow> x22a = [x21b] \<longrightarrow> x22 = [x21a, x21b] \<longrightarrow> args \<noteq> [x21, x21a, x21b]) \<and> (\<forall>x21c x22c. (x22c = [] \<longrightarrow> x22b = [x21c] \<longrightarrow> x22a = [x21b, x21c] \<longrightarrow> x22 = [x21a, x21b, x21c] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c]) \<and> (\<forall>x21d x22d. (x22d = [] \<longrightarrow> x22c = [x21d] \<longrightarrow> x22b = [x21c, x21d] \<longrightarrow> x22a = [x21b, x21c, x21d] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d]) \<and> (\<forall>x21e x22e. (x22e = [] \<longrightarrow> x22d = [x21e] \<longrightarrow> x22c = [x21d, x21e] \<longrightarrow> x22b = [x21c, x21d, x21e] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e]) \<and> (\<forall>x21f. x22e = [x21f] \<longrightarrow> x22d = [x21e, x21f] \<longrightarrow> x22c = [x21d, x21e, x21f] \<longrightarrow> x22b = [x21c, x21d, x21e, x21f] \<longrightarrow> x22a = [x21b, x21c, x21d, x21e, x21f] \<longrightarrow> x22 = [x21a, x21b, x21c, x21d, x21e, x21f] \<longrightarrow> args \<noteq> [x21, x21a, x21b, x21c, x21d, x21e, x21f])))))))
+ 9. \<And>gen_label. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel CNodeSaveCaller; gen_label = CNodeSaveCaller\<rbrakk> \<Longrightarrow> args \<noteq> [] \<and> (\<forall>x21. args \<noteq> [x21])<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma transform_intent_isnot_TcbIntent:
+      "(\<not> (\<exists> ti. Some (TcbIntent ti) = transform_intent label args))
+       = ((label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and>
+          (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and>
+          (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and>
+          (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and>
+          (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and>
+          (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and>
+          (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and>
+          (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and>
+          (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and>
+          (label \<noteq> GenInvocationLabel TCBSuspend) \<and>
+          (label \<noteq> GenInvocationLabel TCBResume) \<and>
+          (label \<noteq> GenInvocationLabel TCBBindNotification) \<and>
+          (label \<noteq> GenInvocationLabel TCBUnbindNotification) \<and>
+          (label \<noteq> GenInvocationLabel TCBSetTLSBase))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<nexists>ti. Some (TcbIntent ti) = transform_intent label args) = ((label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase)<\STATESEP>apply(rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<nexists>ti. Some (TcbIntent ti) = transform_intent label args \<Longrightarrow> (label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase
+ 2. (label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase \<Longrightarrow> \<nexists>ti. Some (TcbIntent ti) = transform_intent label args<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<nexists>ti. Some (TcbIntent ti) = transform_intent label args \<Longrightarrow> (label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase<\STATESEP>apply(erule contrapos_np)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> ((label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase) \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = transform_intent label args<\STATESEP>apply(clarsimp simp: transform_intent_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. label = GenInvocationLabel TCBReadRegisters \<and> \<not> length args < 2 \<or> label = GenInvocationLabel TCBWriteRegisters \<and> \<not> length args < 2 \<or> label = GenInvocationLabel TCBCopyRegisters \<and> args \<noteq> [] \<or> label = GenInvocationLabel TCBConfigure \<and> \<not> length args < 4 \<or> label = GenInvocationLabel TCBSetPriority \<and> args \<noteq> [] \<or> label = GenInvocationLabel TCBSetMCPriority \<and> args \<noteq> [] \<or> label = GenInvocationLabel TCBSetSchedParams \<and> \<not> length args < 2 \<or> label = GenInvocationLabel TCBSetIPCBuffer \<and> args \<noteq> [] \<or> label = GenInvocationLabel TCBSetSpace \<and> \<not> length args < 3 \<or> label = GenInvocationLabel TCBSuspend \<or> label = GenInvocationLabel TCBResume \<or> label = GenInvocationLabel TCBBindNotification \<or> label = GenInvocationLabel TCBUnbindNotification \<or> label = GenInvocationLabel TCBSetTLSBase \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = (case label of GenInvocationLabel InvalidInvocation \<Rightarrow> None | GenInvocationLabel UntypedRetype \<Rightarrow> map_option UntypedIntent (transform_intent_untyped_retype args) | GenInvocationLabel TCBReadRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_read_registers args) | GenInvocationLabel TCBWriteRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_write_registers args) | GenInvocationLabel TCBCopyRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_copy_registers args) | GenInvocationLabel TCBConfigure \<Rightarrow> map_option TcbIntent (transform_intent_tcb_configure args) | GenInvocationLabel TCBSetPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_priority args) | GenInvocationLabel TCBSetMCPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_mcpriority args) | GenInvocationLabel TCBSetSchedParams \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_sched_params args) | GenInvocationLabel TCBSetIPCBuffer \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_ipc_buffer args) | GenInvocationLabel TCBSetSpace \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_space args) | GenInvocationLabel TCBSuspend \<Rightarrow> Some (TcbIntent TcbSuspendIntent) | GenInvocationLabel TCBResume \<Rightarrow> Some (TcbIntent TcbResumeIntent) | GenInvocationLabel TCBBindNotification \<Rightarrow> Some (TcbIntent TcbBindNTFNIntent) | GenInvocationLabel TCBUnbindNotification \<Rightarrow> Some (TcbIntent TcbUnbindNTFNIntent) | GenInvocationLabel TCBSetTLSBase \<Rightarrow> Some (TcbIntent TcbSetTLSBaseIntent) | GenInvocationLabel CNodeRevoke \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeRevokeIntent args) | GenInvocationLabel CNodeDelete \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeDeleteIntent args) | GenInvocationLabel CNodeCancelBadgedSends \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeCancelBadgedSendsIntent args) | GenInvocationLabel CNodeCopy \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_copy args) | GenInvocationLabel CNodeMint \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mint args) | GenInvocationLabel CNodeMove \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_move args) | GenInvocationLabel CNodeMutate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mutate args) | GenInvocationLabel CNodeRotate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_rotate args) | GenInvocationLabel CNodeSaveCaller \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeSaveCallerIntent args) | GenInvocationLabel IRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (transform_intent_issue_irq_handler args) | GenInvocationLabel IRQAckIRQ \<Rightarrow> Some (IrqHandlerIntent IrqHandlerAckIntent) | GenInvocationLabel IRQSetIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerSetEndpointIntent) | GenInvocationLabel IRQClearIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerClearIntent) | GenInvocationLabel DomainSetSet \<Rightarrow> map_option DomainIntent (transform_intent_domain args) | ArchInvocationLabel ARMPageTableMap \<Rightarrow> map_option PageTableIntent (transform_intent_page_table_map args) | ArchInvocationLabel ARMPageTableUnmap \<Rightarrow> Some (PageTableIntent PageTableUnmapIntent) | ArchInvocationLabel ARMPageMap \<Rightarrow> map_option PageIntent (transform_intent_page_map args) | ArchInvocationLabel ARMPageUnmap \<Rightarrow> Some (PageIntent PageUnmapIntent) | ArchInvocationLabel ARMPageClean_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageCleanInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageUnify_Instruction \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageGetAddress \<Rightarrow> Some (PageIntent PageGetAddressIntent) | ArchInvocationLabel ARMASIDControlMakePool \<Rightarrow> map_option AsidControlIntent (transform_cnode_index_and_depth AsidControlMakePoolIntent args) | ArchInvocationLabel ARMASIDPoolAssign \<Rightarrow> Some (AsidPoolIntent AsidPoolAssignIntent) | ArchInvocationLabel ARMIRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (arch_transform_intent_issue_irq_handler args) | ArchInvocationLabel _ \<Rightarrow> Some (PageDirectoryIntent PageDirectoryFlushIntent))<\STATESEP>apply(case_labels label; simp)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>x1. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel TCBReadRegisters; x1 = TCBReadRegisters\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_read_registers args)
+ 2. \<And>x1. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel TCBWriteRegisters; x1 = TCBWriteRegisters\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_write_registers args)
+ 3. \<And>x1. \<lbrakk>args \<noteq> []; label = GenInvocationLabel TCBCopyRegisters; x1 = TCBCopyRegisters\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_copy_registers args)
+ 4. \<And>x1. \<lbrakk>\<not> length args < 4; label = GenInvocationLabel TCBConfigure; x1 = TCBConfigure\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_configure args)
+ 5. \<And>x1. \<lbrakk>args \<noteq> []; label = GenInvocationLabel TCBSetPriority; x1 = TCBSetPriority\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_set_priority args)
+ 6. \<And>x1. \<lbrakk>args \<noteq> []; label = GenInvocationLabel TCBSetMCPriority; x1 = TCBSetMCPriority\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_set_mcpriority args)
+ 7. \<And>x1. \<lbrakk>\<not> length args < 2; label = GenInvocationLabel TCBSetSchedParams; x1 = TCBSetSchedParams\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_set_sched_params args)
+ 8. \<And>x1. \<lbrakk>args \<noteq> []; label = GenInvocationLabel TCBSetIPCBuffer; x1 = TCBSetIPCBuffer\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_set_ipc_buffer args)
+ 9. \<And>x1. \<lbrakk>\<not> length args < 3; label = GenInvocationLabel TCBSetSpace; x1 = TCBSetSpace\<rbrakk> \<Longrightarrow> \<exists>ti. Some (TcbIntent ti) = map_option TcbIntent (transform_intent_tcb_set_space args)<\STATESEP>apply(fastforce simp: transform_intent_tcb_defs option_map_def
+                             split: list.split)+<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase \<Longrightarrow> \<nexists>ti. Some (TcbIntent ti) = transform_intent label args<\STATESEP>apply(unfold transform_intent_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (label = GenInvocationLabel TCBReadRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBWriteRegisters \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBCopyRegisters \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBConfigure \<longrightarrow> length args < 4) \<and> (label = GenInvocationLabel TCBSetPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetMCPriority \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSchedParams \<longrightarrow> length args < 2) \<and> (label = GenInvocationLabel TCBSetIPCBuffer \<longrightarrow> length args < 1) \<and> (label = GenInvocationLabel TCBSetSpace \<longrightarrow> length args < 3) \<and> label \<noteq> GenInvocationLabel TCBSuspend \<and> label \<noteq> GenInvocationLabel TCBResume \<and> label \<noteq> GenInvocationLabel TCBBindNotification \<and> label \<noteq> GenInvocationLabel TCBUnbindNotification \<and> label \<noteq> GenInvocationLabel TCBSetTLSBase \<Longrightarrow> \<nexists>ti. Some (TcbIntent ti) = (case label of GenInvocationLabel InvalidInvocation \<Rightarrow> None | GenInvocationLabel UntypedRetype \<Rightarrow> map_option UntypedIntent (transform_intent_untyped_retype args) | GenInvocationLabel TCBReadRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_read_registers args) | GenInvocationLabel TCBWriteRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_write_registers args) | GenInvocationLabel TCBCopyRegisters \<Rightarrow> map_option TcbIntent (transform_intent_tcb_copy_registers args) | GenInvocationLabel TCBConfigure \<Rightarrow> map_option TcbIntent (transform_intent_tcb_configure args) | GenInvocationLabel TCBSetPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_priority args) | GenInvocationLabel TCBSetMCPriority \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_mcpriority args) | GenInvocationLabel TCBSetSchedParams \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_sched_params args) | GenInvocationLabel TCBSetIPCBuffer \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_ipc_buffer args) | GenInvocationLabel TCBSetSpace \<Rightarrow> map_option TcbIntent (transform_intent_tcb_set_space args) | GenInvocationLabel TCBSuspend \<Rightarrow> Some (TcbIntent TcbSuspendIntent) | GenInvocationLabel TCBResume \<Rightarrow> Some (TcbIntent TcbResumeIntent) | GenInvocationLabel TCBBindNotification \<Rightarrow> Some (TcbIntent TcbBindNTFNIntent) | GenInvocationLabel TCBUnbindNotification \<Rightarrow> Some (TcbIntent TcbUnbindNTFNIntent) | GenInvocationLabel TCBSetTLSBase \<Rightarrow> Some (TcbIntent TcbSetTLSBaseIntent) | GenInvocationLabel CNodeRevoke \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeRevokeIntent args) | GenInvocationLabel CNodeDelete \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeDeleteIntent args) | GenInvocationLabel CNodeCancelBadgedSends \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeCancelBadgedSendsIntent args) | GenInvocationLabel CNodeCopy \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_copy args) | GenInvocationLabel CNodeMint \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mint args) | GenInvocationLabel CNodeMove \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_move args) | GenInvocationLabel CNodeMutate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_mutate args) | GenInvocationLabel CNodeRotate \<Rightarrow> map_option CNodeIntent (transform_intent_cnode_rotate args) | GenInvocationLabel CNodeSaveCaller \<Rightarrow> map_option CNodeIntent (transform_cnode_index_and_depth CNodeSaveCallerIntent args) | GenInvocationLabel IRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (transform_intent_issue_irq_handler args) | GenInvocationLabel IRQAckIRQ \<Rightarrow> Some (IrqHandlerIntent IrqHandlerAckIntent) | GenInvocationLabel IRQSetIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerSetEndpointIntent) | GenInvocationLabel IRQClearIRQHandler \<Rightarrow> Some (IrqHandlerIntent IrqHandlerClearIntent) | GenInvocationLabel DomainSetSet \<Rightarrow> map_option DomainIntent (transform_intent_domain args) | ArchInvocationLabel ARMPageTableMap \<Rightarrow> map_option PageTableIntent (transform_intent_page_table_map args) | ArchInvocationLabel ARMPageTableUnmap \<Rightarrow> Some (PageTableIntent PageTableUnmapIntent) | ArchInvocationLabel ARMPageMap \<Rightarrow> map_option PageIntent (transform_intent_page_map args) | ArchInvocationLabel ARMPageUnmap \<Rightarrow> Some (PageIntent PageUnmapIntent) | ArchInvocationLabel ARMPageClean_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageCleanInvalidate_Data \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageUnify_Instruction \<Rightarrow> Some (PageIntent PageFlushCachesIntent) | ArchInvocationLabel ARMPageGetAddress \<Rightarrow> Some (PageIntent PageGetAddressIntent) | ArchInvocationLabel ARMASIDControlMakePool \<Rightarrow> map_option AsidControlIntent (transform_cnode_index_and_depth AsidControlMakePoolIntent args) | ArchInvocationLabel ARMASIDPoolAssign \<Rightarrow> Some (AsidPoolIntent AsidPoolAssignIntent) | ArchInvocationLabel ARMIRQIssueIRQHandler \<Rightarrow> map_option IrqControlIntent (arch_transform_intent_issue_irq_handler args) | ArchInvocationLabel _ \<Rightarrow> Some (PageDirectoryIntent PageDirectoryFlushIntent))<\STATESEP>apply(case_labels label; simp add: option_map_def split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>x1. \<lbrakk>length args < 2; label = GenInvocationLabel TCBReadRegisters; x1 = TCBReadRegisters\<rbrakk> \<Longrightarrow> transform_intent_tcb_read_registers args = None
+ 2. \<And>x1. \<lbrakk>length args < 2; label = GenInvocationLabel TCBWriteRegisters; x1 = TCBWriteRegisters\<rbrakk> \<Longrightarrow> transform_intent_tcb_write_registers args = None
+ 3. \<And>x1. \<lbrakk>args = []; label = GenInvocationLabel TCBCopyRegisters; x1 = TCBCopyRegisters\<rbrakk> \<Longrightarrow> transform_intent_tcb_copy_registers [] = None
+ 4. \<And>x1. \<lbrakk>length args < 4; label = GenInvocationLabel TCBConfigure; x1 = TCBConfigure\<rbrakk> \<Longrightarrow> transform_intent_tcb_configure args = None
+ 5. \<And>x1. \<lbrakk>args = []; label = GenInvocationLabel TCBSetPriority; x1 = TCBSetPriority\<rbrakk> \<Longrightarrow> transform_intent_tcb_set_priority [] = None
+ 6. \<And>x1. \<lbrakk>args = []; label = GenInvocationLabel TCBSetMCPriority; x1 = TCBSetMCPriority\<rbrakk> \<Longrightarrow> transform_intent_tcb_set_mcpriority [] = None
+ 7. \<And>x1. \<lbrakk>length args < 2; label = GenInvocationLabel TCBSetSchedParams; x1 = TCBSetSchedParams\<rbrakk> \<Longrightarrow> transform_intent_tcb_set_sched_params args = None
+ 8. \<And>x1. \<lbrakk>args = []; label = GenInvocationLabel TCBSetIPCBuffer; x1 = TCBSetIPCBuffer\<rbrakk> \<Longrightarrow> transform_intent_tcb_set_ipc_buffer [] = None
+ 9. \<And>x1. \<lbrakk>length args < 3; label = GenInvocationLabel TCBSetSpace; x1 = TCBSetSpace\<rbrakk> \<Longrightarrow> transform_intent_tcb_set_space args = None<\STATESEP>apply(auto simp: transform_intent_tcb_defs
+                      split: list.splits arch_invocation_label.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  unat_map :: "(('a :: len) word \<rightharpoonup> 'b) \<Rightarrow> (nat \<rightharpoonup> 'b)"
+where
+  "unat_map x z \<equiv>
+    if z < 2^len_of(TYPE('a)) then
+      x (of_nat z)
+    else
+      None"<\STATESEP>0<\TRANSEP><\STATESEP>lemma unat_map_unat [simp]: "(unat_map p) (unat x) = p x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unat_map p (unat x) = p x<\STATESEP>by (clarsimp simp: unat_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  transform_cslot_ptr :: "cslot_ptr \<Rightarrow> cdl_cap_ref"
+where
+  "transform_cslot_ptr \<equiv>
+       \<lambda> (a, b). (a, nat (bl_to_bin b))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_asid :: "asid \<Rightarrow> cdl_asid"
+where
+  "transform_asid asid = (unat (asid_high_bits_of asid), unat (ucast asid :: 10 word))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_mapping :: "(asid \<times> vspace_ref) option \<Rightarrow> cdl_mapped_addr option"
+where
+  " transform_mapping mp = option_map (\<lambda>x. (transform_asid (fst x),snd x)) mp"<\STATESEP>0<\TRANSEP><\STATESEP>definition "free_range_of_untyped \<equiv> (\<lambda>idx size_bits ptr.
+  (if (idx \<le> 2^size_bits - 1) then {ptr + of_nat idx .. ptr + 2^size_bits - 1} else {}))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_cap :: "cap \<Rightarrow> cdl_cap"
+where
+  "transform_cap c \<equiv> case c of
+      Structures_A.NullCap \<Rightarrow>
+        Types_D.NullCap
+    | Structures_A.UntypedCap dev ptr size_bits idx \<Rightarrow>
+        Types_D.UntypedCap dev {ptr .. ptr + 2^ size_bits - 1}
+        (free_range_of_untyped idx size_bits ptr)
+    | Structures_A.EndpointCap ptr badge cap_rights_ \<Rightarrow>
+        Types_D.EndpointCap ptr badge cap_rights_
+    | Structures_A.NotificationCap ptr badge cap_rights_ \<Rightarrow>
+        Types_D.NotificationCap ptr badge cap_rights_
+    | Structures_A.ReplyCap ptr is_master cap_rights_ \<Rightarrow>
+        if is_master then Types_D.MasterReplyCap ptr else Types_D.ReplyCap ptr cap_rights_
+    | Structures_A.CNodeCap ptr size_bits guard \<Rightarrow>
+        Types_D.CNodeCap ptr (of_bl guard) (length guard) size_bits
+    | Structures_A.ThreadCap ptr \<Rightarrow>
+        Types_D.TcbCap ptr
+    | Structures_A.DomainCap \<Rightarrow>
+        Types_D.DomainCap
+    | Structures_A.IRQControlCap \<Rightarrow>
+        Types_D.IrqControlCap
+    | Structures_A.IRQHandlerCap irq \<Rightarrow>
+        Types_D.IrqHandlerCap irq
+    | Structures_A.Zombie ptr _ _ \<Rightarrow>
+        Types_D.ZombieCap ptr
+    | Structures_A.ArchObjectCap arch_cap \<Rightarrow> (case arch_cap of
+          ARM_A.ASIDControlCap \<Rightarrow>
+            Types_D.AsidControlCap
+        | ARM_A.ASIDPoolCap ptr asid \<Rightarrow>
+            Types_D.AsidPoolCap ptr (fst $ (transform_asid asid))
+        | ARM_A.PageCap dev ptr cap_rights_ sz mp \<Rightarrow>
+            Types_D.FrameCap dev ptr cap_rights_ (pageBitsForSize sz) Real (transform_mapping mp)
+        | ARM_A.PageTableCap ptr mp \<Rightarrow>
+            Types_D.PageTableCap ptr Real (transform_mapping mp)
+        | ARM_A.PageDirectoryCap ptr mp \<Rightarrow>
+            Types_D.PageDirectoryCap ptr Real (option_map transform_asid mp)
+        )
+  "<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_cap_list :: "(cap \<times> cslot_ptr) list
+      \<Rightarrow> (cdl_cap \<times> cdl_cap_ref) list"
+where
+  "transform_cap_list \<equiv>
+     map (\<lambda>(cap, slot). (transform_cap cap, transform_cslot_ptr slot))"
+
+
+\<comment> \<open>Convert a nat into a bool list of the given size.\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  nat_to_bl :: "nat \<Rightarrow> nat \<Rightarrow> bool list option"
+where
+  "nat_to_bl bits n \<equiv>
+    if n \<ge> 2^bits then
+      None
+    else
+      Some $ bin_to_bl bits (of_nat n)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma nat_to_bl_id [simp]: "nat_to_bl (size (x :: (('a::len) word))) (unat x) = Some (to_bl x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. nat_to_bl (size x) (unat x) = Some (to_bl x)<\STATESEP>by (clarsimp simp: nat_to_bl_def to_bl_def le_def word_size)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  option_join :: "'a option option \<Rightarrow> 'a option"
+where
+  "option_join x \<equiv> case x of
+                      Some (Some y) \<Rightarrow> Some y
+                    | _             \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  option_map_join :: "('a \<Rightarrow> 'b option) \<Rightarrow> 'a option \<Rightarrow> 'b option"
+where
+  "option_map_join f x \<equiv> case x of
+                      Some y        \<Rightarrow> f y
+                    | _             \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas option_map_join_simps = option_map_join_def [split_simps option.split]<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_cnode_contents :: "nat \<Rightarrow> cnode_contents \<Rightarrow> cdl_cap_map"
+where
+  "transform_cnode_contents sz c \<equiv> \<lambda>n. option_map transform_cap (option_map_join c (nat_to_bl sz n))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  infer_tcb_pending_op :: "obj_ref \<Rightarrow> Structures_A.thread_state \<Rightarrow> cdl_cap"
+where
+  "infer_tcb_pending_op ptr t \<equiv>
+    case t of
+        Structures_A.BlockedOnReceive ptr payload \<Rightarrow>
+          PendingSyncRecvCap ptr False (receiver_can_grant payload)
+
+      | Structures_A.BlockedOnReply \<Rightarrow>
+          PendingSyncRecvCap ptr True False
+
+      | Structures_A.BlockedOnSend ptr payload \<Rightarrow>
+          PendingSyncSendCap ptr
+              (sender_badge payload) (sender_is_call payload)
+              (sender_can_grant payload) (sender_can_grant_reply payload)
+              False
+
+      | Structures_A.BlockedOnNotification ptr \<Rightarrow>
+          PendingNtfnRecvCap ptr
+
+      | Structures_A.Restart \<Rightarrow> RestartCap
+
+      | Structures_A.Running \<Rightarrow> RunningCap
+
+      | _ \<Rightarrow> Types_D.NullCap
+   "<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  infer_tcb_bound_notification :: "obj_ref option \<Rightarrow> cdl_cap"
+where
+  "infer_tcb_bound_notification a \<equiv> case a of
+      Some ntfn \<Rightarrow> BoundNotificationCap ntfn
+    | _ \<Rightarrow> Types_D.NullCap"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  evalMonad :: "('s, 'a) nondet_monad \<Rightarrow> 's \<Rightarrow> 'a option"
+where
+  "evalMonad m s = (if fst (m s) = {} then None else Some (SOME x. x \<in> fst ` (fst (m s))))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_ipc_buffer_words :: "machine_state \<Rightarrow> tcb \<Rightarrow> nat list \<Rightarrow> word32 list"
+where
+  "get_ipc_buffer_words ms tcb ns \<equiv>
+    let
+      p = tcb_ipc_buffer tcb;
+      cap = tcb_ipcframe tcb;
+      wordsM = case cap of
+               cap.ArchObjectCap (arch_cap.PageCap dev buf rights sz mapdata) \<Rightarrow> if AllowRead \<in> rights then
+                   mapM loadWord (map (\<lambda>n. buf + (p && mask(pageBitsForSize sz)) + (of_nat (n * word_size))) ns)
+                   else return []
+              | _ \<Rightarrow> return []
+    in
+      the (evalMonad wordsM ms)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_tcb_message_info :: "tcb \<Rightarrow> Structures_A.message_info"
+where
+  "get_tcb_message_info t \<equiv>
+     data_to_message_info ((user_regs (arch_tcb_context_get (tcb_arch t))) msg_info_register)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_tcb_mrs :: "machine_state \<Rightarrow> tcb \<Rightarrow> word32 list"
+where
+  "get_tcb_mrs ms tcb \<equiv>
+    let
+      info = get_tcb_message_info tcb;
+      cpu_mrs = map (user_regs (arch_tcb_context_get (tcb_arch tcb))) msg_registers;
+      mem_mrs = get_ipc_buffer_words ms tcb [length msg_registers + 1 ..< Suc msg_max_length]
+    in
+      (take (unat (mi_length info)) (cpu_mrs @ mem_mrs))"<\STATESEP>0<\TRANSEP><\STATESEP>definition "guess_error \<equiv> \<lambda>x. x \<noteq> (0::word32)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_full_intent :: "machine_state \<Rightarrow> obj_ref \<Rightarrow> tcb \<Rightarrow> cdl_full_intent"
+where
+  "transform_full_intent ms r tcb \<equiv>
+  let mi = get_tcb_message_info tcb;
+      offset = msg_max_length + msg_max_extra_caps + 2
+  in
+  \<lparr> cdl_intent_op = (transform_intent
+                     (invocation_type (mi_label mi))
+                     (get_tcb_mrs ms tcb)),
+    cdl_intent_error = guess_error (mi_label mi),
+    cdl_intent_cap = user_regs (arch_tcb_context_get (tcb_arch tcb)) cap_register,
+    cdl_intent_extras = get_ipc_buffer_words ms tcb [buffer_cptr_index ..< buffer_cptr_index + (unat (mi_extra_caps mi))],
+    cdl_intent_recv_slot = case (get_ipc_buffer_words ms tcb [offset ..< offset + 3]) of
+                                [croot, index, depth] \<Rightarrow> Some (croot, index, unat depth)
+                              | _                    \<Rightarrow> None
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma invocation_type0:
+  "invocation_type 0 = GenInvocationLabel InvalidInvocation"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. invocation_type 0 = GenInvocationLabel InvalidInvocation<\STATESEP>by (clarsimp simp: invocation_type_def toEnum_def enum_invocation_label enum_gen_invocation_labels)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation
+  "tcb_has_fault \<equiv> \<lambda>tcb. tcb_fault tcb \<noteq> None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_tcb :: "machine_state \<Rightarrow> obj_ref \<Rightarrow> tcb \<Rightarrow> etcb \<Rightarrow> cdl_object"
+where
+  "transform_tcb ms ptr tcb etcb \<equiv>
+    Types_D.Tcb \<lparr> cdl_tcb_caps = [
+                   tcb_cspace_slot \<mapsto> (transform_cap $ tcb_ctable tcb),
+                   tcb_vspace_slot \<mapsto> (transform_cap $ tcb_vtable tcb),
+                   tcb_replycap_slot \<mapsto> (transform_cap $ tcb_reply tcb),
+                   tcb_caller_slot \<mapsto> (transform_cap $ tcb_caller tcb),
+                   tcb_ipcbuffer_slot \<mapsto> (transform_cap $ tcb_ipcframe tcb),
+                   tcb_pending_op_slot \<mapsto> (infer_tcb_pending_op ptr (tcb_state tcb)),
+                   tcb_boundntfn_slot \<mapsto> (infer_tcb_bound_notification (tcb_bound_notification tcb))
+                 ],
+
+                 cdl_tcb_fault_endpoint = (of_bl (tcb_fault_handler tcb)),
+
+                 \<comment> \<open>Decode the thread's intent.\<close>
+                 cdl_tcb_intent = transform_full_intent ms ptr tcb,
+                 cdl_tcb_has_fault = (tcb_has_fault tcb),
+                 cdl_tcb_domain = tcb_domain etcb
+                \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_asid_pool_entry :: "obj_ref option \<Rightarrow> cdl_cap"
+where
+  "transform_asid_pool_entry p \<equiv> case p of
+       None \<Rightarrow> Types_D.NullCap
+     | Some p \<Rightarrow> Types_D.PageDirectoryCap p Fake None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_asid_pool_contents :: "(10 word \<Rightarrow> obj_ref option) \<Rightarrow> cdl_cap_map"
+where
+  "transform_asid_pool_contents M \<equiv> unat_map (Some \<circ> transform_asid_pool_entry \<circ> M)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_paddr :: "paddr \<Rightarrow> cdl_object_id"
+where
+ "transform_paddr = ptrFromPAddr"<\STATESEP>0<\TRANSEP><\STATESEP>declare transform_paddr_def[simp]<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_pte :: "ARM_A.pte \<Rightarrow> cdl_cap"
+where
+  "transform_pte pte \<equiv> case pte of
+           ARM_A.InvalidPTE \<Rightarrow> cdl_cap.NullCap
+         | ARM_A.LargePagePTE ref _ rights_ \<Rightarrow>
+             Types_D.FrameCap False (transform_paddr ref) rights_
+                              (pageBitsForSize ARMLargePage) Fake None
+         | ARM_A.SmallPagePTE ref _ rights_ \<Rightarrow>
+             Types_D.FrameCap False (transform_paddr ref) rights_
+                              (pageBitsForSize ARMSmallPage) Fake None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_page_table_contents :: "(word8 \<Rightarrow> ARM_A.pte) \<Rightarrow> (nat \<Rightarrow> cdl_cap option)"
+where
+  "transform_page_table_contents M \<equiv> unat_map (Some o transform_pte o M)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_pde :: "ARM_A.pde \<Rightarrow> cdl_cap"
+where
+  "transform_pde pde \<equiv> case pde of
+           ARM_A.InvalidPDE \<Rightarrow> cdl_cap.NullCap
+         | ARM_A.PageTablePDE ref _ _ \<Rightarrow>
+             Types_D.PageTableCap (transform_paddr ref) Fake None
+         | ARM_A.SectionPDE ref _ _ rights_ \<Rightarrow>
+             Types_D.FrameCap False (transform_paddr ref) rights_
+                              (pageBitsForSize ARMSection) Fake None
+         | ARM_A.SuperSectionPDE ref _ rights_ \<Rightarrow>
+             Types_D.FrameCap False (transform_paddr ref) rights_
+                              (pageBitsForSize ARMSuperSection) Fake None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  kernel_pde_mask ::  "(12 word \<Rightarrow> ARM_A.pde) \<Rightarrow> (12 word \<Rightarrow> ARM_A.pde)"
+where
+  "kernel_pde_mask M \<equiv> \<lambda>x.
+  if (ucast (kernel_base >> 20)) \<le> x then ARM_A.InvalidPDE else M x"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_page_directory_contents :: "(12 word \<Rightarrow> ARM_A.pde) \<Rightarrow> (nat \<Rightarrow> cdl_cap option)"
+where
+  "transform_page_directory_contents M \<equiv> unat_map (Some o transform_pde o kernel_pde_mask M)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_object :: "machine_state \<Rightarrow> obj_ref \<Rightarrow> etcb option \<Rightarrow> kernel_object \<Rightarrow> cdl_object"
+  where
+  "transform_object ms ref opt_etcb ko \<equiv> case ko of
+           Structures_A.CNode 0 c \<Rightarrow>
+              Types_D.IRQNode \<lparr>cdl_irq_node_caps = transform_cnode_contents 0 c\<rparr>
+         | Structures_A.CNode sz c \<Rightarrow>
+              Types_D.CNode \<lparr>
+                cdl_cnode_caps = transform_cnode_contents sz c,
+                cdl_cnode_size_bits = sz
+                \<rparr>
+         | Structures_A.TCB tcb \<Rightarrow> (case opt_etcb of Some etcb \<Rightarrow> transform_tcb ms ref tcb etcb | None \<Rightarrow> undefined)
+         | Structures_A.Endpoint _ \<Rightarrow> Types_D.Endpoint
+         | Structures_A.Notification _ \<Rightarrow> Types_D.Notification
+         | Structures_A.ArchObj (ARM_A.ASIDPool ap) \<Rightarrow>
+                Types_D.AsidPool \<lparr>cdl_asid_pool_caps = (transform_asid_pool_contents ap)\<rparr>
+         | Structures_A.ArchObj (ARM_A.PageTable ptx) \<Rightarrow>
+                Types_D.PageTable \<lparr>cdl_page_table_caps = (transform_page_table_contents ptx)\<rparr>
+         | Structures_A.ArchObj (ARM_A.PageDirectory pd) \<Rightarrow>
+                Types_D.PageDirectory \<lparr>cdl_page_directory_caps = (transform_page_directory_contents pd)\<rparr>
+         | Structures_A.ArchObj (ARM_A.DataPage dev sz) \<Rightarrow>
+                Types_D.Frame \<lparr>cdl_frame_size_bits = pageBitsForSize sz\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas transform_object_simps [simp] =
+  transform_object_def [split_simps Structures_A.kernel_object.split ARM_A.arch_kernel_obj.split]<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  map_lift_over :: "('a \<Rightarrow> 'b) \<Rightarrow> ('a \<rightharpoonup> 'a) \<Rightarrow> ('b \<rightharpoonup> 'b)"
+where
+ "map_lift_over f m = (if inj_on f (dom m \<union> ran m)
+    then (\<lambda>x. if \<exists>y. f y = x \<and> y \<in> dom m
+              then map_option f (m (inv_into (dom m) f x)) else None)
+    else Map.empty)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_cdt :: "'z::state_ext state \<Rightarrow> cdl_cdt"
+where
+  "transform_cdt s =
+     map_lift_over transform_cslot_ptr (cdt s)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_obj :: "'z::state_ext state \<Rightarrow> obj_ref \<Rightarrow> kernel_object option"
+where
+  "get_obj s r \<equiv> (kheap s) r"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_installed_at_irq :: "irq \<Rightarrow> 'z::state_ext state \<Rightarrow> cap option"
+where
+  "cap_installed_at_irq irq s \<equiv> caps_of_state s (interrupt_irq_node s irq, [])"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  option_map2 :: "('a \<Rightarrow> 'b \<Rightarrow> 'c) \<Rightarrow> 'a option \<Rightarrow> 'b option \<Rightarrow> 'c option"
+where
+  "option_map2 f opt_a opt_b \<equiv> case opt_a of
+                                   None \<Rightarrow> None
+                                 | Some a \<Rightarrow> (case opt_b of
+                                                 None \<Rightarrow> None
+                                               | Some b \<Rightarrow> Some (f a b))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_objects :: "det_ext state \<Rightarrow> (cdl_object_id \<Rightarrow> cdl_object option)"
+where
+   "transform_objects s = (\<lambda>ptr. Some Types_D.Untyped) |` (- {idle_thread s}) ++
+                           (\<lambda>ptr. map_option (transform_object (machine_state s) ptr ((ekheap s |` (- {idle_thread s})) ptr))
+                                ((kheap s  |` (- {idle_thread s})) ptr))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma evalMonad_return [simp]:
+  "evalMonad (return x) s = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. evalMonad (return x) s = Some x<\STATESEP>by (simp add: evalMonad_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "det_or_fail f \<equiv> \<forall>s. fst (f s) = {} \<or> (\<exists>r. fst (f s) = {r})"<\STATESEP>0<\TRANSEP><\STATESEP>lemma evalMonad_bind:
+  assumes f: "\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>"
+  assumes det: "det_or_fail f"
+  shows "evalMonad (f >>= g) s = (if evalMonad f s = None then None else evalMonad (g (the (evalMonad f s))) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. evalMonad (f >>= g) s = (if evalMonad f s = None then None else evalMonad (g (the (evalMonad f s))) s)<\STATESEP>apply (case_tac "evalMonad f s")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. evalMonad f s = None \<Longrightarrow> evalMonad (f >>= g) s = (if evalMonad f s = None then None else evalMonad (g (the (evalMonad f s))) s)
+ 2. \<And>a. evalMonad f s = Some a \<Longrightarrow> evalMonad (f >>= g) s = (if evalMonad f s = None then None else evalMonad (g (the (evalMonad f s))) s)<\STATESEP>apply (simp add: evalMonad_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. fst (f s) = {} \<Longrightarrow> fst ((f >>= g) s) = {}
+ 2. \<And>a. evalMonad f s = Some a \<Longrightarrow> evalMonad (f >>= g) s = (if evalMonad f s = None then None else evalMonad (g (the (evalMonad f s))) s)<\STATESEP>apply (simp add: bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. evalMonad f s = Some a \<Longrightarrow> evalMonad (f >>= g) s = (if evalMonad f s = None then None else evalMonad (g (the (evalMonad f s))) s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. evalMonad f s = Some a \<Longrightarrow> evalMonad (f >>= g) s = evalMonad (g a) s<\STATESEP>apply (simp add: evalMonad_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. (if fst (f s) = {} then None else Some (pick (fst ` fst (f s)))) = Some a \<Longrightarrow> (fst ((f >>= g) s) = {} \<longrightarrow> fst (g a s) = {}) \<and> (fst ((f >>= g) s) \<noteq> {} \<longrightarrow> fst (g a s) \<noteq> {} \<and> (fst (g a s) \<noteq> {} \<longrightarrow> pick (fst ` fst ((f >>= g) s)) = pick (fst ` fst (g a s))))<\STATESEP>apply (clarsimp simp: bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. (if fst (f s) = {} then None else Some (pick (fst ` fst (f s)))) = Some a \<Longrightarrow> ((\<forall>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) = {}) \<longrightarrow> fst (g a s) = {}) \<and> ((\<exists>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) \<noteq> {}) \<longrightarrow> fst (g a s) \<noteq> {} \<and> (fst (g a s) \<noteq> {} \<longrightarrow> pick (fst ` (\<Union>a\<in>fst (f s). fst (case a of (x, xa) \<Rightarrow> g x xa))) = pick (fst ` fst (g a s))))<\STATESEP>apply (insert det)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>(if fst (f s) = {} then None else Some (pick (fst ` fst (f s)))) = Some a; det_or_fail f\<rbrakk> \<Longrightarrow> ((\<forall>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) = {}) \<longrightarrow> fst (g a s) = {}) \<and> ((\<exists>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) \<noteq> {}) \<longrightarrow> fst (g a s) \<noteq> {} \<and> (fst (g a s) \<noteq> {} \<longrightarrow> pick (fst ` (\<Union>a\<in>fst (f s). fst (case a of (x, xa) \<Rightarrow> g x xa))) = pick (fst ` fst (g a s))))<\STATESEP>apply (clarsimp simp: det_or_fail_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. fst (f s) = {} \<or> (\<exists>a b. fst (f s) = {(a, b)}); fst (f s) \<noteq> {}\<rbrakk> \<Longrightarrow> ((\<forall>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) = {}) \<longrightarrow> fst (g (pick (fst ` fst (f s))) s) = {}) \<and> ((\<exists>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) \<noteq> {}) \<longrightarrow> fst (g (pick (fst ` fst (f s))) s) \<noteq> {} \<and> (fst (g (pick (fst ` fst (f s))) s) \<noteq> {} \<longrightarrow> pick (fst ` (\<Union>a\<in>fst (f s). fst (case a of (x, xa) \<Rightarrow> g x xa))) = pick (fst ` fst (g (pick (fst ` fst (f s))) s))))<\STATESEP>apply (erule_tac x=s in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (f s) \<noteq> {}; fst (f s) = {} \<or> (\<exists>a b. fst (f s) = {(a, b)})\<rbrakk> \<Longrightarrow> ((\<forall>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) = {}) \<longrightarrow> fst (g (pick (fst ` fst (f s))) s) = {}) \<and> ((\<exists>x\<in>fst (f s). fst (case x of (x, xa) \<Rightarrow> g x xa) \<noteq> {}) \<longrightarrow> fst (g (pick (fst ` fst (f s))) s) \<noteq> {} \<and> (fst (g (pick (fst ` fst (f s))) s) \<noteq> {} \<longrightarrow> pick (fst ` (\<Union>a\<in>fst (f s). fst (case a of (x, xa) \<Rightarrow> g x xa))) = pick (fst ` fst (g (pick (fst ` fst (f s))) s))))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> (fst (g a b) = {} \<longrightarrow> fst (g a s) = {}) \<and> (fst (g a b) \<noteq> {} \<longrightarrow> fst (g a s) \<noteq> {} \<and> (fst (g a s) \<noteq> {} \<longrightarrow> pick (fst ` fst (g a b)) = pick (fst ` fst (g a s))))<\STATESEP>apply (subgoal_tac "b = s")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>fst (f s) = {(a, b)}; b = s\<rbrakk> \<Longrightarrow> (fst (g a b) = {} \<longrightarrow> fst (g a s) = {}) \<and> (fst (g a b) \<noteq> {} \<longrightarrow> fst (g a s) \<noteq> {} \<and> (fst (g a s) \<noteq> {} \<longrightarrow> pick (fst ` fst (g a b)) = pick (fst ` fst (g a s))))
+ 2. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> b = s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> b = s<\STATESEP>apply (subgoal_tac "(a,b) \<in> fst (f s)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>fst (f s) = {(a, b)}; (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> b = s
+ 2. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> (a, b) \<in> fst (f s)<\STATESEP>apply (drule use_valid, rule f [where P="(=) s"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> s = s
+ 2. \<And>a b. \<lbrakk>fst (f s) = {(a, b)}; s = b\<rbrakk> \<Longrightarrow> b = s
+ 3. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> (a, b) \<in> fst (f s)<\STATESEP>apply (rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>fst (f s) = {(a, b)}; s = b\<rbrakk> \<Longrightarrow> b = s
+ 2. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> (a, b) \<in> fst (f s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. fst (f s) = {(a, b)} \<Longrightarrow> (a, b) \<in> fst (f s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_dfI:
+  "\<lbrakk> det_or_fail f; \<And>x. det_or_fail (g x) \<rbrakk> \<Longrightarrow> det_or_fail (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>det_or_fail f; \<And>x. det_or_fail (g x)\<rbrakk> \<Longrightarrow> det_or_fail (f >>= g)<\STATESEP>apply (auto simp: det_or_fail_def bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b aa ba. \<lbrakk>\<forall>s. fst (f s) = {} \<or> (\<exists>a b. fst (f s) = {(a, b)}); \<And>x. \<forall>s. fst (g x s) = {} \<or> (\<exists>a b. fst (g x s) = {(a, b)}); \<forall>a b. (\<Union>x\<in>fst (f s). fst (g (fst x) (snd x))) \<noteq> {(a, b)}; (a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b)\<rbrakk> \<Longrightarrow> False<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_df:
+  "det_or_fail (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_or_fail (return x)<\STATESEP>by (simp add: det_or_fail_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_df:
+  "det_or_fail (assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_or_fail (assert P)<\STATESEP>by (simp add: assert_def fail_def det_or_fail_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_df:
+  "(\<And>x. det_or_fail (f x)) \<Longrightarrow> det_or_fail (mapM f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. det_or_fail (f x)) \<Longrightarrow> det_or_fail (mapM f xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (\<And>x. det_or_fail (f x)) \<Longrightarrow> det_or_fail (mapM f [])
+ 2. \<And>a xs. \<lbrakk>(\<And>x. det_or_fail (f x)) \<Longrightarrow> det_or_fail (mapM f xs); \<And>x. det_or_fail (f x)\<rbrakk> \<Longrightarrow> det_or_fail (mapM f (a # xs))<\STATESEP>apply (simp add: mapM_Nil return_df)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>(\<And>x. det_or_fail (f x)) \<Longrightarrow> det_or_fail (mapM f xs); \<And>x. det_or_fail (f x)\<rbrakk> \<Longrightarrow> det_or_fail (mapM f (a # xs))<\STATESEP>apply (simp add: mapM_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>det_or_fail (mapM f xs); \<And>x. det_or_fail (f x)\<rbrakk> \<Longrightarrow> det_or_fail (do y <- f a;
+ys <- mapM f xs;
+return (y # ys)
+od)<\STATESEP>apply (rule bind_dfI, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs x. \<lbrakk>det_or_fail (mapM f xs); \<And>x. det_or_fail (f x)\<rbrakk> \<Longrightarrow> det_or_fail (do ys <- mapM f xs;
+return (x # ys)
+od)<\STATESEP>apply (rule bind_dfI, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs x xa. \<lbrakk>det_or_fail (mapM f xs); \<And>x. det_or_fail (f x)\<rbrakk> \<Longrightarrow> det_or_fail (return (x # xa))<\STATESEP>apply (rule return_df)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma df_loadWord: "det_or_fail (loadWord x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_or_fail (loadWord x)<\STATESEP>apply (unfold loadWord_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_or_fail (do m <- gets underlying_memory;
+assert (x && mask 2 = 0);
+return (word_rcat [m (x + 3), m (x + 2), m (x + 1), m x])
+od)<\STATESEP>apply (rule bind_dfI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_or_fail (gets underlying_memory)
+ 2. \<And>xa. det_or_fail (do assert (x && mask 2 = 0);
+return (word_rcat [xa (x + 3), xa (x + 2), xa (x + 1), xa x])
+od)<\STATESEP>apply (simp add: simpler_gets_def det_or_fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa. det_or_fail (do assert (x && mask 2 = 0);
+return (word_rcat [xa (x + 3), xa (x + 2), xa (x + 1), xa x])
+od)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa. det_or_fail (do y <- assert (x && mask 2 = 0);
+return (word_rcat [xa (x + 3), xa (x + 2), xa (x + 1), xa x])
+od)<\STATESEP>apply (rule bind_dfI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xa. det_or_fail (assert (x && mask 2 = 0))
+ 2. \<And>xa xaa. det_or_fail (return (word_rcat [xa (x + 3), xa (x + 2), xa (x + 1), xa x]))<\STATESEP>apply (rule assert_df)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa xaa. det_or_fail (return (word_rcat [xa (x + 3), xa (x + 2), xa (x + 1), xa x]))<\STATESEP>apply (rule return_df)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma evalMonad_loadWord_cong:
+  "underlying_memory ms = underlying_memory ms' \<Longrightarrow>
+  evalMonad (loadWord x) ms = evalMonad (loadWord x) ms'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. underlying_memory ms = underlying_memory ms' \<Longrightarrow> evalMonad (loadWord x) ms = evalMonad (loadWord x) ms'<\STATESEP>by (simp add: loadWord_def bind_def simpler_gets_def assert_def
+                return_def fail_def evalMonad_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma evalMonad_mapM_cong:
+  assumes f: "\<And>x. evalMonad (f x) ms = evalMonad (f x) ms'"
+  assumes P: "\<And>P x. \<lbrace>P\<rbrace> f x \<lbrace>\<lambda>_. P\<rbrace>"
+  assumes det: "\<And>x. det_or_fail (f x)"
+  shows "evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. evalMonad (mapM f []) ms = evalMonad (mapM f []) ms'
+ 2. \<And>a xs. evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms' \<Longrightarrow> evalMonad (mapM f (a # xs)) ms = evalMonad (mapM f (a # xs)) ms'<\STATESEP>apply (simp add: mapM_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms' \<Longrightarrow> evalMonad (mapM f (a # xs)) ms = evalMonad (mapM f (a # xs)) ms'<\STATESEP>apply (simp add: mapM_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms' \<Longrightarrow> evalMonad (do y <- f a;
+ys <- mapM f xs;
+return (y # ys)
+od) ms = evalMonad (do y <- f a;
+ys <- mapM f xs;
+return (y # ys)
+od) ms'<\STATESEP>apply (subst evalMonad_bind [OF P det])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms' \<Longrightarrow> (if evalMonad (f a) ms = None then None else evalMonad (do ys <- mapM f xs;
+return (the (evalMonad (f a) ms) # ys)
+od) ms) = evalMonad (do y <- f a;
+ys <- mapM f xs;
+return (y # ys)
+od) ms'<\STATESEP>apply (subst evalMonad_bind [OF P det])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms' \<Longrightarrow> (if evalMonad (f a) ms = None then None else evalMonad (do ys <- mapM f xs;
+return (the (evalMonad (f a) ms) # ys)
+od) ms) = (if evalMonad (f a) ms' = None then None else evalMonad (do ys <- mapM f xs;
+return (the (evalMonad (f a) ms') # ys)
+od) ms')<\STATESEP>apply (clarsimp simp: f)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> evalMonad (do ys <- mapM f xs;
+return (y # ys)
+od) ms = evalMonad (do ys <- mapM f xs;
+return (y # ys)
+od) ms'<\STATESEP>apply (subst evalMonad_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a xs y P. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> mapM f xs \<lbrace>\<lambda>_. P\<rbrace>
+ 2. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> det_or_fail (mapM f xs)
+ 3. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> (if evalMonad (mapM f xs) ms = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms))) ms) = evalMonad (do ys <- mapM f xs;
+return (y # ys)
+od) ms'<\STATESEP>apply (wp mapM_wp' P)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> det_or_fail (mapM f xs)
+ 2. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> (if evalMonad (mapM f xs) ms = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms))) ms) = evalMonad (do ys <- mapM f xs;
+return (y # ys)
+od) ms'<\STATESEP>apply (rule mapM_df, rule det)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> (if evalMonad (mapM f xs) ms = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms))) ms) = evalMonad (do ys <- mapM f xs;
+return (y # ys)
+od) ms'<\STATESEP>apply (subst evalMonad_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a xs y P. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> mapM f xs \<lbrace>\<lambda>_. P\<rbrace>
+ 2. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> det_or_fail (mapM f xs)
+ 3. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> (if evalMonad (mapM f xs) ms = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms))) ms) = (if evalMonad (mapM f xs) ms' = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms'))) ms')<\STATESEP>apply (wp mapM_wp' P)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> det_or_fail (mapM f xs)
+ 2. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> (if evalMonad (mapM f xs) ms = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms))) ms) = (if evalMonad (mapM f xs) ms' = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms'))) ms')<\STATESEP>apply (rule mapM_df, rule det)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs y. \<lbrakk>evalMonad (mapM f xs) ms = evalMonad (mapM f xs) ms'; evalMonad (f a) ms' = Some y\<rbrakk> \<Longrightarrow> (if evalMonad (mapM f xs) ms = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms))) ms) = (if evalMonad (mapM f xs) ms' = None then None else evalMonad (return (y # the (evalMonad (mapM f xs) ms'))) ms')<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma evalMonad_mapM_loadWord_cong:
+  "underlying_memory ms = underlying_memory ms' \<Longrightarrow>
+   evalMonad (mapM loadWord xs) ms = evalMonad (mapM loadWord xs) ms'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. underlying_memory ms = underlying_memory ms' \<Longrightarrow> evalMonad (mapM loadWord xs) ms = evalMonad (mapM loadWord xs) ms'<\STATESEP>apply (rule evalMonad_mapM_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> evalMonad (loadWord x) ms = evalMonad (loadWord x) ms'
+ 2. \<And>P x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> \<lbrace>P\<rbrace> loadWord x \<lbrace>\<lambda>_. P\<rbrace>
+ 3. \<And>x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> det_or_fail (loadWord x)<\STATESEP>apply (simp cong: evalMonad_loadWord_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> \<lbrace>P\<rbrace> loadWord x \<lbrace>\<lambda>_. P\<rbrace>
+ 2. \<And>x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> det_or_fail (loadWord x)<\STATESEP>apply (wp loadWord_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> det_or_fail (loadWord x)<\STATESEP>apply (rule df_loadWord)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_ipc_buffer_words_cong:
+  "underlying_memory ms = underlying_memory ms' \<Longrightarrow>
+   get_ipc_buffer_words ms = get_ipc_buffer_words ms'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. underlying_memory ms = underlying_memory ms' \<Longrightarrow> get_ipc_buffer_words ms = get_ipc_buffer_words ms'<\STATESEP>apply (rule ext)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. underlying_memory ms = underlying_memory ms' \<Longrightarrow> get_ipc_buffer_words ms x xa = get_ipc_buffer_words ms' x xa<\STATESEP>apply (simp add: get_ipc_buffer_words_def Let_def cong: evalMonad_mapM_loadWord_cong
+              split: cap.splits arch_cap.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_tcb_mrs_cong:
+  "underlying_memory ms = underlying_memory ms' \<Longrightarrow> get_tcb_mrs ms = get_tcb_mrs ms'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. underlying_memory ms = underlying_memory ms' \<Longrightarrow> get_tcb_mrs ms = get_tcb_mrs ms'<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. underlying_memory ms = underlying_memory ms' \<Longrightarrow> get_tcb_mrs ms x = get_tcb_mrs ms' x<\STATESEP>apply (simp add: get_tcb_mrs_def Let_def cong: get_ipc_buffer_words_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma transform_objects_ms_underlying_mem:
+  "transform_objects s =
+   transform_objects (s \<lparr> machine_state :=
+     undefined \<lparr> underlying_memory := underlying_memory (machine_state s) \<rparr> \<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. transform_objects s = transform_objects (s\<lparr>machine_state := undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>\<rparr>)<\STATESEP>supply option.case_cong[cong]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. transform_objects s = transform_objects (s\<lparr>machine_state := undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>\<rparr>)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. transform_objects s x = transform_objects (s\<lparr>machine_state := undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>\<rparr>) x<\STATESEP>apply (simp add: transform_objects_def map_add_def option_map_def
+            split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<forall>x2. (kheap s |` (- {idle_thread s})) x = Some x2 \<longrightarrow> transform_object (machine_state s) x ((ekheap s |` (- {idle_thread s})) x) x2 = transform_object (undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>) x ((ekheap s |` (- {idle_thread s})) x) x2<\STATESEP>apply (simp add: transform_object_def transform_tcb_def
+                   transform_full_intent_def Let_def
+            split: Structures_A.kernel_object.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<forall>x2. (kheap s |` (- {idle_thread s})) x = Some (TCB x2) \<longrightarrow> (case (ekheap s |` (- {idle_thread s})) x of Some x2a \<Rightarrow> Tcb \<lparr>cdl_tcb_caps = [tcb_cspace_slot \<mapsto> transform_cap (tcb_ctable x2), tcb_vspace_slot \<mapsto> transform_cap (tcb_vtable x2), tcb_replycap_slot \<mapsto> transform_cap (tcb_reply x2), tcb_caller_slot \<mapsto> transform_cap (tcb_caller x2), tcb_ipcbuffer_slot \<mapsto> transform_cap (tcb_ipcframe x2), tcb_pending_op_slot \<mapsto> infer_tcb_pending_op x (tcb_state x2), tcb_boundntfn_slot \<mapsto> infer_tcb_bound_notification (tcb_bound_notification x2)], cdl_tcb_fault_endpoint = of_bl (tcb_fault_handler x2), cdl_tcb_intent = \<lparr>cdl_intent_op = transform_intent (invocation_type (mi_label (get_tcb_message_info x2))) (get_tcb_mrs (machine_state s) x2), cdl_intent_error = guess_error (mi_label (get_tcb_message_info x2)), cdl_intent_cap = user_regs (arch_tcb_context_get (tcb_arch x2)) cap_register, cdl_intent_extras = get_ipc_buffer_words (machine_state s) x2 [buffer_cptr_index..<buffer_cptr_index + unat (mi_extra_caps (get_tcb_message_info x2))], cdl_intent_recv_slot = case get_ipc_buffer_words (machine_state s) x2 [Suc (Suc (msg_max_length + msg_max_extra_caps))..<5 + (msg_max_length + msg_max_extra_caps)] of [] \<Rightarrow> None | [croot] \<Rightarrow> None | [croot, index] \<Rightarrow> None | [croot, index, depth] \<Rightarrow> Some (croot, index, unat depth) | croot # index # depth # ac # lista \<Rightarrow> None\<rparr>, cdl_tcb_has_fault = \<exists>y. tcb_fault x2 = Some y, cdl_tcb_domain = tcb_domain x2a\<rparr>) = (case (ekheap s |` (- {idle_thread s})) x of Some etcb \<Rightarrow> Tcb \<lparr>cdl_tcb_caps = [tcb_cspace_slot \<mapsto> transform_cap (tcb_ctable x2), tcb_vspace_slot \<mapsto> transform_cap (tcb_vtable x2), tcb_replycap_slot \<mapsto> transform_cap (tcb_reply x2), tcb_caller_slot \<mapsto> transform_cap (tcb_caller x2), tcb_ipcbuffer_slot \<mapsto> transform_cap (tcb_ipcframe x2), tcb_pending_op_slot \<mapsto> infer_tcb_pending_op x (tcb_state x2), tcb_boundntfn_slot \<mapsto> infer_tcb_bound_notification (tcb_bound_notification x2)], cdl_tcb_fault_endpoint = of_bl (tcb_fault_handler x2), cdl_tcb_intent = \<lparr>cdl_intent_op = transform_intent (invocation_type (mi_label (get_tcb_message_info x2))) (get_tcb_mrs (undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>) x2), cdl_intent_error = guess_error (mi_label (get_tcb_message_info x2)), cdl_intent_cap = user_regs (arch_tcb_context_get (tcb_arch x2)) cap_register, cdl_intent_extras = get_ipc_buffer_words (undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>) x2 [buffer_cptr_index..<buffer_cptr_index + unat (mi_extra_caps (get_tcb_message_info x2))], cdl_intent_recv_slot = case get_ipc_buffer_words (undefined\<lparr>underlying_memory := underlying_memory (machine_state s)\<rparr>) x2 [Suc (Suc (msg_max_length + msg_max_extra_caps))..<5 + (msg_max_length + msg_max_extra_caps)] of [] \<Rightarrow> None | [croot] \<Rightarrow> None | [croot, index] \<Rightarrow> None | [croot, index, depth] \<Rightarrow> Some (croot, index, unat depth) | croot # index # depth # ac # lista \<Rightarrow> None\<rparr>, cdl_tcb_has_fault = \<exists>y. tcb_fault x2 = Some y, cdl_tcb_domain = tcb_domain etcb\<rparr>)<\STATESEP>apply (clarsimp simp: transform_intent_def cong: get_tcb_mrs_cong get_ipc_buffer_words_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas transform_objects_def2
+    = trans [OF transform_objects_ms_underlying_mem
+                transform_objects_def,
+             simplified]<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_current_thread :: "'z::state_ext state \<Rightarrow> cdl_object_id option"
+where
+  "transform_current_thread s \<equiv>
+    if (cur_thread s \<noteq> idle_thread s) then
+      Some (cur_thread s)
+    else
+      None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_asid_table_entry :: "obj_ref option \<Rightarrow> cdl_cap"
+where
+  "transform_asid_table_entry p \<equiv> case p of
+       None \<Rightarrow> Types_D.NullCap
+     | Some p \<Rightarrow> Types_D.AsidPoolCap p 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_asid_table :: "'z::state_ext state \<Rightarrow> cdl_cap_map"
+where
+  "transform_asid_table s \<equiv>
+    let asid_table = arm_asid_table $ arch_state s
+    in unat_map (Some \<circ> transform_asid_table_entry \<circ> asid_table)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform_current_domain :: "det_ext state \<Rightarrow> word8"
+where
+  "transform_current_domain s = cur_domain s"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  transform :: "det_ext state \<Rightarrow> cdl_state"
+where
+  "transform s \<equiv> \<lparr>
+    cdl_arch           = ARM11,
+    cdl_objects        = transform_objects s,
+    cdl_cdt            = transform_cdt s,
+    cdl_current_thread = transform_current_thread s,
+    cdl_irq_node       = interrupt_irq_node s,
+    cdl_asid_table     = transform_asid_table s,
+    cdl_current_domain = transform_current_domain s
+    \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

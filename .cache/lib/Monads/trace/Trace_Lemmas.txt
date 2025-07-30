@@ -1,0 +1,230 @@
+<\STATESEP>theory Trace_Lemmas
+  imports Trace_Monad
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>General Lemmas Regarding the Interference Trace Monad\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Congruence Rules for the Function Package\<close>
+
+\<comment> \<open>FIXME: where should this go\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma in_mres:
+  "(tr, Result (rv, s)) \<in> S \<Longrightarrow> (rv, s) \<in> mres S"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (tr, Result (rv, s)) \<in> S \<Longrightarrow> (rv, s) \<in> mres S<\STATESEP>by (fastforce simp: mres_def intro: image_eqI[rotated])<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_apply_cong':
+  "\<lbrakk>f s = f' s'; (\<forall>rv st. (rv, st) \<in> mres (f s) \<longrightarrow> g rv st = g' rv st)\<rbrakk>
+   \<Longrightarrow> bind f g s = bind f' g' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f s = f' s'; \<forall>rv st. (rv, st) \<in> mres (f s) \<longrightarrow> g rv st = g' rv st\<rbrakk> \<Longrightarrow> (f >>= g) s = (f' >>= g') s'<\STATESEP>apply (simp add: bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f s = f' s'; \<forall>rv st. (rv, st) \<in> mres (f' s') \<longrightarrow> g rv st = g' rv st\<rbrakk> \<Longrightarrow> (\<Union>x\<in>f' s'. case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` g rv s) = (\<Union>x\<in>f' s'. case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` g' rv s)<\STATESEP>apply (rule SUP_cong; simp?)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>f s = f' s'; \<forall>rv st. (rv, st) \<in> mres (f' s') \<longrightarrow> g rv st = g' rv st; x \<in> f' s'\<rbrakk> \<Longrightarrow> (case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` g rv s) = (case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` g' rv s)<\STATESEP>apply (clarsimp split: tmres.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa ba. \<lbrakk>f s = f' s'; \<forall>rv st. (rv, st) \<in> mres (f' s') \<longrightarrow> g rv st = g' rv st; (a, Result (aa, ba)) \<in> f' s'\<rbrakk> \<Longrightarrow> (\<lambda>x. case x of (aa, x) \<Rightarrow> (aa @ a, x)) ` g aa ba = (\<lambda>x. case x of (aa, x) \<Rightarrow> (aa @ a, x)) ` g' aa ba<\STATESEP>apply (drule spec2, drule mp, erule in_mres)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa ba. \<lbrakk>f s = f' s'; (a, Result (aa, ba)) \<in> f' s'; g aa ba = g' aa ba\<rbrakk> \<Longrightarrow> (\<lambda>x. case x of (aa, x) \<Rightarrow> (aa @ a, x)) ` g aa ba = (\<lambda>x. case x of (aa, x) \<Rightarrow> (aa @ a, x)) ` g' aa ba<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bind_apply_cong = bind_apply_cong'[rule_format, fundef_cong]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bind_cong[fundef_cong]:
+  "\<lbrakk> f = f'; \<And>v s s'. (v, s') \<in> mres (f' s) \<Longrightarrow> g v s' = g' v s' \<rbrakk> \<Longrightarrow> f >>= g = f' >>= g'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f = f'; \<And>v s s'. (v, s') \<in> mres (f' s) \<Longrightarrow> g v s' = g' v s'\<rbrakk> \<Longrightarrow> f >>= g = f' >>= g'<\STATESEP>by (auto intro!: bind_apply_cong)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_cong[fundef_cong]:
+  "\<lbrakk> M = M' ; \<And>v s s'. (Inr v, s') \<in> mres (M' s) \<Longrightarrow> N v s' = N' v s' \<rbrakk> \<Longrightarrow> bindE M N = bindE M' N'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>M = M'; \<And>v s s'. (Inr v, s') \<in> mres (M' s) \<Longrightarrow> N v s' = N' v s'\<rbrakk> \<Longrightarrow> M >>=E N = M' >>=E N'<\STATESEP>by (auto simp: bindE_def lift_def split: sum.splits intro!: bind_cong)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_apply_cong[fundef_cong]:
+  "\<lbrakk> f s = f' s'; \<And>rv st. (Inr rv, st) \<in> mres (f' s') \<Longrightarrow> g rv st = g' rv st \<rbrakk>
+  \<Longrightarrow> (f >>=E g) s = (f' >>=E g') s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f s = f' s'; \<And>rv st. (Inr rv, st) \<in> mres (f' s') \<Longrightarrow> g rv st = g' rv st\<rbrakk> \<Longrightarrow> (f >>=E g) s = (f' >>=E g') s'<\STATESEP>by (auto simp: bindE_def lift_def split: sum.splits intro!: bind_apply_cong)<\STATESEP>1<\TRANSEP><\STATESEP>lemma K_bind_apply_cong[fundef_cong]:
+  "\<lbrakk> f st = f' st' \<rbrakk> \<Longrightarrow> K_bind f arg st = K_bind f' arg' st'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f st = f' st' \<Longrightarrow> K_bind f arg st = K_bind f' arg' st'<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_apply_cong[fundef_cong]:
+  "\<lbrakk> C = C'; s = s'; C' \<Longrightarrow> m s' = m' s' \<rbrakk> \<Longrightarrow> when C m s = when C' m' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>C = C'; s = s'; C' \<Longrightarrow> m s' = m' s'\<rbrakk> \<Longrightarrow> when C m s = when C' m' s'<\STATESEP>by (simp add: when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unless_apply_cong[fundef_cong]:
+  "\<lbrakk> C = C'; s = s'; \<not> C' \<Longrightarrow> m s' = m' s' \<rbrakk> \<Longrightarrow> unless C m s = unless C' m' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>C = C'; s = s'; \<not> C' \<Longrightarrow> m s' = m' s'\<rbrakk> \<Longrightarrow> unless C m s = unless C' m' s'<\STATESEP>by (simp add: when_def unless_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_apply_cong[fundef_cong]:
+  "\<lbrakk> C = C'; s = s'; C' \<Longrightarrow> m s' = m' s' \<rbrakk> \<Longrightarrow> whenE C m s = whenE C' m' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>C = C'; s = s'; C' \<Longrightarrow> m s' = m' s'\<rbrakk> \<Longrightarrow> whenE C m s = whenE C' m' s'<\STATESEP>by (simp add: whenE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessE_apply_cong[fundef_cong]:
+  "\<lbrakk> C = C'; s = s'; \<not> C' \<Longrightarrow> m s' = m' s' \<rbrakk> \<Longrightarrow> unlessE C m s = unlessE C' m' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>C = C'; s = s'; \<not> C' \<Longrightarrow> m s' = m' s'\<rbrakk> \<Longrightarrow> unlessE C m s = unlessE C' m' s'<\STATESEP>by (simp add: unlessE_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Simplifying Monads\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma nested_bind[simp]:
+  "do x <- do y <- f; return (g y) od; h x od = do y <- f; h (g y) od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do y <- f;
+return (g y)
+od >>= h = do y <- f;
+h (g y)
+od<\STATESEP>by (fastforce simp: bind_def return_def split: tmres.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_dummy_ret_val:
+  "do y \<leftarrow> a; b od = do a; b od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do y <- a;
+b
+od = do a;
+b
+od<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_update[iff]:
+  "fail (f s) = fail s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fail (f s) = fail s<\STATESEP>by (simp add: fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_bind[simp]:
+  "fail >>= f = fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fail >>= f = fail<\STATESEP>by (simp add: bind_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_bindE[simp]:
+  "fail >>=E f = fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fail >>=E f = fail<\STATESEP>by (simp add: bindE_def bind_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_A_False[simp]:
+  "assert False = fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assert False = fail<\STATESEP>by (simp add: assert_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_A_True[simp]:
+  "assert True = return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assert True = return ()<\STATESEP>by (simp add: assert_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_False[simp]:
+  "assert False >>= f = fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assert False >>= f = fail<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_True[simp]:
+  "assert True >>= f = f ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assert True >>= f = f ()<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma assertE_False[simp]:
+  "assertE False >>=E f = fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assertE False >>=E f = fail<\STATESEP>by (simp add: assertE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assertE_True[simp]:
+  "assertE True >>=E f = f ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assertE True >>=E f = f ()<\STATESEP>by (simp add: assertE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_False_bind[simp]:
+  "when False g >>= f = f ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. when False g >>= f = f ()<\STATESEP>by (rule ext) (simp add: when_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_True_bind[simp]:
+  "when True g >>= f = g >>= f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. when True g >>= f = g >>= f<\STATESEP>by (simp add: when_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_False_bind[simp]:
+  "whenE False g >>=E f = f ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. whenE False g >>=E f = f ()<\STATESEP>by (simp add: whenE_def bindE_def returnOk_def lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_True_bind[simp]:
+  "whenE True g >>=E f = g >>=E f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. whenE True g >>=E f = g >>=E f<\STATESEP>by (simp add: whenE_def bindE_def returnOk_def lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_True[simp]:
+  "when True X = X"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. when True X = X<\STATESEP>by (clarsimp simp: when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_False[simp]:
+  "when False X = return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. when False X = return ()<\STATESEP>by (clarsimp simp: when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unless_False[simp]:
+  "unless False X = X"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unless False X = X<\STATESEP>by (clarsimp simp: unless_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessE_False[simp]:
+  "unlessE False f = f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unlessE False f = f<\STATESEP>unfolding unlessE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (if False then returnOk () else f) = f<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma unless_True[simp]:
+  "unless True X = return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unless True X = return ()<\STATESEP>by (clarsimp simp: unless_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessE_True[simp]:
+  "unlessE True f = returnOk ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unlessE True f = returnOk ()<\STATESEP>unfolding unlessE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (if True then returnOk () else f) = returnOk ()<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessE_whenE:
+  "unlessE P = whenE (\<not>P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unlessE P = whenE (\<not> P)<\STATESEP>by (rule ext) (simp add: unlessE_def whenE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unless_when:
+  "unless P = when (\<not>P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unless P = when (\<not> P)<\STATESEP>by (rule ext) (simp add: unless_def when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_to_return[simp]:
+  "gets (\<lambda>s. v) = return v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets (\<lambda>s. v) = return v<\STATESEP>by (clarsimp simp: gets_def put_def get_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_opt_Some:
+  "assert_opt (Some x) = return x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assert_opt (Some x) = return x<\STATESEP>by (simp add: assert_opt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assertE_liftE:
+  "assertE P = liftE (assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. assertE P = liftE (assert P)<\STATESEP>by (simp add: assertE_def assert_def liftE_def returnOk_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_handleE'[simp]:
+  "(liftE a <handle2> b) = liftE a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (liftE a <handle2> b) = liftE a<\STATESEP>by (clarsimp simp: liftE_def handleE'_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_handleE[simp]:
+  "(liftE a <handle> b) = liftE a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (liftE a <handle> b) = liftE a<\STATESEP>unfolding handleE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (liftE a <handle2> b) = liftE a<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_bind:
+  "((a \<sqinter> b) >>= c) = ((a >>= c) \<sqinter> (b >>= c))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a \<sqinter> b) >>= c = (a >>= c \<sqinter> b >>= c)<\STATESEP>by (fastforce simp add: alternative_def bind_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_refl:
+  "(a \<sqinter> a) = a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a \<sqinter> a) = a<\STATESEP>by (simp add: alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_com:
+  "(f \<sqinter> g) = (g \<sqinter> f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (f \<sqinter> g) = (g \<sqinter> f)<\STATESEP>by (auto simp: alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_alternative:
+  "liftE (a \<sqinter> b) = (liftE a \<sqinter> liftE b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftE (a \<sqinter> b) = (liftE a \<sqinter> liftE b)<\STATESEP>by (simp add: liftE_def alternative_bind)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Lifting and Alternative Basic Definitions\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma liftE_liftM:
+  "liftE = liftM Inr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftE = liftM Inr<\STATESEP>by (auto simp: liftE_def liftM_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftME_liftM:
+  "liftME f = liftM (case_sum Inl (Inr \<circ> f))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftME f = liftM (case_sum Inl (Inr \<circ> f))<\STATESEP>unfolding liftME_def liftM_def bindE_def returnOk_def lift_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>m. m >>= case_sum throwError (\<lambda>x. (return \<circ> Inr) (f x))) = (\<lambda>m. do x <- m;
+return (case x of Inl x \<Rightarrow> Inl x | Inr x \<Rightarrow> (Inr \<circ> f) x)
+od)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>m. m >>= case_sum throwError (\<lambda>x. (return \<circ> Inr) (f x)) = do x <- m;
+return (case x of Inl x \<Rightarrow> Inl x | Inr x \<Rightarrow> (Inr \<circ> f) x)
+od<\STATESEP>apply (rule arg_cong[where f="bind m" for m])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>m. case_sum throwError (\<lambda>x. (return \<circ> Inr) (f x)) = (\<lambda>x. return (case x of Inl x \<Rightarrow> Inl x | Inr x \<Rightarrow> (Inr \<circ> f) x))<\STATESEP>apply (fastforce simp: throwError_def split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_bindE:
+  "liftE a >>=E b = a >>= b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftE a >>=E b = a >>= b<\STATESEP>by (simp add: liftE_def bindE_def lift_def bind_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftM_id[simp]:
+  "liftM id = id"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftM id = id<\STATESEP>by (auto simp: liftM_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftM_bind:
+  "liftM t f >>= g = f >>= (\<lambda>x. g (t x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftM t f >>= g = do x <- f;
+g (t x)
+od<\STATESEP>by (simp add: liftM_def bind_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_bind_ign:
+  "gets f >>= (\<lambda>x. m) = m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- gets f;
+m
+od = m<\STATESEP>by (simp add: bind_def simpler_gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma exec_get:
+  "(get >>= f) x = f x x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (get >>= f) x = f x x<\STATESEP>by (simp add: get_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas get_bind_apply = exec_get<\STATESEP>0<\TRANSEP><\STATESEP>lemma exec_gets:
+  "(gets f >>= m) s = m (f s) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (gets f >>= m) s = m (f s) s<\STATESEP>by (simp add: simpler_gets_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_eqI:
+  "\<lbrakk> f = f'; \<And>x. g x = g' x \<rbrakk> \<Longrightarrow> f >>= g = f' >>= g'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f = f'; \<And>x. g x = g' x\<rbrakk> \<Longrightarrow> f >>= g = f' >>= g'<\STATESEP>by (auto simp: bind_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_split:
+  "P (condition C a b s) \<longleftrightarrow> (C s \<longrightarrow> P (a s)) \<and> (\<not>C s \<longrightarrow> P (b s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (condition C
+  a
+  b s) = ((C s \<longrightarrow> P (a s)) \<and> (\<not> C s \<longrightarrow> P (b s)))<\STATESEP>by (clarsimp simp: condition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_split_asm:
+  "P (condition C a b s) \<longleftrightarrow> (\<not>(C s \<and> \<not> P (a s) \<or> \<not>C s \<and> \<not>P (b s)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (condition C
+  a
+  b s) = (\<not> (C s \<and> \<not> P (a s) \<or> \<not> C s \<and> \<not> P (b s)))<\STATESEP>by (clarsimp simp: condition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas condition_splits = condition_split condition_split_asm<\STATESEP>0<\TRANSEP><\STATESEP>lemma condition_true_triv[simp]:
+  "condition (\<lambda>_. True) A B = A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. condition (\<lambda>_. True)
+  A
+  B = A<\STATESEP>by (fastforce split: condition_splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_false_triv[simp]:
+  "condition (\<lambda>_. False) A B = B"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. condition (\<lambda>_. False)
+  A
+  B = B<\STATESEP>by (fastforce split: condition_splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_true:
+  "P s \<Longrightarrow> condition P A B s = A s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P s \<Longrightarrow> condition P
+  A
+  B s = A s<\STATESEP>by (clarsimp simp: condition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_false:
+  "\<not> P s \<Longrightarrow> condition P A B s = B s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> P s \<Longrightarrow> condition P
+  A
+  B s = B s<\STATESEP>by (clarsimp simp: condition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas arg_cong_bind = arg_cong2[where f=bind]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas arg_cong_bind1 = arg_cong_bind[OF refl ext]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

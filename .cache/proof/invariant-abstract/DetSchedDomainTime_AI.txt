@@ -1,0 +1,560 @@
+<\STATESEP>theory DetSchedDomainTime_AI
+imports ArchDetSchedAux_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "valid_domain_list_2 dlist \<equiv> 0 < length dlist \<and> (\<forall>(d,time) \<in> set dlist. 0 < time)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  valid_domain_list :: "det_ext state \<Rightarrow> bool"
+where
+  "valid_domain_list \<equiv> (\<lambda>s. valid_domain_list_2 (domain_list s))"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_domain_list_def = valid_domain_list_2_def<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Preservation of domain list validity\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma ethread_get_wp[wp]:
+  "\<lbrace>\<lambda>s. etcb_at (\<lambda>t. P (f t) s) ptr s\<rbrace> ethread_get f ptr \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. etcb_at (\<lambda>t. P (f t) s) ptr s\<rbrace> ethread_get f ptr \<lbrace>P\<rbrace><\STATESEP>unfolding ethread_get_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. etcb_at (\<lambda>t. P (f t) s) ptr s\<rbrace> do tcb <- gets_the $ get_etcb ptr;
+return $ f tcb
+od \<lbrace>P\<rbrace><\STATESEP>by (wp | clarsimp simp add: get_etcb_def etcb_at'_def is_etcb_at'_def)+<\STATESEP>1<\TRANSEP><\STATESEP>declare ethread_get_inv[wp del, wp]<\STATESEP>0<\TRANSEP><\STATESEP>locale DetSchedDomainTime_AI =
+  assumes finalise_cap_domain_list_inv'[wp]:
+    "\<And>P cap fin. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_finalise_cap cap fin \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_activate_idle_thread_domain_list_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_activate_idle_thread t \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_switch_to_thread_domain_list_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_get_sanitise_register_info_domain_list_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_get_sanitise_register_info t \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_switch_to_idle_thread_domain_list_inv'[wp]:
+    "\<And>P. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes handle_arch_fault_reply_domain_list_inv'[wp]:
+    "\<And>P f t x y. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_arch_fault_reply f t x y \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes init_arch_objects_domain_list_inv'[wp]:
+    "\<And>P t p n s r. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> init_arch_objects t p n s r \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_post_modify_registers_domain_list_inv'[wp]:
+    "\<And>P t p. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_post_modify_registers t p \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_invoke_irq_control_domain_list_inv'[wp]:
+    "\<And>P i. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_invoke_irq_control i \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes handle_vm_fault_domain_list_inv'[wp]:
+    "\<And>P t f. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_vm_fault t f \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes prepare_thread_delete_domain_list_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> prepare_thread_delete t \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes finalise_cap_domain_time_inv'[wp]:
+    "\<And>P cap fin. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_finalise_cap cap fin \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_activate_idle_thread_domain_time_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_activate_idle_thread t \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_switch_to_thread_domain_time_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_get_sanitise_register_info_domain_time_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_get_sanitise_register_info t \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_switch_to_idle_thread_domain_time_inv'[wp]:
+    "\<And>P. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes handle_arch_fault_reply_domain_time_inv'[wp]:
+    "\<And>P f t x y. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_arch_fault_reply f t x y \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes init_arch_objects_domain_time_inv'[wp]:
+    "\<And>P t p n s r. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> init_arch_objects t p n s r \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_post_modify_registers_domain_time_inv'[wp]:
+    "\<And>P t p. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_post_modify_registers t p \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_invoke_irq_control_domain_time_inv'[wp]:
+    "\<And>P i. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_invoke_irq_control i \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes handle_vm_fault_domain_time_inv'[wp]:
+    "\<And>P t f. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_vm_fault t f \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes prepare_thread_delete_domain_time_inv'[wp]:
+    "\<And>P t. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> prepare_thread_delete t \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes make_arch_fault_msg_domain_time_inv'[wp]:
+    "\<And>P ft t. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> make_arch_fault_msg ft t \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes make_arch_fault_msg_domain_list_inv'[wp]:
+    "\<And>P ft t. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> make_arch_fault_msg ft t \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_post_cap_deletion_domain_time_inv'[wp]:
+    "\<And>P ft. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_post_cap_deletion ft \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_post_cap_deletion_domain_list_inv'[wp]:
+    "\<And>P ft. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_post_cap_deletion ft \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_invoke_irq_handler_domain_list_inv'[wp]:
+    "\<And>P i. arch_invoke_irq_handler i \<lbrace>\<lambda>s. P (domain_list s)\<rbrace>"
+  assumes arch_invoke_irq_handler_domain_time_inv'[wp]:
+    "\<And>P i. arch_invoke_irq_handler i \<lbrace>\<lambda>s. P (domain_time s)\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>crunches update_restart_pc
+  for domain_list[wp]: "\<lambda>s. P (domain_list s)"
+  and domain_time[wp]: "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>locale DetSchedDomainTime_AI_2 = DetSchedDomainTime_AI +
+  assumes handle_hypervisor_fault_domain_list_inv'[wp]:
+    "\<And>P t f. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_hypervisor_fault t f \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes handle_hypervisor_fault_domain_time_inv'[wp]:
+    "\<And>P t f. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_hypervisor_fault t f \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes arch_perform_invocation_domain_list_inv'[wp]:
+    "\<And>P i. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> arch_perform_invocation i \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_perform_invocation_domain_time_inv'[wp]:
+    "\<And>P i. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> arch_perform_invocation i \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes handle_interrupt_valid_domain_time:
+    "\<And>i.
+      \<lbrace>\<lambda>s :: det_ext state. 0 < domain_time s \<rbrace>
+        handle_interrupt i
+      \<lbrace>\<lambda>rv s.  domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread \<rbrace>"
+  assumes handle_reserved_irq_some_time_inv'[wp]:
+    "\<And>P irq. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_reserved_irq irq \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>"
+  assumes handle_reserved_irq_domain_list_inv'[wp]:
+    "\<And>P irq. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_reserved_irq irq \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>"
+  assumes arch_mask_irq_signal_domain_list_inv'[wp]:
+    "\<And>P irq. arch_mask_irq_signal irq \<lbrace>\<lambda>s. P (domain_list s)\<rbrace>"
+  assumes arch_mask_irq_signal_domain_time_inv'[wp]:
+    "\<And>P irq. arch_mask_irq_signal irq \<lbrace>\<lambda>s. P (domain_time s)\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]:
+  cap_swap_for_delete, empty_slot, get_object, get_cap, tcb_sched_action
+  "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: finalise_cap "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps unless_wp select_inv simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma rec_del_domain_list[wp]:
+  "\<lbrace>\<lambda>s. P (domain_list s)\<rbrace> rec_del call \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> rec_del call \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace><\STATESEP>by (wp rec_del_preservation preemption_point_inv' | simp)+<\STATESEP>1<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: cap_delete, activate_thread "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: schedule "\<lambda>s. P (domain_list s)"
+  (wp: hoare_drop_imp simp: Let_def)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch (in DetSchedDomainTime_AI_2) domain_list_inv[wp]: handle_interrupt "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]:
+  lookup_cap_and_slot, cap_insert, set_extra_badge "\<lambda>s. P (domain_list s)"
+  (wp: hoare_drop_imps)<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: do_ipc_transfer "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps simp: zipWithM_x_mapM rule: transfer_caps_loop_pres)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: handle_fault "\<lambda>s. P (domain_list s)"
+  (wp: mapM_wp hoare_drop_imps simp: crunch_simps ignore:copy_mrs)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]:
+  reply_from_kernel, create_cap, retype_region, do_reply_transfer
+  "\<lambda>s. P (domain_list s)"
+  (wp: hoare_drop_imps)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: delete_objects "\<lambda>s :: det_ext state. P (domain_list s)"
+  (wp: crunch_wps
+   simp: detype_def detype_ext_def wrap_ext_det_ext_ext_def cap_insert_ext_def
+   ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: update_work_units "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: preemption_point "\<lambda>s. P (domain_list s)"
+  (wp: OR_choiceE_weak_wp ignore_del: preemption_point)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: reset_untyped_cap "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps unless_wp mapME_x_inv_wp select_inv
+   simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: invoke_untyped "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps
+    simp: crunch_simps mapM_x_defsym)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]:
+  invoke_tcb, invoke_domain, invoke_irq_control, invoke_irq_handler
+  "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps check_cap_inv)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: cap_move "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_revoke_domain_list_inv[wp]:
+  "\<lbrace>(\<lambda>s :: det_ext state. P (domain_list s))\<rbrace> cap_revoke a \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> cap_revoke a \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace><\STATESEP>by (rule cap_revoke_preservation2)
+     (wp preemption_point_inv'|simp)+<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: cancel_badged_sends "\<lambda>s. P (domain_list s)"
+  (ignore: filterM clearMemory
+     simp: filterM_mapM crunch_simps
+       wp: crunch_wps)<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI_2 begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma invoke_cnode_domain_list_inv[wp]:
+  "\<lbrace>\<lambda>s :: det_ext state. P (domain_list s)\<rbrace>
+     invoke_cnode i
+   \<lbrace>\<lambda>rv s. P (domain_list s) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> invoke_cnode i \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> invoke_cnode i \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>
+ 2. \<And>s. P (domain_list s) \<Longrightarrow> ?Q s<\STATESEP>apply (wp crunch_wps cap_move_src_slot_Null hoare_drop_imps hoare_vcg_all_lift
+          | wpc | simp add: invoke_cnode_def crunch_simps split del: if_split)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: perform_invocation, handle_invocation "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps syscall_valid simp: crunch_simps ignore: syscall)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]:
+  handle_recv, handle_yield, handle_call, handle_reply, handle_vm_fault, handle_hypervisor_fault
+    "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma handle_event_domain_list_inv[wp]:
+  "\<lbrace>\<lambda>s. P (domain_list s) \<rbrace>
+   handle_event e
+   \<lbrace>\<lambda>_ s. P (domain_list s) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_event e \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace><\STATESEP>apply (cases e, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x1. e = SyscallEvent x1 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> case x1 of SysCall \<Rightarrow> handle_call | SysReplyRecv \<Rightarrow> without_preemption $ do handle_reply;
+handle_recv True
+od | SysSend \<Rightarrow> handle_send True | SysNBSend \<Rightarrow> handle_send False | SysRecv \<Rightarrow> without_preemption $ handle_recv True | SysReply \<Rightarrow> without_preemption handle_reply | SysYield \<Rightarrow> without_preemption handle_yield | SysNBRecv \<Rightarrow> without_preemption $ handle_recv False \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 2. \<And>x2. e = UnknownSyscall x2 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UnknownSyscallException (word_of_nat x2))
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 3. \<And>x31 x32. e = UserLevelFault x31 x32 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UserException x31 (x32 && mask 28))
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 4. e = Interrupt \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do_machine_op (getActiveIRQ False) >>= case_option (return ()) handle_interrupt) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 5. \<And>x5. e = VMFaultEvent x5 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_vm_fault thread x5 <catch> handle_fault thread
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 6. \<And>x6. e = HypervisorEvent x6 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_hypervisor_fault thread x6
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace><\STATESEP>apply (rename_tac syscall)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>syscall. e = SyscallEvent syscall \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> case syscall of SysCall \<Rightarrow> handle_call | SysReplyRecv \<Rightarrow> without_preemption $ do handle_reply;
+handle_recv True
+od | SysSend \<Rightarrow> handle_send True | SysNBSend \<Rightarrow> handle_send False | SysRecv \<Rightarrow> without_preemption $ handle_recv True | SysReply \<Rightarrow> without_preemption handle_reply | SysYield \<Rightarrow> without_preemption handle_yield | SysNBRecv \<Rightarrow> without_preemption $ handle_recv False \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 2. \<And>x2. e = UnknownSyscall x2 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UnknownSyscallException (word_of_nat x2))
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 3. \<And>x31 x32. e = UserLevelFault x31 x32 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UserException x31 (x32 && mask 28))
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 4. e = Interrupt \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do_machine_op (getActiveIRQ False) >>= case_option (return ()) handle_interrupt) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 5. \<And>x5. e = VMFaultEvent x5 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_vm_fault thread x5 <catch> handle_fault thread
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 6. \<And>x6. e = HypervisorEvent x6 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_hypervisor_fault thread x6
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace><\STATESEP>apply (case_tac syscall, simp_all add: handle_send_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (13 subgoals):
+ 1. \<And>syscall. \<lbrakk>e = SyscallEvent SysCall; syscall = SysCall\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_call \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 2. \<And>syscall. \<lbrakk>e = SyscallEvent SysReplyRecv; syscall = SysReplyRecv\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do y <- handle_reply;
+handle_recv True
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 3. \<And>syscall. \<lbrakk>e = SyscallEvent SysSend; syscall = SysSend\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_invocation False True \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 4. \<And>syscall. \<lbrakk>e = SyscallEvent SysNBSend; syscall = SysNBSend\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> handle_invocation False False \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 5. \<And>syscall. \<lbrakk>e = SyscallEvent SysRecv; syscall = SysRecv\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (handle_recv True) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 6. \<And>syscall. \<lbrakk>e = SyscallEvent SysReply; syscall = SysReply\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE handle_reply \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 7. \<And>syscall. \<lbrakk>e = SyscallEvent SysYield; syscall = SysYield\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE handle_yield \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 8. \<And>syscall. \<lbrakk>e = SyscallEvent SysNBRecv; syscall = SysNBRecv\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (handle_recv False) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 9. \<And>x2. e = UnknownSyscall x2 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UnknownSyscallException (word_of_nat x2))
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+ 10. \<And>x31 x32. e = UserLevelFault x31 x32 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UserException x31 (x32 && mask 28))
+od) \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace>
+A total of 13 subgoals...<\STATESEP>apply wpsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma call_kernel_domain_list_inv_det_ext:
+  "\<lbrace> \<lambda>s. P (domain_list s) \<rbrace>
+     (call_kernel e) :: (unit,det_ext) s_monad
+   \<lbrace>\<lambda>_ s. P (domain_list s) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> call_kernel e \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace><\STATESEP>unfolding call_kernel_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_list s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. P (domain_list s)\<rbrace><\STATESEP>apply (wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x. \<lbrace>?P9 x\<rbrace> without_preemption (do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od) -, \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>
+ 2. \<And>x. \<lbrace>?P'9 x\<rbrace> without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>, -
+ 3. \<lbrace>?Q\<rbrace> handle_event e \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>, \<lbrace>\<lambda>x s. ?P9 x s \<and> ?P'9 x s\<rbrace>
+ 4. \<And>s. P (domain_list s) \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: schedule_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?P9 ()\<rbrace> liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (handle_interrupt (the irq))
+od) -, \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>
+ 2. \<And>x. \<lbrace>?P'9 x\<rbrace> without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>, -
+ 3. \<lbrace>?Q\<rbrace> handle_event e \<lbrace>\<lambda>rv s. P (domain_list s)\<rbrace>, \<lbrace>\<lambda>x s. ?P9 x s \<and> ?P'9 x s\<rbrace>
+ 4. \<And>s. P (domain_list s) \<Longrightarrow> ?Q s<\STATESEP>apply (wpsimp wp: without_preemption_wp simp: if_apply_def2)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Preservation of domain time remaining\<close><\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: do_user_op "(\<lambda>s. P (domain_time s))"<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]:
+  get_cap, activate_thread, set_scheduler_action, tcb_sched_action, thread_set_time_slice
+  "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: guarded_switch_to "\<lambda>s. P (domain_time s)"
+  (wp: hoare_drop_imp whenE_inv)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: choose_thread "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: send_signal "\<lambda>s. P (domain_time s)"
+  (wp: hoare_drop_imps mapM_x_wp_inv simp: crunch_simps unless_def)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]:
+  cap_swap_for_delete, empty_slot, get_object, get_cap, tcb_sched_action
+  "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: finalise_cap "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps hoare_drop_imps unless_wp select_inv mapM_wp
+       subset_refl if_fun_split simp: crunch_simps ignore: tcb_sched_action)<\STATESEP>0<\TRANSEP><\STATESEP>lemma rec_del_domain_time[wp]:
+  "\<lbrace>\<lambda>s. P (domain_time s)\<rbrace> rec_del call \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> rec_del call \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace><\STATESEP>by (wp rec_del_preservation preemption_point_inv' | simp)+<\STATESEP>1<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]:
+  cap_delete, activate_thread, lookup_cap_and_slot
+  "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: cap_insert "\<lambda>s. P (domain_time s)"
+  (wp: hoare_drop_imps)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: set_extra_badge "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: do_ipc_transfer "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps simp: zipWithM_x_mapM rule: transfer_caps_loop_pres)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: handle_fault "\<lambda>s. P (domain_time s)"
+  (wp: mapM_wp hoare_drop_imps simp: crunch_simps ignore:copy_mrs)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]:
+  reply_from_kernel, create_cap, retype_region
+  "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: do_reply_transfer "\<lambda>s. P (domain_time s)"
+  (wp: hoare_drop_imps)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: delete_objects "\<lambda>s :: det_ext state. P (domain_time s)"
+  (wp: crunch_wps
+   simp: detype_def detype_ext_def wrap_ext_det_ext_ext_def cap_insert_ext_def
+   ignore: freeMemory)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: update_work_units "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: preemption_point "\<lambda>s. P (domain_time s)"
+  (wp: OR_choiceE_weak_wp ignore_del: preemption_point)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: reset_untyped_cap "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps unless_wp mapME_x_inv_wp select_inv
+   simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: invoke_untyped "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps
+    simp: crunch_simps mapM_x_defsym)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]:
+  invoke_tcb, invoke_domain, invoke_irq_control,invoke_irq_handler
+  "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps check_cap_inv)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: cap_move "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_revoke_domain_time_inv[wp]:
+  "\<lbrace>(\<lambda>s :: det_ext state. P (domain_time s))\<rbrace> cap_revoke a \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> cap_revoke a \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace><\STATESEP>apply (rule cap_revoke_preservation2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s p. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> cap_delete p \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace>
+ 2. \<And>s. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> preemption_point \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace><\STATESEP>apply (wp preemption_point_inv'|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: cancel_badged_sends "\<lambda>s. P (domain_time s)"
+  (ignore: filterM clearMemory
+     simp: filterM_mapM crunch_simps
+       wp: crunch_wps)<\STATESEP>0<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI_2 begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma invoke_cnode_domain_time_inv[wp]:
+  "\<lbrace>\<lambda>s :: det_ext state. P (domain_time s)\<rbrace>
+     invoke_cnode i
+   \<lbrace>\<lambda>rv s. P (domain_time s) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> invoke_cnode i \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> invoke_cnode i \<lbrace>\<lambda>rv s. P (domain_time s)\<rbrace>
+ 2. \<And>s. P (domain_time s) \<Longrightarrow> ?Q s<\STATESEP>apply (wp crunch_wps cap_move_src_slot_Null hoare_drop_imps hoare_vcg_all_lift
+          | wpc | simp add: invoke_cnode_def crunch_simps split del: if_split)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]: perform_invocation, handle_invocation "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps syscall_valid simp: crunch_simps ignore: syscall)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv[wp]:
+  handle_recv, handle_yield, handle_call, handle_reply, handle_vm_fault, handle_hypervisor_fault
+    "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma handle_event_domain_time_inv:
+  "\<lbrace>\<lambda>s. P (domain_time s) \<and> e \<noteq> Interrupt \<rbrace>
+   handle_event e
+   \<lbrace>\<lambda>_ s. P (domain_time s) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (domain_time s) \<and> e \<noteq> Interrupt\<rbrace> handle_event e \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace><\STATESEP>apply (cases e, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x1. e = SyscallEvent x1 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> case x1 of SysCall \<Rightarrow> handle_call | SysReplyRecv \<Rightarrow> without_preemption $ do handle_reply;
+handle_recv True
+od | SysSend \<Rightarrow> handle_send True | SysNBSend \<Rightarrow> handle_send False | SysRecv \<Rightarrow> without_preemption $ handle_recv True | SysReply \<Rightarrow> without_preemption handle_reply | SysYield \<Rightarrow> without_preemption handle_yield | SysNBRecv \<Rightarrow> without_preemption $ handle_recv False \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 2. \<And>x2. e = UnknownSyscall x2 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UnknownSyscallException (word_of_nat x2))
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 3. \<And>x31 x32. e = UserLevelFault x31 x32 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UserException x31 (x32 && mask 28))
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 4. \<And>x5. e = VMFaultEvent x5 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_vm_fault thread x5 <catch> handle_fault thread
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 5. \<And>x6. e = HypervisorEvent x6 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_hypervisor_fault thread x6
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace><\STATESEP>apply (rename_tac syscall)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>syscall. e = SyscallEvent syscall \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> case syscall of SysCall \<Rightarrow> handle_call | SysReplyRecv \<Rightarrow> without_preemption $ do handle_reply;
+handle_recv True
+od | SysSend \<Rightarrow> handle_send True | SysNBSend \<Rightarrow> handle_send False | SysRecv \<Rightarrow> without_preemption $ handle_recv True | SysReply \<Rightarrow> without_preemption handle_reply | SysYield \<Rightarrow> without_preemption handle_yield | SysNBRecv \<Rightarrow> without_preemption $ handle_recv False \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 2. \<And>x2. e = UnknownSyscall x2 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UnknownSyscallException (word_of_nat x2))
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 3. \<And>x31 x32. e = UserLevelFault x31 x32 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UserException x31 (x32 && mask 28))
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 4. \<And>x5. e = VMFaultEvent x5 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_vm_fault thread x5 <catch> handle_fault thread
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 5. \<And>x6. e = HypervisorEvent x6 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_hypervisor_fault thread x6
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace><\STATESEP>apply (case_tac syscall, simp_all add: handle_send_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. \<And>syscall. \<lbrakk>e = SyscallEvent SysCall; syscall = SysCall\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_call \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 2. \<And>syscall. \<lbrakk>e = SyscallEvent SysReplyRecv; syscall = SysReplyRecv\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do y <- handle_reply;
+handle_recv True
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 3. \<And>syscall. \<lbrakk>e = SyscallEvent SysSend; syscall = SysSend\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_invocation False True \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 4. \<And>syscall. \<lbrakk>e = SyscallEvent SysNBSend; syscall = SysNBSend\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> handle_invocation False False \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 5. \<And>syscall. \<lbrakk>e = SyscallEvent SysRecv; syscall = SysRecv\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (handle_recv True) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 6. \<And>syscall. \<lbrakk>e = SyscallEvent SysReply; syscall = SysReply\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE handle_reply \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 7. \<And>syscall. \<lbrakk>e = SyscallEvent SysYield; syscall = SysYield\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE handle_yield \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 8. \<And>syscall. \<lbrakk>e = SyscallEvent SysNBRecv; syscall = SysNBRecv\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (handle_recv False) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 9. \<And>x2. e = UnknownSyscall x2 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UnknownSyscallException (word_of_nat x2))
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+ 10. \<And>x31 x32. e = UserLevelFault x31 x32 \<Longrightarrow> \<lbrace>\<lambda>s. P (domain_time s)\<rbrace> liftE (do thread <- gets cur_thread;
+handle_fault thread (UserException x31 (x32 && mask 28))
+od) \<lbrace>\<lambda>_ s. P (domain_time s)\<rbrace>
+A total of 12 subgoals...<\STATESEP>apply (wp|simp|wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma next_domain_domain_time_left[wp]:
+  "\<lbrace> valid_domain_list \<rbrace> next_domain \<lbrace>\<lambda>_ s. 0 < domain_time s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_domain_list\<rbrace> next_domain \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> next_domain \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. \<And>s. valid_domain_list s \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: next_domain_def Let_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> modify (\<lambda>s. trans_state (\<lambda>e. e\<lparr>domain_index_internal := Suc (domain_index s) mod length (domain_list s), cur_domain_internal := fst (domain_list s ! (Suc (domain_index s) mod length (domain_list s))), domain_time_internal := snd (domain_list s ! (Suc (domain_index s) mod length (domain_list s))), work_units_completed_internal := 0\<rparr>) s) \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. \<And>s. valid_domain_list s \<Longrightarrow> ?Q s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. valid_domain_list s \<Longrightarrow> 0 < domain_time (trans_state (\<lambda>e. e\<lparr>domain_index_internal := Suc (domain_index s) mod length (domain_list s), cur_domain_internal := fst (domain_list s ! (Suc (domain_index s) mod length (domain_list s))), domain_time_internal := snd (domain_list s ! (Suc (domain_index s) mod length (domain_list s))), work_units_completed_internal := 0\<rparr>) s)<\STATESEP>apply (clarsimp simp: valid_domain_list_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>domain_list s \<noteq> []; \<forall>x\<in>set (domain_list s). case x of (d, time) \<Rightarrow> 0 < time\<rbrakk> \<Longrightarrow> 0 < snd (domain_list s ! (Suc (domain_index s) mod length (domain_list s)))<\STATESEP>apply (simp add: all_set_conv_all_nth)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>domain_list s \<noteq> []; \<forall>i<length (domain_list s). case domain_list s ! i of (d, x) \<Rightarrow> 0 < x\<rbrakk> \<Longrightarrow> 0 < snd (domain_list s ! (Suc (domain_index s) mod length (domain_list s)))<\STATESEP>apply (erule_tac x="Suc (domain_index s) mod length (domain_list s)" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>domain_list s \<noteq> []; Suc (domain_index s) mod length (domain_list s) < length (domain_list s) \<longrightarrow> (case domain_list s ! (Suc (domain_index s) mod length (domain_list s)) of (d, x) \<Rightarrow> 0 < x)\<rbrakk> \<Longrightarrow> 0 < snd (domain_list s ! (Suc (domain_index s) mod length (domain_list s)))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma schedule_choose_new_thread_domain_time_left[wp]:
+  "\<lbrace> valid_domain_list \<rbrace>
+   schedule_choose_new_thread
+   \<lbrace>\<lambda>_ s. 0 < domain_time s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_domain_list\<rbrace> schedule_choose_new_thread \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>unfolding schedule_choose_new_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_domain_list\<rbrace> do dom_time <- gets domain_time;
+when (dom_time = 0) next_domain;
+choose_thread;
+set_scheduler_action resume_cur_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>by (wpsimp simp: word_gt_0)<\STATESEP>1<\TRANSEP><\STATESEP>crunch etcb_at[wp]: tcb_sched_action "etcb_at P t"<\STATESEP>0<\TRANSEP><\STATESEP>lemma schedule_domain_time_left:
+  "\<lbrace>valid_domain_list and (\<lambda>s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<rbrace>
+   schedule
+   \<lbrace>\<lambda>_ s. 0 < domain_time s \<rbrace>" (is "\<lbrace>?P\<rbrace> _ \<lbrace>\<lambda>_ . ?Q\<rbrace>")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_domain_list and (\<lambda>s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace> schedule \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>supply word_neq_0_conv[simp]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_domain_list and (\<lambda>s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace> schedule \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (simp add: schedule_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_domain_list and (\<lambda>s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace> do ct <- gets cur_thread;
+ct_st <- get_thread_state ct;
+gets scheduler_action >>= case_scheduler_action (do id <- gets idle_thread;
+assert (runnable ct_st \<or> ct = id)
+od) (\<lambda>candidate. do y <- when (runnable ct_st) (tcb_sched_action tcb_sched_enqueue ct);
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority candidate;
+ct_prio <- ethread_get_when (ct \<noteq> it) tcb_priority ct;
+fastfail <- schedule_switch_thread_fastfail ct it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do y <- tcb_sched_action tcb_sched_enqueue candidate;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable ct_st \<and> ct_prio = target_prio then do y <- tcb_sched_action tcb_sched_append candidate;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to candidate;
+set_scheduler_action resume_cur_thread
+od
+od) (do y <- when (runnable ct_st) (tcb_sched_action tcb_sched_enqueue ct);
+schedule_choose_new_thread
+od)
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (wp|wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>ct ct_st rv x2 y it target_prio ct_prio. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'31 ct ct_st rv x2 y it target_prio ct_prio\<rbrace> schedule_switch_thread_fastfail ct it ct_prio target_prio \<lbrace>\<lambda>fastfail s. (fastfail \<and> \<not> is_highest_prio (cur_domain s) target_prio s \<longrightarrow> valid_domain_list s) \<and> (\<not> (fastfail \<and> \<not> is_highest_prio (cur_domain s) target_prio s) \<longrightarrow> (runnable ct_st \<and> ct_prio = target_prio \<longrightarrow> valid_domain_list s) \<and> (\<not> (runnable ct_st \<and> ct_prio = target_prio) \<longrightarrow> 0 < domain_time s))\<rbrace>
+ 2. \<And>ct ct_st rv x2 y it target_prio. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'30 ct ct_st rv x2 y it target_prio\<rbrace> ethread_get_when (ct \<noteq> it) tcb_priority ct \<lbrace>?Q'31 ct ct_st rv x2 y it target_prio\<rbrace>
+ 3. \<And>ct ct_st rv x2 y it. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'29 ct ct_st rv x2 y it\<rbrace> ethread_get tcb_priority x2 \<lbrace>?Q'30 ct ct_st rv x2 y it\<rbrace>
+ 4. \<And>ct ct_st rv x2 y. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'28 ct ct_st rv x2 y\<rbrace> gets idle_thread \<lbrace>?Q'29 ct ct_st rv x2 y\<rbrace>
+ 5. \<And>ct ct_st rv x2. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?R17 ct ct_st rv x2\<rbrace> when (runnable ct_st) (tcb_sched_action tcb_sched_enqueue ct) \<lbrace>?Q'28 ct ct_st rv x2\<rbrace>
+ 6. \<And>ct ct_st rv. rv = choose_new_thread \<Longrightarrow> \<lbrace>?R15 ct ct_st rv\<rbrace> do y <- when (runnable ct_st) (tcb_sched_action tcb_sched_enqueue ct);
+schedule_choose_new_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 7. \<And>ct ct_st. \<lbrace>?Q'8 ct ct_st\<rbrace> gets scheduler_action \<lbrace>\<lambda>rv s. (rv = resume_cur_thread \<longrightarrow> runnable ct_st \<or> ct = idle_thread s \<longrightarrow> 0 < domain_time s) \<and> (\<forall>x. rv = switch_thread x \<longrightarrow> ?R17 ct ct_st rv x s) \<and> (rv = choose_new_thread \<longrightarrow> ?R15 ct ct_st rv s)\<rbrace>
+ 8. \<And>ct. \<lbrace>?Q'7 ct\<rbrace> get_thread_state ct \<lbrace>?Q'8 ct\<rbrace>
+ 9. \<lbrace>?Q6\<rbrace> gets cur_thread \<lbrace>?Q'7\<rbrace>
+ 10. \<And>s. (valid_domain_list and (\<lambda>s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)) s \<Longrightarrow> ?Q6 s<\STATESEP>apply (wp hoare_drop_imp)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>ct ct_st rv x2 y it target_prio. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'30 ct ct_st rv x2 y it target_prio\<rbrace> ethread_get_when (ct \<noteq> it) tcb_priority ct \<lbrace>\<lambda>ct_prio s. valid_domain_list s \<and> valid_domain_list s \<and> 0 < domain_time s\<rbrace>
+ 2. \<And>ct ct_st rv x2 y it. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'29 ct ct_st rv x2 y it\<rbrace> ethread_get tcb_priority x2 \<lbrace>?Q'30 ct ct_st rv x2 y it\<rbrace>
+ 3. \<And>ct ct_st rv x2 y. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?Q'28 ct ct_st rv x2 y\<rbrace> gets idle_thread \<lbrace>?Q'29 ct ct_st rv x2 y\<rbrace>
+ 4. \<And>ct ct_st rv x2. rv = switch_thread x2 \<Longrightarrow> \<lbrace>?R17 ct ct_st rv x2\<rbrace> when (runnable ct_st) (tcb_sched_action tcb_sched_enqueue ct) \<lbrace>?Q'28 ct ct_st rv x2\<rbrace>
+ 5. \<And>ct ct_st rv. rv = choose_new_thread \<Longrightarrow> \<lbrace>?R15 ct ct_st rv\<rbrace> do y <- when (runnable ct_st) (tcb_sched_action tcb_sched_enqueue ct);
+schedule_choose_new_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 6. \<And>ct ct_st. \<lbrace>?Q'8 ct ct_st\<rbrace> gets scheduler_action \<lbrace>\<lambda>rv s. (rv = resume_cur_thread \<longrightarrow> runnable ct_st \<or> ct = idle_thread s \<longrightarrow> 0 < domain_time s) \<and> (\<forall>x. rv = switch_thread x \<longrightarrow> ?R17 ct ct_st rv x s) \<and> (rv = choose_new_thread \<longrightarrow> ?R15 ct ct_st rv s)\<rbrace>
+ 7. \<And>ct. \<lbrace>?Q'7 ct\<rbrace> get_thread_state ct \<lbrace>?Q'8 ct\<rbrace>
+ 8. \<lbrace>?Q6\<rbrace> gets cur_thread \<lbrace>?Q'7\<rbrace>
+ 9. \<And>s. (valid_domain_list and (\<lambda>s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)) s \<Longrightarrow> ?Q6 s<\STATESEP>apply (wpsimp wp: gts_wp ethread_get_inv)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s st. \<lbrakk>valid_domain_list s; domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread; st_tcb_at ((=) st) (cur_thread s) s\<rbrakk> \<Longrightarrow> (scheduler_action s = resume_cur_thread \<longrightarrow> (runnable st \<longrightarrow> 0 < domain_time s) \<and> (cur_thread s = idle_thread s \<longrightarrow> 0 < domain_time s)) \<and> ((\<exists>x. scheduler_action s = switch_thread x) \<longrightarrow> 0 < domain_time s)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma reschedule_required_choose_new_thread[wp]:
+  "\<lbrace> \<top> \<rbrace> reschedule_required
+   \<lbrace>\<lambda>x s. scheduler_action s = choose_new_thread\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> reschedule_required \<lbrace>\<lambda>x s. scheduler_action s = choose_new_thread\<rbrace><\STATESEP>unfolding reschedule_required_def set_scheduler_action_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do action <- gets scheduler_action;
+case action of switch_thread t \<Rightarrow> tcb_sched_action tcb_sched_enqueue t | _ \<Rightarrow> return ();
+modify (scheduler_action_update (\<lambda>_. choose_new_thread))
+od \<lbrace>\<lambda>x s. scheduler_action s = choose_new_thread\<rbrace><\STATESEP>by (wp hoare_vcg_imp_lift | simp | wpc)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma reschedule_required_valid_domain_time:
+  "\<lbrace> \<top> \<rbrace> reschedule_required
+   \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> reschedule_required \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>by (wpsimp wp: hoare_drop_imp reschedule_required_choose_new_thread)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_false_imp:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. \<not> R r s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. R r s \<longrightarrow> Q r s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. \<not> R r s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. R r s \<longrightarrow> Q r s\<rbrace><\STATESEP>by (auto simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>context DetSchedDomainTime_AI_2 begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma call_kernel_domain_time_inv_det_ext:
+  "\<lbrace> (\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) \<rbrace>
+   (call_kernel e) :: (unit,det_ext) s_monad
+   \<lbrace>\<lambda>_ s. 0 < domain_time s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> call_kernel e \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>unfolding call_kernel_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (case_tac "e = Interrupt")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. e = Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. e = Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace> do y <- liftE (do_machine_op (getActiveIRQ False) >>= case_option (return ()) handle_interrupt);
+y <- schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. e = Interrupt \<Longrightarrow> \<lbrace>?Q3\<rbrace> do y <- liftE (do_machine_op (getActiveIRQ False) >>= case_option (return ()) handle_interrupt);
+y <- schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. \<And>s. \<lbrakk>e = Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list) s\<rbrakk> \<Longrightarrow> ?Q3 s
+ 3. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply ((wp schedule_domain_time_left handle_interrupt_valid_domain_time
+           | wpc | simp)+)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. e = Interrupt \<Longrightarrow> \<lbrace>?Q3\<rbrace> do_machine_op (getActiveIRQ False) \<lbrace>\<lambda>rv s. (rv = None \<longrightarrow> valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)) \<and> ((\<exists>x. rv = Some x) \<longrightarrow> valid_domain_list s \<and> 0 < domain_time s)\<rbrace>
+ 2. \<And>s. \<lbrakk>e = Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list) s\<rbrakk> \<Longrightarrow> ?Q3 s
+ 3. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (rule_tac Q="\<lambda>_ s. 0 < domain_time s \<and> valid_domain_list s" in hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. e = Interrupt \<Longrightarrow> \<lbrace>?Q3\<rbrace> do_machine_op (getActiveIRQ False) \<lbrace>\<lambda>_ s. 0 < domain_time s \<and> valid_domain_list s\<rbrace>
+ 2. \<And>rv s. \<lbrakk>e = Interrupt; 0 < domain_time s \<and> valid_domain_list s\<rbrakk> \<Longrightarrow> (rv = None \<longrightarrow> valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)) \<and> ((\<exists>x. rv = Some x) \<longrightarrow> valid_domain_list s \<and> 0 < domain_time s)
+ 3. \<And>s. \<lbrakk>e = Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list) s\<rbrakk> \<Longrightarrow> ?Q3 s
+ 4. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv s. \<lbrakk>e = Interrupt; 0 < domain_time s \<and> valid_domain_list s\<rbrakk> \<Longrightarrow> (rv = None \<longrightarrow> valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)) \<and> ((\<exists>x. rv = Some x) \<longrightarrow> valid_domain_list s \<and> 0 < domain_time s)
+ 2. \<And>s. \<lbrakk>e = Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list) s\<rbrakk> \<Longrightarrow> 0 < domain_time s \<and> valid_domain_list s
+ 3. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>(\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)\<rbrace> do handle_event e <handle> (\<lambda>_. without_preemption $ do irq <- do_machine_op $ getActiveIRQ True;
+when (irq \<noteq> None) $ handle_interrupt (the irq)
+od);
+schedule;
+activate_thread
+od \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace><\STATESEP>apply (wp schedule_domain_time_left without_preemption_wp handle_interrupt_valid_domain_time)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?P'73 x\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>\<lambda>irq. if irq \<noteq> None then \<lambda>s. valid_domain_list s \<and> 0 < domain_time s else (\<lambda>s. valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread))\<rbrace>
+ 2. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?Q58\<rbrace> handle_event e \<lbrace>\<lambda>rv s. valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace>, \<lbrace>\<lambda>x s. True \<and> True \<and> ?P'73 x s\<rbrace>
+ 3. \<And>s. \<lbrakk>e \<noteq> Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)) s\<rbrakk> \<Longrightarrow> ?Q58 s<\STATESEP>apply (rule_tac Q="\<lambda>_ s. 0 < domain_time s \<and> valid_domain_list s" in hoare_post_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x rv s. \<lbrakk>e \<noteq> Interrupt; 0 < domain_time s \<and> valid_domain_list s\<rbrakk> \<Longrightarrow> (if rv \<noteq> None then \<lambda>s. valid_domain_list s \<and> 0 < domain_time s else (\<lambda>s. valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread))) s
+ 2. \<And>x. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?P'73 x\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>\<lambda>_ s. 0 < domain_time s \<and> valid_domain_list s\<rbrace>
+ 3. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?Q58\<rbrace> handle_event e \<lbrace>\<lambda>rv s. valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace>, \<lbrace>\<lambda>x s. True \<and> True \<and> ?P'73 x s\<rbrace>
+ 4. \<And>s. \<lbrakk>e \<noteq> Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)) s\<rbrakk> \<Longrightarrow> ?Q58 s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?P'73 x\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>\<lambda>_ s. 0 < domain_time s \<and> valid_domain_list s\<rbrace>
+ 2. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?Q58\<rbrace> handle_event e \<lbrace>\<lambda>rv s. valid_domain_list s \<and> (domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace>, \<lbrace>\<lambda>x s. True \<and> True \<and> ?P'73 x s\<rbrace>
+ 3. \<And>s. \<lbrakk>e \<noteq> Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)) s\<rbrakk> \<Longrightarrow> ?Q58 s<\STATESEP>apply (wp handle_event_domain_time_inv)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?P'114\<rbrace> handle_event e \<lbrace>\<lambda>rv s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>, -
+ 2. \<And>s. \<lbrakk>e \<noteq> Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)) s\<rbrakk> \<Longrightarrow> (True \<and> e \<noteq> Interrupt) \<and> (True \<and> e \<noteq> Interrupt) \<and> (0 < domain_time s \<and> e \<noteq> Interrupt) \<and> valid_domain_list s \<and> valid_domain_list s \<and> ?P'114 s<\STATESEP>apply (rule_tac Q'="\<lambda>_ s. 0 < domain_time s" in hoare_strengthen_postE_R)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. e \<noteq> Interrupt \<Longrightarrow> \<lbrace>?P'114\<rbrace> handle_event e \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>, -
+ 2. \<And>rv s. \<lbrakk>e \<noteq> Interrupt; 0 < domain_time s\<rbrakk> \<Longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread
+ 3. \<And>s. \<lbrakk>e \<noteq> Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)) s\<rbrakk> \<Longrightarrow> (True \<and> e \<noteq> Interrupt) \<and> (True \<and> e \<noteq> Interrupt) \<and> (0 < domain_time s \<and> e \<noteq> Interrupt) \<and> valid_domain_list s \<and> valid_domain_list s \<and> ?P'114 s<\STATESEP>apply (wp handle_event_domain_time_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. \<lbrakk>e \<noteq> Interrupt; 0 < domain_time s\<rbrakk> \<Longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread
+ 2. \<And>s. \<lbrakk>e \<noteq> Interrupt; ((\<lambda>s. 0 < domain_time s) and valid_domain_list and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)) s\<rbrakk> \<Longrightarrow> (True \<and> e \<noteq> Interrupt) \<and> (True \<and> e \<noteq> Interrupt) \<and> (0 < domain_time s \<and> e \<noteq> Interrupt) \<and> valid_domain_list s \<and> valid_domain_list s \<and> 0 < domain_time s \<and> e \<noteq> Interrupt<\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

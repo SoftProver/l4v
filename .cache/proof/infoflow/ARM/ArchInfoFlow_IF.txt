@@ -1,0 +1,218 @@
+<\STATESEP>theory ArchInfoFlow_IF
+imports InfoFlow_IF
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems InfoFlow_IF_assms<\STATESEP>0<\TRANSEP><\STATESEP>lemma asid_pool_at_kheap:
+  "asid_pool_at ptr s = (\<exists>asid_pool. kheap s ptr = Some (ArchObj (ASIDPool asid_pool)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. typ_at (AArch AASIDPool) ptr s = (\<exists>asid_pool. kheap s ptr = Some (ArchObj (ASIDPool asid_pool)))<\STATESEP>by (simp add: atyp_at_eq_kheap_obj)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asid:
+  "equiv_asid asid s s' = equiv_asid' asid (arm_asid_table (arch_state s) (asid_high_bits_of asid))
+                                           (arm_asid_table (arch_state s') (asid_high_bits_of asid))
+                                           (kheap s) (kheap s')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_asid asid s s' = equiv_asid' asid (asid_table s (asid_high_bits_of asid)) (asid_table s' (asid_high_bits_of asid)) (kheap s) (kheap s')<\STATESEP>by (auto simp: equiv_asid_def equiv_asid'_def asid_pool_at_kheap split: option.splits )<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_refl[InfoFlow_IF_assms]:
+  "equiv_asids R s s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_asids R s s<\STATESEP>by (auto simp: equiv_asids_def equiv_asid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_sym[InfoFlow_IF_assms]:
+  "equiv_asids R s t \<Longrightarrow> equiv_asids R t s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_asids R s t \<Longrightarrow> equiv_asids R t s<\STATESEP>by (auto simp: equiv_asids_def equiv_asid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_trans[InfoFlow_IF_assms]:
+  "\<lbrakk> equiv_asids R s t; equiv_asids R t u \<rbrakk> \<Longrightarrow> equiv_asids R s u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_asids R s t; equiv_asids R t u\<rbrakk> \<Longrightarrow> equiv_asids R s u<\STATESEP>by (fastforce simp: equiv_asids_def equiv_asid_def asid_pool_at_kheap)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_non_asid_pool_kheap_update[InfoFlow_IF_assms]:
+  "\<lbrakk> equiv_asids R s s'; non_asid_pool_kheap_update s kh; non_asid_pool_kheap_update s' kh' \<rbrakk>
+     \<Longrightarrow> equiv_asids R (s\<lparr>kheap := kh\<rparr>) (s'\<lparr>kheap := kh'\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_asids R s s'; non_asid_pool_kheap_update s kh; non_asid_pool_kheap_update s' kh'\<rbrakk> \<Longrightarrow> equiv_asids R (s\<lparr>kheap := kh\<rparr>) (s'\<lparr>kheap := kh'\<rparr>)<\STATESEP>apply (clarsimp simp: equiv_asids_def equiv_asid non_asid_pool_kheap_update_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>asid. \<lbrakk>\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> equiv_asid' asid (asid_table s (asid_high_bits_of asid)) (asid_table s' (asid_high_bits_of asid)) (kheap s) (kheap s'); \<forall>x. (\<exists>asid_pool. kheap s x = Some (ArchObj (ASIDPool asid_pool)) \<or> kh x = Some (ArchObj (ASIDPool asid_pool))) \<longrightarrow> kheap s x = kh x; \<forall>x. (\<exists>asid_pool. kheap s' x = Some (ArchObj (ASIDPool asid_pool)) \<or> kh' x = Some (ArchObj (ASIDPool asid_pool))) \<longrightarrow> kheap s' x = kh' x; asid \<noteq> 0; R asid\<rbrakk> \<Longrightarrow> equiv_asid' asid (asid_table s (asid_high_bits_of asid)) (asid_table s' (asid_high_bits_of asid)) kh kh'<\STATESEP>apply (fastforce simp: equiv_asid'_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_identical_kheap_updates[InfoFlow_IF_assms]:
+  "\<lbrakk> equiv_asids R s s'; identical_kheap_updates s s' kh kh' \<rbrakk>
+     \<Longrightarrow> equiv_asids R (s\<lparr>kheap := kh\<rparr>) (s'\<lparr>kheap := kh'\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_asids R s s'; identical_kheap_updates s s' kh kh'\<rbrakk> \<Longrightarrow> equiv_asids R (s\<lparr>kheap := kh\<rparr>) (s'\<lparr>kheap := kh'\<rparr>)<\STATESEP>apply (clarsimp simp: equiv_asids_def equiv_asid_def identical_kheap_updates_def asid_pool_at_kheap)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>asid pool_ptr. \<lbrakk>\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table s (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table s (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> (\<exists>asid_pool. kheap s pool_ptr = Some (ArchObj (ASIDPool asid_pool))) = (\<exists>asid_pool. kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool))) \<and> (\<forall>asid_pool asid_pool'. kheap s pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))); \<forall>x. kh x \<noteq> kh' x \<longrightarrow> kheap s x = kh x \<and> kheap s' x = kh' x; asid \<noteq> 0; R asid; asid_table s' (asid_high_bits_of asid) = Some pool_ptr\<rbrakk> \<Longrightarrow> (\<exists>asid_pool. kh pool_ptr = Some (ArchObj (ASIDPool asid_pool))) = (\<exists>asid_pool. kh' pool_ptr = Some (ArchObj (ASIDPool asid_pool))) \<and> (\<forall>asid_pool asid_pool'. kh pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kh' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))<\STATESEP>apply (case_tac "kh pool_ptr = kh' pool_ptr"; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_trivial[InfoFlow_IF_assms]:
+  "(\<And>x. P x \<Longrightarrow> False) \<Longrightarrow> equiv_asids P x y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. P x \<Longrightarrow> False) \<Longrightarrow> equiv_asids P x y<\STATESEP>by (auto simp: equiv_asids_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_triv':
+  "\<lbrakk> equiv_asids R s s'; kheap t = kheap s; kheap t' = kheap s';
+     arm_asid_table (arch_state t) = arm_asid_table (arch_state s);
+     arm_asid_table (arch_state t') = arm_asid_table (arch_state s') \<rbrakk>
+     \<Longrightarrow> equiv_asids R t t'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_asids R s s'; kheap t = kheap s; kheap t' = kheap s'; asid_table t = asid_table s; asid_table t' = asid_table s'\<rbrakk> \<Longrightarrow> equiv_asids R t t'<\STATESEP>by (fastforce simp: equiv_asids_def equiv_asid equiv_asid'_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_triv[InfoFlow_IF_assms]:
+  "\<lbrakk> equiv_asids R s s'; kheap t = kheap s; kheap t' = kheap s';
+     arch_state t = arch_state s; arch_state t' = arch_state s' \<rbrakk>
+     \<Longrightarrow> equiv_asids R t t'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_asids R s s'; kheap t = kheap s; kheap t' = kheap s'; arch_state t = arch_state s; arch_state t' = arch_state s'\<rbrakk> \<Longrightarrow> equiv_asids R t t'<\STATESEP>by (fastforce simp: equiv_asids_triv')<\STATESEP>1<\TRANSEP><\STATESEP>lemma globals_equiv_refl[InfoFlow_IF_assms]:
+  "globals_equiv s s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. globals_equiv s s<\STATESEP>by (simp add: globals_equiv_def idle_equiv_refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma globals_equiv_sym[InfoFlow_IF_assms]:
+  "globals_equiv s t \<Longrightarrow> globals_equiv t s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. globals_equiv s t \<Longrightarrow> globals_equiv t s<\STATESEP>by (auto simp: globals_equiv_def idle_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma globals_equiv_trans[InfoFlow_IF_assms]:
+  "\<lbrakk> globals_equiv s t; globals_equiv t u \<rbrakk> \<Longrightarrow> globals_equiv s u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>globals_equiv s t; globals_equiv t u\<rbrakk> \<Longrightarrow> globals_equiv s u<\STATESEP>unfolding globals_equiv_def arch_globals_equiv_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(arm_global_pd (arch_state s) = arm_global_pd (arch_state t) \<and> kheap s (arm_global_pd (arch_state s)) = kheap t (arm_global_pd (arch_state s)) \<and> (cur_thread s \<noteq> idle_thread s \<longrightarrow> exclusive_state (machine_state s) = exclusive_state (machine_state t))) \<and> idle_equiv s t \<and> cur_thread s = cur_thread t \<and> dom (device_state (machine_state s)) = dom (device_state (machine_state t)); (arm_global_pd (arch_state t) = arm_global_pd (arch_state u) \<and> kheap t (arm_global_pd (arch_state t)) = kheap u (arm_global_pd (arch_state t)) \<and> (cur_thread t \<noteq> idle_thread t \<longrightarrow> exclusive_state (machine_state t) = exclusive_state (machine_state u))) \<and> idle_equiv t u \<and> cur_thread t = cur_thread u \<and> dom (device_state (machine_state t)) = dom (device_state (machine_state u))\<rbrakk> \<Longrightarrow> (arm_global_pd (arch_state s) = arm_global_pd (arch_state u) \<and> kheap s (arm_global_pd (arch_state s)) = kheap u (arm_global_pd (arch_state s)) \<and> (cur_thread s \<noteq> idle_thread s \<longrightarrow> exclusive_state (machine_state s) = exclusive_state (machine_state u))) \<and> idle_equiv s u \<and> cur_thread s = cur_thread u \<and> dom (device_state (machine_state s)) = dom (device_state (machine_state u))<\STATESEP>by clarsimp (metis idle_equiv_trans idle_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asids_guard_imp[InfoFlow_IF_assms]:
+  "\<lbrakk> equiv_asids R s s'; \<And>x. Q x \<Longrightarrow> R x \<rbrakk> \<Longrightarrow> equiv_asids Q s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_asids R s s'; \<And>x. Q x \<Longrightarrow> R x\<rbrakk> \<Longrightarrow> equiv_asids Q s s'<\STATESEP>by (auto simp: equiv_asids_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_loadWord_rev[InfoFlow_IF_assms]:
+  "reads_equiv_valid_inv A aag (K (for_each_byte_of_word (aag_can_read aag) p))
+                               (do_machine_op (loadWord p))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. reads_equiv_valid_inv A aag (K (for_each_byte_of_word (aag_can_read aag) p)) (do_machine_op (loadWord p))<\STATESEP>apply (rule gen_asm_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> reads_equiv_valid_inv A aag (\<lambda>_. True) (do_machine_op (loadWord p))<\STATESEP>apply (rule use_spec_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> reads_spec_equiv_valid_inv st A aag (\<lambda>_. True) (do_machine_op (loadWord p))<\STATESEP>apply (rule spec_equiv_valid_hoist_guard)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>st. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> reads_spec_equiv_valid_inv st A aag (\<lambda>_. True) (do_machine_op (loadWord p))<\STATESEP>apply (rule do_machine_op_spec_rev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> spec_equiv_valid_inv (machine_state st) (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>_. True) (loadWord p)
+ 2. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (simp add: loadWord_def equiv_valid_def2 spec_equiv_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_2 (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>_ _. True) (=) ((=) (machine_state st)) (\<lambda>_. True) (do m <- gets underlying_memory;
+y <- assert (p && mask 2 = 0);
+return (word_rcat [m (p + 3), m (p + 2), m (p + 1), m p])
+od) (do m <- gets underlying_memory;
+y <- assert (p && mask 2 = 0);
+return (word_rcat [m (p + 3), m (p + 2), m (p + 1), m p])
+od)
+ 2. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (rule_tac R'="\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p" and Q="\<top>\<top>" and Q'="\<top>\<top>"
+               and P="\<top>" and P'="\<top>" in equiv_valid_2_bind_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> equiv_valid_2 (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>_. True) (\<lambda>_. True) (do y <- assert (p && mask 2 = 0);
+return (word_rcat [rv (p + 3), rv (p + 2), rv (p + 1), rv p])
+od) (do y <- assert (p && mask 2 = 0);
+return (word_rcat [rv' (p + 3), rv' (p + 2), rv' (p + 1), rv' p])
+od)
+ 2. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 3. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 4. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 5. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 6. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 7. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (rule_tac R'="(=)" and Q="\<lambda>r s. p && mask 2 = 0" and Q'="\<lambda>r s. p && mask 2 = 0"
+                    and P="\<top>" and P'="\<top>" in equiv_valid_2_bind_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. \<And>st rv rv' rva rv'a. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; rva = rv'a\<rbrakk> \<Longrightarrow> equiv_valid_2 (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>s. p && mask 2 = 0) (\<lambda>s. p && mask 2 = 0) (return (word_rcat [rv (p + 3), rv (p + 2), rv (p + 1), rv p])) (return (word_rcat [rv' (p + 3), rv' (p + 2), rv' (p + 1), rv' p]))
+ 2. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (=) (\<lambda>_. True) (assert (p && mask 2 = 0))
+ 3. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 4. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S'11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 5. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S11 st rv rv' s
+ 6. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'11 st rv rv' s
+ 7. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 8. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 9. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 10. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+A total of 12 subgoals...<\STATESEP>apply (rule return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. \<And>st rv rv' rva rv'a s t. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; rva = rv'a; p && mask 2 = 0; p && mask 2 = 0; equiv_machine_state (aag_can_read aag) s t; True\<rbrakk> \<Longrightarrow> word_rcat [rv (p + 3), rv (p + 2), rv (p + 1), rv p] = word_rcat [rv' (p + 3), rv' (p + 2), rv' (p + 1), rv' p]
+ 2. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (=) (\<lambda>_. True) (assert (p && mask 2 = 0))
+ 3. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 4. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S'11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 5. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S11 st rv rv' s
+ 6. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'11 st rv rv' s
+ 7. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 8. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 9. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 10. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+A total of 12 subgoals...<\STATESEP>apply (rule_tac f="word_rcat" in arg_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. \<And>st rv rv' rva rv'a s t. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; rva = rv'a; p && mask 2 = 0; p && mask 2 = 0; equiv_machine_state (aag_can_read aag) s t; True\<rbrakk> \<Longrightarrow> [rv (p + 3), rv (p + 2), rv (p + 1), rv p] = [rv' (p + 3), rv' (p + 2), rv' (p + 1), rv' p]
+ 2. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (=) (\<lambda>_. True) (assert (p && mask 2 = 0))
+ 3. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 4. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S'11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 5. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S11 st rv rv' s
+ 6. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'11 st rv rv' s
+ 7. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 8. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 9. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 10. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+A total of 12 subgoals...<\STATESEP>apply (fastforce intro: is_aligned_no_wrap' word_plus_mono_right
+                               simp: is_aligned_mask for_each_byte_of_word_def word_size_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (=) (\<lambda>_. True) (assert (p && mask 2 = 0))
+ 2. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 3. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S'11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 4. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S11 st rv rv' s
+ 5. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'11 st rv rv' s
+ 6. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 7. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 8. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 9. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 10. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+A total of 11 subgoals...<\STATESEP>apply (rule assert_ev2[OF refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 2. \<And>st rv rv'. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p\<rbrakk> \<Longrightarrow> \<lbrace>?S'11 st rv rv'\<rbrace> assert (p && mask 2 = 0) \<lbrace>\<lambda>r s. p && mask 2 = 0\<rbrace>
+ 3. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S11 st rv rv' s
+ 4. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'11 st rv rv' s
+ 5. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 6. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 7. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 8. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 9. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 10. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (rule assert_wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> (p && mask 2 = 0 \<longrightarrow> p && mask 2 = 0)
+ 2. \<And>st rv rv' s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; for_each_byte_of_word (\<lambda>y. rv y = rv' y) p; True\<rbrakk> \<Longrightarrow> True \<and> (p && mask 2 = 0 \<longrightarrow> p && mask 2 = 0)
+ 3. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 4. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 5. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 6. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 7. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 8. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> equiv_valid_rv_inv (equiv_machine_state (aag_can_read aag)) (\<lambda>_ _. True) (\<lambda>rv rv'. for_each_byte_of_word (\<lambda>y. rv y = rv' y) p) (\<lambda>_. True) (gets underlying_memory)
+ 2. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 3. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 4. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 5. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 6. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (clarsimp simp: equiv_valid_2_def in_monad for_each_byte_of_word_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s t y. \<lbrakk>\<forall>y\<in>{p..p + (word_size - 1)}. aag_can_read aag y; equiv_for (aag_can_read aag) underlying_memory s t; equiv_for (aag_can_read aag) device_state s t; p \<le> y; y \<le> p + (word_size - 1)\<rbrakk> \<Longrightarrow> underlying_memory s y = underlying_memory t y
+ 2. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 3. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 4. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 5. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 6. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (erule equiv_forD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s t y. \<lbrakk>\<forall>y\<in>{p..p + (word_size - 1)}. aag_can_read aag y; equiv_for (aag_can_read aag) device_state s t; p \<le> y; y \<le> p + (word_size - 1)\<rbrakk> \<Longrightarrow> aag_can_read aag y
+ 2. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 3. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 4. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 5. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 6. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 2. \<And>st. for_each_byte_of_word (aag_can_read aag) p \<Longrightarrow> \<lbrace>?S'9 st\<rbrace> gets underlying_memory \<lbrace>\<lambda>_ _. True\<rbrace>
+ 3. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; machine_state st = s\<rbrakk> \<Longrightarrow> True \<and> ?S9 st s
+ 4. \<And>st s. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> True \<and> ?S'9 st s
+ 5. \<And>st P. \<lbrakk>for_each_byte_of_word (aag_can_read aag) p; True\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> loadWord p \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (wp wp_post_taut loadWord_inv | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation InfoFlow_IF_1?: InfoFlow_IF_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. InfoFlow_IF_1 aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. InfoFlow_IF_1 aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. InfoFlow_IF_1 aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. InfoFlow_IF_1 aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. InfoFlow_IF_1 aag<\STATESEP>by (unfold_locales; (fact InfoFlow_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+InfoFlow_IF_1 aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

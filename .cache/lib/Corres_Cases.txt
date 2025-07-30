@@ -1,0 +1,239 @@
+<\STATESEP>theory Corres_Cases
+imports Corres_UL
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Helper functions and definitions\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun get_split_rule ctxt target =
+let
+  val (hdTarget, args) = strip_comb (Envir.eta_contract target)
+  val (constNm, _) = dest_Const hdTarget
+  val constNm_fds = String.fields (fn c => c = #".") constNm
+
+  val _ = if String.isPrefix "case_" (List.last constNm_fds) then ()
+          else raise TERM ("Not a case statement", [target])
+
+  val typeNm = (String.concatWith "." o rev o tl o rev) constNm_fds
+  val split = Proof_Context.get_thm ctxt (typeNm ^ ".split")
+  val vars = Term.add_vars (Thm.prop_of split) []
+
+  val datatype_name = List.nth (rev constNm_fds, 1)
+
+  fun T_is_datatype (Type (nm, _)) = (Long_Name.base_name nm = Long_Name.base_name datatype_name)
+    | T_is_datatype _ = false
+
+  val datatype_var =
+    case find_first (fn ((_, _), T') => T_is_datatype T') vars of
+      SOME (ix, _) => ix
+    | NONE => error ("Couldn't find datatype in thm: " ^ datatype_name)
+
+  val split' = Drule.infer_instantiate ctxt
+                                       [(datatype_var, Thm.cterm_of ctxt (List.last args))] split
+
+in SOME split' end
+handle TERM _ => NONE;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>attribute_setup get_split_rule = \<open>Args.term >>
+  (fn t => Thm.rule_attribute [] (fn context => fn _ =>
+      case get_split_rule (Context.proof_of context) t of
+        SOME thm => thm
+      | NONE => Drule.free_dummy_thm))\<close><\STATESEP>0<\TRANSEP><\STATESEP>method apply_split for f :: 'a and R :: "'a \<Rightarrow> bool" =
+    (match [[get_split_rule f]] in U: "(?x :: bool) = ?y" \<Rightarrow>
+      \<open>match U[THEN iffD2] in U': "\<And>H. ?A \<Longrightarrow> H (?z :: 'c)" \<Rightarrow>
+        \<open>match (R) in "R' :: 'c \<Rightarrow> bool" for R' \<Rightarrow>
+          \<open>rule U'[where H=R']\<close>\<close>\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>context
+begin<\STATESEP>0<\TRANSEP><\STATESEP>(* This predicate provides an abstraction for guard/precondition terms for transformations
+   on those guards.
+
+   P and P' are the abstract and concrete preconditions before the transformation
+   Q and Q' are the abstract and concrete preconditions after the transformation
+
+   R is the predicate to be transformed.
+*)
+private<\STATESEP>0<\TRANSEP><\STATESEP>definition corres_case_helper ::
+  "(('a \<Rightarrow> bool) \<times> ('b \<Rightarrow> bool)) \<Rightarrow> (('a \<Rightarrow> bool) \<times> ('b \<Rightarrow> bool)) \<Rightarrow> bool \<Rightarrow> bool" where
+  "corres_case_helper \<equiv> \<lambda>(P, P') (Q, Q') R. (\<forall>s. P s \<longrightarrow> Q s) \<longrightarrow>  (\<forall>s. P' s \<longrightarrow> Q' s) \<longrightarrow> R"<\STATESEP>0<\TRANSEP><\STATESEP>(* The following lemmas enable us to lift preconditions of corres_case_helper over conjunction,
+   universal quantifiers, and implication. Note that there are strong versions for forall/implies
+   where both guards are treated uniformly, and weak versions, where forall/implies is dropped
+   in one guard, but not the other.
+
+   The collection of the lemmas below is used to process the term R in corres_case_helper and
+   create appropriately lifted guard/preconditions during that procedure. The names and general
+   idea are from the WPC theory.
+*)
+
+private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_helperI:
+  "corres_case_helper (P, P') (P, P') R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_case_helper (P, P') (P, P') R \<Longrightarrow> R<\STATESEP>by (simp add: corres_case_helper_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_conj_process:
+  "\<lbrakk> corres_case_helper (P, P') (A, A') R; corres_case_helper (P, P') (B, B') S \<rbrakk>
+   \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. A s \<and> B s, \<lambda>s. A' s \<and> B' s) (R \<and> S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>corres_case_helper (P, P') (A, A') R; corres_case_helper (P, P') (B, B') S\<rbrakk> \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. A s \<and> B s, \<lambda>s. A' s \<and> B' s) (R \<and> S)<\STATESEP>by (clarsimp simp add: corres_case_helper_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_all_process:
+  "\<lbrakk> \<And>x. corres_case_helper (P, P') (Q x, Q' x) (R x) \<rbrakk>
+   \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. \<forall>x. Q x s, \<lambda>s. \<forall>x. Q' x s) (\<forall>x. R x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. corres_case_helper (P, P') (Q x, Q' x) (R x)) \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. \<forall>x. Q x s, \<lambda>s. \<forall>x. Q' x s) (\<forall>x. R x)<\STATESEP>by (clarsimp simp: corres_case_helper_def subset_iff)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_all_process_weak:
+  "\<lbrakk> \<And>x. corres_case_helper (P, P') (Q x, Q') (R x) \<rbrakk>
+   \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. \<forall>x. Q x s, Q') (\<forall>x. R x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. corres_case_helper (P, P') (Q x, Q') (R x)) \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. \<forall>x. Q x s, Q') (\<forall>x. R x)<\STATESEP>by (clarsimp simp: corres_case_helper_def subset_iff)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_imp_process:
+  "\<lbrakk> S \<Longrightarrow> corres_case_helper (P, P') (Q, Q') R \<rbrakk>
+   \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. S \<longrightarrow> Q s, \<lambda>s. S \<longrightarrow> Q' s) (S \<longrightarrow> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (S \<Longrightarrow> corres_case_helper (P, P') (Q, Q') R) \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. S \<longrightarrow> Q s, \<lambda>s. S \<longrightarrow> Q' s) (S \<longrightarrow> R)<\STATESEP>by (clarsimp simp add: corres_case_helper_def subset_iff)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_imp_process_weak:
+  "\<lbrakk> S \<Longrightarrow> corres_case_helper (P, P') (Q, Q') R \<rbrakk>
+   \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. S \<longrightarrow> Q s, Q') (S \<longrightarrow> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (S \<Longrightarrow> corres_case_helper (P, P') (Q, Q') R) \<Longrightarrow> corres_case_helper (P, P') (\<lambda>s. S \<longrightarrow> Q s, Q') (S \<longrightarrow> R)<\STATESEP>by (clarsimp simp add: corres_case_helper_def subset_iff)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_case_process =
+  corres_case_conj_process corres_case_all_process corres_case_imp_process<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_case_process_weak =
+  corres_case_conj_process corres_case_all_process_weak corres_case_imp_process_weak<\STATESEP>0<\TRANSEP><\STATESEP>(* Turn goals of the form
+
+   (\<forall>y. x = SomeConstr y \<longrightarrow> corres (?P x) P' (SomeConstr y) g) \<and>
+   (\<forall>y. x = OtherConstr y \<longrightarrow> corres (?P x) P' (OtherConstr y) g) \<and>
+   ...
+
+   into multiple goals of the form
+
+   \<And>y. x = SomeConstr y \<Longrightarrow> corres (?P1 x y) ?P'1 (SomeConstr y) g)
+   \<And>y. x = OtherConstr y \<Longrightarrow> corres (?P2 x y) ?P'2 (OtherConstr y) g)
+
+   with instantiations
+
+   ?P x = \<lambda>s. (\<forall>y. x = SomeConstr y \<longrightarrow> ?P1 x y s) \<and> (\<forall>y. x = OtherConstr y \<longrightarrow> ?P2 x y s)
+   ?P' = \<lambda>s. ?P'1 s \<and> ?P'2 s
+
+   We do this by first transforming the goal into a corres_case_helper goal, and then applying
+   the corresponding lifting rules. We first try to get both sides (?P and ?P') to have
+   quantifiers and implications to get a stronger statement, and fall back to the weaker \<and> for ?P'
+   shown above when that doesn't work (e.g. because ?P' might not depend on x).
+
+   When all lifting rules have applied, we transform the goal back into a corres goal using the
+   provided helper rule (e.g. corres_case_helper_corres_left below).
+*)
+private<\STATESEP>0<\TRANSEP><\STATESEP>method corres_cases_body uses helper =
+  determ \<open>rule corres_case_helperI, repeat_new \<open>rule corres_case_process\<close>; rule helper
+          | rule corres_case_helperI, repeat_new \<open>rule corres_case_process_weak\<close>; rule helper\<close><\STATESEP>0<\TRANSEP><\STATESEP>(* Instances of corres_case_helper for left and right side of the corres predicate.
+   These lemmas bind the corres guards to the corres_case_helper guards. *)
+private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_helper_corres_left:
+  "corres_underlying sr nf nf' r Q Q' f f' \<Longrightarrow>
+    corres_case_helper (P, P') (Q, Q') (corres_underlying sr nf nf' r P P' f f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' r Q Q' f f' \<Longrightarrow> corres_case_helper (P, P') (Q, Q') (corres_underlying sr nf nf' r P P' f f')<\STATESEP>by (auto simp: corres_case_helper_def elim!: corres_guard_imp)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_case_helper_corres_right:
+  "corres_underlying sr nf nf' r Q' Q f f' \<Longrightarrow>
+    corres_case_helper (P, P') (Q, Q') (corres_underlying sr nf nf' r P' P f f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' r Q' Q f f' \<Longrightarrow> corres_case_helper (P, P') (Q, Q') (corres_underlying sr nf nf' r P' P f f')<\STATESEP>by (auto simp: corres_case_helper_def elim!: corres_guard_imp)<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Main method definitions\<close><\STATESEP>0<\TRANSEP><\STATESEP>method corres_cases_left =
+  determ \<open>
+    corres_pre,
+    (match conclusion in
+      "corres_underlying sr nf nf' r P P' (f >>= g) f'" for sr nf nf' r P P' f g f'
+         \<Rightarrow> \<open>apply_split f "\<lambda>f. corres_underlying sr nf nf' r P P' (f >>= g) f'"\<close>
+     \<bar> "corres_underlying sr nf nf' r P P' (f >>=E g) f'" for sr nf nf' r P P' f g f'
+         \<Rightarrow> \<open>apply_split f "\<lambda>f. corres_underlying sr nf nf' r P P' (f >>=E g) f'"\<close>
+     \<bar>  "corres_underlying sr nf nf' r P P' f f'" for sr nf nf' r P P' f f'
+         \<Rightarrow> \<open>apply_split f "\<lambda>f. corres_underlying sr nf nf' r P P' f f'"\<close>),
+    corres_cases_body helper: corres_case_helper_corres_left\<close><\STATESEP>0<\TRANSEP><\STATESEP>method corres_cases_right =
+  determ \<open>
+    corres_pre,
+    (match conclusion in
+      "corres_underlying sr nf nf' r P P' f (f' >>= g)" for sr nf nf' r P P' f g f'
+         \<Rightarrow> \<open>apply_split f' "\<lambda>f'. corres_underlying sr nf nf' r P P' f (f' >>= g)"\<close>
+     \<bar> "corres_underlying sr nf nf' r P P' f (f' >>=E g)" for sr nf nf' r P P' f g f'
+         \<Rightarrow> \<open>apply_split f' "\<lambda>f'. corres_underlying sr nf nf' r P P' f (f' >>=E g)"\<close>
+     \<bar>  "corres_underlying sr nf nf' r P P' f f'" for sr nf nf' r P P' f f'
+         \<Rightarrow> \<open>apply_split f' "\<lambda>f'. corres_underlying sr nf nf' r P P' f f'"\<close>),
+     corres_cases_body helper: corres_case_helper_corres_right\<close><\STATESEP>0<\TRANSEP><\STATESEP>method corres_cases = corres_cases_left | corres_cases_right<\STATESEP>0<\TRANSEP><\STATESEP>method corres_cases_both uses simp =
+  (* corres_pre first, so that the ";" later only refers to corres goals, not the final implications *)
+  determ \<open>
+    corres_pre,
+    (corres_cases_left; corres_cases_right;
+     (solves \<open>rule corres_inst[where P=\<top> and P'=\<top>], simp add: simp\<close>)?)\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Examples and tests\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel (G x) G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel (G x) G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) m<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q38 ?Q'40 a m
+ 2. \<And>x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q39 x2) (?Q'41 x2) (b x2) m
+ 3. \<And>s s'. \<lbrakk>G x s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q38 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q39 xa s)
+ 4. \<And>s s'. \<lbrakk>G x s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q'40 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q'41 xa s')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>schematic_goal
+  "\<And>x. corres_underlying srel nf nf' rrel (?G x) ?G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. corres_underlying srel nf nf' rrel (?G x) ?G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) m<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q41 x) ?A'43 a m
+ 2. \<And>x x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q42 x x2) ?B'44 (b x2) m
+goal instantiation:
+?G \<leadsto> \<lambda>x s. (x = None \<longrightarrow> ?Q41 x s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q42 x xa s)
+?G' \<leadsto> \<lambda>s. ?A'43 s \<and> ?B'44 s<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel G G' ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>= g) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel G G' ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>= g) m<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q38 ?Q'40 (a >>= g) m
+ 2. \<And>x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q39 x2) (?Q'41 x2) (b x2 >>= g) m
+ 3. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q38 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q39 xa s)
+ 4. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q'40 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q'41 xa s')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel G G' ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>=E g) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel G G' ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>=E g) m<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q38 ?Q'40 (a >>=E g) m
+ 2. \<And>x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q39 x2) (?Q'41 x2) (b x2 >>=E g) m
+ 3. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q38 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q39 xa s)
+ 4. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q'40 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q'41 xa s')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel G G' m (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel G G' m (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y)<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q'38 ?Q40 m a
+ 2. \<And>x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q'39 x2) (?Q41 x2) m (b x2)
+ 3. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q'38 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q'39 xa s)
+ 4. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q40 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q41 xa s')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>schematic_goal
+  "\<And>x. corres_underlying srel nf nf' rrel ?G (?G' x) m (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. corres_underlying srel nf nf' rrel ?G (?G' x) m (case x of None \<Rightarrow> a | Some y \<Rightarrow> b y)<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?A'41 (?Q43 x) m a
+ 2. \<And>x x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel ?B'42 (?Q44 x x2) m (b x2)
+goal instantiation:
+?G \<leadsto> \<lambda>s. ?A'41 s \<and> ?B'42 s
+?G' \<leadsto> \<lambda>x s. (x = None \<longrightarrow> ?Q43 x s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q44 x xa s)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel G G' m ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel G G' m ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>= g)<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q'38 ?Q40 m (a >>= g)
+ 2. \<And>x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q'39 x2) (?Q41 x2) m (b x2 >>= g)
+ 3. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q'38 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q'39 xa s)
+ 4. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q40 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q41 xa s')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel G G' m ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel G G' m ((case x of None \<Rightarrow> a | Some y \<Rightarrow> b y) >>=E g)<\STATESEP>apply corres_cases<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = None \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q'38 ?Q40 m (a >>=E g)
+ 2. \<And>x2. x = Some x2 \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q'39 x2) (?Q41 x2) m (b x2 >>=E g)
+ 3. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q'38 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q'39 xa s)
+ 4. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> ?Q40 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?Q41 xa s')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "corres_underlying srel nf nf' rrel G G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b)
+                                               (case x of None \<Rightarrow> a' | Some y \<Rightarrow> b' y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying srel nf nf' rrel G G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b) (case x of None \<Rightarrow> a' | Some y \<Rightarrow> b' y)<\STATESEP>apply corres_cases_both<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrakk>x = None; x = None\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q'137 ?Q139 a a'
+ 2. \<And>x2 x2a. \<lbrakk>x = Some x2; x = Some x2a\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q'89 x2 x2a) (?Q91 x2 x2a) b (b' x2a)
+ 3. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> (x = None \<longrightarrow> ?Q'137 s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> True)) \<and> (\<forall>xa. x = Some xa \<longrightarrow> (x = None \<longrightarrow> True) \<and> (\<forall>xb. x = Some xb \<longrightarrow> ?Q'89 xa xb s))
+ 4. \<And>s s'. \<lbrakk>G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> (x = None \<longrightarrow> ?Q139 s') \<and> (\<forall>xa. x = Some xa \<longrightarrow> True)) \<and> (\<forall>xa. x = Some xa \<longrightarrow> (x = None \<longrightarrow> True) \<and> (\<forall>xb. x = Some xb \<longrightarrow> ?Q91 xa xb s'))<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>schematic_goal
+  "\<And>x y. corres_underlying srel nf nf' rrel (?G x) (?G' y) (case x of None \<Rightarrow> a | Some y \<Rightarrow> b)
+                                                           (case y of None \<Rightarrow> a' | Some y \<Rightarrow> b' y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. corres_underlying srel nf nf' rrel (?G x) (?G' y) (case x of None \<Rightarrow> a | Some y \<Rightarrow> b) (case y of None \<Rightarrow> a' | Some y \<Rightarrow> b' y)<\STATESEP>apply corres_cases_both<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y. \<lbrakk>x = None; y = None\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel (?A'140 x) (?Q142 y) a a'
+ 2. \<And>x y x2. \<lbrakk>x = None; y = Some x2\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel (?B'141 x) (?Q143 y x2) a (b' x2)
+ 3. \<And>x y x2. \<lbrakk>x = Some x2; y = None\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel (?A'91 x x2) (?Q93 y) b a'
+ 4. \<And>x y x2 x2a. \<lbrakk>x = Some x2; y = Some x2a\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel (?B'92 x x2) (?Q94 y x2a) b (b' x2a)
+goal instantiation:
+?G \<leadsto> \<lambda>x s. (x = None \<longrightarrow> ?A'140 x s \<and> ?B'141 x s) \<and> (\<forall>xa. x = Some xa \<longrightarrow> ?A'91 x xa s \<and> ?B'92 x xa s)
+?G' \<leadsto> \<lambda>y s. ((y = None \<longrightarrow> ?Q142 y s) \<and> (\<forall>x. y = Some x \<longrightarrow> ?Q143 y x s)) \<and> (y = None \<longrightarrow> ?Q93 y s) \<and> (\<forall>x. y = Some x \<longrightarrow> ?Q94 y x s)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "none_rel x y \<equiv> (x = None) = (y = None)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  "none_rel x y \<Longrightarrow>
+   corres_underlying srel nf nf' rrel G G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b)
+                                            (case y of None \<Rightarrow> a' | Some y \<Rightarrow> b' y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. none_rel x y \<Longrightarrow> corres_underlying srel nf nf' rrel G G' (case x of None \<Rightarrow> a | Some y \<Rightarrow> b) (case y of None \<Rightarrow> a' | Some y \<Rightarrow> b' y)<\STATESEP>apply (corres_cases_both simp: none_rel_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrakk>none_rel x y; x = None; y = None\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel ?Q'137 ?Q139 a a'
+ 2. \<And>x2 x2a. \<lbrakk>none_rel x y; x = Some x2; y = Some x2a\<rbrakk> \<Longrightarrow> corres_underlying srel nf nf' rrel (?Q'89 x2 x2a) (?Q91 x2 x2a) b (b' x2a)
+ 3. \<And>s s'. \<lbrakk>none_rel x y; G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> (y = None \<longrightarrow> ?Q'137 s) \<and> (\<forall>x. y = Some x \<longrightarrow> True)) \<and> (\<forall>xa. x = Some xa \<longrightarrow> (y = None \<longrightarrow> True) \<and> (\<forall>x. y = Some x \<longrightarrow> ?Q'89 xa x s))
+ 4. \<And>s s'. \<lbrakk>none_rel x y; G s; G' s'; (s, s') \<in> srel\<rbrakk> \<Longrightarrow> (x = None \<longrightarrow> (y = None \<longrightarrow> ?Q139 s') \<and> (\<forall>x. y = Some x \<longrightarrow> True)) \<and> (\<forall>xa. x = Some xa \<longrightarrow> (y = None \<longrightarrow> True) \<and> (\<forall>x. y = Some x \<longrightarrow> ?Q91 xa x s'))<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

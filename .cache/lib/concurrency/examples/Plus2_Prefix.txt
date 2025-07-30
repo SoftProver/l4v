@@ -1,0 +1,449 @@
+<\STATESEP>theory Plus2_Prefix
+imports
+  Lib.Lib
+  Prefix_Refinement
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>The plus2 example.\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "plus2 \<equiv> do
+     env_steps;
+     modify ((+) (1 :: nat));
+     interference;
+     modify ((+) 1);
+     interference
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>The ghost-extended program.\<close><\STATESEP>0<\TRANSEP><\STATESEP>record plus2_xstate =
+  mainv :: nat
+  threadv :: "nat \<Rightarrow> nat"<\STATESEP>0<\TRANSEP><\STATESEP>definition point_update :: "'a \<Rightarrow> ('b \<Rightarrow> 'b) \<Rightarrow> (('a \<Rightarrow> 'b) \<Rightarrow> ('a \<Rightarrow> 'b))" where
+  "point_update x fup f = f (x := fup (f x))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "plus2_x tid \<equiv> do
+     env_steps;
+     modify (mainv_update ((+) 1) o threadv_update (point_update tid ((+) 1)));
+     interference;
+     modify (mainv_update ((+) 1) o threadv_update (point_update tid ((+) 1)));
+     interference
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Verifying the extended @{term plus2}.\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "plus2_inv tids s = (mainv s = sum (threadv s) tids)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "plus2_rel tids fix_tids s0 s =
+     ((plus2_inv tids s0 \<longrightarrow> plus2_inv tids s) \<and> (\<forall>tid \<in> fix_tids. threadv s tid = threadv s0 tid))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma plus2_rel_trans[simp]:
+  "rtranclp (plus2_rel tids ftids) = plus2_rel tids ftids"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (plus2_rel tids ftids)\<^sup>*\<^sup>* = plus2_rel tids ftids<\STATESEP>apply (rule rtranclp_id2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>x. plus2_rel tids ftids x x
+ 2. \<forall>x xa. (plus2_rel tids ftids OO plus2_rel tids ftids) x xa \<le> plus2_rel tids ftids x xa<\STATESEP>apply (simp add: plus2_rel_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x xa. (plus2_rel tids ftids OO plus2_rel tids ftids) x xa \<le> plus2_rel tids ftids x xa<\STATESEP>apply (clarsimp simp: plus2_rel_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma plus2_inv_Suc[simp]:
+  "\<lbrakk>tid \<in> tids; finite tids\<rbrakk>
+   \<Longrightarrow> plus2_inv tids (mainv_update Suc (threadv_update (point_update tid Suc) s))
+       = plus2_inv tids s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>tid \<in> tids; finite tids\<rbrakk> \<Longrightarrow> plus2_inv tids (mainv_update Suc (threadv_update (point_update tid Suc) s)) = plus2_inv tids s<\STATESEP>apply (simp add: plus2_inv_def point_update_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>tid \<in> tids; finite tids\<rbrakk> \<Longrightarrow> (Suc (mainv s) = (\<Sum>x\<in>tids. if x = tid then Suc (threadv s tid) else threadv s x)) = (mainv s = sum (threadv s) tids)<\STATESEP>apply (simp add: sum.If_cases[where h=f and g=f and P="(=) tid" and A="tids" for f x, simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>theorem plus2_x_property:
+  "\<lbrace>\<lambda>s0 s. plus2_inv tids s \<and> threadv s tid = 0 \<and> s = s0 \<and> tid \<in> tids \<and> finite tids\<rbrace>,\<lbrace>plus2_rel tids {tid}\<rbrace>
+   plus2_x tid
+   \<lbrace>plus2_rel tids (- {tid})\<rbrace>,\<lbrace>\<lambda>_ _ s. plus2_inv tids s \<and> threadv s tid = 2\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s0 s. plus2_inv tids s \<and> threadv s tid = 0 \<and> s = s0 \<and> tid \<in> tids \<and> finite tids\<rbrace>, \<lbrace>plus2_rel tids {tid}\<rbrace> plus2_x tid \<lbrace>plus2_rel tids (- {tid})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv tids s \<and> threadv s tid = 2\<rbrace><\STATESEP>apply (simp add: plus2_x_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s0 s. plus2_inv tids s \<and> threadv s tid = 0 \<and> s = s0 \<and> tid \<in> tids \<and> finite tids\<rbrace>, \<lbrace>plus2_rel tids {tid}\<rbrace> do y <- env_steps;
+y <- modify (mainv_update ((+) (Suc 0)) \<circ> threadv_update (point_update tid ((+) (Suc 0))));
+y <- interference;
+y <- modify (mainv_update ((+) (Suc 0)) \<circ> threadv_update (point_update tid ((+) (Suc 0))));
+interference
+od \<lbrace>plus2_rel tids (- {tid})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv tids s \<and> threadv s tid = 2\<rbrace><\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s0. \<lbrakk>plus2_inv tids s0; threadv s0 tid = 0; tid \<in> tids; finite tids\<rbrakk> \<Longrightarrow> (\<forall>s'. plus2_rel tids {tid} s0 s' \<longrightarrow> (\<forall>s'a. plus2_rel tids {tid} (mainv_update Suc (threadv_update (point_update tid Suc) s')) s'a \<longrightarrow> (\<forall>s'. plus2_rel tids {tid} (mainv_update Suc (threadv_update (point_update tid Suc) s'a)) s' \<longrightarrow> plus2_inv tids s' \<and> threadv s' tid = 2) \<and> plus2_rel tids (- {tid}) s'a (mainv_update Suc (threadv_update (point_update tid Suc) s'a))) \<and> plus2_rel tids (- {tid}) s' (mainv_update Suc (threadv_update (point_update tid Suc) s'))) \<and> (\<forall>s'. plus2_rel tids {tid} (mainv_update Suc (threadv_update (point_update tid Suc) s0)) s' \<longrightarrow> (\<forall>s'a. plus2_rel tids {tid} (mainv_update Suc (threadv_update (point_update tid Suc) s')) s'a \<longrightarrow> plus2_inv tids s'a \<and> threadv s'a tid = 2) \<and> plus2_rel tids (- {tid}) s' (mainv_update Suc (threadv_update (point_update tid Suc) s'))) \<and> plus2_rel tids (- {tid}) s0 (mainv_update Suc (threadv_update (point_update tid Suc) s0))<\STATESEP>apply (clarsimp simp: plus2_rel_def point_update_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>corollary plus2_x_parallel:
+  "\<lbrace>\<lambda>s0 s. mainv s = 0 \<and> (\<forall>tid \<in> {1, 2}. threadv s tid = 0) \<and> s = s0\<rbrace>,\<lbrace>\<lambda>a b. a = b\<rbrace>
+   parallel (plus2_x 1) (plus2_x 2)
+   \<lbrace>\<lambda>s0 s. True\<rbrace>,\<lbrace>\<lambda>_ s0 s. mainv s = 4\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s0 s. mainv s = 0 \<and> (\<forall>tid\<in>{1, 2}. threadv s tid = 0) \<and> s = s0\<rbrace>, \<lbrace>(=)\<rbrace> Trace_Monad.parallel (plus2_x 1) (plus2_x 2) -, \<lbrace>\<lambda>_ s0 s. mainv s = 4\<rbrace><\STATESEP>apply (rule rg_weaken_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'\<rbrace>, \<lbrace>(=)\<rbrace> Trace_Monad.parallel (plus2_x 1) (plus2_x 2) -, \<lbrace>\<lambda>_ s0 s. mainv s = 4\<rbrace>
+ 2. \<And>s0 s. mainv s = 0 \<and> (\<forall>tid\<in>{1, 2}. threadv s tid = 0) \<and> s = s0 \<Longrightarrow> ?P' s0 s<\STATESEP>apply (rule rg_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P'\<rbrace>, \<lbrace>(=)\<rbrace> Trace_Monad.parallel (plus2_x 1) (plus2_x 2) -, \<lbrace>?Q'3\<rbrace>
+ 2. \<And>v s0 s. ?Q'3 v s0 s \<Longrightarrow> mainv s = 4
+ 3. \<And>s0 s. mainv s = 0 \<and> (\<forall>tid\<in>{1, 2}. threadv s tid = 0) \<and> s = s0 \<Longrightarrow> ?P' s0 s<\STATESEP>apply ((rule rg_validI plus2_x_property[where tids="{1, 2}"])+; simp add: plus2_rel_def le_fun_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>v s0 s. ((\<lambda>_ s. plus2_inv {1, 2} s \<and> threadv s 1 = 2) and (\<lambda>_ s. plus2_inv {1, 2} s \<and> threadv s 2 = 2)) s0 s \<Longrightarrow> mainv s = 4
+ 2. \<And>s0 s. mainv s = 0 \<and> (\<forall>tid\<in>{1, 2}. threadv s tid = 0) \<and> s = s0 \<Longrightarrow> ((\<lambda>s0 s. plus2_inv {1, 2} s \<and> threadv s 1 = 0 \<and> s = s0 \<and> 1 \<in> {1, 2} \<and> finite {1, 2}) and (\<lambda>s0 s. plus2_inv {1, 2} s \<and> threadv s 2 = 0 \<and> s = s0 \<and> 2 \<in> {1, 2} \<and> finite {1, 2})) s0 s<\STATESEP>apply (clarsimp simp: plus2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s0 s. mainv s = 0 \<and> (\<forall>tid\<in>{1, 2}. threadv s tid = 0) \<and> s = s0 \<Longrightarrow> ((\<lambda>s0 s. plus2_inv {1, 2} s \<and> threadv s 1 = 0 \<and> s = s0 \<and> 1 \<in> {1, 2} \<and> finite {1, 2}) and (\<lambda>s0 s. plus2_inv {1, 2} s \<and> threadv s 2 = 0 \<and> s = s0 \<and> 2 \<in> {1, 2} \<and> finite {1, 2})) s0 s<\STATESEP>apply (clarsimp simp add: plus2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Mapping across prefix refinement.\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma env_stable:
+  "env_stable AR R (\<lambda>s t. t = mainv s) (\<lambda>s t. t = mainv s) \<top>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. env_stable AR R (\<lambda>s t. t = mainv s) (\<lambda>s t. t = mainv s) (\<lambda>_. True)<\STATESEP>apply (simp add: env_stable_def rely_stable_def env_rely_stable_iosr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t'. R (mainv s) t' \<longrightarrow> (\<exists>s'. t' = mainv s')<\STATESEP>apply (simp add: plus2_xstate.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation (input)
+  "p_refn rvr AR R P Q \<equiv>
+     prefix_refinement (\<lambda>s t. t = mainv s) (\<lambda>s t. t = mainv s) (\<lambda>s t. t = mainv s) rvr AR R P Q"<\STATESEP>0<\TRANSEP><\STATESEP>theorem pfx_refn_plus2_x:
+  "p_refn dc AR R (=) (\<top>\<top>) (plus2_x tid) plus2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pfx_refn (\<lambda>s t. t = mainv s) dc AR R (=) (\<lambda>_ _. True) (plus2_x tid) plus2<\STATESEP>apply (simp add: plus2_x_def plus2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pfx_refn (\<lambda>s t. t = mainv s) dc AR R (=) (\<lambda>_ _. True) (do y <- env_steps;
+y <- modify (mainv_update ((+) (Suc 0)) \<circ> threadv_update (point_update tid ((+) (Suc 0))));
+y <- interference;
+y <- modify (mainv_update ((+) (Suc 0)) \<circ> threadv_update (point_update tid ((+) (Suc 0))));
+interference
+od) (do y <- env_steps;
+y <- modify ((+) (Suc 0));
+y <- interference;
+y <- modify ((+) (Suc 0));
+interference
+od)<\STATESEP>apply pfx_refn_pre<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. pfx_refn (\<lambda>s t. t = mainv s) dc AR R ?P'1 ?Q'1 (do y <- env_steps;
+y <- modify (mainv_update ((+) (Suc 0)) \<circ> threadv_update (point_update tid ((+) (Suc 0))));
+y <- interference;
+y <- modify (mainv_update ((+) (Suc 0)) \<circ> threadv_update (point_update tid ((+) (Suc 0))));
+interference
+od) (do y <- env_steps;
+y <- modify ((+) (Suc 0));
+y <- interference;
+y <- modify ((+) (Suc 0));
+interference
+od)
+ 2. \<And>s t s0 t0. \<lbrakk>t = mainv s; t0 = mainv s0; s0 = s; True\<rbrakk> \<Longrightarrow> ?P'1 s0 s
+ 3. \<And>s t s0 t0. \<lbrakk>t = mainv s; t0 = mainv s0; s0 = s; True\<rbrakk> \<Longrightarrow> ?Q'1 t0 t<\STATESEP>apply (rule pfx_refn_bind prefix_refinement_interference
+                prefix_refinement_env_steps pfx_refn_modifyT env_stable
+           | wpsimp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma par_tr_fin_plus2_x:
+  "par_tr_fin_principle (plus2_x tid)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. par_tr_fin_principle (plus2_x tid)<\STATESEP>by (simp add: plus2_x_def par_tr_fin_interference par_tr_fin_bind)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_plus2:
+  "prefix_closed plus2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed plus2<\STATESEP>apply (simp add: plus2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (do y <- env_steps;
+y <- modify ((+) (Suc 0));
+y <- interference;
+y <- modify ((+) (Suc 0));
+interference
+od)<\STATESEP>apply (rule validI_prefix_closed_T, wpsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>theorem plus2_parallel:
+  "\<lbrace>\<lambda>s0 s. s = 0 \<and> s = s0\<rbrace>,\<lbrace>\<lambda>a b. a = b\<rbrace>
+   parallel plus2 plus2
+   \<lbrace>\<lambda>s0 s. True\<rbrace>,\<lbrace>\<lambda>_ s0 s. s = 4\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s0 s. s = 0 \<and> s = s0\<rbrace>, \<lbrace>(=)\<rbrace> Trace_Monad.parallel plus2 plus2 -, \<lbrace>\<lambda>_ s0 s. s = 4\<rbrace><\STATESEP>apply (rule_tac sr="\<lambda>s t. t = mainv s" in prefix_refinement_validI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. prefix_refinement (\<lambda>s t. t = mainv s) ?isr ?osr ?rvr ?AR (=) ?prP' ?prP ?f (Trace_Monad.parallel plus2 plus2)
+ 2. \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> ?f \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 3. \<And>t0 t. t = 0 \<and> t = t0 \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> ?prP' s0 s \<and> ?prP t0 t \<and> ?isr s t \<and> t0 = mainv s0
+ 4. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 5. \<And>s0 t0 s t. \<lbrakk>?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 6. \<And>rv rv' s0 t0 s t. \<lbrakk>?Q' rv s0 s; t0 = mainv s0; ?osr s t; ?rvr rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 7. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (rule prefix_refinement_parallel_triv;
+               ((rule par_tr_fin_plus2_x prefix_closed_plus2 twp_post_taut)+)?)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. prefix_refinement (\<lambda>s t. t = mainv s) ?isr ?osr ?rvr (\<lambda>_ _. True) (\<lambda>_ _. True) ?prP' (\<lambda>_ _. True) (plus2_x ?tid23) plus2
+ 2. prefix_refinement (\<lambda>s t. t = mainv s) ?isr ?osr ?rvr (\<lambda>_ _. True) (\<lambda>_ _. True) ?prP' (\<lambda>_ _. True) (plus2_x ?tid20) plus2
+ 3. \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> Trace_Monad.parallel (plus2_x ?tid23) (plus2_x ?tid20) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 4. \<And>t0 t. t = 0 \<and> t = t0 \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> ?prP' s0 s \<and> True \<and> ?isr s t \<and> t0 = mainv s0
+ 5. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 6. \<And>s0 t0 s t. \<lbrakk>?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 7. \<And>rv rv' s0 t0 s t. \<lbrakk>?Q' rv s0 s; t0 = mainv s0; ?osr s t; ?rvr rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 8. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (rule pfx_refn_plus2_x[where tid=1])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. pfx_refn (\<lambda>s t. t = mainv s) dc (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>_ _. True) (plus2_x ?tid20) plus2
+ 2. \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> Trace_Monad.parallel (plus2_x 1) (plus2_x ?tid20) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 3. \<And>t0 t. t = 0 \<and> t = t0 \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 4. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 5. \<And>s0 t0 s t. \<lbrakk>?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 6. \<And>rv rv' s0 t0 s t. \<lbrakk>?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 7. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (rule pfx_refn_plus2_x[where tid=2])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> Trace_Monad.parallel (plus2_x 1) (plus2_x 2) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 2. \<And>t0 t. t = 0 \<and> t = t0 \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 3. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 4. \<And>s0 t0 s t. \<lbrakk>?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 5. \<And>rv rv' s0 t0 s t. \<lbrakk>?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 6. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (rule plus2_x_parallel)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>t0 t. t = 0 \<and> t = t0 \<Longrightarrow> \<exists>s0 s. (mainv s = 0 \<and> (\<forall>tid\<in>{1, 2}. threadv s tid = 0) \<and> s = s0) \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 2. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. s0 = s \<and> t = mainv s
+ 3. \<And>s0 t0 s t. \<lbrakk>True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 4. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 5. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<exists>s. mainv s = 0 \<and> threadv s (Suc 0) = 0 \<and> threadv s 2 = 0 \<and> mainv s = 0
+ 2. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. s0 = s \<and> t = mainv s
+ 3. \<And>s0 t0 s t. \<lbrakk>True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 4. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 5. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (clarsimp simp: plus2_xstate.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<exists>threadv. threadv (Suc 0) = 0 \<and> threadv 2 = 0
+ 2. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. s0 = s \<and> t = mainv s
+ 3. \<And>s0 t0 s t. \<lbrakk>True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 4. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 5. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (strengthen exI[where x="f(1 := x, 2 := y)" for f x y])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<exists>y x f. (f(1 := x, 2 := y)) (Suc 0) = 0 \<and> (f(1 := x, 2 := y)) 2 = 0
+ 2. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. s0 = s \<and> t = mainv s
+ 3. \<And>s0 t0 s t. \<lbrakk>True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 4. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 5. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s0 t0 t. \<lbrakk>t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. s0 = s \<and> t = mainv s
+ 2. \<And>s0 t0 s t. \<lbrakk>True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 3. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 4. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s0 t0 s t. \<lbrakk>True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 2. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 3. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv rv' s0 t0 s t. \<lbrakk>mainv s = 4; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = 4
+ 2. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (Trace_Monad.parallel plus2 plus2)<\STATESEP>apply (intro prefix_closed_parallel prefix_closed_plus2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Generalising\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma plus2_x_n_parallel_induct:
+  "\<lbrakk>n > 0; n \<le> N\<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s0 s. plus2_inv {..< N} s \<and> (\<forall>i < N. threadv s i = 0) \<and> s = s0\<rbrace>,\<lbrace>plus2_rel {..< N} {..< n}\<rbrace>
+   fold parallel (map plus2_x [1 ..< n]) (plus2_x 0)
+   \<lbrace>plus2_rel {..< N} ( - {..< n})\<rbrace>,\<lbrace>\<lambda>_ _ s. plus2_inv {..< N} s \<and> (\<forall>i < n. threadv s i = 2)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace><\STATESEP>apply (induct n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>0 < 0; 0 \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<0}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<0]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<0})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<0. threadv s i = 2)\<rbrace>
+ 2. \<And>n. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply (case_tac n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N; n = 0\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace>
+ 2. \<And>n nat. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N; n = Suc nat\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply (simp only: lessThan_Suc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n. \<lbrakk>\<lbrakk>0 < 0; 0 \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<0}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<0]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<0})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<0. threadv s i = 2)\<rbrace>; 0 < Suc 0; Suc 0 \<le> N; n = 0\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} (insert 0 {..<0})\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc 0]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- insert 0 {..<0})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc 0. threadv s i = 2)\<rbrace>
+ 2. \<And>n nat. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N; n = Suc nat\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n. \<lbrakk>Suc 0 \<le> N; n = 0\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {0}\<rbrace> plus2_x 0 \<lbrace>plus2_rel {..<N} (- {0})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> threadv s 0 = 2\<rbrace>
+ 2. \<And>n nat. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N; n = Suc nat\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply (wp plus2_x_property)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>n s0 s. \<lbrakk>Suc 0 \<le> N; n = 0; plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> plus2_inv {..<N} s \<and> threadv s 0 = 0 \<and> s = s0 \<and> 0 \<in> {..<N} \<and> finite {..<N}
+ 2. \<And>n nat. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N; n = Suc nat\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n nat. \<lbrakk>\<lbrakk>0 < n; n \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrace>; 0 < Suc n; Suc n \<le> N; n = Suc nat\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<Suc n]) (plus2_x 0) \<lbrace>plus2_rel {..<N} (- {..<Suc n})\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc n. threadv s i = 2)\<rbrace><\STATESEP>apply (clarsimp split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>nat. \<lbrakk>\<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc nat}\<rbrace> fold Trace_Monad.parallel (map plus2_x (if Suc 0 \<le> nat then [Suc 0..<nat] @ [nat] else [])) (plus2_x 0) \<lbrace>plus2_rel {..<N} {Suc nat..}\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc nat. threadv s i = 2)\<rbrace>; Suc (Suc nat) \<le> N\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc (Suc nat)}\<rbrace> Trace_Monad.parallel (plus2_x (Suc nat)) (fold Trace_Monad.parallel (map plus2_x (if Suc 0 \<le> nat then [Suc 0..<nat] @ [nat] else [])) (plus2_x 0)) \<lbrace>plus2_rel {..<N} {Suc (Suc nat)..}\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc (Suc nat). threadv s i = 2)\<rbrace><\STATESEP>apply (rule rg_weaken_pre, rule rg_strengthen_post,
+         rule rg_validI, rule plus2_x_property[where tids="{..< N}"], assumption,
+         (clarsimp simp: plus2_rel_def)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>nat s i. \<lbrakk>\<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc nat}\<rbrace> fold Trace_Monad.parallel (map plus2_x (if Suc 0 \<le> nat then [Suc 0..<nat] @ [nat] else [])) (plus2_x 0) \<lbrace>plus2_rel {..<N} {Suc nat..}\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc nat. threadv s i = 2)\<rbrace>; Suc (Suc nat) \<le> N; threadv s (Suc nat) = 2; plus2_inv {..<N} s; \<forall>i<Suc nat. threadv s i = 2; i < Suc (Suc nat)\<rbrakk> \<Longrightarrow> threadv s i = 2
+ 2. \<And>nat s0 s. \<lbrakk>\<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc nat}\<rbrace> fold Trace_Monad.parallel (map plus2_x (if Suc 0 \<le> nat then [Suc 0..<nat] @ [nat] else [])) (plus2_x 0) \<lbrace>plus2_rel {..<N} {Suc nat..}\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc nat. threadv s i = 2)\<rbrace>; Suc (Suc nat) \<le> N; plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> ((\<lambda>s0 s. plus2_inv {..<N} s \<and> threadv s (Suc nat) = 0 \<and> s = s0 \<and> Suc nat \<in> {..<N} \<and> finite {..<N}) and (\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0)) s0 s<\STATESEP>apply (auto dest: less_Suc_eq[THEN iffD1])[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>nat s0 s. \<lbrakk>\<lbrace>\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<N} {..<Suc nat}\<rbrace> fold Trace_Monad.parallel (map plus2_x (if Suc 0 \<le> nat then [Suc 0..<nat] @ [nat] else [])) (plus2_x 0) \<lbrace>plus2_rel {..<N} {Suc nat..}\<rbrace>, \<lbrace>\<lambda>_ _ s. plus2_inv {..<N} s \<and> (\<forall>i<Suc nat. threadv s i = 2)\<rbrace>; Suc (Suc nat) \<le> N; plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> ((\<lambda>s0 s. plus2_inv {..<N} s \<and> threadv s (Suc nat) = 0 \<and> s = s0 \<and> Suc nat \<in> {..<N} \<and> finite {..<N}) and (\<lambda>s0 s. plus2_inv {..<N} s \<and> (\<forall>i<N. threadv s i = 0) \<and> s = s0)) s0 s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>theorem plus2_x_n_parallel:
+  "n > 0 \<Longrightarrow>
+   \<lbrace>\<lambda>s0 s. mainv s = 0 \<and> (\<forall>i < n. threadv s i = 0) \<and> s = s0\<rbrace>,\<lbrace>plus2_rel {..< n} {..< n}\<rbrace>
+   fold parallel (map plus2_x [1 ..< n]) (plus2_x 0)
+   \<lbrace>\<lambda>s0 s. True\<rbrace>,\<lbrace>\<lambda>_ _ s. mainv s = (n * 2)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> \<lbrace>\<lambda>s0 s. mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0\<rbrace>, \<lbrace>plus2_rel {..<n} {..<n}\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) -, \<lbrace>\<lambda>_ _ s. mainv s = n * 2\<rbrace><\STATESEP>apply (rule rg_weaken_pre, rule rg_strengthen_post,
+         rule rg_strengthen_guar, erule plus2_x_n_parallel_induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. n \<le> n
+ 2. \<And>s0 s. \<lbrakk>0 < n; plus2_rel {..<n} (- {..<n}) s0 s\<rbrakk> \<Longrightarrow> True
+ 3. \<And>v s0 s. \<lbrakk>0 < n; plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrakk> \<Longrightarrow> mainv s = n * 2
+ 4. \<And>s0 s. \<lbrakk>0 < n; mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s0 s. \<lbrakk>0 < n; plus2_rel {..<n} (- {..<n}) s0 s\<rbrakk> \<Longrightarrow> True
+ 2. \<And>v s0 s. \<lbrakk>0 < n; plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrakk> \<Longrightarrow> mainv s = n * 2
+ 3. \<And>s0 s. \<lbrakk>0 < n; mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>v s0 s. \<lbrakk>0 < n; plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 2)\<rbrakk> \<Longrightarrow> mainv s = n * 2
+ 2. \<And>s0 s. \<lbrakk>0 < n; mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0<\STATESEP>apply (clarsimp simp: plus2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s0 s. \<lbrakk>0 < n; mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0\<rbrakk> \<Longrightarrow> plus2_inv {..<n} s \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0<\STATESEP>apply (clarsimp simp: plus2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma par_tr_fin_principle_parallel:
+  "\<lbrakk>par_tr_fin_principle f; par_tr_fin_principle g\<rbrakk>
+   \<Longrightarrow> par_tr_fin_principle (parallel f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>par_tr_fin_principle f; par_tr_fin_principle g\<rbrakk> \<Longrightarrow> par_tr_fin_principle (Trace_Monad.parallel f g)<\STATESEP>apply (subst par_tr_fin_principle_def, clarsimp simp: parallel_def3)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' a aa. \<lbrakk>par_tr_fin_principle f; par_tr_fin_principle g; (a, Result ((), s')) \<in> f s; (aa, Result ((), s')) \<in> g s; list_all2 (\<lambda>y z. (fst y = Env \<or> fst z = Env) \<and> snd y = snd z) a aa\<rbrakk> \<Longrightarrow> s' = last_st_tr (map2 (\<lambda>(idn, s) (idn', uu_). (if idn = Env then idn' else idn, s)) a aa) s \<and> a \<noteq> [] \<and> aa \<noteq> []<\STATESEP>apply (drule(1) par_tr_fin_principleD)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' a aa. \<lbrakk>(a, Result ((), s')) \<in> f s; (aa, Result ((), s')) \<in> g s; list_all2 (\<lambda>y z. (fst y = Env \<or> fst z = Env) \<and> snd y = snd z) a aa; s' = last_st_tr a s \<and> a \<noteq> []; s' = last_st_tr aa s \<and> aa \<noteq> []\<rbrakk> \<Longrightarrow> s' = last_st_tr (map2 (\<lambda>(idn, s) (idn', uu_). (if idn = Env then idn' else idn, s)) a aa) s \<and> a \<noteq> [] \<and> aa \<noteq> []<\STATESEP>apply (clarsimp simp: neq_Nil_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma fold_parallel_par_tr_fin_principle[where xs="rev xs" for xs, simplified]:
+  "\<forall>x \<in> insert x (set xs). par_tr_fin_principle x
+   \<Longrightarrow> par_tr_fin_principle (fold parallel (rev xs) x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x\<in>insert x (set xs). par_tr_fin_principle x \<Longrightarrow> par_tr_fin_principle (fold Trace_Monad.parallel (rev xs) x)<\STATESEP>by (induct xs, simp_all add: par_tr_fin_principle_parallel)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fold_parallel_prefix_closed[where xs="rev xs" for xs, simplified]:
+  "\<forall>x \<in> insert x (set xs). prefix_closed x
+   \<Longrightarrow> prefix_closed (fold parallel (rev xs) x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x\<in>insert x (set xs). prefix_closed x \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (rev xs) x)<\STATESEP>by (induct xs, simp_all add: prefix_closed_parallel)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bipred_disj_top_eq:
+  "(Rel or (\<lambda>_ _. True)) = (\<lambda>_ _. True)"
+  "((\<lambda>_ _. True) or Rel) = (\<lambda>_ _. True)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Rel or (\<lambda>_ _. True)) = (\<lambda>_ _. True) &&& ((\<lambda>_ _. True) or Rel) = (\<lambda>_ _. True)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma fold_parallel_pfx_refn_induct:
+  "\<lbrakk>list_all2 (prefix_refinement sr sr sr dc (\<top>\<top>) (\<top>\<top>) P Q) xs ys;
+    prefix_refinement sr sr sr dc (\<top>\<top>) (\<top>\<top>) P Q x y;
+    \<forall>x \<in> set (x # xs). par_tr_fin_principle x;
+    \<forall>y \<in> set (y # ys). prefix_closed y\<rbrakk>
+   \<Longrightarrow> prefix_refinement sr sr sr dc(\<top>\<top>) (\<top>\<top>) P Q
+         (fold parallel (rev xs) x) (fold parallel (rev ys) y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>list_all2 (pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q) xs ys; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q x y; \<forall>x\<in>set (x # xs). par_tr_fin_principle x; \<forall>y\<in>set (y # ys). prefix_closed y\<rbrakk> \<Longrightarrow> pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q (fold Trace_Monad.parallel (rev xs) x) (fold Trace_Monad.parallel (rev ys) y)<\STATESEP>apply (induct rule: list_all2_induct; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa xs ya ys. \<lbrakk>list_all2 (pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q) xs ys; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q xa ya; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q (fold Trace_Monad.parallel (rev xs) x) (fold Trace_Monad.parallel (rev ys) y); pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q x y; par_tr_fin_principle x \<and> par_tr_fin_principle xa \<and> (\<forall>x\<in>set xs. par_tr_fin_principle x); prefix_closed y \<and> prefix_closed ya \<and> (\<forall>x\<in>set ys. prefix_closed x)\<rbrakk> \<Longrightarrow> pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q (Trace_Monad.parallel xa (fold Trace_Monad.parallel (rev xs) x)) (Trace_Monad.parallel ya (fold Trace_Monad.parallel (rev ys) y))<\STATESEP>apply (rule prefix_refinement_parallel_triv[simplified bipred_disj_top_eq]; simp?)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>xa xs ya ys. \<lbrakk>list_all2 (pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q) xs ys; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q xa ya; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q (fold Trace_Monad.parallel (rev xs) x) (fold Trace_Monad.parallel (rev ys) y); pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q x y; par_tr_fin_principle x \<and> par_tr_fin_principle xa \<and> (\<forall>x\<in>set xs. par_tr_fin_principle x); prefix_closed y \<and> prefix_closed ya \<and> (\<forall>x\<in>set ys. prefix_closed x)\<rbrakk> \<Longrightarrow> par_tr_fin_principle (fold Trace_Monad.parallel (rev xs) x)
+ 2. \<And>xa xs ya ys. \<lbrakk>list_all2 (pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q) xs ys; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q xa ya; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q (fold Trace_Monad.parallel (rev xs) x) (fold Trace_Monad.parallel (rev ys) y); pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q x y; par_tr_fin_principle x \<and> par_tr_fin_principle xa \<and> (\<forall>x\<in>set xs. par_tr_fin_principle x); prefix_closed y \<and> prefix_closed ya \<and> (\<forall>x\<in>set ys. prefix_closed x)\<rbrakk> \<Longrightarrow> \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace> ya -, \<lbrace>\<lambda>_ _ _. True\<rbrace>
+ 3. \<And>xa xs ya ys. \<lbrakk>list_all2 (pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q) xs ys; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q xa ya; pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q (fold Trace_Monad.parallel (rev xs) x) (fold Trace_Monad.parallel (rev ys) y); pfx_refn sr dc (\<lambda>_ _. True) (\<lambda>_ _. True) P Q x y; par_tr_fin_principle x \<and> par_tr_fin_principle xa \<and> (\<forall>x\<in>set xs. par_tr_fin_principle x); prefix_closed y \<and> prefix_closed ya \<and> (\<forall>x\<in>set ys. prefix_closed x)\<rbrakk> \<Longrightarrow> \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace> fold Trace_Monad.parallel (rev ys) y -, \<lbrace>\<lambda>_ _ _. True\<rbrace><\STATESEP>apply (clarsimp simp: fold_parallel_par_tr_fin_principle
+                         fold_parallel_prefix_closed rg_TrueI)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas fold_parallel_pfx_refn =
+  fold_parallel_pfx_refn_induct[where xs="rev xs" and ys="rev ys" for xs ys, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>theorem plus2_n_parallel:
+  "n > 0 \<Longrightarrow>
+   \<lbrace>\<lambda>s0 s. s = 0 \<and> s = s0\<rbrace>,\<lbrace>\<lambda>a b. a = b\<rbrace>
+   fold parallel (replicate (n - 1) plus2) plus2
+   \<lbrace>\<lambda>s0 s. True\<rbrace>,\<lbrace>\<lambda>_ s0 s. s = n * 2\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> \<lbrace>\<lambda>s0 s. s = 0 \<and> s = s0\<rbrace>, \<lbrace>(=)\<rbrace> fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2 -, \<lbrace>\<lambda>_ s0 s. s = n * 2\<rbrace><\STATESEP>apply (rule_tac sr="\<lambda>s t. t = mainv s" in prefix_refinement_validI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. 0 < n \<Longrightarrow> prefix_refinement (\<lambda>s t. t = mainv s) ?isr ?osr ?rvr ?AR (=) ?prP' ?prP ?f (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)
+ 2. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> ?f \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 3. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> ?prP' s0 s \<and> ?prP t0 t \<and> ?isr s t \<and> t0 = mainv s0
+ 4. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 5. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 6. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; ?osr s t; ?rvr rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 7. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (rule prefix_refinement_weaken_rely,
+               rule_tac xs="map plus2_x [1 ..< n]" in fold_parallel_pfx_refn)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. 0 < n \<Longrightarrow> list_all2 (pfx_refn (\<lambda>s t. t = mainv s) dc (\<lambda>_ _. True) (\<lambda>_ _. True) ?prP' ?prP) (map plus2_x [1..<n]) (replicate (n - 1) plus2)
+ 2. 0 < n \<Longrightarrow> pfx_refn (\<lambda>s t. t = mainv s) dc (\<lambda>_ _. True) (\<lambda>_ _. True) ?prP' ?prP ?x6 plus2
+ 3. 0 < n \<Longrightarrow> par_tr_fin_principle ?x6 \<and> (\<forall>x\<in>set (map plus2_x [1..<n]). par_tr_fin_principle x)
+ 4. 0 < n \<Longrightarrow> prefix_closed plus2 \<and> (\<forall>x\<in>set (replicate (n - 1) plus2). prefix_closed x)
+ 5. 0 < n \<Longrightarrow> (=) \<le> (\<lambda>_ _. True)
+ 6. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 7. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) ?x6 \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 8. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> ?prP' s0 s \<and> ?prP t0 t \<and> t = mainv s \<and> t0 = mainv s0
+ 9. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 10. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+A total of 12 subgoals...<\STATESEP>apply (clarsimp simp: list_all2_conv_all_nth)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. \<And>i. \<lbrakk>0 < n; i < n - Suc 0\<rbrakk> \<Longrightarrow> pfx_refn (\<lambda>s t. t = mainv s) dc (\<lambda>_ _. True) (\<lambda>_ _. True) ?prP' ?prP (plus2_x (Suc i)) plus2
+ 2. 0 < n \<Longrightarrow> pfx_refn (\<lambda>s t. t = mainv s) dc (\<lambda>_ _. True) (\<lambda>_ _. True) ?prP' ?prP ?x6 plus2
+ 3. 0 < n \<Longrightarrow> par_tr_fin_principle ?x6 \<and> (\<forall>x\<in>set (map plus2_x [1..<n]). par_tr_fin_principle x)
+ 4. 0 < n \<Longrightarrow> prefix_closed plus2 \<and> (\<forall>x\<in>set (replicate (n - 1) plus2). prefix_closed x)
+ 5. 0 < n \<Longrightarrow> (=) \<le> (\<lambda>_ _. True)
+ 6. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 7. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) ?x6 \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 8. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> ?prP' s0 s \<and> ?prP t0 t \<and> t = mainv s \<and> t0 = mainv s0
+ 9. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 10. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+A total of 12 subgoals...<\STATESEP>apply (rule pfx_refn_plus2_x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. 0 < n \<Longrightarrow> pfx_refn (\<lambda>s t. t = mainv s) dc (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>_ _. True) ?x6 plus2
+ 2. 0 < n \<Longrightarrow> par_tr_fin_principle ?x6 \<and> (\<forall>x\<in>set (map plus2_x [1..<n]). par_tr_fin_principle x)
+ 3. 0 < n \<Longrightarrow> prefix_closed plus2 \<and> (\<forall>x\<in>set (replicate (n - 1) plus2). prefix_closed x)
+ 4. 0 < n \<Longrightarrow> (=) \<le> (\<lambda>_ _. True)
+ 5. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 6. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) ?x6 \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 7. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 8. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 9. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 10. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+A total of 11 subgoals...<\STATESEP>apply (rule pfx_refn_plus2_x[where tid=0])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. 0 < n \<Longrightarrow> par_tr_fin_principle (plus2_x 0) \<and> (\<forall>x\<in>set (map plus2_x [1..<n]). par_tr_fin_principle x)
+ 2. 0 < n \<Longrightarrow> prefix_closed plus2 \<and> (\<forall>x\<in>set (replicate (n - 1) plus2). prefix_closed x)
+ 3. 0 < n \<Longrightarrow> (=) \<le> (\<lambda>_ _. True)
+ 4. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 5. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 6. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 7. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 8. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 9. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 10. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (simp add: par_tr_fin_plus2_x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. 0 < n \<Longrightarrow> prefix_closed plus2 \<and> (\<forall>x\<in>set (replicate (n - 1) plus2). prefix_closed x)
+ 2. 0 < n \<Longrightarrow> (=) \<le> (\<lambda>_ _. True)
+ 3. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 4. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 5. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 6. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 7. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 8. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 9. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (simp add: prefix_closed_plus2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. 0 < n \<Longrightarrow> (=) \<le> (\<lambda>_ _. True)
+ 2. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 3. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 4. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 5. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 6. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 7. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 8. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (simp add: le_fun_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. 0 < n \<Longrightarrow> ?AR \<le> (\<lambda>_ _. True)
+ 2. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 3. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 4. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 5. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 6. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 7. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (simp add: le_fun_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. 0 < n \<Longrightarrow> \<lbrace>?P'\<rbrace>, \<lbrace>?AR\<rbrace> fold Trace_Monad.parallel (map plus2_x [1..<n]) (plus2_x 0) \<lbrace>?G'\<rbrace>, \<lbrace>?Q'\<rbrace>
+ 2. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. ?P' s0 s \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 3. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. ?AR s0 s \<and> t = mainv s
+ 4. \<And>s0 t0 s t. \<lbrakk>0 < n; ?G' s0 s; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 5. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; ?Q' rv s0 s; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 6. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (rule plus2_x_n_parallel, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>t0 t. \<lbrakk>0 < n; t = 0 \<and> t = t0\<rbrakk> \<Longrightarrow> \<exists>s0 s. (mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> s = s0) \<and> s0 = s \<and> True \<and> t = mainv s \<and> t0 = mainv s0
+ 2. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. plus2_rel {..<n} {..<n} s0 s \<and> t = mainv s
+ 3. \<And>s0 t0 s t. \<lbrakk>0 < n; True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 4. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 5. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. 0 < n \<Longrightarrow> \<exists>s. mainv s = 0 \<and> (\<forall>i<n. threadv s i = 0) \<and> mainv s = 0
+ 2. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. plus2_rel {..<n} {..<n} s0 s \<and> t = mainv s
+ 3. \<And>s0 t0 s t. \<lbrakk>0 < n; True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 4. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 5. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (clarsimp simp: plus2_xstate.splits exI[where x="\<lambda>_. 0"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s0 t0 t. \<lbrakk>0 < n; t0 = mainv s0; t0 = t\<rbrakk> \<Longrightarrow> \<exists>s. plus2_rel {..<n} {..<n} s0 s \<and> t = mainv s
+ 2. \<And>s0 t0 s t. \<lbrakk>0 < n; True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 3. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 4. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s0. 0 < n \<Longrightarrow> \<exists>s. plus2_rel {..<n} {..<n} s0 s \<and> mainv s0 = mainv s
+ 2. \<And>s0 t0 s t. \<lbrakk>0 < n; True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 3. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 4. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (rule exI, strengthen refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s0. 0 < n \<Longrightarrow> plus2_rel {..<n} {..<n} s0 s0 \<and> True
+ 2. \<And>s0 t0 s t. \<lbrakk>0 < n; True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 3. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 4. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (clarsimp simp: plus2_rel_def plus2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s0 t0 s t. \<lbrakk>0 < n; True; t0 = mainv s0; t = mainv s\<rbrakk> \<Longrightarrow> True
+ 2. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 3. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv rv' s0 t0 s t. \<lbrakk>0 < n; mainv s = n * 2; t0 = mainv s0; t = mainv s; dc rv rv'\<rbrakk> \<Longrightarrow> t = n * 2
+ 2. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> prefix_closed (fold Trace_Monad.parallel (replicate (n - 1) plus2) plus2)<\STATESEP>apply (rule fold_parallel_prefix_closed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < n \<Longrightarrow> prefix_closed plus2 \<and> (\<forall>x\<in>set (replicate (n - 1) plus2). prefix_closed x)<\STATESEP>apply (simp add: prefix_closed_plus2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

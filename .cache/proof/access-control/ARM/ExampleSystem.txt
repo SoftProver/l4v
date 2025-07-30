@@ -1,0 +1,1030 @@
+<\STATESEP>theory ExampleSystem
+imports ArchAccess_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  nat_to_bl :: "nat \<Rightarrow> nat \<Rightarrow> bool list option"
+where
+  "nat_to_bl bits n \<equiv>
+    if n \<ge> 2^bits then
+      None
+    else
+      Some $ bin_to_bl bits (of_nat n)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma nat_to_bl_id [simp]: "nat_to_bl (size (x :: (('a::len) word))) (unat x) = Some (to_bl x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. nat_to_bl (size x) (unat x) = Some (to_bl x)<\STATESEP>apply (clarsimp simp: nat_to_bl_def to_bl_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> 2 ^ size x \<le> unat x \<and> (\<not> 2 ^ size x \<le> unat x \<longrightarrow> bin_to_bl_aux (size x) (uint x) [] = bin_to_bl_aux LENGTH('a) (uint x) [])<\STATESEP>apply (auto simp: le_def word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Purpose\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Generic functions / lemmas\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  complete_AuthGraph :: "'a auth_graph \<Rightarrow> 'a set \<Rightarrow> 'a auth_graph"
+where
+  "complete_AuthGraph g ls \<equiv>
+     g \<union> {(l,a,l) | a l. l \<in> ls}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  the_nat_to_bl :: "nat \<Rightarrow> nat \<Rightarrow> bool list"
+where
+  "the_nat_to_bl sz n \<equiv> the (nat_to_bl sz n)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  the_nat_to_bl_10  :: "nat \<Rightarrow> bool list"
+where
+  "the_nat_to_bl_10 n \<equiv> the_nat_to_bl 10 n"<\STATESEP>0<\TRANSEP><\STATESEP>lemma tcb_cnode_index_nat_to_bl:
+  "n<10 \<Longrightarrow> the_nat_to_bl_10 n \<noteq> tcb_cnode_index n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < 10 \<Longrightarrow> the_nat_to_bl_10 n \<noteq> tcb_cnode_index n<\STATESEP>by (clarsimp simp: the_nat_to_bl_10_def the_nat_to_bl_def
+                     tcb_cnode_index_def
+                     nat_to_bl_def to_bl_def bin_to_bl_aux_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Example 1\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Defining the State\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  asid1_3063 :: machine_word
+where
+  "asid1_3063 \<equiv> 1<<asid_low_bits"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  asid1_3065 :: machine_word
+where
+  "asid1_3065 \<equiv> 2<<asid_low_bits"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "asid_high_bits_of asid1_3065 \<noteq> asid_high_bits_of asid1_3063"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high_bits_of asid1_3065 \<noteq> asid_high_bits_of asid1_3063<\STATESEP>by (simp add: asid1_3063_def asid_high_bits_of_def asid1_3065_def asid_low_bits_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  caps1_6 :: cnode_contents
+where
+  "caps1_6 \<equiv>
+   (empty_cnode 10)
+      ( (the_nat_to_bl_10 1)
+            \<mapsto> ThreadCap 3079,
+        (the_nat_to_bl_10 2)
+            \<mapsto> CNodeCap 6 undefined undefined,
+        (the_nat_to_bl_10 3)
+            \<mapsto> ArchObjectCap (PageDirectoryCap 3063
+                                             (Some asid1_3063)),
+        (the_nat_to_bl_10 318)
+            \<mapsto> EndpointCap  9 0 {AllowSend} )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_6 :: kernel_object
+where
+  "obj1_6 \<equiv> CNode 10 caps1_6"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  caps1_7 :: cnode_contents
+where
+  "caps1_7 \<equiv>
+   (empty_cnode 10)
+      ( (the_nat_to_bl_10 1)
+            \<mapsto> ThreadCap 3080,
+        (the_nat_to_bl_10 2)
+            \<mapsto> CNodeCap 7 undefined undefined,
+        (the_nat_to_bl_10 3)
+           \<mapsto> ArchObjectCap (PageDirectoryCap 3065
+                                            (Some asid1_3065)),
+        (the_nat_to_bl_10 318)
+           \<mapsto> EndpointCap  9 0 {AllowRecv}) "<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_7 :: kernel_object
+where
+  "obj1_7 \<equiv> CNode 10 caps1_7"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_9 :: kernel_object
+where
+  "obj1_9 \<equiv> Endpoint IdleEP"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pt1_3072 :: "word8 \<Rightarrow> pte "
+where
+  "pt1_3072 \<equiv> (\<lambda>_. InvalidPTE)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_3072 :: kernel_object
+where
+  "obj1_3072 \<equiv> ArchObj (PageTable pt1_3072)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pd1_3063 :: "12 word \<Rightarrow> pde "
+where
+  "pd1_3063 \<equiv>
+    (\<lambda>_. InvalidPDE)
+     (0 := PageTablePDE
+              (addrFromPPtr 3072)
+              undefined
+              undefined )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_3063 :: kernel_object
+where
+  "obj1_3063 \<equiv> ArchObj (PageDirectory pd1_3063)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pt1_3077 :: "word8 \<Rightarrow> pte "
+where
+  "pt1_3077 \<equiv>
+    (\<lambda>_. InvalidPTE)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_3077 :: kernel_object
+where
+  "obj1_3077 \<equiv> ArchObj (PageTable pt1_3077)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pd1_3065 :: "12 word \<Rightarrow> pde "
+where
+  "pd1_3065 \<equiv>
+    (\<lambda>_. InvalidPDE)
+     (0 := PageTablePDE
+             (addrFromPPtr 3077)
+             undefined
+             undefined )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_3065 :: kernel_object
+where
+  "obj1_3065 \<equiv> ArchObj (PageDirectory pd1_3065)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_3079 :: kernel_object
+where
+  "obj1_3079 \<equiv>
+   TCB \<lparr>
+     tcb_ctable             = CNodeCap 6 undefined undefined,
+     tcb_vtable             = ArchObjectCap (PageDirectoryCap 3063 (Some asid1_3063)),
+     tcb_reply              = ReplyCap 3079 True {AllowGrant,AllowWrite}, \<comment> \<open>master reply cap to itself\<close>
+     tcb_caller             = NullCap,
+     tcb_ipcframe           = NullCap,
+     tcb_state              = Running,
+     tcb_fault_handler      = undefined,
+     tcb_ipc_buffer         = undefined,
+     tcb_fault              = undefined,
+     tcb_bound_notification = None,
+     tcb_mcpriority         = undefined,
+     tcb_arch               = \<lparr>tcb_context = undefined\<rparr> \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj1_3080 :: kernel_object
+where
+  "obj1_3080 \<equiv>
+   TCB \<lparr>
+     tcb_ctable             = CNodeCap 7 undefined undefined,
+     tcb_vtable             = ArchObjectCap (PageDirectoryCap 3065 (Some asid1_3065)),
+     tcb_reply              = ReplyCap 3080 True {AllowGrant,AllowWrite}, \<comment> \<open>master reply cap to itself\<close>
+     tcb_caller             = NullCap,
+     tcb_ipcframe           = NullCap,
+     tcb_state              = BlockedOnReceive 9 \<lparr> receiver_can_grant = False \<rparr>,
+     tcb_fault_handler      = undefined,
+     tcb_ipc_buffer         = undefined,
+     tcb_fault              = undefined,
+     tcb_bound_notification = None,
+     tcb_mcpriority         = undefined,
+     tcb_arch               = \<lparr>tcb_context = undefined\<rparr>\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+ "obj1_10 \<equiv> CNode 10 (Map.empty([] \<mapsto> cap.NullCap))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  kh1 :: kheap
+where
+  "kh1 \<equiv> [ 6 \<mapsto> obj1_6,
+          7 \<mapsto> obj1_7,
+          9 \<mapsto> obj1_9,
+          10 \<mapsto> obj1_10,
+          3063 \<mapsto> obj1_3063,
+          3065 \<mapsto> obj1_3065,
+          3072 \<mapsto> obj1_3072,
+          3077 \<mapsto> obj1_3077,
+          3079 \<mapsto> obj1_3079,
+          3080 \<mapsto> obj1_3080 ]"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas kh1_obj_def =
+  obj1_6_def obj1_7_def obj1_9_def obj1_10_def obj1_3063_def obj1_3065_def
+  obj1_3072_def obj1_3077_def obj1_3079_def obj1_3080_def<\STATESEP>0<\TRANSEP><\STATESEP>definition exst1 :: "det_ext" where
+  "exst1 \<equiv> \<lparr>work_units_completed_internal = undefined,
+             scheduler_action_internal = undefined,
+             ekheap_internal = \<lambda>x. None,
+             domain_list_internal = undefined,
+             domain_index_internal = undefined,
+             cur_domain_internal = undefined,
+             domain_time_internal = undefined,
+             ready_queues_internal = undefined,
+             cdt_list_internal = undefined\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  s1 :: "det_ext state"
+where
+  "s1 \<equiv>  \<lparr>
+    kheap = kh1,
+    cdt = Map.empty,
+    is_original_cap = undefined,
+    cur_thread = undefined,
+    idle_thread = undefined,
+    machine_state = undefined,
+    interrupt_irq_node = (\<lambda>_. 10),
+    interrupt_states = undefined,
+    arch_state = \<lparr>
+        arm_asid_table = (\<lambda> x. None),
+        arm_hwasid_table = undefined,
+        arm_next_asid = undefined,
+        arm_asid_map = undefined,
+        arm_global_pd = undefined,
+        arm_global_pts = undefined,
+        arm_kernel_vspace = undefined
+        \<rparr>,
+     exst = exst1
+    \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Defining the policy graph\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype Sys1Labels =
+    UT1 | T1 | EP1 | IRQ1<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys1AgentMap :: "Sys1Labels agent_map"
+where
+  "Sys1AgentMap \<equiv>
+   (\<lambda>_. undefined)
+     (6 := UT1,
+      7 := T1,
+      9 := EP1,
+      10 := IRQ1,
+      3063 := UT1,
+      3065 := T1,
+      3072 := UT1,
+      3077 := T1,
+      3079 := UT1,
+      3080 := T1 )"<\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys1AgentMap_simps:
+  "Sys1AgentMap 6 = UT1"
+      "Sys1AgentMap 7 = T1"
+      "Sys1AgentMap 9 = EP1"
+      "Sys1AgentMap 10 = IRQ1"
+      "Sys1AgentMap 3063 = UT1"
+      "Sys1AgentMap 3065 = T1"
+      "Sys1AgentMap 3072 = UT1"
+      "Sys1AgentMap 3077 = T1"
+      "Sys1AgentMap 3079 = UT1"
+      "Sys1AgentMap 3080 = T1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((Sys1AgentMap 6 = UT1 &&& Sys1AgentMap 7 = T1) &&& Sys1AgentMap 9 = EP1 &&& Sys1AgentMap 0xA = IRQ1 &&& Sys1AgentMap 0xBF7 = UT1) &&& (Sys1AgentMap 0xBF9 = T1 &&& Sys1AgentMap 0xC00 = UT1) &&& Sys1AgentMap 0xC05 = T1 &&& Sys1AgentMap 0xC07 = UT1 &&& Sys1AgentMap 0xC08 = T1<\STATESEP>unfolding Sys1AgentMap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 6 = UT1 &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 7 = T1) &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 9 = EP1 &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xA = IRQ1 &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xBF7 = UT1) &&& (((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xBF9 = T1 &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xC00 = UT1) &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xC05 = T1 &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xC07 = UT1 &&& ((\<lambda>_. undefined)(6 := UT1, 7 := T1, 9 := EP1, 0xA := IRQ1, 0xBF7 := UT1, 0xBF9 := T1, 0xC00 := UT1, 0xC05 := T1, 0xC07 := UT1, 0xC08 := T1)) 0xC08 = T1<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  Sys1AuthGraph_aux :: "Sys1Labels auth_graph"
+where
+    "Sys1AuthGraph_aux \<equiv>
+  { (UT1, auth.SyncSend,    EP1),
+    (UT1, auth.Reset,   EP1),
+    (T1,  auth.Receive, EP1),
+    (T1,  auth.Reset,   EP1) }"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys1AuthGraph:: "Sys1Labels auth_graph"
+where
+    "Sys1AuthGraph \<equiv> complete_AuthGraph Sys1AuthGraph_aux {T1, UT1}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys1ASIDMap :: "Sys1Labels agent_asid_map"
+where
+  "Sys1ASIDMap \<equiv>
+    (\<lambda>x. if (asid_high_bits_of x = asid_high_bits_of asid1_3063)
+          then UT1
+         else if (asid_high_bits_of x = asid_high_bits_of asid1_3065)
+          then T1 else undefined)"<\STATESEP>0<\TRANSEP><\STATESEP>definition Sys1PAS :: "Sys1Labels PAS" where
+  "Sys1PAS \<equiv> \<lparr> pasObjectAbs = Sys1AgentMap, pasASIDAbs = Sys1ASIDMap, pasIRQAbs = (\<lambda>_. IRQ1),
+              pasPolicy = Sys1AuthGraph, pasSubject = UT1, pasMayActivate = True, pasMayEditReadyQueues = True, pasMaySendIrqs = True, pasDomainAbs = undefined \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Proof of pas_refined for Sys1\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma caps1_7_well_formed: "well_formed_cnode_n 10 caps1_7"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_cnode_n 10 caps1_7<\STATESEP>apply (clarsimp simp: caps1_7_def well_formed_cnode_n_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert (the_nat_to_bl_10 318) (insert (the_nat_to_bl_10 3) (insert (the_nat_to_bl_10 2) (insert (the_nat_to_bl_10 (Suc 0)) (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: the_nat_to_bl_10_def the_nat_to_bl_def nat_to_bl_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, True, False, False, True, True, True, True, True, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: empty_cnode_def dom_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, True, False, False, True, True, True, True, True, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] {a. length a = 10}))) = {x. length x = 10}<\STATESEP>apply (rule set_eqI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10) = (length x = 10)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10 \<Longrightarrow> length x = 10
+ 2. \<And>x. length x = 10 \<Longrightarrow> x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply (elim disjE, insert len_bin_to_bl, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. length x = 10 \<Longrightarrow> x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma caps1_6_well_formed: "well_formed_cnode_n 10 caps1_6"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_cnode_n 10 caps1_6<\STATESEP>apply (clarsimp simp: caps1_6_def well_formed_cnode_n_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert (the_nat_to_bl_10 318) (insert (the_nat_to_bl_10 3) (insert (the_nat_to_bl_10 2) (insert (the_nat_to_bl_10 (Suc 0)) (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: the_nat_to_bl_10_def the_nat_to_bl_def nat_to_bl_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, True, False, False, True, True, True, True, True, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: empty_cnode_def dom_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, True, False, False, True, True, True, True, True, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] {a. length a = 10}))) = {x. length x = 10}<\STATESEP>apply (rule set_eqI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10) = (length x = 10)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10 \<Longrightarrow> length x = 10
+ 2. \<And>x. length x = 10 \<Longrightarrow> x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply (elim disjE, insert len_bin_to_bl, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. length x = 10 \<Longrightarrow> x = [False, True, False, False, True, True, True, True, True, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_cnode_apply[simp]:
+  "(empty_cnode n xs = Some cap) = (length xs = n \<and> cap = NullCap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (empty_cnode n xs = Some cap) = (length xs = n \<and> cap = NullCap)<\STATESEP>by (auto simp add: empty_cnode_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma s1_caps_of_state :
+  "caps_of_state s1 p = Some cap \<Longrightarrow>
+     cap = NullCap \<or>
+     (p,cap) \<in>
+       { ((6::obj_ref,(the_nat_to_bl_10 1)),  ThreadCap 3079),
+         ((6::obj_ref,(the_nat_to_bl_10 2)),  CNodeCap 6 undefined undefined),
+         ((6::obj_ref,(the_nat_to_bl_10 3)),  ArchObjectCap (PageDirectoryCap 3063 (Some asid1_3063))),
+         ((6::obj_ref,(the_nat_to_bl_10 318)),EndpointCap  9 0 {AllowSend}),
+         ((7::obj_ref,(the_nat_to_bl_10 1)),  ThreadCap 3080),
+         ((7::obj_ref,(the_nat_to_bl_10 2)),  CNodeCap 7 undefined undefined),
+         ((7::obj_ref,(the_nat_to_bl_10 3)),  ArchObjectCap (PageDirectoryCap 3065 (Some asid1_3065))),
+         ((7::obj_ref,(the_nat_to_bl_10 318)),EndpointCap  9 0 {AllowRecv}) ,
+         ((3079::obj_ref, (tcb_cnode_index 0)), CNodeCap 6 undefined undefined ),
+         ((3079::obj_ref, (tcb_cnode_index 1)), ArchObjectCap (PageDirectoryCap 3063 (Some asid1_3063))),
+         ((3079::obj_ref, (tcb_cnode_index 2)), ReplyCap 3079 True {AllowGrant,AllowWrite}),
+         ((3079::obj_ref, (tcb_cnode_index 3)), NullCap),
+         ((3079::obj_ref, (tcb_cnode_index 4)), NullCap),
+         ((3080::obj_ref, (tcb_cnode_index 0)), CNodeCap 7 undefined undefined ),
+         ((3080::obj_ref, (tcb_cnode_index 1)), ArchObjectCap (PageDirectoryCap 3065 (Some asid1_3065))),
+         ((3080::obj_ref, (tcb_cnode_index 2)), ReplyCap 3080 True {AllowGrant,AllowWrite}),
+         ((3080::obj_ref, (tcb_cnode_index 3)), NullCap),
+         ((3080::obj_ref, (tcb_cnode_index 4)), NullCap)} "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. caps_of_state s1 p = Some cap \<Longrightarrow> cap = NullCap \<or> (p, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((6, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowSend}), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((7, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowRecv}), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}<\STATESEP>apply (insert caps1_7_well_formed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>caps_of_state s1 p = Some cap; well_formed_cnode_n 10 caps1_7\<rbrakk> \<Longrightarrow> cap = NullCap \<or> (p, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((6, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowSend}), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((7, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowRecv}), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}<\STATESEP>apply (insert caps1_6_well_formed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>caps_of_state s1 p = Some cap; well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6\<rbrakk> \<Longrightarrow> cap = NullCap \<or> (p, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((6, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowSend}), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((7, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowRecv}), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}<\STATESEP>apply (simp add: caps_of_state_cte_wp_at cte_wp_at_cases s1_def kh1_def kh1_obj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(if \<exists>cap. (\<exists>sz fun. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if fst p = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps1_7) else if fst p = 6 then Some (CNode 10 caps1_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun (snd p) = Some cap) \<or> (\<exists>tcb. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if fst p = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps1_7) else if fst p = 6 then Some (CNode 10 caps1_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases (snd p) = Some (get, set, restr)) \<and> cap = get tcb)) then Some (THE cap. (\<exists>sz fun. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if fst p = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps1_7) else if fst p = 6 then Some (CNode 10 caps1_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun (snd p) = Some cap) \<or> (\<exists>tcb. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if fst p = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps1_7) else if fst p = 6 then Some (CNode 10 caps1_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases (snd p) = Some (get, set, restr)) \<and> cap = get tcb))) else None) = Some cap; well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6\<rbrakk> \<Longrightarrow> cap = NullCap \<or> p = (6, the_nat_to_bl_10 (Suc 0)) \<and> cap = ThreadCap 0xC07 \<or> p = (6, the_nat_to_bl_10 2) \<and> cap = CNodeCap 6 undefined undefined \<or> p = (6, the_nat_to_bl_10 3) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> p = (6, the_nat_to_bl_10 318) \<and> cap = EndpointCap 9 0 {AllowSend} \<or> p = (7, the_nat_to_bl_10 (Suc 0)) \<and> cap = ThreadCap 0xC08 \<or> p = (7, the_nat_to_bl_10 2) \<and> cap = CNodeCap 7 undefined undefined \<or> p = (7, the_nat_to_bl_10 3) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> p = (7, the_nat_to_bl_10 318) \<and> cap = EndpointCap 9 0 {AllowRecv} \<or> p = (0xC07, tcb_cnode_index 0) \<and> cap = CNodeCap 6 undefined undefined \<or> p = (0xC07, tcb_cnode_index (Suc 0)) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> p = (0xC07, tcb_cnode_index 2) \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> p = (0xC07, tcb_cnode_index 3) \<and> cap = NullCap \<or> p = (0xC07, tcb_cnode_index 4) \<and> cap = NullCap \<or> p = (0xC08, tcb_cnode_index 0) \<and> cap = CNodeCap 7 undefined undefined \<or> p = (0xC08, tcb_cnode_index (Suc 0)) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> p = (0xC08, tcb_cnode_index 2) \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> p = (0xC08, tcb_cnode_index 3) \<and> cap = NullCap \<or> p = (0xC08, tcb_cnode_index 4) \<and> cap = NullCap<\STATESEP>apply (case_tac p, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(if \<exists>cap. (\<exists>sz fun. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if a = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps1_7) else if a = 6 then Some (CNode 10 caps1_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun b = Some cap) \<or> (\<exists>tcb. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if a = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps1_7) else if a = 6 then Some (CNode 10 caps1_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases b = Some (get, set, restr)) \<and> cap = get tcb)) then Some (THE cap. (\<exists>sz fun. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if a = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps1_7) else if a = 6 then Some (CNode 10 caps1_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun b = Some cap) \<or> (\<exists>tcb. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt1_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt1_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd1_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd1_3063)) else if a = 0xA then Some (CNode 10 [[] \<mapsto> NullCap]) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps1_7) else if a = 6 then Some (CNode 10 caps1_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases b = Some (get, set, restr)) \<and> cap = get tcb))) else None) = Some cap; well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (a, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)); b = the_nat_to_bl_10 318 \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowSend}; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> ThreadCap 0xC08; b = the_nat_to_bl_10 2 \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)); b = the_nat_to_bl_10 318 \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowRecv}; b = tcb_cnode_index 0 \<longrightarrow> a = 0xC07 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = tcb_cnode_index (Suc 0) \<longrightarrow> a = 0xC07 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)); b = tcb_cnode_index 2 \<longrightarrow> a = 0xC07 \<longrightarrow> cap \<noteq> ReplyCap 0xC07 True {AllowGrant, AllowWrite}; b = tcb_cnode_index 0 \<longrightarrow> a = 0xC08 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = tcb_cnode_index (Suc 0) \<longrightarrow> a = 0xC08 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)); b = tcb_cnode_index 2 \<longrightarrow> a = 0xC08 \<longrightarrow> cap \<noteq> ReplyCap 0xC08 True {AllowGrant, AllowWrite}\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>b get set restr. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (0xC08, b); get \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr> \<noteq> NullCap; b \<noteq> tcb_cnode_index 0; b \<noteq> tcb_cnode_index (Suc 0); b \<noteq> tcb_cnode_index 2; cap = get \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>; tcb_cap_cases b = Some (get, set, restr)\<rbrakk> \<Longrightarrow> False
+ 2. \<And>b get set restr. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (0xC07, b); get \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr> \<noteq> NullCap; b \<noteq> tcb_cnode_index 0; b \<noteq> tcb_cnode_index (Suc 0); b \<noteq> tcb_cnode_index 2; cap = get \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>; tcb_cap_cases b = Some (get, set, restr)\<rbrakk> \<Longrightarrow> False
+ 3. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (7, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC08; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)); b = the_nat_to_bl_10 318 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowRecv}; caps1_7 b = Some cap\<rbrakk> \<Longrightarrow> False
+ 4. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (6, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)); b = the_nat_to_bl_10 318 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowSend}; caps1_6 b = Some cap\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: cte_wp_at_cases tcb_cap_cases_def
+                     split: if_split_asm)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (7, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC08; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)); b = the_nat_to_bl_10 318 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowRecv}; caps1_7 b = Some cap\<rbrakk> \<Longrightarrow> False
+ 2. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (6, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)); b = the_nat_to_bl_10 318 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowSend}; caps1_6 b = Some cap\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: caps1_7_def split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps1_7; well_formed_cnode_n 10 caps1_6; p = (6, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)); b = the_nat_to_bl_10 318 \<longrightarrow> cap \<noteq> EndpointCap 9 0 {AllowSend}; caps1_6 b = Some cap\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: caps1_6_def cte_wp_at_cases  split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys1_wellformed: "pas_wellformed Sys1PAS"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_wellformed Sys1PAS<\STATESEP>apply (clarsimp simp: Sys1PAS_def
+                    policy_wellformed_def
+                    Sys1AuthGraph_def
+                    Sys1AuthGraph_aux_def
+                    complete_AuthGraph_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>s r. (s = T1 \<or> s = UT1) \<and> (r = T1 \<and> s = EP1 \<or> s = r \<and> (r = T1 \<or> r = UT1)) \<longrightarrow> r = s \<and> s = r \<and> (r = T1 \<or> r = UT1)) \<and> (\<forall>s r. (s = T1 \<or> s = UT1) \<and> (r = T1 \<and> s = EP1 \<or> s = r \<and> (r = T1 \<or> r = UT1)) \<longrightarrow> s = r \<and> (r = T1 \<or> r = UT1))<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_states_of_state_1:
+  "tcb_states_of_state s1 = [0xC08 \<mapsto> thread_state.BlockedOnReceive 9 \<lparr> receiver_can_grant = False \<rparr>,  0xC07 \<mapsto> thread_state.Running ]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_states_of_state s1 = [0xC08 \<mapsto> BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, 0xC07 \<mapsto> Running]<\STATESEP>unfolding s1_def tcb_states_of_state_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>p. map_option tcb_state (get_tcb p \<lparr>kheap = kh1, cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0xA, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr>)) = [0xC08 \<mapsto> BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, 0xC07 \<mapsto> Running]<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. map_option tcb_state (get_tcb p \<lparr>kheap = kh1, cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0xA, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr>) = [0xC08 \<mapsto> BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, 0xC07 \<mapsto> Running] p<\STATESEP>apply (simp add: get_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. (p = 0xC08 \<longrightarrow> (\<exists>z. (case kh1 0xC08 of None \<Rightarrow> None | Some (TCB xa) \<Rightarrow> Some xa | Some _ \<Rightarrow> None) = Some z \<and> tcb_state z = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>)) \<and> (p \<noteq> 0xC08 \<longrightarrow> (p = 0xC07 \<longrightarrow> (\<exists>z. (case kh1 0xC07 of None \<Rightarrow> None | Some (TCB x) \<Rightarrow> Some x | Some _ \<Rightarrow> None) = Some z \<and> tcb_state z = Running)) \<and> (p \<noteq> 0xC07 \<longrightarrow> (case kh1 p of None \<Rightarrow> None | Some (TCB xa) \<Rightarrow> Some xa | Some _ \<Rightarrow> None) = None))<\STATESEP>apply (simp add: kh1_def kh1_obj_def )<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma thread_bound_ntfns_1:
+  "thread_bound_ntfns s1 = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. thread_bound_ntfns s1 = (\<lambda>x. None)<\STATESEP>unfolding s1_def thread_bound_ntfns_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>p. case get_tcb p \<lparr>kheap = kh1, cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0xA, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr> of None \<Rightarrow> None | Some x \<Rightarrow> tcb_bound_notification x) = (\<lambda>x. None)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. (case get_tcb p \<lparr>kheap = kh1, cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0xA, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr> of None \<Rightarrow> None | Some x \<Rightarrow> tcb_bound_notification x) = None<\STATESEP>apply (simp add: get_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. (case case kh1 p of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None of None \<Rightarrow> None | Some x2 \<Rightarrow> tcb_bound_notification x2) = None<\STATESEP>apply (simp add: kh1_def kh1_obj_def )<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>declare AllowSend_def[simp] AllowRecv_def[simp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma domains_of_state_s1[simp]:
+  "domains_of_state s1 = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. domains_of_state s1 = {}<\STATESEP>apply (rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. domains_of_state s1 \<subseteq> {}
+ 2. {} \<subseteq> domains_of_state s1<\STATESEP>apply (rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> domains_of_state s1 \<Longrightarrow> x \<in> {}
+ 2. {} \<subseteq> domains_of_state s1<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. (a, b) \<in> domains_of_state s1 \<Longrightarrow> False
+ 2. {} \<subseteq> domains_of_state s1<\STATESEP>apply (erule domains_of_state_aux.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ptr etcb d. \<lbrakk>ekheap s1 ptr = Some etcb; d = tcb_domain etcb\<rbrakk> \<Longrightarrow> False
+ 2. {} \<subseteq> domains_of_state s1<\STATESEP>apply (simp add: s1_def exst1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {} \<subseteq> domains_of_state s1<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "pas_refined Sys1PAS s1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_refined Sys1PAS s1<\STATESEP>apply (clarsimp simp: pas_refined_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_wellformed Sys1PAS \<and> irq_map_wellformed Sys1PAS s1 \<and> tcb_domain_map_wellformed_aux Sys1PAS {} \<and> state_objs_in_policy Sys1PAS s1 \<and> state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS \<and> state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. pas_wellformed Sys1PAS
+ 2. irq_map_wellformed Sys1PAS s1
+ 3. tcb_domain_map_wellformed_aux Sys1PAS {}
+ 4. state_objs_in_policy Sys1PAS s1
+ 5. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 6. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_wellformed Sys1PAS<\STATESEP>by (simp add: Sys1_wellformed)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. irq_map_wellformed Sys1PAS s1
+ 2. tcb_domain_map_wellformed_aux Sys1PAS {}
+ 3. state_objs_in_policy Sys1PAS s1
+ 4. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 5. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_map_wellformed Sys1PAS s1<\STATESEP>by (simp add: irq_map_wellformed_aux_def s1_def Sys1AgentMap_simps Sys1PAS_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. tcb_domain_map_wellformed_aux Sys1PAS {}
+ 2. state_objs_in_policy Sys1PAS s1
+ 3. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 4. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_domain_map_wellformed_aux Sys1PAS {}<\STATESEP>by (simp  add: tcb_domain_map_wellformed_aux_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. state_objs_in_policy Sys1PAS s1
+ 2. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 3. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (clarsimp simp: auth_graph_map_def
+                           Sys1PAS_def
+                           state_objs_to_policy_def
+                           )+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x auth y. (x, auth, y) \<in> state_bits_to_policy (caps_of_state s1) (thread_st_auth s1) (thread_bound_ntfns s1) (cdt s1) (state_vrefs s1) \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 2. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 3. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (erule state_bits_to_policy.cases, simp_all, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>a b cap oref autha. \<lbrakk>caps_of_state s1 (a, b) = Some cap; oref \<in> obj_refs_ac cap; autha \<in> cap_auth_conferred cap\<rbrakk> \<Longrightarrow> (Sys1AgentMap a, autha, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 2. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s1 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst ptr), Control, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 3. \<And>x auth y. (y, auth) \<in> thread_st_auth s1 x \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 4. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 6. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 7. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 8. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 9. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (drule s1_caps_of_state, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>a b cap oref autha. \<lbrakk>oref \<in> obj_refs_ac cap; autha \<in> cap_auth_conferred cap; cap = NullCap \<or> a = 6 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC07 \<or> a = 6 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 6 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> a = 6 \<and> b = the_nat_to_bl_10 318 \<and> cap = EndpointCap 9 0 {AllowWrite} \<or> a = 7 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC08 \<or> a = 7 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> a = 7 \<and> b = the_nat_to_bl_10 318 \<and> cap = EndpointCap 9 0 {AllowRead} \<or> a = 0xC07 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> a = 0xC07 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> a = 0xC07 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC07 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 0xC08 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> a = 0xC08 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> a = 0xC08 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap\<rbrakk> \<Longrightarrow> (Sys1AgentMap a, autha, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 2. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s1 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst ptr), Control, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 3. \<And>x auth y. (y, auth) \<in> thread_st_auth s1 x \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 4. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 6. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 7. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 8. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 9. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (simp add: Sys1AuthGraph_def complete_AuthGraph_def Sys1AuthGraph_aux_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>a b cap oref autha. \<lbrakk>oref \<in> obj_refs_ac cap; autha \<in> cap_auth_conferred cap; cap = NullCap \<or> a = 6 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC07 \<or> a = 6 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 6 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> a = 6 \<and> b = the_nat_to_bl_10 318 \<and> cap = EndpointCap 9 0 {AllowWrite} \<or> a = 7 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC08 \<or> a = 7 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> a = 7 \<and> b = the_nat_to_bl_10 318 \<and> cap = EndpointCap 9 0 {AllowRead} \<or> a = 0xC07 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> a = 0xC07 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> a = 0xC07 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC07 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 0xC08 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> a = 0xC08 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> a = 0xC08 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap\<rbrakk> \<Longrightarrow> Sys1AgentMap a = UT1 \<and> autha = SyncSend \<and> Sys1AgentMap oref = EP1 \<or> Sys1AgentMap a = UT1 \<and> autha = Reset \<and> Sys1AgentMap oref = EP1 \<or> Sys1AgentMap a = T1 \<and> autha = Receive \<and> Sys1AgentMap oref = EP1 \<or> Sys1AgentMap a = T1 \<and> autha = Reset \<and> Sys1AgentMap oref = EP1 \<or> Sys1AgentMap oref = Sys1AgentMap a \<and> (Sys1AgentMap a = T1 \<or> Sys1AgentMap a = UT1)
+ 2. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s1 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst ptr), Control, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 3. \<And>x auth y. (y, auth) \<in> thread_st_auth s1 x \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 4. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 6. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 7. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 8. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 9. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (elim disjE conjE; solves\<open>clarsimp simp: Sys1AgentMap_simps cap_auth_conferred_def cap_rights_to_auth_def\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s1 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst ptr), Control, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 2. \<And>x auth y. (y, auth) \<in> thread_st_auth s1 x \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 3. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 6. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 7. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 8. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (drule s1_caps_of_state, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>a b cap oref. \<lbrakk>oref \<in> untyped_range cap; cap = NullCap \<or> a = 6 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC07 \<or> a = 6 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 6 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> a = 6 \<and> b = the_nat_to_bl_10 318 \<and> cap = EndpointCap 9 0 {AllowWrite} \<or> a = 7 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC08 \<or> a = 7 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> a = 7 \<and> b = the_nat_to_bl_10 318 \<and> cap = EndpointCap 9 0 {AllowRead} \<or> a = 0xC07 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> a = 0xC07 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> a = 0xC07 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC07 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 0xC08 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> a = 0xC08 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> a = 0xC08 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap\<rbrakk> \<Longrightarrow> (Sys1AgentMap a, Control, Sys1AgentMap oref) \<in> Sys1AuthGraph
+ 2. \<And>x auth y. (y, auth) \<in> thread_st_auth s1 x \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 3. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 6. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 7. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 8. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (elim disjE; solves \<open>simp add: thread_bound_ntfns_def\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>x auth y. (y, auth) \<in> thread_st_auth s1 x \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap y) \<in> Sys1AuthGraph
+ 2. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 3. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 5. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 6. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 7. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (clarsimp simp: state_refs_of_def thread_st_auth_def tcb_states_of_state_1
+               Sys1AuthGraph_def Sys1AgentMap_simps
+               complete_AuthGraph_def
+               Sys1AuthGraph_aux_def
+               split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x auth y oref oref' autha. \<lbrakk>x = oref; auth = autha; y = oref'; thread_bound_ntfns s1 oref = Some oref'; autha = Receive \<or> autha = Reset\<rbrakk> \<Longrightarrow> (Sys1AgentMap oref, autha, Sys1AgentMap oref') \<in> Sys1AuthGraph
+ 2. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 3. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 4. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 5. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 6. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (simp add:  thread_bound_ntfns_1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s1 slot' = Some slot; \<not> is_transferable_in slot' s1\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), Control, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 2. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 3. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 4. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 5. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (simp add: s1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s1 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys1AgentMap (fst slot), DeleteDerived, Sys1AgentMap (fst slot')) \<in> Sys1AuthGraph
+ 2. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 3. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 4. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (simp add: s1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s1 x\<rbrakk> \<Longrightarrow> (Sys1AgentMap x, auth, Sys1AgentMap ptr') \<in> Sys1AuthGraph
+ 2. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 3. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (fastforce simp: state_vrefs_def
+                           vs_refs_no_global_pts_def
+                           s1_def kh1_def  Sys1AgentMap_simps
+                           kh1_obj_def comp_def pt1_3072_def pt1_3077_def pte_ref_def pde_ref2_def pd1_3065_def pd1_3063_def
+                           Sys1AuthGraph_def ptr_range_def
+                           complete_AuthGraph_def
+                           Sys1AuthGraph_aux_def
+                     dest!: graph_ofD
+                     split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<subseteq> pasPolicy Sys1PAS
+ 2. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (rule subsetI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa b. (a, aa, b) \<in> state_asids_to_policy_aux Sys1PAS (caps_of_state s1) (asid_table s1) (state_vrefs s1) \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 2. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (erule state_asids_to_policy_aux.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a aa b ptr acap asid. \<lbrakk>a = pasObjectAbs Sys1PAS (fst ptr); aa = Control; b = pasASIDAbs Sys1PAS asid; caps_of_state s1 ptr = Some (ArchObjectCap acap); asid \<in> acap_asid' acap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 2. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys1PAS asid; aa = ab; b = pasObjectAbs Sys1PAS pdptr; asid_table s1 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s1 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 3. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys1PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys1PAS asid; asid_table s1 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 4. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>ab ba acap asid. \<lbrakk>caps_of_state s1 (ab, ba) = Some (ArchObjectCap acap); asid \<in> acap_asid' acap\<rbrakk> \<Longrightarrow> (pasObjectAbs Sys1PAS ab, Control, pasASIDAbs Sys1PAS asid) \<in> pasPolicy Sys1PAS
+ 2. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys1PAS asid; aa = ab; b = pasObjectAbs Sys1PAS pdptr; asid_table s1 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s1 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 3. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys1PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys1PAS asid; asid_table s1 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 4. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (drule s1_caps_of_state, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>ab ba acap asid. \<lbrakk>asid \<in> acap_asid' acap; ab = 6 \<and> ba = the_nat_to_bl_10 3 \<and> acap = PageDirectoryCap 0xBF7 (Some asid1_3063) \<or> ab = 7 \<and> ba = the_nat_to_bl_10 3 \<and> acap = PageDirectoryCap 0xBF9 (Some asid1_3065) \<or> ab = 0xC07 \<and> ba = tcb_cnode_index (Suc 0) \<and> acap = PageDirectoryCap 0xBF7 (Some asid1_3063) \<or> ab = 0xC08 \<and> ba = tcb_cnode_index (Suc 0) \<and> acap = PageDirectoryCap 0xBF9 (Some asid1_3065)\<rbrakk> \<Longrightarrow> (pasObjectAbs Sys1PAS ab, Control, pasASIDAbs Sys1PAS asid) \<in> pasPolicy Sys1PAS
+ 2. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys1PAS asid; aa = ab; b = pasObjectAbs Sys1PAS pdptr; asid_table s1 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s1 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 3. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys1PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys1PAS asid; asid_table s1 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 4. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (simp add: Sys1AuthGraph_def complete_AuthGraph_def Sys1AuthGraph_aux_def Sys1PAS_def Sys1ASIDMap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>ab ba acap asid. \<lbrakk>asid \<in> acap_asid' acap; ab = 6 \<and> ba = the_nat_to_bl_10 3 \<and> acap = PageDirectoryCap 0xBF7 (Some asid1_3063) \<or> ab = 7 \<and> ba = the_nat_to_bl_10 3 \<and> acap = PageDirectoryCap 0xBF9 (Some asid1_3065) \<or> ab = 0xC07 \<and> ba = tcb_cnode_index (Suc 0) \<and> acap = PageDirectoryCap 0xBF7 (Some asid1_3063) \<or> ab = 0xC08 \<and> ba = tcb_cnode_index (Suc 0) \<and> acap = PageDirectoryCap 0xBF9 (Some asid1_3065)\<rbrakk> \<Longrightarrow> (asid_high_bits_of asid = asid_high_bits_of asid1_3065 \<longrightarrow> (asid_high_bits_of asid1_3065 = asid_high_bits_of asid1_3063 \<longrightarrow> UT1 = Sys1AgentMap ab \<and> (Sys1AgentMap ab = T1 \<or> Sys1AgentMap ab = UT1)) \<and> (asid_high_bits_of asid1_3065 \<noteq> asid_high_bits_of asid1_3063 \<longrightarrow> T1 = Sys1AgentMap ab \<and> (Sys1AgentMap ab = T1 \<or> Sys1AgentMap ab = UT1))) \<and> (asid_high_bits_of asid \<noteq> asid_high_bits_of asid1_3065 \<longrightarrow> (asid_high_bits_of asid = asid_high_bits_of asid1_3063 \<longrightarrow> UT1 = Sys1AgentMap ab \<and> (Sys1AgentMap ab = T1 \<or> Sys1AgentMap ab = UT1)) \<and> (asid_high_bits_of asid \<noteq> asid_high_bits_of asid1_3063 \<longrightarrow> undefined = Sys1AgentMap ab \<and> (Sys1AgentMap ab = T1 \<or> Sys1AgentMap ab = UT1)))
+ 2. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys1PAS asid; aa = ab; b = pasObjectAbs Sys1PAS pdptr; asid_table s1 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s1 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 3. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys1PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys1PAS asid; asid_table s1 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 4. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (elim disjE conjE, simp_all add: Sys1AgentMap_simps cap_auth_conferred_def cap_rights_to_auth_def asid1_3065_def asid1_3063_def
+       asid_low_bits_def asid_high_bits_of_def )[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys1PAS asid; aa = ab; b = pasObjectAbs Sys1PAS pdptr; asid_table s1 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s1 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 2. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys1PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys1PAS asid; asid_table s1 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 3. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (clarsimp simp: state_vrefs_def
+                           vs_refs_no_global_pts_def
+                           s1_def kh1_def  Sys1AgentMap_simps
+                           kh1_obj_def comp_def pt1_3072_def pt1_3077_def pte_ref_def pde_ref2_def pd1_3065_def pd1_3063_def
+                           Sys1AuthGraph_def ptr_range_def
+                           complete_AuthGraph_def
+                           Sys1AuthGraph_aux_def
+                     dest!: graph_ofD
+                     split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys1PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys1PAS asid; asid_table s1 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS
+ 2. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (clarsimp simp: s1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. state_irqs_to_policy Sys1PAS s1 \<subseteq> pasPolicy Sys1PAS<\STATESEP>apply (rule subsetI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b. (a, aa, b) \<in> state_irqs_to_policy Sys1PAS s1 \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS<\STATESEP>apply (erule state_irqs_to_policy_aux.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b ptr cap irq. \<lbrakk>a = pasObjectAbs Sys1PAS (fst ptr); aa = Control; b = pasIRQAbs Sys1PAS irq; caps_of_state s1 ptr = Some cap; irq \<in> cap_irqs_controlled cap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys1PAS<\STATESEP>apply (simp add: Sys1AuthGraph_def complete_AuthGraph_def Sys1AuthGraph_aux_def Sys1PAS_def Sys1ASIDMap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b ptr cap irq. \<lbrakk>a = Sys1AgentMap (fst ptr); aa = Control; b = IRQ1; caps_of_state s1 ptr = Some cap; irq \<in> cap_irqs_controlled cap\<rbrakk> \<Longrightarrow> IRQ1 = Sys1AgentMap (fst ptr) \<and> (Sys1AgentMap (fst ptr) = T1 \<or> Sys1AgentMap (fst ptr) = UT1)<\STATESEP>apply (drule s1_caps_of_state)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b ptr cap irq. \<lbrakk>a = Sys1AgentMap (fst ptr); aa = Control; b = IRQ1; irq \<in> cap_irqs_controlled cap; cap = NullCap \<or> (ptr, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((6, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowSend}), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((7, the_nat_to_bl_10 318), EndpointCap 9 0 {AllowRecv}), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}\<rbrakk> \<Longrightarrow> IRQ1 = Sys1AgentMap (fst ptr) \<and> (Sys1AgentMap (fst ptr) = T1 \<or> Sys1AgentMap (fst ptr) = UT1)<\STATESEP>apply (simp add: Sys1AuthGraph_def complete_AuthGraph_def Sys1AuthGraph_aux_def Sys1PAS_def Sys1ASIDMap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b ptr cap irq. \<lbrakk>a = Sys1AgentMap (fst ptr); aa = Control; b = IRQ1; irq \<in> cap_irqs_controlled cap; cap = NullCap \<or> ptr = (6, the_nat_to_bl_10 (Suc 0)) \<and> cap = ThreadCap 0xC07 \<or> ptr = (6, the_nat_to_bl_10 2) \<and> cap = CNodeCap 6 undefined undefined \<or> ptr = (6, the_nat_to_bl_10 3) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> ptr = (6, the_nat_to_bl_10 318) \<and> cap = EndpointCap 9 0 {AllowWrite} \<or> ptr = (7, the_nat_to_bl_10 (Suc 0)) \<and> cap = ThreadCap 0xC08 \<or> ptr = (7, the_nat_to_bl_10 2) \<and> cap = CNodeCap 7 undefined undefined \<or> ptr = (7, the_nat_to_bl_10 3) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> ptr = (7, the_nat_to_bl_10 318) \<and> cap = EndpointCap 9 0 {AllowRead} \<or> ptr = (0xC07, tcb_cnode_index 0) \<and> cap = CNodeCap 6 undefined undefined \<or> ptr = (0xC07, tcb_cnode_index (Suc 0)) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid1_3063)) \<or> ptr = (0xC07, tcb_cnode_index 2) \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> ptr = (0xC07, tcb_cnode_index 3) \<and> cap = NullCap \<or> ptr = (0xC07, tcb_cnode_index 4) \<and> cap = NullCap \<or> ptr = (0xC08, tcb_cnode_index 0) \<and> cap = CNodeCap 7 undefined undefined \<or> ptr = (0xC08, tcb_cnode_index (Suc 0)) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid1_3065)) \<or> ptr = (0xC08, tcb_cnode_index 2) \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> ptr = (0xC08, tcb_cnode_index 3) \<and> cap = NullCap \<or> ptr = (0xC08, tcb_cnode_index 4) \<and> cap = NullCap\<rbrakk> \<Longrightarrow> IRQ1 = Sys1AgentMap (fst ptr) \<and> (Sys1AgentMap (fst ptr) = T1 \<or> Sys1AgentMap (fst ptr) = UT1)<\STATESEP>apply (elim disjE conjE, simp_all add: Sys1AgentMap_simps cap_auth_conferred_def cap_rights_to_auth_def asid1_3065_def asid1_3063_def
+    asid_low_bits_def asid_high_bits_of_def )[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Example 2\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Defining the State\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  asid2_3063 :: machine_word
+where
+  "asid2_3063 \<equiv> 1<<asid_low_bits"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  asid2_3065 :: machine_word
+where
+  "asid2_3065 \<equiv> 2<<asid_low_bits"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "asid_high_bits_of asid2_3065 \<noteq> asid_high_bits_of asid2_3063"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high_bits_of asid2_3065 \<noteq> asid_high_bits_of asid2_3063<\STATESEP>by (simp add: asid2_3063_def asid_high_bits_of_def asid2_3065_def asid_low_bits_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  caps2_5 :: cnode_contents
+where
+  "caps2_5 \<equiv>
+   (empty_cnode 10)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_5 :: kernel_object
+where
+  "obj2_5 \<equiv> CNode 10 caps2_5"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  caps2_6 :: cnode_contents
+where
+  "caps2_6 \<equiv>
+   (empty_cnode 10)
+      ( (the_nat_to_bl_10 1)
+            \<mapsto> ThreadCap 3079,
+        (the_nat_to_bl_10 2)
+            \<mapsto> CNodeCap 6 undefined undefined,
+        (the_nat_to_bl_10 3)
+            \<mapsto> ArchObjectCap (PageDirectoryCap 3063
+                                             (Some asid2_3063)),
+        (the_nat_to_bl_10 4)
+            \<mapsto> CNodeCap 5 undefined undefined )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_6 :: kernel_object
+where
+  "obj2_6 \<equiv> CNode 10 caps2_6"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  caps2_7 :: cnode_contents
+where
+  "caps2_7 \<equiv>
+   (empty_cnode 10)
+      ( (the_nat_to_bl_10 1)
+            \<mapsto> ThreadCap 3080,
+        (the_nat_to_bl_10 2)
+            \<mapsto> CNodeCap 7 undefined undefined,
+        (the_nat_to_bl_10 3)
+           \<mapsto> ArchObjectCap (PageDirectoryCap 3065
+                                            (Some asid2_3065)),
+        (the_nat_to_bl_10 4)
+            \<mapsto> CNodeCap 5 undefined undefined) "<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_7 :: kernel_object
+where
+  "obj2_7 \<equiv> CNode 10 caps2_7"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_9 :: kernel_object
+where
+  "obj2_9 \<equiv> Endpoint IdleEP"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pt2_3072 :: "word8 \<Rightarrow> pte "
+where
+  "pt2_3072 \<equiv> (\<lambda>_. InvalidPTE)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_3072 :: kernel_object
+where
+  "obj2_3072 \<equiv> ArchObj (PageTable pt2_3072)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pd2_3063 :: "12 word \<Rightarrow> pde "
+where
+  "pd2_3063 \<equiv>
+    (\<lambda>_. InvalidPDE)
+     (0 := PageTablePDE
+              (addrFromPPtr 3072)
+              undefined
+              undefined )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_3063 :: kernel_object
+where
+  "obj2_3063 \<equiv> ArchObj (PageDirectory pd2_3063)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pt2_3077 :: "word8 \<Rightarrow> pte "
+where
+  "pt2_3077 \<equiv>
+    (\<lambda>_. InvalidPTE)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_3077 :: kernel_object
+where
+  "obj2_3077 \<equiv> ArchObj (PageTable pt2_3077)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pd2_3065 :: "12 word \<Rightarrow> pde "
+where
+  "pd2_3065 \<equiv>
+    (\<lambda>_. InvalidPDE)
+     (0 := PageTablePDE
+             (addrFromPPtr 3077)
+             undefined
+             undefined )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_3065 :: kernel_object
+where
+  "obj2_3065 \<equiv> ArchObj (PageDirectory pd2_3065)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_3079 :: kernel_object
+where
+  "obj2_3079 \<equiv>
+   TCB \<lparr>
+     tcb_ctable             = CNodeCap 6 undefined undefined ,
+     tcb_vtable             = ArchObjectCap (PageDirectoryCap 3063 (Some asid2_3063)),
+     tcb_reply              = ReplyCap 3079 True {AllowGrant,AllowWrite}, \<comment> \<open>master reply cap to itself\<close>
+     tcb_caller             = NullCap,
+     tcb_ipcframe           = NullCap,
+     tcb_state              = Running,
+     tcb_fault_handler      = undefined,
+     tcb_ipc_buffer         = undefined,
+     tcb_fault              = undefined,
+     tcb_bound_notification = None,
+     tcb_mcpriority         = undefined,
+     tcb_arch          = \<lparr>tcb_context = undefined\<rparr>\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj2_3080 :: kernel_object
+where
+  "obj2_3080 \<equiv>
+   TCB \<lparr>
+     tcb_ctable             = CNodeCap 7 undefined undefined ,
+     tcb_vtable             = ArchObjectCap (PageDirectoryCap 3065 (Some asid2_3065)),
+     tcb_reply              = ReplyCap 3080 True {AllowGrant,AllowWrite}, \<comment> \<open>master reply cap to itself\<close>
+     tcb_caller             = NullCap,
+     tcb_ipcframe           = NullCap,
+     tcb_state              = BlockedOnReceive 9 \<lparr> receiver_can_grant = False \<rparr>,
+     tcb_fault_handler      = undefined,
+     tcb_ipc_buffer         = undefined,
+     tcb_fault              = undefined,
+     tcb_bound_notification = None,
+     tcb_mcpriority         = undefined,
+     tcb_arch               = \<lparr>tcb_context = undefined\<rparr>\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  kh2 :: kheap
+where
+  "kh2 \<equiv> [ 6 \<mapsto> obj2_6,
+          7 \<mapsto> obj2_7,
+          9 \<mapsto> obj2_9,
+          3063 \<mapsto> obj2_3063,
+          3065 \<mapsto> obj2_3065,
+          3072 \<mapsto> obj2_3072,
+          3077 \<mapsto> obj2_3077,
+          3079 \<mapsto> obj2_3079,
+          3080 \<mapsto> obj2_3080 ]"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas kh2_obj_def =
+  obj2_6_def obj2_7_def obj2_9_def obj2_3063_def obj2_3065_def
+  obj2_3072_def obj2_3077_def obj2_3079_def obj2_3080_def<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  s2 :: "det_ext state"
+where
+  "s2 \<equiv>  \<lparr>
+    kheap = kh2,
+    cdt = Map.empty,
+    is_original_cap = undefined,
+    cur_thread = undefined,
+    idle_thread = undefined,
+    machine_state = undefined,
+    interrupt_irq_node = (\<lambda>_. 9001),
+    interrupt_states = undefined,
+    arch_state = \<lparr>
+        arm_asid_table = (\<lambda> x. None),
+        arm_hwasid_table = undefined,
+        arm_next_asid = undefined,
+        arm_asid_map = undefined,
+        arm_global_pd = undefined,
+        arm_global_pts = undefined,
+        arm_kernel_vspace = undefined
+        \<rparr>,
+    exst = exst1
+    \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Defining the policy graph\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype Sys2Labels =
+    UT2 | T2 | IRQ2<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys2AgentMap :: "Sys2Labels agent_map"
+where
+  "Sys2AgentMap \<equiv>
+   (\<lambda>_. undefined)
+     (5 := UT2,
+      6 := UT2,
+      7 := T2,
+      9 := T2,
+      3063 := UT2,
+      3065 := T2,
+      3072 := UT2,
+      3077 := T2,
+      3079 := UT2,
+      3080 := T2,
+      9001 := IRQ2 )"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys2AuthGraph_aux :: "Sys2Labels auth_graph"
+where
+    "Sys2AuthGraph_aux \<equiv>
+       { (T2, Control, UT2) }"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys2AuthGraph:: "Sys2Labels auth_graph"
+where
+    "Sys2AuthGraph \<equiv> complete_AuthGraph Sys2AuthGraph_aux {T2, UT2}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Sys2ASIDMap :: "Sys2Labels agent_asid_map"
+where
+  "Sys2ASIDMap \<equiv>
+    (\<lambda>_. undefined)
+     (asid2_3063 := UT2,
+      asid2_3065 := T2 )"<\STATESEP>0<\TRANSEP><\STATESEP>definition Sys2PAS :: "Sys2Labels PAS" where
+  "Sys2PAS \<equiv> \<lparr> pasObjectAbs = Sys2AgentMap, pasASIDAbs = Sys2ASIDMap,
+              pasIRQAbs = (\<lambda>_. IRQ2),
+              pasPolicy = Sys2AuthGraph, pasSubject = UT2, pasMayActivate = True, pasMayEditReadyQueues = True, pasMaySendIrqs = True, pasDomainAbs = undefined \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Proof of pas_refined for Sys2\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma caps2_7_well_formed: "well_formed_cnode_n 10 caps2_7"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_cnode_n 10 caps2_7<\STATESEP>apply (clarsimp simp: caps2_7_def well_formed_cnode_n_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert (the_nat_to_bl_10 4) (insert (the_nat_to_bl_10 3) (insert (the_nat_to_bl_10 2) (insert (the_nat_to_bl_10 (Suc 0)) (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: the_nat_to_bl_10_def the_nat_to_bl_def nat_to_bl_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, False, False, False, False, False, False, True, False, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: empty_cnode_def dom_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, False, False, False, False, False, False, True, False, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] {a. length a = 10}))) = {x. length x = 10}<\STATESEP>apply (rule set_eqI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10) = (length x = 10)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10 \<Longrightarrow> length x = 10
+ 2. \<And>x. length x = 10 \<Longrightarrow> x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply (elim disjE, insert len_bin_to_bl, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. length x = 10 \<Longrightarrow> x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma caps2_6_well_formed: "well_formed_cnode_n 10 caps2_6"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_cnode_n 10 caps2_6<\STATESEP>apply (clarsimp simp: caps2_6_def well_formed_cnode_n_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert (the_nat_to_bl_10 4) (insert (the_nat_to_bl_10 3) (insert (the_nat_to_bl_10 2) (insert (the_nat_to_bl_10 (Suc 0)) (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: the_nat_to_bl_10_def the_nat_to_bl_def nat_to_bl_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, False, False, False, False, False, False, True, False, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] (dom (empty_cnode 10))))) = {x. length x = 10}<\STATESEP>apply (clarsimp simp: empty_cnode_def dom_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert [False, False, False, False, False, False, False, True, False, False] (insert [False, False, False, False, False, False, False, False, True, True] (insert [False, False, False, False, False, False, False, False, True, False] (insert [False, False, False, False, False, False, False, False, False, True] {a. length a = 10}))) = {x. length x = 10}<\STATESEP>apply (rule set_eqI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10) = (length x = 10)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10 \<Longrightarrow> length x = 10
+ 2. \<And>x. length x = 10 \<Longrightarrow> x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply (elim disjE, insert len_bin_to_bl, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. length x = 10 \<Longrightarrow> x = [False, False, False, False, False, False, False, True, False, False] \<or> x = [False, False, False, False, False, False, False, False, True, True] \<or> x = [False, False, False, False, False, False, False, False, True, False] \<or> x = [False, False, False, False, False, False, False, False, False, True] \<or> length x = 10<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma s2_caps_of_state :
+  "caps_of_state s2 p = Some cap \<Longrightarrow>
+     cap = NullCap \<or>
+     (p,cap) \<in>
+       { ((6::obj_ref,(the_nat_to_bl_10 1)),  ThreadCap 3079),
+         ((6::obj_ref,(the_nat_to_bl_10 2)),  CNodeCap 6 undefined undefined),
+         ((6::obj_ref,(the_nat_to_bl_10 3)),  ArchObjectCap (PageDirectoryCap 3063 (Some asid2_3063))),
+         ((6::obj_ref,(the_nat_to_bl_10 4)),  CNodeCap 5 undefined undefined),
+         ((7::obj_ref,(the_nat_to_bl_10 1)),  ThreadCap 3080),
+         ((7::obj_ref,(the_nat_to_bl_10 2)),  CNodeCap 7 undefined undefined),
+         ((7::obj_ref,(the_nat_to_bl_10 3)),  ArchObjectCap (PageDirectoryCap 3065 (Some asid2_3065))),
+         ((7::obj_ref,(the_nat_to_bl_10 4)),  CNodeCap 5 undefined undefined),
+         ((3079::obj_ref, (tcb_cnode_index 0)), CNodeCap 6 undefined undefined ),
+         ((3079::obj_ref, (tcb_cnode_index 1)), ArchObjectCap (PageDirectoryCap 3063 (Some asid2_3063))),
+         ((3079::obj_ref, (tcb_cnode_index 2)), ReplyCap 3079 True {AllowGrant,AllowWrite}),
+         ((3079::obj_ref, (tcb_cnode_index 3)), NullCap),
+         ((3079::obj_ref, (tcb_cnode_index 4)), NullCap),
+         ((3080::obj_ref, (tcb_cnode_index 0)), CNodeCap 7 undefined undefined ),
+         ((3080::obj_ref, (tcb_cnode_index 1)), ArchObjectCap (PageDirectoryCap 3065 (Some asid2_3065))),
+         ((3080::obj_ref, (tcb_cnode_index 2)), ReplyCap 3080 True {AllowGrant,AllowWrite}),
+         ((3080::obj_ref, (tcb_cnode_index 3)), NullCap),
+         ((3080::obj_ref, (tcb_cnode_index 4)), NullCap)} "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. caps_of_state s2 p = Some cap \<Longrightarrow> cap = NullCap \<or> (p, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063))), ((6, the_nat_to_bl_10 4), CNodeCap 5 undefined undefined), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065))), ((7, the_nat_to_bl_10 4), CNodeCap 5 undefined undefined), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}<\STATESEP>apply (insert caps2_7_well_formed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>caps_of_state s2 p = Some cap; well_formed_cnode_n 10 caps2_7\<rbrakk> \<Longrightarrow> cap = NullCap \<or> (p, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063))), ((6, the_nat_to_bl_10 4), CNodeCap 5 undefined undefined), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065))), ((7, the_nat_to_bl_10 4), CNodeCap 5 undefined undefined), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}<\STATESEP>apply (insert caps2_6_well_formed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>caps_of_state s2 p = Some cap; well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6\<rbrakk> \<Longrightarrow> cap = NullCap \<or> (p, cap) \<in> {((6, the_nat_to_bl_10 1), ThreadCap 0xC07), ((6, the_nat_to_bl_10 2), CNodeCap 6 undefined undefined), ((6, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063))), ((6, the_nat_to_bl_10 4), CNodeCap 5 undefined undefined), ((7, the_nat_to_bl_10 1), ThreadCap 0xC08), ((7, the_nat_to_bl_10 2), CNodeCap 7 undefined undefined), ((7, the_nat_to_bl_10 3), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065))), ((7, the_nat_to_bl_10 4), CNodeCap 5 undefined undefined), ((0xC07, tcb_cnode_index 0), CNodeCap 6 undefined undefined), ((0xC07, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063))), ((0xC07, tcb_cnode_index 2), ReplyCap 0xC07 True {AllowGrant, AllowWrite}), ((0xC07, tcb_cnode_index 3), NullCap), ((0xC07, tcb_cnode_index 4), NullCap), ((0xC08, tcb_cnode_index 0), CNodeCap 7 undefined undefined), ((0xC08, tcb_cnode_index 1), ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065))), ((0xC08, tcb_cnode_index 2), ReplyCap 0xC08 True {AllowGrant, AllowWrite}), ((0xC08, tcb_cnode_index 3), NullCap), ((0xC08, tcb_cnode_index 4), NullCap)}<\STATESEP>apply (simp add: caps_of_state_cte_wp_at cte_wp_at_cases s2_def kh2_def kh2_obj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(if \<exists>cap. (\<exists>sz fun. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps2_7) else if fst p = 6 then Some (CNode 10 caps2_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun (snd p) = Some cap) \<or> (\<exists>tcb. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps2_7) else if fst p = 6 then Some (CNode 10 caps2_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases (snd p) = Some (get, set, restr)) \<and> cap = get tcb)) then Some (THE cap. (\<exists>sz fun. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps2_7) else if fst p = 6 then Some (CNode 10 caps2_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun (snd p) = Some cap) \<or> (\<exists>tcb. (if fst p = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if fst p = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if fst p = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if fst p = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if fst p = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if fst p = 9 then Some (Endpoint IdleEP) else if fst p = 7 then Some (CNode 10 caps2_7) else if fst p = 6 then Some (CNode 10 caps2_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases (snd p) = Some (get, set, restr)) \<and> cap = get tcb))) else None) = Some cap; well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6\<rbrakk> \<Longrightarrow> cap = NullCap \<or> p = (6, the_nat_to_bl_10 (Suc 0)) \<and> cap = ThreadCap 0xC07 \<or> p = (6, the_nat_to_bl_10 2) \<and> cap = CNodeCap 6 undefined undefined \<or> p = (6, the_nat_to_bl_10 3) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)) \<or> p = (6, the_nat_to_bl_10 4) \<and> cap = CNodeCap 5 undefined undefined \<or> p = (7, the_nat_to_bl_10 (Suc 0)) \<and> cap = ThreadCap 0xC08 \<or> p = (7, the_nat_to_bl_10 2) \<and> cap = CNodeCap 7 undefined undefined \<or> p = (7, the_nat_to_bl_10 3) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)) \<or> p = (7, the_nat_to_bl_10 4) \<and> cap = CNodeCap 5 undefined undefined \<or> p = (0xC07, tcb_cnode_index 0) \<and> cap = CNodeCap 6 undefined undefined \<or> p = (0xC07, tcb_cnode_index (Suc 0)) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)) \<or> p = (0xC07, tcb_cnode_index 2) \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> p = (0xC07, tcb_cnode_index 3) \<and> cap = NullCap \<or> p = (0xC07, tcb_cnode_index 4) \<and> cap = NullCap \<or> p = (0xC08, tcb_cnode_index 0) \<and> cap = CNodeCap 7 undefined undefined \<or> p = (0xC08, tcb_cnode_index (Suc 0)) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)) \<or> p = (0xC08, tcb_cnode_index 2) \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> p = (0xC08, tcb_cnode_index 3) \<and> cap = NullCap \<or> p = (0xC08, tcb_cnode_index 4) \<and> cap = NullCap<\STATESEP>apply (case_tac p, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(if \<exists>cap. (\<exists>sz fun. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps2_7) else if a = 6 then Some (CNode 10 caps2_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun b = Some cap) \<or> (\<exists>tcb. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps2_7) else if a = 6 then Some (CNode 10 caps2_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases b = Some (get, set, restr)) \<and> cap = get tcb)) then Some (THE cap. (\<exists>sz fun. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps2_7) else if a = 6 then Some (CNode 10 caps2_6) else None) = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> fun b = Some cap) \<or> (\<exists>tcb. (if a = 0xC08 then Some (TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC07 then Some (TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>) else if a = 0xC05 then Some (ArchObj (PageTable pt2_3077)) else if a = 0xC00 then Some (ArchObj (PageTable pt2_3072)) else if a = 0xBF9 then Some (ArchObj (PageDirectory pd2_3065)) else if a = 0xBF7 then Some (ArchObj (PageDirectory pd2_3063)) else if a = 9 then Some (Endpoint IdleEP) else if a = 7 then Some (CNode 10 caps2_7) else if a = 6 then Some (CNode 10 caps2_6) else None) = Some (TCB tcb) \<and> (\<exists>get. (\<exists>set restr. tcb_cap_cases b = Some (get, set, restr)) \<and> cap = get tcb))) else None) = Some cap; well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (a, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)); b = the_nat_to_bl_10 4 \<longrightarrow> a = 6 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> ThreadCap 0xC08; b = the_nat_to_bl_10 2 \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)); b = the_nat_to_bl_10 4 \<longrightarrow> a = 7 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; b = tcb_cnode_index 0 \<longrightarrow> a = 0xC07 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = tcb_cnode_index (Suc 0) \<longrightarrow> a = 0xC07 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)); b = tcb_cnode_index 2 \<longrightarrow> a = 0xC07 \<longrightarrow> cap \<noteq> ReplyCap 0xC07 True {AllowGrant, AllowWrite}; b = tcb_cnode_index 0 \<longrightarrow> a = 0xC08 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = tcb_cnode_index (Suc 0) \<longrightarrow> a = 0xC08 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)); b = tcb_cnode_index 2 \<longrightarrow> a = 0xC08 \<longrightarrow> cap \<noteq> ReplyCap 0xC08 True {AllowGrant, AllowWrite}\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: cte_wp_at_cases split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>b get set restr. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (0xC08, b); get \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr> \<noteq> NullCap; b \<noteq> tcb_cnode_index 0; b \<noteq> tcb_cnode_index (Suc 0); b \<noteq> tcb_cnode_index 2; cap = get \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>; tcb_cap_cases b = Some (get, set, restr)\<rbrakk> \<Longrightarrow> False
+ 2. \<And>b get set restr. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (0xC07, b); get \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr> \<noteq> NullCap; b \<noteq> tcb_cnode_index 0; b \<noteq> tcb_cnode_index (Suc 0); b \<noteq> tcb_cnode_index 2; cap = get \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>; tcb_cap_cases b = Some (get, set, restr)\<rbrakk> \<Longrightarrow> False
+ 3. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (7, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC08; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)); b = the_nat_to_bl_10 4 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; caps2_7 b = Some cap\<rbrakk> \<Longrightarrow> False
+ 4. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (6, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)); b = the_nat_to_bl_10 4 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; caps2_6 b = Some cap\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: tcb_cap_cases_def split: if_splits)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (7, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC08; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 7 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)); b = the_nat_to_bl_10 4 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; caps2_7 b = Some cap\<rbrakk> \<Longrightarrow> False
+ 2. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (6, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)); b = the_nat_to_bl_10 4 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; caps2_6 b = Some cap\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: caps2_7_def split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>b. \<lbrakk>well_formed_cnode_n 10 caps2_7; well_formed_cnode_n 10 caps2_6; p = (6, b); cap \<noteq> NullCap; b = the_nat_to_bl_10 (Suc 0) \<longrightarrow> cap \<noteq> ThreadCap 0xC07; b = the_nat_to_bl_10 2 \<longrightarrow> cap \<noteq> CNodeCap 6 undefined undefined; b = the_nat_to_bl_10 3 \<longrightarrow> cap \<noteq> ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)); b = the_nat_to_bl_10 4 \<longrightarrow> cap \<noteq> CNodeCap 5 undefined undefined; caps2_6 b = Some cap\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp: caps2_6_def cte_wp_at_cases  split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys2_wellformed: "pas_wellformed Sys2PAS"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_wellformed Sys2PAS<\STATESEP>apply (clarsimp simp: Sys2PAS_def policy_wellformed_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>agent'. (UT2, Control, agent') \<in> Sys2AuthGraph \<longrightarrow> UT2 = agent') \<and> (\<forall>a. (UT2, a, UT2) \<in> Sys2AuthGraph) \<and> (\<forall>s r. (\<exists>ep. (s, Grant, ep) \<in> Sys2AuthGraph \<and> (r, Receive, ep) \<in> Sys2AuthGraph) \<longrightarrow> (s, Control, r) \<in> Sys2AuthGraph \<and> (r, Control, s) \<in> Sys2AuthGraph) \<and> (\<forall>ntfn. (IRQ2, Notify, ntfn) \<in> Sys2AuthGraph \<longrightarrow> (UT2, Notify, ntfn) \<in> Sys2AuthGraph) \<and> (\<forall>s ep. (s, Call, ep) \<in> Sys2AuthGraph \<longrightarrow> (s, SyncSend, ep) \<in> Sys2AuthGraph) \<and> (\<forall>s r. (\<exists>ep. (s, Call, ep) \<in> Sys2AuthGraph \<and> (r, Receive, ep) \<in> Sys2AuthGraph) \<longrightarrow> (r, Reply, s) \<in> Sys2AuthGraph) \<and> (\<forall>s r. (s, Reply, r) \<in> Sys2AuthGraph \<longrightarrow> (r, DeleteDerived, s) \<in> Sys2AuthGraph) \<and> (\<forall>l1 l2. (l1, DeleteDerived, l2) \<in> Sys2AuthGraph \<longrightarrow> (\<forall>l3. (l2, DeleteDerived, l3) \<in> Sys2AuthGraph \<longrightarrow> (l1, DeleteDerived, l3) \<in> Sys2AuthGraph)) \<and> (\<forall>s r. (\<exists>ep. (s, Call, ep) \<in> Sys2AuthGraph \<and> (r, Receive, ep) \<in> Sys2AuthGraph \<and> (r, Grant, ep) \<in> Sys2AuthGraph) \<longrightarrow> (s, Control, r) \<in> Sys2AuthGraph \<and> (r, Control, s) \<in> Sys2AuthGraph)<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<forall>agent'. (UT2, Control, agent') \<in> Sys2AuthGraph \<longrightarrow> UT2 = agent'
+ 2. \<forall>a. (UT2, a, UT2) \<in> Sys2AuthGraph
+ 3. \<forall>s r. (\<exists>ep. (s, Grant, ep) \<in> Sys2AuthGraph \<and> (r, Receive, ep) \<in> Sys2AuthGraph) \<longrightarrow> (s, Control, r) \<in> Sys2AuthGraph \<and> (r, Control, s) \<in> Sys2AuthGraph
+ 4. \<forall>ntfn. (IRQ2, Notify, ntfn) \<in> Sys2AuthGraph \<longrightarrow> (UT2, Notify, ntfn) \<in> Sys2AuthGraph
+ 5. \<forall>s ep. (s, Call, ep) \<in> Sys2AuthGraph \<longrightarrow> (s, SyncSend, ep) \<in> Sys2AuthGraph
+ 6. \<forall>s r. (\<exists>ep. (s, Call, ep) \<in> Sys2AuthGraph \<and> (r, Receive, ep) \<in> Sys2AuthGraph) \<longrightarrow> (r, Reply, s) \<in> Sys2AuthGraph
+ 7. \<forall>s r. (s, Reply, r) \<in> Sys2AuthGraph \<longrightarrow> (r, DeleteDerived, s) \<in> Sys2AuthGraph
+ 8. \<forall>l1 l2. (l1, DeleteDerived, l2) \<in> Sys2AuthGraph \<longrightarrow> (\<forall>l3. (l2, DeleteDerived, l3) \<in> Sys2AuthGraph \<longrightarrow> (l1, DeleteDerived, l3) \<in> Sys2AuthGraph)
+ 9. \<forall>s r. (\<exists>ep. (s, Call, ep) \<in> Sys2AuthGraph \<and> (r, Receive, ep) \<in> Sys2AuthGraph \<and> (r, Grant, ep) \<in> Sys2AuthGraph) \<longrightarrow> (s, Control, r) \<in> Sys2AuthGraph \<and> (r, Control, s) \<in> Sys2AuthGraph<\STATESEP>apply (simp_all add: Sys2AuthGraph_def complete_AuthGraph_def
+                       Sys2AuthGraph_aux_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys2AgentMap_simps:
+  "Sys2AgentMap 5 = UT2"
+  "Sys2AgentMap 6 = UT2"
+  "Sys2AgentMap 7 = T2"
+  "Sys2AgentMap 9 = T2"
+  "Sys2AgentMap 3063 = UT2"
+  "Sys2AgentMap 3065 = T2"
+  "Sys2AgentMap 3072 = UT2"
+  "Sys2AgentMap 3077 = T2"
+  "Sys2AgentMap 3079 = UT2"
+  "Sys2AgentMap 3080 = T2"
+  "Sys2AgentMap 9001 = IRQ2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((Sys2AgentMap 5 = UT2 &&& Sys2AgentMap 6 = UT2) &&& Sys2AgentMap 7 = T2 &&& Sys2AgentMap 9 = T2 &&& Sys2AgentMap 0xBF7 = UT2) &&& (Sys2AgentMap 0xBF9 = T2 &&& Sys2AgentMap 0xC00 = UT2 &&& Sys2AgentMap 0xC05 = T2) &&& Sys2AgentMap 0xC07 = UT2 &&& Sys2AgentMap 0xC08 = T2 &&& Sys2AgentMap 0x2329 = IRQ2<\STATESEP>by (simp_all add: Sys2AgentMap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma domains_of_state_s2[simp]:
+  "domains_of_state s2 = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. domains_of_state s2 = {}<\STATESEP>apply (rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. domains_of_state s2 \<subseteq> {}
+ 2. {} \<subseteq> domains_of_state s2<\STATESEP>apply (rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> domains_of_state s2 \<Longrightarrow> x \<in> {}
+ 2. {} \<subseteq> domains_of_state s2<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. (a, b) \<in> domains_of_state s2 \<Longrightarrow> False
+ 2. {} \<subseteq> domains_of_state s2<\STATESEP>apply (erule domains_of_state_aux.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ptr etcb d. \<lbrakk>ekheap s2 ptr = Some etcb; d = tcb_domain etcb\<rbrakk> \<Longrightarrow> False
+ 2. {} \<subseteq> domains_of_state s2<\STATESEP>apply (simp add: s2_def exst1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {} \<subseteq> domains_of_state s2<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma thread_bound_ntfns_2[simp]:
+  "thread_bound_ntfns s2 = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. thread_bound_ntfns s2 = (\<lambda>x. None)<\STATESEP>unfolding s2_def thread_bound_ntfns_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>p. case get_tcb p \<lparr>kheap = kh2, cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0x2329, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr> of None \<Rightarrow> None | Some x \<Rightarrow> tcb_bound_notification x) = (\<lambda>x. None)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. (case get_tcb p \<lparr>kheap = kh2, cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0x2329, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr> of None \<Rightarrow> None | Some x \<Rightarrow> tcb_bound_notification x) = None<\STATESEP>apply (simp add: get_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. (case case kh2 p of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None of None \<Rightarrow> None | Some x2 \<Rightarrow> tcb_bound_notification x2) = None<\STATESEP>apply (simp add: kh2_def kh2_obj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "pas_refined Sys2PAS s2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_refined Sys2PAS s2<\STATESEP>apply (clarsimp simp: pas_refined_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pas_wellformed Sys2PAS \<and> irq_map_wellformed Sys2PAS s2 \<and> tcb_domain_map_wellformed_aux Sys2PAS {} \<and> state_objs_in_policy Sys2PAS s2 \<and> state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS \<and> state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. pas_wellformed Sys2PAS
+ 2. irq_map_wellformed Sys2PAS s2
+ 3. tcb_domain_map_wellformed_aux Sys2PAS {}
+ 4. state_objs_in_policy Sys2PAS s2
+ 5. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 6. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (simp add: Sys2_wellformed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. irq_map_wellformed Sys2PAS s2
+ 2. tcb_domain_map_wellformed_aux Sys2PAS {}
+ 3. state_objs_in_policy Sys2PAS s2
+ 4. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 5. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (simp add: Sys2PAS_def s2_def Sys2AgentMap_def
+                      irq_map_wellformed_aux_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. tcb_domain_map_wellformed_aux Sys2PAS {}
+ 2. state_objs_in_policy Sys2PAS s2
+ 3. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 4. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (clarsimp simp: auth_graph_map_def
+                          Sys2PAS_def
+                          state_objs_to_policy_def
+                          state_bits_to_policy_def tcb_domain_map_wellformed_aux_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x auth y. state_bits_to_policyp (caps_of_state s2) (thread_st_auth s2) (\<lambda>x. None) (cdt s2) (state_vrefs s2) x auth y \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 2. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 3. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (erule state_bits_to_policyp.cases, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>x auth y ptr cap oref autha. \<lbrakk>x = fst ptr; auth = autha; y = oref; caps_of_state s2 ptr = Some cap; oref \<in> obj_refs_ac cap; autha \<in> cap_auth_conferred cap\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst ptr), autha, Sys2AgentMap oref) \<in> Sys2AuthGraph
+ 2. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s2 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst ptr), Control, Sys2AgentMap oref) \<in> Sys2AuthGraph
+ 3. \<And>x auth y. (y, auth) \<in> thread_st_auth s2 x \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 6. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 7. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 8. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (drule s2_caps_of_state, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>a b cap oref autha. \<lbrakk>oref \<in> obj_refs_ac cap; autha \<in> cap_auth_conferred cap; cap = NullCap \<or> a = 6 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC07 \<or> a = 6 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 6 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)) \<or> a = 6 \<and> b = the_nat_to_bl_10 4 \<and> cap = CNodeCap 5 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC08 \<or> a = 7 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)) \<or> a = 7 \<and> b = the_nat_to_bl_10 4 \<and> cap = CNodeCap 5 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)) \<or> a = 0xC07 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> a = 0xC07 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC07 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 0xC08 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)) \<or> a = 0xC08 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> a = 0xC08 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap\<rbrakk> \<Longrightarrow> (Sys2AgentMap a, autha, Sys2AgentMap oref) \<in> Sys2AuthGraph
+ 2. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s2 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst ptr), Control, Sys2AgentMap oref) \<in> Sys2AuthGraph
+ 3. \<And>x auth y. (y, auth) \<in> thread_st_auth s2 x \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 5. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 6. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 7. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 8. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (elim disjE, simp_all add: cap_auth_conferred_def
+                                          Sys2AgentMap_simps
+                                          Sys2AuthGraph_def Sys2AuthGraph_aux_def
+                                          complete_AuthGraph_def
+                              split: if_split_asm)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>x auth y ptr cap oref. \<lbrakk>x = fst ptr; auth = Control; y = oref; caps_of_state s2 ptr = Some cap; oref \<in> untyped_range cap\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst ptr), Control, Sys2AgentMap oref) \<in> Sys2AuthGraph
+ 2. \<And>x auth y. (y, auth) \<in> thread_st_auth s2 x \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 3. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 5. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 6. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 7. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (drule s2_caps_of_state, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>a b cap oref. \<lbrakk>oref \<in> untyped_range cap; cap = NullCap \<or> a = 6 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC07 \<or> a = 6 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 6 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)) \<or> a = 6 \<and> b = the_nat_to_bl_10 4 \<and> cap = CNodeCap 5 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 (Suc 0) \<and> cap = ThreadCap 0xC08 \<or> a = 7 \<and> b = the_nat_to_bl_10 2 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 7 \<and> b = the_nat_to_bl_10 3 \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)) \<or> a = 7 \<and> b = the_nat_to_bl_10 4 \<and> cap = CNodeCap 5 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 6 undefined undefined \<or> a = 0xC07 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)) \<or> a = 0xC07 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC07 True {AllowGrant, AllowWrite} \<or> a = 0xC07 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC07 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 0 \<and> cap = CNodeCap 7 undefined undefined \<or> a = 0xC08 \<and> b = tcb_cnode_index (Suc 0) \<and> cap = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)) \<or> a = 0xC08 \<and> b = tcb_cnode_index 2 \<and> cap = ReplyCap 0xC08 True {AllowGrant, AllowWrite} \<or> a = 0xC08 \<and> b = tcb_cnode_index 3 \<and> cap = NullCap \<or> a = 0xC08 \<and> b = tcb_cnode_index 4 \<and> cap = NullCap\<rbrakk> \<Longrightarrow> (Sys2AgentMap a, Control, Sys2AgentMap oref) \<in> Sys2AuthGraph
+ 2. \<And>x auth y. (y, auth) \<in> thread_st_auth s2 x \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 3. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 4. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 5. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 6. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 7. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (elim disjE, simp_all)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x auth y. (y, auth) \<in> thread_st_auth s2 x \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 2. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 3. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 4. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 5. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 6. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (clarsimp simp: state_refs_of_def s2_def kh2_def kh2_obj_def
+                       split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x auth y. (y, auth) \<in> thread_st_auth \<lparr>kheap = [6 \<mapsto> CNode 10 caps2_6, 7 \<mapsto> CNode 10 caps2_7, 9 \<mapsto> Endpoint IdleEP, 0xBF7 \<mapsto> ArchObj (PageDirectory pd2_3063), 0xBF9 \<mapsto> ArchObj (PageDirectory pd2_3065), 0xC00 \<mapsto> ArchObj (PageTable pt2_3072), 0xC05 \<mapsto> ArchObj (PageTable pt2_3077), 0xC07 \<mapsto> TCB \<lparr>tcb_ctable = CNodeCap 6 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF7 (Some asid2_3063)), tcb_reply = ReplyCap 0xC07 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = Running, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>, 0xC08 \<mapsto> TCB \<lparr>tcb_ctable = CNodeCap 7 undefined undefined, tcb_vtable = ArchObjectCap (PageDirectoryCap 0xBF9 (Some asid2_3065)), tcb_reply = ReplyCap 0xC08 True {AllowGrant, AllowWrite}, tcb_caller = NullCap, tcb_ipcframe = NullCap, tcb_state = BlockedOnReceive 9 \<lparr>receiver_can_grant = False\<rparr>, tcb_fault_handler = undefined, tcb_ipc_buffer = undefined, tcb_fault = undefined, tcb_bound_notification = None, tcb_mcpriority = undefined, tcb_arch = \<lparr>tcb_context = undefined\<rparr>\<rparr>], cdt = \<lambda>x. None, is_original_cap = undefined, cur_thread = undefined, idle_thread = undefined, machine_state = undefined, interrupt_irq_node = \<lambda>_. 0x2329, interrupt_states = undefined, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = undefined, arm_next_asid = undefined, arm_asid_map = undefined, arm_global_pd = undefined, arm_global_pts = undefined, arm_kernel_vspace = undefined\<rparr>, exst = exst1\<rparr> x \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap y) \<in> Sys2AuthGraph
+ 2. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 3. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 4. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 5. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 6. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (clarsimp split:if_splits option.splits
+                       simp: thread_st_auth_def tcb_states_of_state_def
+                             Sys2AgentMap_simps Sys2AuthGraph_def
+                             complete_AuthGraph_def Sys2AuthGraph_aux_def
+                      dest!: get_tcb_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = Control; y = fst slot'; cdt s2 slot' = Some slot; \<not> is_transferable_in slot' s2\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), Control, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 2. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 3. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 4. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 5. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (simp add: s2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x auth y slot' slot. \<lbrakk>x = fst slot; auth = DeleteDerived; y = fst slot'; cdt s2 slot' = Some slot\<rbrakk> \<Longrightarrow> (Sys2AgentMap (fst slot), DeleteDerived, Sys2AgentMap (fst slot')) \<in> Sys2AuthGraph
+ 2. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 3. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 4. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (simp add: s2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x auth y ptr' uu_ uv_. \<lbrakk>y = ptr'; (ptr', uu_, uv_, auth) \<in> state_vrefs s2 x\<rbrakk> \<Longrightarrow> (Sys2AgentMap x, auth, Sys2AgentMap ptr') \<in> Sys2AuthGraph
+ 2. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 3. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply ((clarsimp simp: state_vrefs_def
+                           vs_refs_no_global_pts_def
+                           s2_def kh2_def
+                           kh2_obj_def
+                     split: if_splits,
+           ((clarsimp split: if_splits
+                     simp: pd2_3065_def pd2_3063_def graph_of_def pde_ref_def
+                           Sys2AgentMap_simps Sys2AuthGraph_def
+                           complete_AuthGraph_def pt2_3077_def pte_ref_def
+                           pt2_3072_def pde_ref2_def
+                           Sys2AuthGraph_aux_def ptr_range_def)+))+)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<subseteq> pasPolicy Sys2PAS
+ 2. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa b. (a, aa, b) \<in> state_asids_to_policy_aux Sys2PAS (caps_of_state s2) (asid_table s2) (state_vrefs s2) \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 2. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (erule state_asids_to_policy_aux.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a aa b ptr acap asid. \<lbrakk>a = pasObjectAbs Sys2PAS (fst ptr); aa = Control; b = pasASIDAbs Sys2PAS asid; caps_of_state s2 ptr = Some (ArchObjectCap acap); asid \<in> acap_asid' acap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 2. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys2PAS asid; aa = ab; b = pasObjectAbs Sys2PAS pdptr; asid_table s2 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s2 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 3. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys2PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys2PAS asid; asid_table s2 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 4. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>ab ba acap asid. \<lbrakk>caps_of_state s2 (ab, ba) = Some (ArchObjectCap acap); asid \<in> acap_asid' acap\<rbrakk> \<Longrightarrow> (pasObjectAbs Sys2PAS ab, Control, pasASIDAbs Sys2PAS asid) \<in> pasPolicy Sys2PAS
+ 2. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys2PAS asid; aa = ab; b = pasObjectAbs Sys2PAS pdptr; asid_table s2 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s2 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 3. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys2PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys2PAS asid; asid_table s2 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 4. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (auto simp: Sys2PAS_def Sys2AuthGraph_def Sys2AuthGraph_aux_def
+                      complete_AuthGraph_def Sys2AgentMap_simps
+                      Sys2ASIDMap_def asid2_3063_def asid2_3065_def
+                      asid_low_bits_def
+               dest!: s2_caps_of_state)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a aa b asid poolptr pdptr ab. \<lbrakk>a = pasASIDAbs Sys2PAS asid; aa = ab; b = pasObjectAbs Sys2PAS pdptr; asid_table s2 (asid_high_bits_of asid) = Some poolptr; (pdptr, asid && mask local.asid_low_bits, AASIDPool, ab) \<in> state_vrefs s2 poolptr\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 2. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys2PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys2PAS asid; asid_table s2 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 3. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (clarsimp simp: state_vrefs_def
+                         vs_refs_no_global_pts_def
+                         s2_def kh2_def
+                         kh2_obj_def
+                  split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa b asid poolptr. \<lbrakk>a = pasObjectAbs Sys2PAS poolptr; aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs Sys2PAS asid; asid_table s2 (asid_high_bits_of asid) = Some poolptr; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS
+ 2. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (clarsimp simp: s2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. state_irqs_to_policy Sys2PAS s2 \<subseteq> pasPolicy Sys2PAS<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b. (a, aa, b) \<in> state_irqs_to_policy Sys2PAS s2 \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS<\STATESEP>apply (erule state_irqs_to_policy_aux.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b ptr cap irq. \<lbrakk>a = pasObjectAbs Sys2PAS (fst ptr); aa = Control; b = pasIRQAbs Sys2PAS irq; caps_of_state s2 ptr = Some cap; irq \<in> cap_irqs_controlled cap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy Sys2PAS<\STATESEP>apply (auto simp: Sys2PAS_def Sys2AuthGraph_def Sys2AuthGraph_aux_def
+                    complete_AuthGraph_def Sys2AgentMap_simps
+                    Sys2ASIDMap_def asid2_3063_def asid2_3065_def
+             dest!: s2_caps_of_state)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

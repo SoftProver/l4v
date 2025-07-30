@@ -1,0 +1,40 @@
+<\STATESEP>theory Nondet_MonadEq
+  imports
+    Nondet_In_Monad
+    Nondet_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+structure MonadEqThms = Named_Thms (
+    val name = Binding.name "monad_eq"
+    val description = "monad equality-prover theorems"
+    )
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>attribute_setup monad_eq = \<open>
+  Attrib.add_del
+    (Thm.declaration_attribute MonadEqThms.add_thm)
+    (Thm.declaration_attribute MonadEqThms.del_thm)\<close>
+  "Monad equality-prover theorems"<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun monad_eq_tac ctxt =
+let
+  (* Set a simpset as being hidden, so warnings are not printed from it. *)
+  val ctxt' = Context_Position.set_visible false ctxt
+in
+  CHANGED (clarsimp_tac (ctxt' addsimps (MonadEqThms.get ctxt')) 1)
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monad_eq = \<open>
+    Method.sections Clasimp.clasimp_modifiers >> (K (SIMPLE_METHOD o monad_eq_tac))\<close>
+  "prove equality on monads"<\STATESEP>0<\TRANSEP><\STATESEP>lemma monad_eq_simp_state[monad_eq]:
+  "((A :: ('s, 'a) nondet_monad) s = B s') =
+      ((\<forall>r t. (r, t) \<in> fst (A s) \<longrightarrow> (r, t) \<in> fst (B s'))
+         \<and> (\<forall>r t. (r, t) \<in> fst (B s') \<longrightarrow> (r, t) \<in> fst (A s))
+         \<and> (snd (A s) = snd (B s')))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (A s = B s') = ((\<forall>r t. (r, t) \<in> fst (A s) \<longrightarrow> (r, t) \<in> fst (B s')) \<and> (\<forall>r t. (r, t) \<in> fst (B s') \<longrightarrow> (r, t) \<in> fst (A s)) \<and> snd (A s) = snd (B s'))<\STATESEP>by (auto intro!: set_eqI prod_eqI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monad_eq_simp[monad_eq]:
+  "((A :: ('s, 'a) nondet_monad) = B) =
+      ((\<forall>r t s. (r, t) \<in> fst (A s) \<longrightarrow> (r, t) \<in> fst (B s))
+         \<and> (\<forall>r t s. (r, t) \<in> fst (B s) \<longrightarrow> (r, t) \<in> fst (A s))
+         \<and> (\<forall>x. snd (A x) = snd (B x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (A = B) = ((\<forall>r t s. (r, t) \<in> fst (A s) \<longrightarrow> (r, t) \<in> fst (B s)) \<and> (\<forall>r t s. (r, t) \<in> fst (B s) \<longrightarrow> (r, t) \<in> fst (A s)) \<and> (\<forall>x. snd (A x) = snd (B x)))<\STATESEP>by (auto intro!: set_eqI prod_eqI)<\STATESEP>1<\TRANSEP><\STATESEP>declare in_monad[monad_eq]<\STATESEP>0<\TRANSEP><\STATESEP>declare in_bindE[monad_eq]<\STATESEP>0<\TRANSEP><\STATESEP>lemma "returnOk 3 = liftE (return 3)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. returnOk (3::'c) = liftE (return (3::'c))<\STATESEP>apply monad_eq<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. snd (returnOk (3::'c) x) = snd (liftE (return (3::'c)) x)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

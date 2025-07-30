@@ -1,0 +1,260 @@
+<\STATESEP>theory ArchFinalise_AC
+imports Finalise_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Finalise_AC_assms<\STATESEP>0<\TRANSEP><\STATESEP>crunch pas_refined[wp]: arch_finalise_cap, prepare_thread_delete "pas_refined aag"<\STATESEP>0<\TRANSEP><\STATESEP>crunch respects[Finalise_AC_assms, wp]: prepare_thread_delete "integrity aag X st"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sbn_st_vrefs[Finalise_AC_assms, wp]:
+  "set_bound_notification t st \<lbrace>\<lambda>s. P (state_vrefs s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (state_vrefs s)\<rbrace> set_bound_notification t st \<lbrace>\<lambda>_ s. P (state_vrefs s)\<rbrace><\STATESEP>apply (simp add: set_bound_notification_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (state_vrefs s)\<rbrace> do tcb <- gets_the (get_tcb t);
+set_object t (TCB (tcb\<lparr>tcb_bound_notification := st\<rparr>))
+od \<lbrace>\<lambda>_ s. P (state_vrefs s)\<rbrace><\STATESEP>apply (wpsimp wp: set_object_wp dxo_wp_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>P (state_vrefs s); get_tcb t s = Some y\<rbrakk> \<Longrightarrow> P (state_vrefs (s\<lparr>kheap := (kheap s)(t \<mapsto> TCB (y\<lparr>tcb_bound_notification := st\<rparr>))\<rparr>))<\STATESEP>apply (clarsimp simp: state_vrefs_def vs_refs_no_global_pts_def
+                 elim!: rsubst[where P=P, OF _ ext]
+                 dest!: get_tcb_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_finalise_cap_auth'[Finalise_AC_assms]:
+   "\<lbrace>pas_refined aag\<rbrace> arch_finalise_cap x12 final \<lbrace>\<lambda>rv s. pas_cap_cur_auth aag (fst rv)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> arch_finalise_cap x12 final \<lbrace>\<lambda>rv s. pas_cap_cur_auth aag (fst rv)\<rbrace><\STATESEP>unfolding arch_finalise_cap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag\<rbrace> case (x12, final) of (ASIDPoolCap ptr b, True) \<Rightarrow> do delete_asid_pool b ptr;
+return (NullCap, NullCap)
+od | (ASIDPoolCap ptr b, False) \<Rightarrow> return (NullCap, NullCap) | (ASIDControlCap, xb) \<Rightarrow> return (NullCap, NullCap) | (PageCap x ptr xa s None, xb) \<Rightarrow> return (NullCap, NullCap) | (PageCap x ptr xa s (Some (a, v)), xb) \<Rightarrow> do unmap_page s a v ptr;
+return (NullCap, NullCap)
+od | (PageTableCap ptr None, xb) \<Rightarrow> return (NullCap, NullCap) | (PageTableCap ptr (Some (a, v)), True) \<Rightarrow> do unmap_page_table a v ptr;
+return (NullCap, NullCap)
+od | (PageTableCap ptr (Some (a, v)), False) \<Rightarrow> return (NullCap, NullCap) | (PageDirectoryCap ptr None, xb) \<Rightarrow> return (NullCap, NullCap) | (PageDirectoryCap ptr (Some a), True) \<Rightarrow> do delete_asid a ptr;
+return (NullCap, NullCap)
+od | (PageDirectoryCap ptr (Some a), False) \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv s. pas_cap_cur_auth aag (fst rv)\<rbrace><\STATESEP>by (wp | wpc | simp add: comp_def hoare_TrueI[where P = \<top>] split del: if_split)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_finalise_cap_obj_refs[Finalise_AC_assms]:
+  "\<lbrace>\<lambda>s. \<forall>x \<in> aobj_ref' acap. P x\<rbrace>
+   arch_finalise_cap acap slot
+   \<lbrace>\<lambda>rv s. \<forall>x \<in> obj_refs_ac (fst rv). P x\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x\<in>aobj_ref' acap. P x\<rbrace> arch_finalise_cap acap slot \<lbrace>\<lambda>rv s. \<forall>x\<in>obj_refs_ac (fst rv). P x\<rbrace><\STATESEP>by (wpsimp simp: arch_finalise_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_finalise_cap_makes_halted[Finalise_AC_assms]:
+  "\<lbrace>\<top>\<rbrace> arch_finalise_cap arch_cap ex \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> arch_finalise_cap arch_cap ex \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace><\STATESEP>apply (case_tac arch_cap, simp_all add: arch_finalise_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x11 x12. arch_cap = ASIDPoolCap x11 x12 \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> case ex of True \<Rightarrow> do delete_asid_pool x12 x11;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace>
+ 2. arch_cap = ASIDControlCap \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> return (NullCap, NullCap) \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace>
+ 3. \<And>x31 x32 x33 x34 x35. arch_cap = PageCap x31 x32 x33 x34 x35 \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> case x35 of None \<Rightarrow> return (NullCap, NullCap) | Some (a, v) \<Rightarrow> do y <- unmap_page x34 a v x32;
+return (NullCap, NullCap)
+od \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace>
+ 4. \<And>x41 x42. arch_cap = PageTableCap x41 x42 \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> case x42 of None \<Rightarrow> return (NullCap, NullCap) | Some (a, v) \<Rightarrow> case ex of True \<Rightarrow> do unmap_page_table a v x41;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace>
+ 5. \<And>x51 x52. arch_cap = PageDirectoryCap x51 x52 \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> case x52 of None \<Rightarrow> return (NullCap, NullCap) | Some a \<Rightarrow> case ex of True \<Rightarrow> do delete_asid a x51;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv s. \<forall>t\<in>obj_refs_ac (fst rv). halted_if_tcb t s\<rbrace><\STATESEP>by (wpsimp simp: valid_cap_def split: option.split bool.split)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_cap_cleanup_wf[Finalise_AC_assms]:
+  "\<lbrakk> arch_cap_cleanup_opt acap \<noteq> NullCap; \<not> is_arch_cap (arch_cap_cleanup_opt acap) \<rbrakk>
+     \<Longrightarrow> (\<exists>irq. arch_cap_cleanup_opt acap = IRQHandlerCap irq \<and> is_subject_irq aag irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>arch_cap_cleanup_opt acap \<noteq> NullCap; \<not> is_arch_cap (arch_cap_cleanup_opt acap)\<rbrakk> \<Longrightarrow> \<exists>irq. arch_cap_cleanup_opt acap = IRQHandlerCap irq \<and> is_subject_irq aag irq<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_finalise_cap_respects[Finalise_AC_assms, wp]:
+  "\<lbrace>integrity aag X st and invs and pas_refined aag and valid_cap (ArchObjectCap cap)
+                       and K (pas_cap_cur_auth aag (ArchObjectCap cap))\<rbrace>
+   arch_finalise_cap cap final
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and invs and pas_refined aag and valid_cap (ArchObjectCap cap) and K (pas_cap_cur_auth aag (ArchObjectCap cap))\<rbrace> arch_finalise_cap cap final \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (simp add: arch_finalise_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and invs and pas_refined aag and valid_cap (ArchObjectCap cap) and (\<lambda>y. pas_cap_cur_auth aag (ArchObjectCap cap))\<rbrace> case cap of ASIDPoolCap ptr b \<Rightarrow> case final of True \<Rightarrow> do delete_asid_pool b ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) | ASIDControlCap \<Rightarrow> return (NullCap, NullCap) | PageCap x ptr xa s None \<Rightarrow> return (NullCap, NullCap) | PageCap x ptr xa s (Some (a, v)) \<Rightarrow> do unmap_page s a v ptr;
+return (NullCap, NullCap)
+od | PageTableCap ptr None \<Rightarrow> return (NullCap, NullCap) | PageTableCap ptr (Some (a, v)) \<Rightarrow> case final of True \<Rightarrow> do unmap_page_table a v ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) | PageDirectoryCap ptr None \<Rightarrow> return (NullCap, NullCap) | PageDirectoryCap ptr (Some a) \<Rightarrow> case final of True \<Rightarrow> do delete_asid a ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wpsimp wp: unmap_page_respects unmap_page_table_respects delete_asid_respects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>integrity aag X st s; invs s; pas_refined aag s; s \<turnstile> ArchObjectCap cap; pas_cap_cur_auth aag (ArchObjectCap cap)\<rbrakk> \<Longrightarrow> (\<forall>x xa. cap = ASIDPoolCap x xa \<longrightarrow> final \<longrightarrow> (\<forall>asid'. asid' \<noteq> 0 \<and> asid_high_bits_of asid' = asid_high_bits_of xa \<longrightarrow> is_subject_asid aag asid')) \<and> (\<forall>x xa xb xc xd. cap = PageCap x xa xb xc xd \<longrightarrow> (\<forall>a b. xd = Some (a, b) \<longrightarrow> pspace_aligned s \<and> valid_vspace_objs s \<and> is_subject_asid aag a \<and> vmsz_aligned b xc \<and> b < kernel_base)) \<and> (\<forall>x xa. cap = PageTableCap x xa \<longrightarrow> (\<forall>a b. xa = Some (a, b) \<longrightarrow> final \<longrightarrow> is_subject_asid aag a \<and> b < kernel_base)) \<and> (\<forall>x xa. cap = PageDirectoryCap x xa \<longrightarrow> (\<exists>x. xa = Some x) \<longrightarrow> final \<longrightarrow> is_subject aag x)<\STATESEP>apply (auto simp: cap_auth_conferred_def arch_cap_auth_conferred_def is_page_cap_def
+                    aag_cap_auth_def pas_refined_all_auth_is_owns valid_cap_simps
+                    cap_links_asid_slot_def label_owns_asid_slot_def
+             intro: pas_refined_Control_into_is_subject_asid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Finalise_AC_1?: Finalise_AC_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Finalise_AC_1 aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Finalise_AC_1 aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Finalise_AC_1 aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Finalise_AC_1 aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Finalise_AC_1 aag<\STATESEP>by (unfold_locales; (fact Finalise_AC_assms | wpsimp wp: finalise_cap_replaceable))<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Finalise_AC_1 aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_revoke_respects'[Finalise_AC_assms]:
+  "s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot))
+                                           and pas_refined aag and einvs and simple_sched_action\<rbrace>
+       cap_revoke slot
+       \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>,
+       \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace><\STATESEP>proof (induct rule: cap_revoke.induct[where ?a1.0=s])<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>slot s. (\<And>rv sta rva staa rvb stb rvc stc rvd std rve ste rvf stf rvg stg. \<lbrakk>(Inr rv, sta) \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, staa) \<in> fst ((without_preemption $ gets cdt) sta); (Inr rvb, stb) \<in> fst ((returnOk $ descendants_of slot rva) staa); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, stc) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) stb); (Inr rvd, std) \<in> fst ((without_preemption $ get_cap rvc) stc); (Inr rve, ste) \<in> fst (assertE (rvd \<noteq> NullCap) std); (Inr rvf, stf) \<in> fst (cap_delete rvc ste); (Inr rvg, stg) \<in> fst (preemption_point stf)\<rbrakk> \<Longrightarrow> stg \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>) \<Longrightarrow> s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace><\STATESEP>case (1 slot s)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>(Inr ?rv, ?st) \<in> fst ((without_preemption $ get_cap slot) s); (Inr ?rva, ?sta) \<in> fst ((without_preemption $ gets cdt) ?st); (Inr ?rvb, ?stb) \<in> fst ((returnOk $ descendants_of slot ?rva) ?sta); ?rv \<noteq> NullCap \<and> ?rvb \<noteq> {}; (Inr ?rvc, ?stc) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) ?rvb) ?stb); (Inr ?rvd, ?std) \<in> fst ((without_preemption $ get_cap ?rvc) ?stc); (Inr ?rve, ?ste) \<in> fst (assertE (?rvd \<noteq> NullCap) ?std); (Inr ?rvf, ?stf) \<in> fst (cap_delete ?rvc ?ste); (Inr ?rvg, ?stg) \<in> fst (preemption_point ?stf)\<rbrakk> \<Longrightarrow> ?stg \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+
+goal (1 subgoal):
+ 1. \<And>slot s. (\<And>rv sta rva staa rvb stb rvc stc rvd std rve ste rvf stf rvg stg. \<lbrakk>(Inr rv, sta) \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, staa) \<in> fst ((without_preemption $ gets cdt) sta); (Inr rvb, stb) \<in> fst ((returnOk $ descendants_of slot rva) staa); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, stc) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) stb); (Inr rvd, std) \<in> fst ((without_preemption $ get_cap rvc) stc); (Inr rve, ste) \<in> fst (assertE (rvd \<noteq> NullCap) std); (Inr rvf, stf) \<in> fst (cap_delete rvc ste); (Inr rvg, stg) \<in> fst (preemption_point stf)\<rbrakk> \<Longrightarrow> stg \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>) \<Longrightarrow> s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace><\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace><\STATESEP>apply (subst cap_revoke.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> doE cap <- without_preemption $ get_cap slot;
+cdt <- without_preemption $ gets cdt;
+descendants <- returnOk $ descendants_of slot cdt;
+whenE (cap \<noteq> NullCap \<and> descendants \<noteq> {}) (doE child <- without_preemption $ select_ext (next_revoke_cap slot) descendants;
+cap <- without_preemption $ get_cap child;
+assertE (cap \<noteq> NullCap);
+cap_delete child;
+preemption_point;
+cap_revoke slot
+odE)
+odE \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace><\STATESEP>apply (rule hoare_pre_spec_validE)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. s \<turnstile> \<lbrace>?P'\<rbrace> doE cap <- without_preemption $ get_cap slot;
+cdt <- without_preemption $ gets cdt;
+descendants <- returnOk $ descendants_of slot cdt;
+whenE (cap \<noteq> NullCap \<and> descendants \<noteq> {}) (doE child <- without_preemption $ select_ext (next_revoke_cap slot) descendants;
+cap <- without_preemption $ get_cap child;
+assertE (cap \<noteq> NullCap);
+cap_delete child;
+preemption_point;
+cap_revoke slot
+odE)
+odE \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 2. ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action) s \<Longrightarrow> ?P' s<\STATESEP>apply (wp "1.hyps")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve s''e rvf s''f. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b); (Inr rvd, s''d) \<in> fst ((without_preemption $ get_cap rvc) s''c); (Inr rve, s''e) \<in> fst (assertE (rvd \<noteq> NullCap) s''d); (Inr rvf, s''f) \<in> fst (cap_delete rvc s''e)\<rbrakk> \<Longrightarrow> s''f \<turnstile> \<lbrace>?B16 rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve s''e rvf\<rbrace> preemption_point \<lbrace>\<lambda>rvg. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 2. \<And>rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve s''e. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b); (Inr rvd, s''d) \<in> fst ((without_preemption $ get_cap rvc) s''c); (Inr rve, s''e) \<in> fst (assertE (rvd \<noteq> NullCap) s''d)\<rbrakk> \<Longrightarrow> s''e \<turnstile> \<lbrace>?B14 rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve\<rbrace> cap_delete rvc \<lbrace>?B16 rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve s''e\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 3. \<And>rv s'' rva s''a rvb s''b rvc s''c rvd s''d. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b); (Inr rvd, s''d) \<in> fst ((without_preemption $ get_cap rvc) s''c)\<rbrakk> \<Longrightarrow> s''d \<turnstile> \<lbrace>?B13 rv s'' rva s''a rvb s''b rvc s''c rvd\<rbrace> assertE (rvd \<noteq> NullCap) \<lbrace>?B14 rv s'' rva s''a rvb s''b rvc s''c rvd s''d\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 4. \<And>rv s'' rva s''a rvb s''b rvc s''c. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b)\<rbrakk> \<Longrightarrow> s''c \<turnstile> \<lbrace>?B12 rv s'' rva s''a rvb s''b rvc\<rbrace> without_preemption $ get_cap rvc \<lbrace>?B13 rv s'' rva s''a rvb s''b rvc s''c\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 5. \<And>rv s'' rva s''a rvb s''b. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}\<rbrakk> \<Longrightarrow> s''b \<turnstile> \<lbrace>?P11 rv s'' rva s''a rvb\<rbrace> without_preemption $ select_ext (next_revoke_cap slot) rvb \<lbrace>?B12 rv s'' rva s''a rvb s''b\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 6. \<And>rv s'' rva s''a. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s'')\<rbrakk> \<Longrightarrow> s''a \<turnstile> \<lbrace>?B5 rv s'' rva\<rbrace> returnOk $ descendants_of slot rva \<lbrace>\<lambda>a b. (rv \<noteq> NullCap \<and> a \<noteq> {} \<longrightarrow> ?P11 rv s'' rva s''a a b) \<and> (\<not> (rv \<noteq> NullCap \<and> a \<noteq> {}) \<longrightarrow> ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag) b)\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 7. \<And>rv s''. (Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s) \<Longrightarrow> s'' \<turnstile> \<lbrace>?B4 rv\<rbrace> without_preemption $ gets cdt \<lbrace>?B5 rv s''\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 8. s \<turnstile> \<lbrace>?P'\<rbrace> without_preemption $ get_cap slot \<lbrace>?B4\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 9. ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action) s \<Longrightarrow> ?P' s<\STATESEP>apply ((wp preemption_point_inv' | simp add: integrity_subjects_def pas_refined_def)+)[1]<\STATESEP>3<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve s''e. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b); (Inr rvd, s''d) \<in> fst ((without_preemption $ get_cap rvc) s''c); (Inr rve, s''e) \<in> fst (assertE (rvd \<noteq> NullCap) s''d)\<rbrakk> \<Longrightarrow> s''e \<turnstile> \<lbrace>?B14 rv s'' rva s''a rvb s''b rvc s''c rvd s''d rve\<rbrace> cap_delete rvc \<lbrace>\<lambda>rvf s. ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag) s \<and> ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action) s\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 2. \<And>rv s'' rva s''a rvb s''b rvc s''c rvd s''d. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b); (Inr rvd, s''d) \<in> fst ((without_preemption $ get_cap rvc) s''c)\<rbrakk> \<Longrightarrow> s''d \<turnstile> \<lbrace>?B13 rv s'' rva s''a rvb s''b rvc s''c rvd\<rbrace> assertE (rvd \<noteq> NullCap) \<lbrace>?B14 rv s'' rva s''a rvb s''b rvc s''c rvd s''d\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 3. \<And>rv s'' rva s''a rvb s''b rvc s''c. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, s''c) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) s''b)\<rbrakk> \<Longrightarrow> s''c \<turnstile> \<lbrace>?B12 rv s'' rva s''a rvb s''b rvc\<rbrace> without_preemption $ get_cap rvc \<lbrace>?B13 rv s'' rva s''a rvb s''b rvc s''c\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 4. \<And>rv s'' rva s''a rvb s''b. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s''); (Inr rvb, s''b) \<in> fst ((returnOk $ descendants_of slot rva) s''a); rv \<noteq> NullCap \<and> rvb \<noteq> {}\<rbrakk> \<Longrightarrow> s''b \<turnstile> \<lbrace>?P11 rv s'' rva s''a rvb\<rbrace> without_preemption $ select_ext (next_revoke_cap slot) rvb \<lbrace>?B12 rv s'' rva s''a rvb s''b\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 5. \<And>rv s'' rva s''a. \<lbrakk>(Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, s''a) \<in> fst ((without_preemption $ gets cdt) s'')\<rbrakk> \<Longrightarrow> s''a \<turnstile> \<lbrace>?B5 rv s'' rva\<rbrace> returnOk $ descendants_of slot rva \<lbrace>\<lambda>a b. (rv \<noteq> NullCap \<and> a \<noteq> {} \<longrightarrow> ?P11 rv s'' rva s''a a b) \<and> (\<not> (rv \<noteq> NullCap \<and> a \<noteq> {}) \<longrightarrow> ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag) b)\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 6. \<And>rv s''. (Inr rv, s'') \<in> fst ((without_preemption $ get_cap slot) s) \<Longrightarrow> s'' \<turnstile> \<lbrace>?B4 rv\<rbrace> without_preemption $ gets cdt \<lbrace>?B5 rv s''\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 7. s \<turnstile> \<lbrace>?P'\<rbrace> without_preemption $ get_cap slot \<lbrace>?B4\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+ 8. ((\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action) s \<Longrightarrow> ?P' s<\STATESEP>apply (wp select_ext_weak_wp cap_delete_respects cap_delete_pas_refined
+                  | simp split del: if_split | wp (once) hoare_vcg_const_imp_lift hoare_drop_imps)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (trp \<longrightarrow> integrity aag X st s) \<and> is_subject aag (fst slot) \<and> pas_refined aag s \<and> invs s \<and> valid_list s \<and> valid_sched s \<and> simple_sched_action s \<Longrightarrow> \<forall>x\<in>descendants_of slot (cdt s). (trp \<longrightarrow> cdt_change_allowed' aag x s \<and> emptyable x s) \<and> cdt_change_allowed' aag x s \<and> emptyable x s \<and> (trp \<longrightarrow> cdt_change_allowed' aag x s \<and> emptyable x s) \<and> cdt_change_allowed' aag x s \<and> emptyable x s \<and> (trp \<longrightarrow> cdt_change_allowed' aag x s \<and> emptyable x s) \<and> cdt_change_allowed' aag x s \<and> emptyable x s<\STATESEP>by (auto simp: emptyable_def descendants_of_def
+             dest: reply_slot_not_descendant
+            intro: cca_owned)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s \<turnstile> \<lbrace>(\<lambda>s. trp \<longrightarrow> integrity aag X st s) and K (is_subject aag (fst slot)) and pas_refined aag and einvs and simple_sched_action\<rbrace> cap_revoke slot \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>, \<lbrace>\<lambda>_. (\<lambda>s. trp \<longrightarrow> integrity aag X st s) and pas_refined aag\<rbrace>
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma finalise_cap_caps_of_state_nullinv[Finalise_AC_assms]:
+  "\<lbrace>\<lambda>s. P (caps_of_state s) \<and> (\<forall>p. P ((caps_of_state s)(p \<mapsto> NullCap)))\<rbrace>
+   finalise_cap cap final
+   \<lbrace>\<lambda>_ s. P (caps_of_state s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (caps_of_state s) \<and> (\<forall>p. P ((caps_of_state s)(p \<mapsto> NullCap)))\<rbrace> finalise_cap cap final \<lbrace>\<lambda>_ s. P (caps_of_state s)\<rbrace><\STATESEP>by (cases cap;
+      wpsimp wp: suspend_caps_of_state unbind_notification_caps_of_state
+                 unbind_notification_cte_wp_at
+                 hoare_vcg_all_lift hoare_drop_imps
+                 deleting_irq_handler_caps_of_state_nullinv
+           simp: fun_upd_def[symmetric] if_apply_def2 split_del: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma finalise_cap_fst_ret[Finalise_AC_assms]:
+  "\<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace>
+   finalise_cap cap is_final
+   \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> finalise_cap cap is_final \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace><\STATESEP>including classic_wp_pre<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> finalise_cap cap is_final \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace><\STATESEP>apply (cases cap, simp_all add: arch_finalise_cap_def split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. cap = NullCap \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 2. \<And>x21 x22 x23 x24. cap = UntypedCap x21 x22 x23 x24 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 3. \<And>x31 x32 x33. cap = EndpointCap x31 x32 x33 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> liftM (\<lambda>y. (NullCap, NullCap)) (when is_final (cancel_all_ipc x31)) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 4. \<And>x41 x42 x43. cap = NotificationCap x41 x42 x43 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> liftM (\<lambda>y. (NullCap, NullCap)) (when is_final (do y <- unbind_maybe_notification x41;
+cancel_all_signals x41
+od)) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 5. \<And>x51 x52 x53. cap = ReplyCap x51 x52 x53 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 6. \<And>x61 x62 x63. cap = CNodeCap x61 x62 x63 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> return (if is_final then Zombie x61 (Some x62) (2 ^ x62) else NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 7. \<And>x7. cap = ThreadCap x7 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> do y <- when is_final (unbind_notification x7);
+y <- when is_final (suspend x7);
+y <- when is_final (prepare_thread_delete x7);
+return (if is_final then Zombie x7 None 5 else NullCap, NullCap)
+od \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 8. cap = DomainCap \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 9. cap = IRQControlCap \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 10. \<And>x10. cap = IRQHandlerCap x10 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> if is_final then do y <- deleting_irq_handler x10;
+return (NullCap, IRQHandlerCap x10)
+od else return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+A total of 12 subgoals...<\STATESEP>apply (wp | simp add: comp_def split del: if_split | fastforce)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x10. cap = IRQHandlerCap x10 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> if is_final then do y <- deleting_irq_handler x10;
+return (NullCap, IRQHandlerCap x10)
+od else return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 2. \<And>x111 x112 x113. cap = Zombie x111 x112 x113 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> do y <- assert is_final;
+return (Zombie x111 x112 x113, NullCap)
+od \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 3. \<And>x12. cap = ArchObjectCap x12 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> case x12 of ASIDPoolCap ptr b \<Rightarrow> case is_final of True \<Rightarrow> do delete_asid_pool b ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) | ASIDControlCap \<Rightarrow> return (NullCap, NullCap) | PageCap x ptr xa s None \<Rightarrow> return (NullCap, NullCap) | PageCap x ptr xa s (Some (a, v)) \<Rightarrow> do unmap_page s a v ptr;
+return (NullCap, NullCap)
+od | PageTableCap ptr None \<Rightarrow> return (NullCap, NullCap) | PageTableCap ptr (Some (a, v)) \<Rightarrow> case is_final of True \<Rightarrow> do unmap_page_table a v ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) | PageDirectoryCap ptr None \<Rightarrow> return (NullCap, NullCap) | PageDirectoryCap ptr (Some a) \<Rightarrow> case is_final of True \<Rightarrow> do delete_asid a ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x10. cap = IRQHandlerCap x10 \<Longrightarrow> \<lbrace>?Q72 x10\<rbrace> if is_final then do y <- deleting_irq_handler x10;
+return (NullCap, IRQHandlerCap x10)
+od else return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 2. \<And>x10 s. \<lbrakk>cap = IRQHandlerCap x10; P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrakk> \<Longrightarrow> ?Q72 x10 s
+ 3. \<And>x111 x112 x113. cap = Zombie x111 x112 x113 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> do y <- assert is_final;
+return (Zombie x111 x112 x113, NullCap)
+od \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace>
+ 4. \<And>x12. cap = ArchObjectCap x12 \<Longrightarrow> \<lbrace>\<lambda>_. P NullCap \<and> (\<forall>a b c. P (Zombie a b c))\<rbrace> case x12 of ASIDPoolCap ptr b \<Rightarrow> case is_final of True \<Rightarrow> do delete_asid_pool b ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) | ASIDControlCap \<Rightarrow> return (NullCap, NullCap) | PageCap x ptr xa s None \<Rightarrow> return (NullCap, NullCap) | PageCap x ptr xa s (Some (a, v)) \<Rightarrow> do unmap_page s a v ptr;
+return (NullCap, NullCap)
+od | PageTableCap ptr None \<Rightarrow> return (NullCap, NullCap) | PageTableCap ptr (Some (a, v)) \<Rightarrow> case is_final of True \<Rightarrow> do unmap_page_table a v ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) | PageDirectoryCap ptr None \<Rightarrow> return (NullCap, NullCap) | PageDirectoryCap ptr (Some a) \<Rightarrow> case is_final of True \<Rightarrow> do delete_asid a ptr;
+return (NullCap, NullCap)
+od | False \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P (fst rv)\<rbrace><\STATESEP>apply (wp | simp | (rule hoare_pre, wpc))+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Finalise_AC_2?: Finalise_AC_2<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Finalise_AC_2 aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Finalise_AC_2 aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Finalise_AC_2 aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Finalise_AC_2 aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Finalise_AC_2 aag<\STATESEP>by (unfold_locales; fact Finalise_AC_assms)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Finalise_AC_2 aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

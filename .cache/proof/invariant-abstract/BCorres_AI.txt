@@ -1,0 +1,206 @@
+<\STATESEP>theory BCorres_AI
+imports
+  Include_AI
+  "Lib.BCorres_UL"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>unbundle l4v_word_context<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "bcorres \<equiv> bcorres_underlying truncate_state"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "s_bcorres \<equiv> s_bcorres_underlying truncate_state"<\STATESEP>0<\TRANSEP><\STATESEP>lemma dxo_bcorres[wp]:
+  "bcorres (do_extended_op f) (do_extended_op f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (do_extended_op f) (do_extended_op f)<\STATESEP>apply (simp add: do_extended_op_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (do ex <- get;
+(uu_, es') <- select_f (mk_ef (wrap_ext_op f ex));
+modify (exst_update (\<lambda>_. exst es'))
+od) (do ex <- get;
+(uu_, es') <- select_f (mk_ef (wrap_ext_op f ex));
+modify (exst_update (\<lambda>_. ()))
+od)<\STATESEP>apply (simp add: bind_def select_f_def modify_def return_def get_def put_def gets_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (\<lambda>s. (\<Union>a\<in>fst (mk_ef (wrap_ext_op f s)) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) xa), (\<exists>x\<in>fst (mk_ef (wrap_ext_op f s)). snd ((case x of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) s)) \<or> snd (mk_ef (wrap_ext_op f s)))) (\<lambda>s. (\<Union>a\<in>fst (mk_ef (wrap_ext_op f s)) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := ()\<rparr>)}, False)) xa), snd (mk_ef (wrap_ext_op f s))))<\STATESEP>apply (simp add: split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (\<lambda>s. (\<Union>x\<in>fst (mk_ef (wrap_ext_op f s)) \<times> {s}. {((), snd x\<lparr>exst := exst (snd (fst x))\<rparr>)}, snd (mk_ef (wrap_ext_op f s)))) (\<lambda>s. (\<Union>x\<in>fst (mk_ef (wrap_ext_op f s)) \<times> {s}. {((), snd x\<lparr>exst := ()\<rparr>)}, snd (mk_ef (wrap_ext_op f s))))<\STATESEP>apply (simp add: bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> ((), truncate_state y)) ` (\<Union>x\<in>fst (mk_ef (wrap_ext_op f s)) \<times> {s}. {((), snd x\<lparr>exst := exst (snd (fst x))\<rparr>)}) \<subseteq> (\<Union>x\<in>fst (mk_ef (wrap_ext_op f (truncate_state s))) \<times> {truncate_state s}. {((), snd x\<lparr>exst := ()\<rparr>)})<\STATESEP>apply (clarsimp simp: mk_ef_def wrap_ext_op_unit_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma OR_choice_bcorres[wp]:
+  "bcorres f f' \<Longrightarrow> bcorres g g' \<Longrightarrow> bcorres (OR_choice b f g) (OR_choice b f' g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (OR_choice b f g) (OR_choice b f' g')<\STATESEP>apply (simp add: OR_choice_def wrap_ext_bool_unit_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (do ex <- get;
+(rv, uu_) <- select_f (mk_ef (wrap_ext_bool b ex));
+if rv then f else g
+od) (do ex <- get;
+(rv, uu_) <- select_f (mk_ef (select UNIV ex));
+if rv then f' else g'
+od)<\STATESEP>apply (rule get_bcorres)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (do (rv, uu_) <- select_f (mk_ef (wrap_ext_bool b x));
+if rv then f else g
+od) (do (rv, uu_) <- select_f (mk_ef (select UNIV (truncate_state x)));
+if rv then f' else g'
+od)<\STATESEP>apply (simp add: bind_def select_f_def mk_ef_def modify_def return_def get_def put_def gets_def
+                   select_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (\<lambda>s. (\<Union>a\<in>fst (wrap_ext_bool b x) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f else g) xa), (\<exists>x\<in>fst (wrap_ext_bool b x). snd ((case x of (rv, uu_) \<Rightarrow> if rv then f else g) s)) \<or> fst (wrap_ext_bool b x) = {} \<or> snd (wrap_ext_bool b x))) (\<lambda>s. (\<Union>a\<in>(UNIV \<times> {truncate_state x}) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f' else g') xa), \<exists>x. (x \<longrightarrow> snd (f' s)) \<and> (\<not> x \<longrightarrow> snd (g' s))))<\STATESEP>apply (simp add: bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (f s) \<subseteq> fst (f' (truncate_state s)); \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (g s) \<subseteq> fst (g' (truncate_state s))\<rbrakk> \<Longrightarrow> \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` (\<Union>a\<in>fst (wrap_ext_bool b x) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f else g) xa)) \<subseteq> (\<Union>a\<in>(UNIV \<times> {truncate_state x}) \<times> {truncate_state s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f' else g') xa))<\STATESEP>apply (clarsimp simp: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s aa ba ab bb. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (f s) \<subseteq> fst (f' (truncate_state s)); \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (g s) \<subseteq> fst (g' (truncate_state s)); (aa, ba) \<in> fst ((if ab then f else g) s); (ab, bb) \<in> fst (wrap_ext_bool b x)\<rbrakk> \<Longrightarrow> \<exists>x. (x \<longrightarrow> (aa, truncate_state ba) \<in> fst (f' (truncate_state s))) \<and> (\<not> x \<longrightarrow> (aa, truncate_state ba) \<in> fst (g' (truncate_state s)))<\STATESEP>apply (rule_tac x=ab in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s aa ba ab bb. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (f s) \<subseteq> fst (f' (truncate_state s)); \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (g s) \<subseteq> fst (g' (truncate_state s)); (aa, ba) \<in> fst ((if ab then f else g) s); (ab, bb) \<in> fst (wrap_ext_bool b x)\<rbrakk> \<Longrightarrow> (ab \<longrightarrow> (aa, truncate_state ba) \<in> fst (f' (truncate_state s))) \<and> (\<not> ab \<longrightarrow> (aa, truncate_state ba) \<in> fst (g' (truncate_state s)))<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma OR_choiceE_bcorres[wp]:
+  "bcorres f f' \<Longrightarrow> bcorres g g' \<Longrightarrow> bcorres (OR_choiceE b f g) (OR_choiceE b f' g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (OR_choiceE b f g) (OR_choiceE b f' g')<\STATESEP>apply (simp add: OR_choiceE_def wrap_ext_bool_unit_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (doE ex <- liftE get;
+(rv, uu_) <- liftE (select_f (mk_ef (wrap_ext_bool b ex)));
+if rv then f else g
+odE) (doE ex <- liftE get;
+(rv, uu_) <- liftE (select_f (mk_ef (select UNIV ex)));
+if rv then f' else g'
+odE)<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (do (rv, uu_) <- select_f (mk_ef (wrap_ext_bool b x));
+if rv then f else g
+od) (do (rv, uu_) <- select_f (mk_ef (select UNIV (truncate_state x)));
+if rv then f' else g'
+od)<\STATESEP>apply (simp add: bind_def select_f_def mk_ef_def modify_def return_def get_def put_def gets_def
+                   select_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>bcorres f f'; bcorres g g'\<rbrakk> \<Longrightarrow> bcorres (\<lambda>s. (\<Union>a\<in>fst (wrap_ext_bool b x) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f else g) xa), (\<exists>x\<in>fst (wrap_ext_bool b x). snd ((case x of (rv, uu_) \<Rightarrow> if rv then f else g) s)) \<or> fst (wrap_ext_bool b x) = {} \<or> snd (wrap_ext_bool b x))) (\<lambda>s. (\<Union>a\<in>(UNIV \<times> {truncate_state x}) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f' else g') xa), \<exists>x. (x \<longrightarrow> snd (f' s)) \<and> (\<not> x \<longrightarrow> snd (g' s))))<\STATESEP>apply (simp add: bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (f s) \<subseteq> fst (f' (truncate_state s)); \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (g s) \<subseteq> fst (g' (truncate_state s))\<rbrakk> \<Longrightarrow> \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` (\<Union>a\<in>fst (wrap_ext_bool b x) \<times> {s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f else g) xa)) \<subseteq> (\<Union>a\<in>(UNIV \<times> {truncate_state x}) \<times> {truncate_state s}. fst (case a of (x, xa) \<Rightarrow> (case x of (rv, uu_) \<Rightarrow> if rv then f' else g') xa))<\STATESEP>apply (clarsimp simp: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s aa ba ab bb. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (f s) \<subseteq> fst (f' (truncate_state s)); \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (g s) \<subseteq> fst (g' (truncate_state s)); (aa, ba) \<in> fst ((if ab then f else g) s); (ab, bb) \<in> fst (wrap_ext_bool b x)\<rbrakk> \<Longrightarrow> \<exists>x. (x \<longrightarrow> (aa, truncate_state ba) \<in> fst (f' (truncate_state s))) \<and> (\<not> x \<longrightarrow> (aa, truncate_state ba) \<in> fst (g' (truncate_state s)))<\STATESEP>apply (rule_tac x=ab in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s aa ba ab bb. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (f s) \<subseteq> fst (f' (truncate_state s)); \<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> (x, truncate_state y)) ` fst (g s) \<subseteq> fst (g' (truncate_state s)); (aa, ba) \<in> fst ((if ab then f else g) s); (ab, bb) \<in> fst (wrap_ext_bool b x)\<rbrakk> \<Longrightarrow> (ab \<longrightarrow> (aa, truncate_state ba) \<in> fst (f' (truncate_state s))) \<and> (\<not> ab \<longrightarrow> (aa, truncate_state ba) \<in> fst (g' (truncate_state s)))<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch_ignore (bcorres)
+  (add: Nondet_Monad.bind gets modify get put do_extended_op empty_slot_ext mapM_x "when"
+        select unless mapM catch bindE liftE whenE alternative cap_swap_ext
+        cap_insert_ext cap_move_ext liftM create_cap_ext
+        possible_switch_to reschedule_required set_priority
+        set_thread_state_ext tcb_sched_action timer_tick
+        lookup_error_on_failure getActiveIRQ
+        gets_the liftME zipWithM_x unlessE mapME_x handleE forM_x)<\STATESEP>0<\TRANSEP><\STATESEP>lemma bcorres_select_ext[wp]:
+  "bcorres (select_ext a A) (select_ext a A)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (select_ext a A) (select_ext a A)<\STATESEP>by (clarsimp simp: select_ext_def bind_def gets_def return_def select_def assert_def get_def
+                     select_switch_unit_def bcorres_underlying_def s_bcorres_underlying_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: arch_post_cap_deletion truncate_state<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>requalify_facts
+  Arch.arch_post_cap_deletion_bcorres<\STATESEP>0<\TRANSEP><\STATESEP>crunch (bcorres) bcorres[wp]:
+  set_original, set_object, set_cap, set_irq_state, deleted_irq_handler, get_cap,set_cdt, empty_slot
+  truncate_state
+  (ignore: maskInterrupt)<\STATESEP>0<\TRANSEP><\STATESEP>lemma get_cap_det:
+  "(r,s') \<in> fst (get_cap p s) \<Longrightarrow> get_cap p s = ({(r,s)}, False)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (r, s') \<in> fst (get_cap p s) \<Longrightarrow> get_cap p s = ({(r, s)}, False)<\STATESEP>apply (cases p)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(r, s') \<in> fst (get_cap p s); p = (a, b)\<rbrakk> \<Longrightarrow> get_cap p s = ({(r, s)}, False)<\STATESEP>apply (clarsimp simp add: in_monad get_cap_def get_object_def
+                     split: kernel_object.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b x11 x12. \<lbrakk>p = (a, b); kheap s a = Some (CNode x11 x12); well_formed_cnode_n x11 x12; s' = s; x12 b = Some r\<rbrakk> \<Longrightarrow> (do obj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh a = Some y);
+return (the (kh a))
+od;
+caps <- case obj of CNode sz cnode \<Rightarrow> do assert (well_formed_cnode_n sz cnode);
+return cnode
+od | TCB tcb \<Rightarrow> return (tcb_cnode_map tcb) | _ \<Rightarrow> fail;
+assert_opt (caps b)
+od) s = ({(r, s)}, False)
+ 2. \<And>a b x2. \<lbrakk>p = (a, b); kheap s a = Some (TCB x2); s' = s; tcb_cnode_map x2 b = Some r\<rbrakk> \<Longrightarrow> (do obj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh a = Some y);
+return (the (kh a))
+od;
+caps <- case obj of CNode sz cnode \<Rightarrow> do assert (well_formed_cnode_n sz cnode);
+return cnode
+od | TCB tcb \<Rightarrow> return (tcb_cnode_map tcb) | _ \<Rightarrow> fail;
+assert_opt (caps b)
+od) s = ({(r, s)}, False)<\STATESEP>apply (clarsimp simp add: bind_def return_def assert_opt_def simpler_gets_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b x2. \<lbrakk>p = (a, b); kheap s a = Some (TCB x2); s' = s; tcb_cnode_map x2 b = Some r\<rbrakk> \<Longrightarrow> (do obj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh a = Some y);
+return (the (kh a))
+od;
+caps <- case obj of CNode sz cnode \<Rightarrow> do assert (well_formed_cnode_n sz cnode);
+return cnode
+od | TCB tcb \<Rightarrow> return (tcb_cnode_map tcb) | _ \<Rightarrow> fail;
+assert_opt (caps b)
+od) s = ({(r, s)}, False)<\STATESEP>apply (simp add: bind_def simpler_gets_def return_def assert_opt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_object_bcorres_any[wp]:
+  "bcorres_underlying (trans_state e) (get_object a) (get_object a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying (trans_state e) (get_object a) (get_object a)<\STATESEP>by (wpsimp simp: get_object_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_cap_bcorres_any:
+  "bcorres_underlying (trans_state e) (get_cap x) (get_cap x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres_underlying (trans_state e) (get_cap x) (get_cap x)<\STATESEP>by (wpsimp simp: get_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_cap_helper:
+  "(fst (get_cap cref (trans_state e x)) =
+    {(cap', trans_state e x)}) = (fst (get_cap cref x) = {(cap', x)})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}) = (fst (get_cap cref x) = {(cap', x)})<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)} \<Longrightarrow> fst (get_cap cref x) = {(cap', x)}
+ 2. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (cut_tac x=cref and e="\<lambda>_. exst x" in get_cap_bcorres_any)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}; bcorres_underlying (trans_state (\<lambda>_. exst x)) (get_cap cref) (get_cap cref)\<rbrakk> \<Longrightarrow> fst (get_cap cref x) = {(cap', x)}
+ 2. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (simp add: bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}; \<forall>s. s_bcorres_underlying (trans_state (\<lambda>_. exst x)) (get_cap cref) (get_cap cref) s\<rbrakk> \<Longrightarrow> fst (get_cap cref x) = {(cap', x)}
+ 2. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (drule_tac x="trans_state e x" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}; s_bcorres_underlying (trans_state (\<lambda>_. exst x)) (get_cap cref) (get_cap cref) (trans_state e x)\<rbrakk> \<Longrightarrow> fst (get_cap cref x) = {(cap', x)}
+ 2. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (simp add: s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}; (cap', trans_state (\<lambda>e. exst x) x) \<in> fst (get_cap cref (trans_state (\<lambda>e. exst x) x))\<rbrakk> \<Longrightarrow> fst (get_cap cref x) = {(cap', x)}
+ 2. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (drule get_cap_det)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}; get_cap cref (trans_state (\<lambda>e. exst x) x) = ({(cap', trans_state (\<lambda>e. exst x) x)}, False)\<rbrakk> \<Longrightarrow> fst (get_cap cref x) = {(cap', x)}
+ 2. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (simp add: trans_state_update')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (get_cap cref x) = {(cap', x)} \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (cut_tac x=cref and e="e" in get_cap_bcorres_any)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (get_cap cref x) = {(cap', x)}; bcorres_underlying (trans_state e) (get_cap cref) (get_cap cref)\<rbrakk> \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (simp add: bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (get_cap cref x) = {(cap', x)}; \<forall>s. s_bcorres_underlying (trans_state e) (get_cap cref) (get_cap cref) s\<rbrakk> \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (drule_tac x="x" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (get_cap cref x) = {(cap', x)}; s_bcorres_underlying (trans_state e) (get_cap cref) (get_cap cref) x\<rbrakk> \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (simp add: s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (get_cap cref x) = {(cap', x)}; (cap', trans_state e x) \<in> fst (get_cap cref (trans_state e x))\<rbrakk> \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply (drule get_cap_det)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (get_cap cref x) = {(cap', x)}; get_cap cref (trans_state e x) = ({(cap', trans_state e x)}, False)\<rbrakk> \<Longrightarrow> fst (get_cap cref (trans_state e x)) = {(cap', trans_state e x)}<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_final_cap_bcorres[wp]:
+  "bcorres (is_final_cap a) (is_final_cap a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (is_final_cap a) (is_final_cap a)<\STATESEP>by (simp add: is_final_cap_def is_final_cap'_def gets_def get_cap_helper | wp)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_tcb_truncate[simp]: "get_tcb a (truncate_state s) = get_tcb a s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. get_tcb a (truncate_state s) = get_tcb a s<\STATESEP>by (simp add: get_tcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>crunch (bcorres) bcorres[wp]:
+  cancel_all_ipc, cancel_all_signals, unbind_maybe_notification, unbind_notification, bind_notification
+  truncate_state
+  (simp: gets_the_def ignore: gets_the)<\STATESEP>0<\TRANSEP><\STATESEP>lemma fast_finalise_bcorres[wp]:
+  "bcorres (fast_finalise a b) (fast_finalise a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (fast_finalise a b) (fast_finalise a b)<\STATESEP>by (cases a; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>crunch (bcorres) bcorres[wp]: get_irq_slot truncate_state (simp: gets_def)<\STATESEP>0<\TRANSEP><\STATESEP>lemma throw_on_false_bcorres[wp]:
+  "bcorres f f' \<Longrightarrow>  bcorres (throw_on_false e f) (throw_on_false e f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (throw_on_false e f) (throw_on_false e f')<\STATESEP>by (simp add: throw_on_false_def | wp)+<\STATESEP>1<\TRANSEP><\STATESEP>crunch_ignore (bcorres) (add: getActiveIRQ)<\STATESEP>0<\TRANSEP><\STATESEP>lemma preemption_point_bcorres[wp]:
+  "bcorres preemption_point preemption_point"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres preemption_point preemption_point<\STATESEP>unfolding preemption_point_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (doE liftE $ do_extended_op update_work_units;
+OR_choiceE work_units_limit_reached (doE liftE $ do_extended_op reset_work_units;
+irq_opt <- liftE $ do_machine_op (getActiveIRQ True);
+case irq_opt of None \<Rightarrow> returnOk () | Some x \<Rightarrow> K (throwError $ ()) x
+odE) (returnOk ())
+odE) (doE liftE $ do_extended_op update_work_units;
+OR_choiceE work_units_limit_reached (doE liftE $ do_extended_op reset_work_units;
+irq_opt <- liftE $ do_machine_op (getActiveIRQ True);
+case irq_opt of None \<Rightarrow> returnOk () | Some x \<Rightarrow> K (throwError $ ()) x
+odE) (returnOk ())
+odE)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>crunch (bcorres) bcorres[wp]: cap_swap_for_delete truncate_state<\STATESEP>0<\TRANSEP><\STATESEP>lemma gets_the_get_tcb_bcorres[wp]:
+  "bcorres (gets_the (get_tcb a)) (gets_the (get_tcb a)) "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (gets_the (get_tcb a)) (gets_the (get_tcb a))<\STATESEP>by (wpsimp simp: gets_the_def bcorres_underlying_def assert_opt_def split: option.splits|rule conjI)+<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

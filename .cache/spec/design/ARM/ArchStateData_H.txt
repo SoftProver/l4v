@@ -1,0 +1,205 @@
+<\STATESEP>chapter "Architecture Specific Kernel State and Monads"<\STATESEP>0<\TRANSEP><\STATESEP>theory ArchStateData_H
+imports
+  Arch_Structs_B
+  ArchTypes_H
+  ArchStructures_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_H<\STATESEP>0<\TRANSEP><\STATESEP>datatype kernel_state =
+    ARMKernelState (armKSASIDTable : "asid \<Rightarrow> ((machine_word) option)") (armKSHWASIDTable : "hardware_asid \<Rightarrow> (asid option)") (armKSNextASID : hardware_asid) (armKSASIDMap : "asid \<Rightarrow> ((hardware_asid * machine_word) option)") (armKSGlobalPD : machine_word) (armKSGlobalPTs : "machine_word list") (armKSKernelVSpace : "machine_word \<Rightarrow> arm_vspace_region_use")<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSASIDTable_update :: "((asid \<Rightarrow> ((machine_word) option)) \<Rightarrow> (asid \<Rightarrow> ((machine_word) option))) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSASIDTable_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState (f v0) v1 v2 v3 v4 v5 v6"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSHWASIDTable_update :: "((hardware_asid \<Rightarrow> (asid option)) \<Rightarrow> (hardware_asid \<Rightarrow> (asid option))) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSHWASIDTable_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState v0 (f v1) v2 v3 v4 v5 v6"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSNextASID_update :: "(hardware_asid \<Rightarrow> hardware_asid) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSNextASID_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState v0 v1 (f v2) v3 v4 v5 v6"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSASIDMap_update :: "((asid \<Rightarrow> ((hardware_asid * machine_word) option)) \<Rightarrow> (asid \<Rightarrow> ((hardware_asid * machine_word) option))) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSASIDMap_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState v0 v1 v2 (f v3) v4 v5 v6"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSGlobalPD_update :: "(machine_word \<Rightarrow> machine_word) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSGlobalPD_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState v0 v1 v2 v3 (f v4) v5 v6"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSGlobalPTs_update :: "((machine_word list) \<Rightarrow> (machine_word list)) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSGlobalPTs_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState v0 v1 v2 v3 v4 (f v5) v6"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  armKSKernelVSpace_update :: "((machine_word \<Rightarrow> arm_vspace_region_use) \<Rightarrow> (machine_word \<Rightarrow> arm_vspace_region_use)) \<Rightarrow> kernel_state \<Rightarrow> kernel_state"
+where
+  "armKSKernelVSpace_update f (ARMKernelState v0 v1 v2 v3 v4 v5 v6) = ARMKernelState v0 v1 v2 v3 v4 v5 (f v6)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  ARMKernelState_trans :: "(asid \<Rightarrow> ((machine_word) option)) \<Rightarrow> (hardware_asid \<Rightarrow> (asid option)) \<Rightarrow> (hardware_asid) \<Rightarrow> (asid \<Rightarrow> ((hardware_asid * machine_word) option)) \<Rightarrow> (machine_word) \<Rightarrow> (machine_word list) \<Rightarrow> (machine_word \<Rightarrow> arm_vspace_region_use) \<Rightarrow> kernel_state" ("ARMKernelState'_ \<lparr> armKSASIDTable= _, armKSHWASIDTable= _, armKSNextASID= _, armKSASIDMap= _, armKSGlobalPD= _, armKSGlobalPTs= _, armKSKernelVSpace= _ \<rparr>")
+where
+  "ARMKernelState_ \<lparr> armKSASIDTable= v0, armKSHWASIDTable= v1, armKSNextASID= v2, armKSASIDMap= v3, armKSGlobalPD= v4, armKSGlobalPTs= v5, armKSKernelVSpace= v6 \<rparr> == ARMKernelState v0 v1 v2 v3 v4 v5 v6"<\STATESEP>0<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSASIDTable_update [simp]:
+  "armKSASIDTable (armKSASIDTable_update f v) = f (armKSASIDTable v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSASIDTable_update f v) = f (armKSASIDTable v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSHWASIDTable_update [simp]:
+  "armKSASIDTable (armKSHWASIDTable_update f v) = armKSASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSHWASIDTable_update f v) = armKSASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSNextASID_update [simp]:
+  "armKSASIDTable (armKSNextASID_update f v) = armKSASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSNextASID_update f v) = armKSASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSASIDMap_update [simp]:
+  "armKSASIDTable (armKSASIDMap_update f v) = armKSASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSASIDMap_update f v) = armKSASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSGlobalPD_update [simp]:
+  "armKSASIDTable (armKSGlobalPD_update f v) = armKSASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSGlobalPD_update f v) = armKSASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSGlobalPTs_update [simp]:
+  "armKSASIDTable (armKSGlobalPTs_update f v) = armKSASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSGlobalPTs_update f v) = armKSASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDTable_armKSKernelVSpace_update [simp]:
+  "armKSASIDTable (armKSKernelVSpace_update f v) = armKSASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDTable (armKSKernelVSpace_update f v) = armKSASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSASIDTable_update [simp]:
+  "armKSHWASIDTable (armKSASIDTable_update f v) = armKSHWASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSASIDTable_update f v) = armKSHWASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSHWASIDTable_update [simp]:
+  "armKSHWASIDTable (armKSHWASIDTable_update f v) = f (armKSHWASIDTable v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSHWASIDTable_update f v) = f (armKSHWASIDTable v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSNextASID_update [simp]:
+  "armKSHWASIDTable (armKSNextASID_update f v) = armKSHWASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSNextASID_update f v) = armKSHWASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSASIDMap_update [simp]:
+  "armKSHWASIDTable (armKSASIDMap_update f v) = armKSHWASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSASIDMap_update f v) = armKSHWASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSGlobalPD_update [simp]:
+  "armKSHWASIDTable (armKSGlobalPD_update f v) = armKSHWASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSGlobalPD_update f v) = armKSHWASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSGlobalPTs_update [simp]:
+  "armKSHWASIDTable (armKSGlobalPTs_update f v) = armKSHWASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSGlobalPTs_update f v) = armKSHWASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSHWASIDTable_armKSKernelVSpace_update [simp]:
+  "armKSHWASIDTable (armKSKernelVSpace_update f v) = armKSHWASIDTable v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSHWASIDTable (armKSKernelVSpace_update f v) = armKSHWASIDTable v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSASIDTable_update [simp]:
+  "armKSNextASID (armKSASIDTable_update f v) = armKSNextASID v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSASIDTable_update f v) = armKSNextASID v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSHWASIDTable_update [simp]:
+  "armKSNextASID (armKSHWASIDTable_update f v) = armKSNextASID v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSHWASIDTable_update f v) = armKSNextASID v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSNextASID_update [simp]:
+  "armKSNextASID (armKSNextASID_update f v) = f (armKSNextASID v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSNextASID_update f v) = f (armKSNextASID v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSASIDMap_update [simp]:
+  "armKSNextASID (armKSASIDMap_update f v) = armKSNextASID v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSASIDMap_update f v) = armKSNextASID v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSGlobalPD_update [simp]:
+  "armKSNextASID (armKSGlobalPD_update f v) = armKSNextASID v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSGlobalPD_update f v) = armKSNextASID v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSGlobalPTs_update [simp]:
+  "armKSNextASID (armKSGlobalPTs_update f v) = armKSNextASID v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSGlobalPTs_update f v) = armKSNextASID v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSNextASID_armKSKernelVSpace_update [simp]:
+  "armKSNextASID (armKSKernelVSpace_update f v) = armKSNextASID v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSNextASID (armKSKernelVSpace_update f v) = armKSNextASID v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSASIDTable_update [simp]:
+  "armKSASIDMap (armKSASIDTable_update f v) = armKSASIDMap v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSASIDTable_update f v) = armKSASIDMap v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSHWASIDTable_update [simp]:
+  "armKSASIDMap (armKSHWASIDTable_update f v) = armKSASIDMap v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSHWASIDTable_update f v) = armKSASIDMap v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSNextASID_update [simp]:
+  "armKSASIDMap (armKSNextASID_update f v) = armKSASIDMap v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSNextASID_update f v) = armKSASIDMap v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSASIDMap_update [simp]:
+  "armKSASIDMap (armKSASIDMap_update f v) = f (armKSASIDMap v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSASIDMap_update f v) = f (armKSASIDMap v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSGlobalPD_update [simp]:
+  "armKSASIDMap (armKSGlobalPD_update f v) = armKSASIDMap v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSGlobalPD_update f v) = armKSASIDMap v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSGlobalPTs_update [simp]:
+  "armKSASIDMap (armKSGlobalPTs_update f v) = armKSASIDMap v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSGlobalPTs_update f v) = armKSASIDMap v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSASIDMap_armKSKernelVSpace_update [simp]:
+  "armKSASIDMap (armKSKernelVSpace_update f v) = armKSASIDMap v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSASIDMap (armKSKernelVSpace_update f v) = armKSASIDMap v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSASIDTable_update [simp]:
+  "armKSGlobalPD (armKSASIDTable_update f v) = armKSGlobalPD v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSASIDTable_update f v) = armKSGlobalPD v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSHWASIDTable_update [simp]:
+  "armKSGlobalPD (armKSHWASIDTable_update f v) = armKSGlobalPD v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSHWASIDTable_update f v) = armKSGlobalPD v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSNextASID_update [simp]:
+  "armKSGlobalPD (armKSNextASID_update f v) = armKSGlobalPD v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSNextASID_update f v) = armKSGlobalPD v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSASIDMap_update [simp]:
+  "armKSGlobalPD (armKSASIDMap_update f v) = armKSGlobalPD v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSASIDMap_update f v) = armKSGlobalPD v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSGlobalPD_update [simp]:
+  "armKSGlobalPD (armKSGlobalPD_update f v) = f (armKSGlobalPD v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSGlobalPD_update f v) = f (armKSGlobalPD v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSGlobalPTs_update [simp]:
+  "armKSGlobalPD (armKSGlobalPTs_update f v) = armKSGlobalPD v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSGlobalPTs_update f v) = armKSGlobalPD v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPD_armKSKernelVSpace_update [simp]:
+  "armKSGlobalPD (armKSKernelVSpace_update f v) = armKSGlobalPD v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPD (armKSKernelVSpace_update f v) = armKSGlobalPD v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSASIDTable_update [simp]:
+  "armKSGlobalPTs (armKSASIDTable_update f v) = armKSGlobalPTs v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSASIDTable_update f v) = armKSGlobalPTs v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSHWASIDTable_update [simp]:
+  "armKSGlobalPTs (armKSHWASIDTable_update f v) = armKSGlobalPTs v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSHWASIDTable_update f v) = armKSGlobalPTs v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSNextASID_update [simp]:
+  "armKSGlobalPTs (armKSNextASID_update f v) = armKSGlobalPTs v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSNextASID_update f v) = armKSGlobalPTs v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSASIDMap_update [simp]:
+  "armKSGlobalPTs (armKSASIDMap_update f v) = armKSGlobalPTs v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSASIDMap_update f v) = armKSGlobalPTs v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSGlobalPD_update [simp]:
+  "armKSGlobalPTs (armKSGlobalPD_update f v) = armKSGlobalPTs v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSGlobalPD_update f v) = armKSGlobalPTs v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSGlobalPTs_update [simp]:
+  "armKSGlobalPTs (armKSGlobalPTs_update f v) = f (armKSGlobalPTs v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSGlobalPTs_update f v) = f (armKSGlobalPTs v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSGlobalPTs_armKSKernelVSpace_update [simp]:
+  "armKSGlobalPTs (armKSKernelVSpace_update f v) = armKSGlobalPTs v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSGlobalPTs (armKSKernelVSpace_update f v) = armKSGlobalPTs v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSASIDTable_update [simp]:
+  "armKSKernelVSpace (armKSASIDTable_update f v) = armKSKernelVSpace v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSASIDTable_update f v) = armKSKernelVSpace v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSHWASIDTable_update [simp]:
+  "armKSKernelVSpace (armKSHWASIDTable_update f v) = armKSKernelVSpace v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSHWASIDTable_update f v) = armKSKernelVSpace v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSNextASID_update [simp]:
+  "armKSKernelVSpace (armKSNextASID_update f v) = armKSKernelVSpace v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSNextASID_update f v) = armKSKernelVSpace v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSASIDMap_update [simp]:
+  "armKSKernelVSpace (armKSASIDMap_update f v) = armKSKernelVSpace v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSASIDMap_update f v) = armKSKernelVSpace v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSGlobalPD_update [simp]:
+  "armKSKernelVSpace (armKSGlobalPD_update f v) = armKSKernelVSpace v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSGlobalPD_update f v) = armKSKernelVSpace v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSGlobalPTs_update [simp]:
+  "armKSKernelVSpace (armKSGlobalPTs_update f v) = armKSKernelVSpace v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSGlobalPTs_update f v) = armKSKernelVSpace v<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma armKSKernelVSpace_armKSKernelVSpace_update [simp]:
+  "armKSKernelVSpace (armKSKernelVSpace_update f v) = f (armKSKernelVSpace v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. armKSKernelVSpace (armKSKernelVSpace_update f v) = f (armKSKernelVSpace v)<\STATESEP>by (cases v) simp<\STATESEP>1<\TRANSEP><\STATESEP>definition
+newKernelState :: "paddr \<Rightarrow> (kernel_state * paddr list)"
+where
+"newKernelState data_start \<equiv>
+    let
+        alignToBits = (\<lambda>  addr b. (((addr - 1) `~shiftR~` b) + 1) `~shiftL~` b);
+        globalsFrame = data_start `~alignToBits~` pageBits;
+        globalsFrameTop = globalsFrame + bit pageBits;
+        globalPTs = globalsFrameTop `~alignToBits~` pageBits;
+        globalPTsTop = globalPTs + bit pageBits;
+        globalPD = globalPTsTop `~alignToBits~` pdBits;
+        globalPDTop = globalPD + bit pdBits;
+        frames = globalsFrame #
+            [globalPTs, globalPTs + bit pageBits  .e.  globalPTsTop - 1] @
+            [globalPD, globalPD + bit pageBits  .e.  globalPDTop - 1];
+        state = ARMKernelState_ \<lparr>
+            armKSASIDTable= funPartialArray (const Nothing) (0, (1 `~shiftL~` asidHighBits) - 1),
+            armKSHWASIDTable= funArray (const Nothing),
+            armKSNextASID= minBound,
+            armKSASIDMap= funPartialArray (const Nothing) asidRange,
+            armKSGlobalPD= ptrFromPAddr globalPD,
+            armKSGlobalPTs= map ptrFromPAddr
+                [globalPTs, globalPTs + bit ptBits  .e.  globalPTsTop- 1],
+            armKSKernelVSpace=
+                (\<lambda> vref. if vref < mask 20 then ArmVSpaceKernelWindow
+                                            else ArmVSpaceInvalidRegion) \<rparr>
+    in
+                                   (state, frames)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

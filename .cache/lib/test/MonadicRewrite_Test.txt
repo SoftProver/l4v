@@ -1,0 +1,885 @@
+<\STATESEP>theory MonadicRewrite_Test
+imports Lib.MonadicRewrite
+begin<\STATESEP>0<\TRANSEP><\STATESEP>declare [[eta_contract=false]]<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Function definitions to use in examples\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "example_k x \<equiv> gets (K x)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "example_f \<equiv> example_k 2"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "example_add = do
+     a \<leftarrow> example_f;
+     b \<leftarrow> example_k a;
+     c \<leftarrow> example_f;
+     return (a+b+c)
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "example_addE = doE
+     a \<leftarrow> liftE example_f;
+     b \<leftarrow> liftE (example_k a);
+     c \<leftarrow> liftE example_f;
+     returnOk (a+b+c)
+   odE"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Sanity checks\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_add example_add"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_add example_add<\STATESEP>unfolding example_add_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)<\STATESEP>apply monadic_rewrite_pre<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)
+ 2. \<And>s. True \<Longrightarrow> ?Q s<\STATESEP>apply (rule monadic_rewrite_trans) \<comment> \<open>schematise RHS\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. monadic_rewrite True False ?P1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) ?g1
+ 2. monadic_rewrite True False ?Q1 ?g1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)
+ 3. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_step_l)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a b c. monadic_rewrite True False (?Q10 a b c) (return (a + b + c)) (?h10 a b c)
+ 2. \<And>a b. \<lbrace>?Q7 a b\<rbrace> example_f \<lbrace>?Q10 a b\<rbrace>
+ 3. \<And>a. \<lbrace>?Q4 a\<rbrace> example_k a \<lbrace>?Q7 a\<rbrace>
+ 4. \<lbrace>?P1\<rbrace> example_f \<lbrace>?Q4\<rbrace>
+ 5. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+example_f >>= ?h10 a b
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)
+ 6. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a b. \<lbrace>?Q7 a b\<rbrace> example_f \<lbrace>\<lambda>c _. True\<rbrace>
+ 2. \<And>a. \<lbrace>?Q4 a\<rbrace> example_k a \<lbrace>?Q7 a\<rbrace>
+ 3. \<lbrace>?P1\<rbrace> example_f \<lbrace>?Q4\<rbrace>
+ 4. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)
+ 5. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_addE example_addE"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_addE example_addE<\STATESEP>unfolding example_addE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)<\STATESEP>apply monadic_rewrite_pre<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)
+ 2. \<And>s. True \<Longrightarrow> ?Q s<\STATESEP>apply (rule monadic_rewrite_trans) \<comment> \<open>schematise RHS\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. monadic_rewrite True False ?P1 (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) ?g1
+ 2. monadic_rewrite True False ?Q1 ?g1 (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)
+ 3. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_step_l)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a b c. monadic_rewrite True False (?Q10 a b c) (returnOk (a + b + c)) (?h10 a b c)
+ 2. \<And>a b. \<lbrace>?Q7 a b\<rbrace> liftE example_f \<lbrace>?Q10 a b\<rbrace>, -
+ 3. \<And>a. \<lbrace>?Q4 a\<rbrace> liftE (example_k a) \<lbrace>?Q7 a\<rbrace>, -
+ 4. \<lbrace>?P1\<rbrace> liftE example_f \<lbrace>?Q4\<rbrace>, -
+ 5. monadic_rewrite True False ?Q1 (doE a <- liftE example_f;
+b <- liftE (example_k a);
+liftE example_f >>=E ?h10 a b
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)
+ 6. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a b. \<lbrace>?Q7 a b\<rbrace> liftE example_f \<lbrace>\<lambda>c _. True\<rbrace>, -
+ 2. \<And>a. \<lbrace>?Q4 a\<rbrace> liftE (example_k a) \<lbrace>?Q7 a\<rbrace>, -
+ 3. \<lbrace>?P1\<rbrace> liftE example_f \<lbrace>?Q4\<rbrace>, -
+ 4. monadic_rewrite True False ?Q1 (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)
+ 5. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_add example_add"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_add example_add<\STATESEP>unfolding example_add_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)<\STATESEP>apply (monadic_rewrite_l monadic_rewrite_refl[where f="return (a+b+c)" for a b c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + b + c)
+od)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_addE example_addE"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_addE example_addE<\STATESEP>unfolding example_addE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)<\STATESEP>apply (monadic_rewrite_l monadic_rewrite_refl[where f="returnOk (a+b+c)" for a b c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE) (doE a <- liftE example_f;
+b <- liftE (example_k a);
+c <- liftE example_f;
+returnOk (a + b + c)
+odE)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Example of rewriting with a matching rule: selecting branches of if statements\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "example_if = do
+     a \<leftarrow> example_f;
+     b \<leftarrow> example_k a;
+     if (b = 2)
+     then do
+       c \<leftarrow> example_f;
+       return (a+2+c)
+     od
+     else do
+       c \<leftarrow> example_f;
+       return (a+b+c)
+     od
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "example_removed_if = do
+     a \<leftarrow> example_f;
+     b \<leftarrow> example_k a;
+     c \<leftarrow> example_f;
+     return (a+2+c)
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>lemma example_k_wp:
+  "\<lbrace>K (a = n)\<rbrace> example_k a \<lbrace>\<lambda>rv s. rv = n\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (a = n)\<rbrace> example_k a \<lbrace>\<lambda>rv s. rv = n\<rbrace><\STATESEP>unfolding example_k_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (a = n)\<rbrace> gets (K a) \<lbrace>\<lambda>rv s. rv = n\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_f_wp_2:
+  "\<lbrace>\<top>\<rbrace> example_f \<lbrace>\<lambda>rv s. rv = 2\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> example_f \<lbrace>\<lambda>rv s. rv = (2::'b)\<rbrace><\STATESEP>unfolding example_f_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv s. rv = (2::'b)\<rbrace><\STATESEP>by (wpsimp wp: example_k_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_f_wp:
+  "\<lbrace>K (n = 2)\<rbrace> example_f \<lbrace>\<lambda>rv s. rv = n\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (n = (2::'b))\<rbrace> example_f \<lbrace>\<lambda>rv s. rv = n\<rbrace><\STATESEP>unfolding example_f_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (n = (2::'b))\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv s. rv = n\<rbrace><\STATESEP>by (wpsimp wp: example_k_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_if example_removed_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_if example_removed_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>apply (monadic_rewrite_l monadic_rewrite_if_l_True succeed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a. \<lbrace>?Q5 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>_. True)\<rbrace>
+ 2. \<lbrace>?P1\<rbrace> example_f \<lbrace>?Q5\<rbrace>
+ 3. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 4. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (wpsimp wp: example_k_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P1\<rbrace> example_f \<lbrace>\<lambda>a s. K (a = (2::'b)) s \<and> True\<rbrace>
+ 2. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 3. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (wpsimp wp: example_f_wp_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_removed_if example_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_removed_if example_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)<\STATESEP>apply (monadic_rewrite_r monadic_rewrite_if_r_True succeed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a. \<lbrace>?Q5 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>_. True)\<rbrace>
+ 2. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q5\<rbrace>
+ 3. monadic_rewrite True False ?P1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 4. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (wpsimp wp: example_k_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q1\<rbrace> example_f \<lbrace>\<lambda>a s. K (a = (2::'b)) s \<and> True\<rbrace>
+ 2. monadic_rewrite True False ?P1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 3. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (wpsimp wp: example_f_wp_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?P1 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>s. True \<Longrightarrow> (?P1 and (\<lambda>_. True)) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma (* on left *)
+  "monadic_rewrite True False \<top> example_if example_removed_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_if example_removed_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>by (monadic_rewrite_l monadic_rewrite_if_l_True \<open>wpsimp wp: example_k_wp example_f_wp\<close>)
+     (rule monadic_rewrite_refl, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (* on right *)
+  "monadic_rewrite True False \<top> example_removed_if example_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_removed_if example_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)<\STATESEP>by (monadic_rewrite_r monadic_rewrite_if_r_True \<open>wpsimp wp: example_k_wp example_f_wp\<close>)
+     (rule monadic_rewrite_refl, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (* on left *)
+  "monadic_rewrite True False \<top> example_if example_removed_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_if example_removed_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>supply example_k_wp[wp] example_f_wp[wp]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>by (monadic_rewrite_l monadic_rewrite_if_l_True)
+     (rule monadic_rewrite_refl, simp)<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Symbolic execution\<close><\STATESEP>0<\TRANSEP><\STATESEP>crunches example_k, example_f
+  for inv[wp]: "P"
+  and (empty_fail) empty_fail[wp]
+  and (no_fail) no_fail[wp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_if example_removed_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_if example_removed_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>supply example_k_wp[wp] example_f_wp[wp]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>apply (monadic_rewrite_symb_exec_l_known 2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. monadic_rewrite True False ?Q2 (do b <- example_k (2::'b);
+if b = (2::'b) then do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od else do c <- example_f;
+return ((2::'b) + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> (?P2 and ?Q2) s<\STATESEP>apply (monadic_rewrite_symb_exec_l_known 2 succeed)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. monadic_rewrite True False ?Q28 (if (2::'b) = (2::'b) then do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od else do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>P. \<lbrace>P\<rbrace> example_k (2::'b) \<lbrace>\<lambda>_. P\<rbrace>
+ 3. empty_fail (example_k (2::'b))
+ 4. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ?Q28)) s<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>P. \<lbrace>P\<rbrace> example_k (2::'b) \<lbrace>\<lambda>_. P\<rbrace>
+ 2. monadic_rewrite True False ?Q28 (if (2::'b) = (2::'b) then do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od else do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 3. empty_fail (example_k (2::'b))
+ 4. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ?Q28)) s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. monadic_rewrite True False ?Q28 (if (2::'b) = (2::'b) then do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od else do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. empty_fail (example_k (2::'b))
+ 3. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 4. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ?Q28)) s<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. empty_fail (example_k (2::'b))
+ 2. monadic_rewrite True False ?Q28 (if (2::'b) = (2::'b) then do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od else do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 3. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 4. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ?Q28)) s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. monadic_rewrite True False ?Q28 (if (2::'b) = (2::'b) then do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od else do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 3. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ?Q28)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. monadic_rewrite True False ?Q28 (do c <- example_f;
+return ((4::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 3. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ?Q28)) s<\STATESEP>apply (monadic_rewrite_pre, rule monadic_rewrite_trans[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. monadic_rewrite True False ?Q47 ?g47 (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. monadic_rewrite True False ?P47 (do c <- example_f;
+return ((4::'b) + c)
+od) ?g47
+ 3. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 4. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and (?P47 and ?Q47))) s<\STATESEP>apply (monadic_rewrite_symb_exec_r_known 2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. monadic_rewrite True False ?Q51 ?g47 (do b <- example_k (2::'b);
+c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od)
+ 2. \<lbrace>?P51\<rbrace> example_f \<lbrace>\<lambda>rv' s. rv' = (2::'b)\<rbrace>
+ 3. monadic_rewrite True False ?P47 (do c <- example_f;
+return ((4::'b) + c)
+od) ?g47
+ 4. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and (?P47 and (?P51 and (\<lambda>_. True) and ?Q51)))) s<\STATESEP>apply (monadic_rewrite_symb_exec_r_known 2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. monadic_rewrite True False ?Q78 ?g47 (do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od)
+ 2. \<lbrace>?P78\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' s. rv' = (2::'b)\<rbrace>
+ 3. \<lbrace>?P51\<rbrace> example_f \<lbrace>\<lambda>rv' s. rv' = (2::'b)\<rbrace>
+ 4. monadic_rewrite True False ?P47 (do c <- example_f;
+return ((4::'b) + c)
+od) ?g47
+ 5. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 6. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 7. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and (?P47 and (?P51 and (\<lambda>_. True) and (?P78 and (\<lambda>_. True) and ?Q78))))) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<lbrace>?P78\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' s. rv' = (2::'b)\<rbrace>
+ 2. \<lbrace>?P51\<rbrace> example_f \<lbrace>\<lambda>rv' s. rv' = (2::'b)\<rbrace>
+ 3. monadic_rewrite True False ?P47 (do c <- example_f;
+return ((4::'b) + c)
+od) (do c <- example_f;
+return ((2::'b) + (2::'b) + c)
+od)
+ 4. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 5. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and (?P47 and (?P51 and (\<lambda>_. True) and (?P78 and (\<lambda>_. True) and (\<lambda>_. True)))))) s<\STATESEP>apply wpsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. monadic_rewrite True False ?P47 (do c <- example_f;
+return ((4::'b) + c)
+od) (do c <- example_f;
+return ((4::'b) + c)
+od)
+ 2. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 3. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and (?P47 and (K ((2::'b) = (2::'b)) and (\<lambda>_. True) and (K ((2::'b) = (2::'b)) and (\<lambda>_. True) and (\<lambda>_. True)))))) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P28\<rbrace> example_k (2::'b) \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 2. \<lbrace>?P2\<rbrace> example_f \<lbrace>\<lambda>rv' _. rv' = (2::'b)\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> (?P2 and (?P28 and ((\<lambda>_. True) and (K ((2::'b) = (2::'b)) and (\<lambda>_. True) and (K ((2::'b) = (2::'b)) and (\<lambda>_. True) and (\<lambda>_. True)))))) s<\STATESEP>apply wpsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_if example_removed_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_if example_removed_if<\STATESEP>unfolding example_if_def example_removed_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)<\STATESEP>apply monadic_rewrite_symb_exec_l+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a b. monadic_rewrite True False (?Q31 a b) (if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>?Q31 a\<rbrace>
+ 3. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (rule_tac P="b = 2" in monadic_rewrite_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a b. b = (2::'b) \<Longrightarrow> monadic_rewrite True False (?Q56 a b) (if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and ?Q56 a b\<rbrace>
+ 3. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a. monadic_rewrite True False (?Q56 a (2::'b)) (do c <- example_f;
+return (a + (2::'b) + c)
+od) (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and ?Q56 a b\<rbrace>
+ 3. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (monadic_rewrite_pre, rule monadic_rewrite_trans[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a. monadic_rewrite True False (\<lambda>b. ?Q62 a (2::'b) b) (?g59 a) (\<lambda>a. (do a <- example_f;
+b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od) a)
+ 2. \<And>a. monadic_rewrite True False (\<lambda>b. ?P63 a (2::'b) b) (\<lambda>b. (do c <- example_f;
+return (a + (2::'b) + c)
+od) b) (?g59 a)
+ 3. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ?Q62 a b c)) c)\<rbrace>
+ 4. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 5. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply monadic_rewrite_symb_exec_r<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a aa. monadic_rewrite True False (?Q67 a aa) (\<lambda>b. ?g59 a b) (\<lambda>a. (do b <- \<lambda>a. example_k aa a;
+\<lambda>a. (do c <- \<lambda>a. example_f a;
+\<lambda>a. return (aa + (2::'b) + c) a
+od) a
+od) a)
+ 2. \<And>a. \<lbrace>\<lambda>b. ?P71 a (2::'b) b\<rbrace> \<lambda>a. example_f a \<lbrace>?Q67 a\<rbrace>
+ 3. \<And>a. monadic_rewrite True False (\<lambda>b. ?P63 a (2::'b) b) (\<lambda>b. (do c <- example_f;
+return (a + (2::'b) + c)
+od) b) (?g59 a)
+ 4. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ((\<lambda>c. ?P71 a b c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 5. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (rule_tac P="aa = a" in monadic_rewrite_gen_asm, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a. monadic_rewrite True False (?Q100 a a) (?g59 a) (do b <- example_k a;
+c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>a. \<lbrace>\<lambda>b. ?P71 a (2::'b) b\<rbrace> \<lambda>a. example_f a \<lbrace>\<lambda>aa. (\<lambda>_. aa = a) and ?Q100 a aa\<rbrace>
+ 3. \<And>a. monadic_rewrite True False (\<lambda>b. ?P63 a (2::'b) b) (\<lambda>b. (do c <- example_f;
+return (a + (2::'b) + c)
+od) b) (?g59 a)
+ 4. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ((\<lambda>c. ?P71 a b c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 5. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply monadic_rewrite_symb_exec_r<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>a b. monadic_rewrite True False (?Q102 a b) (\<lambda>b. ?g59 a b) (\<lambda>b. (do c <- \<lambda>a. example_f a;
+\<lambda>b. return (a + (2::'b) + c) b
+od) b)
+ 2. \<And>a. \<lbrace>\<lambda>b. ?P106 a a b\<rbrace> \<lambda>b. example_k a b \<lbrace>?Q102 a\<rbrace>
+ 3. \<And>a. \<lbrace>\<lambda>b. ?P71 a (2::'b) b\<rbrace> \<lambda>a. example_f a \<lbrace>\<lambda>aa. (\<lambda>_. aa = a) and (\<lambda>b. ((\<lambda>b. ?P106 a aa b) and (\<lambda>a. True)) b)\<rbrace>
+ 4. \<And>a. monadic_rewrite True False (\<lambda>b. ?P63 a (2::'b) b) (\<lambda>b. (do c <- example_f;
+return (a + (2::'b) + c)
+od) b) (?g59 a)
+ 5. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ((\<lambda>c. ?P71 a b c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 6. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 7. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a. \<lbrace>\<lambda>b. ?P106 a a b\<rbrace> \<lambda>b. example_k a b \<lbrace>\<lambda>b _. True\<rbrace>
+ 2. \<And>a. \<lbrace>\<lambda>b. ?P71 a (2::'b) b\<rbrace> \<lambda>a. example_f a \<lbrace>\<lambda>aa. (\<lambda>_. aa = a) and (\<lambda>b. ((\<lambda>b. ?P106 a aa b) and (\<lambda>a. True)) b)\<rbrace>
+ 3. \<And>a. monadic_rewrite True False (\<lambda>b. ?P63 a (2::'b) b) (\<lambda>b. (do c <- example_f;
+return (a + (2::'b) + c)
+od) b) (\<lambda>b. (do c <- \<lambda>a. example_f a;
+\<lambda>b. return (a + (2::'b) + c) b
+od) b)
+ 4. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ((\<lambda>c. ?P71 a b c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 5. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (wpsimp wp: example_f_wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a. monadic_rewrite True False (\<lambda>b. ?P63 a (2::'b) b) (\<lambda>b. (do c <- example_f;
+return (a + (2::'b) + c)
+od) b) (\<lambda>b. (do c <- \<lambda>a. example_f a;
+\<lambda>b. return (a + (2::'b) + c) b
+od) b)
+ 2. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ((\<lambda>c. K (a = b) c \<and> ((\<lambda>a. True) and (\<lambda>a. True)) c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 3. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply no_name_eta<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a. monadic_rewrite True False (?P63 a (2::'b)) (do c <- example_f;
+return (a + (2::'b) + c)
+od) (do c <- example_f;
+return (a + (2::'b) + c)
+od)
+ 2. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>c. ?P63 a b c) and (\<lambda>c. ((\<lambda>c. K (a = b) c \<and> ((\<lambda>a. True) and (\<lambda>a. True)) c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 3. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b. (\<lambda>_. b = (2::'b)) and (\<lambda>c. ((\<lambda>a. True) and (\<lambda>c. ((\<lambda>c. K (a = b) c \<and> ((\<lambda>a. True) and (\<lambda>a. True)) c) and (\<lambda>a. True)) c)) c)\<rbrace>
+ 2. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (clarsimp simp: pred_conj_def cong: conj_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a. \<lbrace>?Q2 a\<rbrace> example_k a \<lbrace>\<lambda>b x. b = (2::'b) \<and> a = (2::'b)\<rbrace>
+ 2. \<lbrace>?Q1\<rbrace> example_f \<lbrace>?Q2\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> ?Q1 s<\STATESEP>apply (wpsimp wp: example_k_wp example_f_wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "monadic_rewrite True False \<top> example_if example_if"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) example_if example_if<\STATESEP>unfolding example_if_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite True False (\<lambda>_. True) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)<\STATESEP>apply (monadic_rewrite_pre, rule monadic_rewrite_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. monadic_rewrite True False ?P1 (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) ?g1
+ 2. monadic_rewrite True False ?Q1 ?g1 (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)
+ 3. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (repeat 10 \<open>rule monadic_rewrite_add_return\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. monadic_rewrite True False ?P1 (do y <- return ?x22;
+y <- return ?x20;
+y <- return ?x18;
+y <- return ?x16;
+y <- return ?x14;
+y <- return ?x12;
+y <- return ?x10;
+y <- return ?x8;
+y <- return ?x6;
+y <- return ?x4;
+a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) ?g1
+ 2. monadic_rewrite True False ?Q1 ?g1 (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)
+ 3. \<And>s. True \<Longrightarrow> (?P1 and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (do y <- return ?x22;
+y <- return ?x20;
+y <- return ?x18;
+y <- return ?x16;
+y <- return ?x14;
+y <- return ?x12;
+y <- return ?x10;
+y <- return ?x8;
+y <- return ?x6;
+y <- return ?x4;
+a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply monadic_rewrite_symb_exec_l_drop+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite True False ?Q1 (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od) (do a <- example_f;
+b <- example_k a;
+if b = (2::'b) then do c <- example_f;
+return (a + (2::'b) + c)
+od else do c <- example_f;
+return (a + b + c)
+od
+od)
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q1) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

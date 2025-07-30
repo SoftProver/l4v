@@ -1,0 +1,417 @@
+<\STATESEP>theory ExampleSystemPolicyFlows
+imports
+  ArchNoninterference
+  "Access.ExampleSystem"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Example 1 -- similar to Sys1 in ../access-control/ExampleSystem.thy\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Definitions\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype Sys3Labels = UT3 | T3 | EP3 | IRQ3<\STATESEP>0<\TRANSEP><\STATESEP>definition Sys3AuthGraph_aux :: "Sys3Labels subject_label auth_graph"
+where
+  "Sys3AuthGraph_aux \<equiv>
+   { (OrdinaryLabel (UT3), auth.SyncSend, OrdinaryLabel (EP3)),
+     (OrdinaryLabel (UT3), auth.Reset, OrdinaryLabel (EP3)),
+     (OrdinaryLabel (T3), auth.Receive, OrdinaryLabel (EP3)),
+     (OrdinaryLabel (T3), auth.Reset, OrdinaryLabel (EP3)) }"<\STATESEP>0<\TRANSEP><\STATESEP>definition Sys3AuthGraph :: "Sys3Labels subject_label auth_graph"
+where
+  "Sys3AuthGraph \<equiv> complete_AuthGraph Sys3AuthGraph_aux {OrdinaryLabel (T3),
+                                                         OrdinaryLabel (UT3)}"<\STATESEP>0<\TRANSEP><\STATESEP>definition Sys3PolicyFlows :: "(Sys3Labels partition \<times> Sys3Labels partition) set"
+where
+  "Sys3PolicyFlows \<equiv>
+   { (Partition UT3, Partition UT3),
+     (Partition UT3, Partition EP3),
+     (Partition UT3, Partition T3),
+     (Partition T3, Partition T3),
+     (Partition T3, Partition UT3),
+     (Partition T3, Partition EP3),
+     (Partition EP3, Partition UT3),
+     (Partition EP3, Partition EP3),
+     (Partition EP3, Partition T3),
+     (Partition IRQ3, Partition IRQ3),
+     (PSched, Partition EP3),
+     (PSched, Partition UT3),
+     (PSched, Partition T3),
+     (PSched, Partition IRQ3),
+     (PSched, PSched) }"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>Generalisations\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition Sys3Reads where
+  "Sys3Reads \<equiv> { (OrdinaryLabel (UT3)), (OrdinaryLabel (EP3)), (OrdinaryLabel (T3)) }"<\STATESEP>0<\TRANSEP><\STATESEP>definition Sys3Affects where
+  "Sys3Affects \<equiv> { (OrdinaryLabel (UT3)), (OrdinaryLabel (EP3)), (OrdinaryLabel (T3)) }"<\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys3Reads_correct_fw : "\<lbrakk>x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel (l)); l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> x \<in> Sys3Reads"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> x \<in> Sys3Reads<\STATESEP>apply (induct x rule:subjectReads.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (13 subgoals):
+ 1. \<And>l'. \<lbrakk>(OrdinaryLabel l, Read, l') \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> l' \<in> Sys3Reads
+ 2. l \<in> {T3, UT3, EP3} \<Longrightarrow> OrdinaryLabel l \<in> Sys3Reads
+ 3. \<And>auth ep. \<lbrakk>(OrdinaryLabel l, auth, ep) \<in> Sys3AuthGraph; auth \<in> {SyncSend, Receive}; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> ep \<in> Sys3Reads
+ 4. \<And>a auth' ep t auth. \<lbrakk>(a, auth', ep) \<in> Sys3AuthGraph; auth' \<in> {Notify, SyncSend, Reset}; (t, auth, ep) \<in> Sys3AuthGraph; auth \<in> {SyncSend, Receive}; t \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> t \<in> Sys3Reads; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> ep \<in> Sys3Reads
+ 5. \<And>b t. \<lbrakk>b \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> b \<in> Sys3Reads; (t, Write, b) \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> t \<in> Sys3Reads
+ 6. \<And>t p. \<lbrakk>t \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> t \<in> Sys3Reads; (t, Read, p) \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> p \<in> Sys3Reads
+ 7. \<And>ep b. \<lbrakk>ep \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> ep \<in> Sys3Reads; (b, SyncSend, ep) \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> b \<in> Sys3Reads
+ 8. \<And>ep b. \<lbrakk>ep \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> ep \<in> Sys3Reads; (b, Call, ep) \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> b \<in> Sys3Reads
+ 9. \<And>ep b. \<lbrakk>ep \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> ep \<in> Sys3Reads; (b, Receive, ep) \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> b \<in> Sys3Reads
+ 10. \<And>t' t. \<lbrakk>t' \<in> subjectReads Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3, EP3} \<Longrightarrow> t' \<in> Sys3Reads; (t, Reply, t') \<in> Sys3AuthGraph; l \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> t \<in> Sys3Reads
+A total of 13 subgoals...<\STATESEP>apply (auto simp:Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Reads_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3Affects_correct_fw : "\<lbrakk>x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (l)); l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> x \<in> Sys3Affects"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l); l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> x \<in> Sys3Affects<\STATESEP>apply (induct x rule:subjectAffects.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. l \<in> {T3, UT3} \<Longrightarrow> OrdinaryLabel l \<in> Sys3Affects
+ 2. \<And>auth l'. \<lbrakk>(OrdinaryLabel l, auth, l') \<in> Sys3AuthGraph; auth \<in> {Control, Write}; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l' \<in> Sys3Affects
+ 3. \<And>auth l'. \<lbrakk>(OrdinaryLabel l, auth, l') \<in> Sys3AuthGraph; auth \<in> {Receive, Notify, SyncSend, Call, Reset}; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l' \<in> Sys3Affects
+ 4. \<And>auth ep l' l''. \<lbrakk>(OrdinaryLabel l, auth, ep) \<in> Sys3AuthGraph; auth \<in> {SyncSend, Notify, Call}; (l', Receive, ep) \<in> Sys3AuthGraph; (l', Write, l'') \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l'' \<in> Sys3Affects
+ 5. \<And>ep l'. \<lbrakk>(OrdinaryLabel l, Receive, ep) \<in> Sys3AuthGraph; (l', SyncSend, ep) \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l' \<in> Sys3Affects
+ 6. \<And>l'. \<lbrakk>(l', Reply, OrdinaryLabel l) \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l' \<in> Sys3Affects
+ 7. \<And>l' l''. \<lbrakk>(OrdinaryLabel l, Reply, l') \<in> Sys3AuthGraph; (l', Write, l'') \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l'' \<in> Sys3Affects
+ 8. \<And>l'. \<lbrakk>(OrdinaryLabel l, DeleteDerived, l') \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l' \<in> Sys3Affects
+ 9. \<And>l' l''. \<lbrakk>(OrdinaryLabel l, DeleteDerived, l') \<in> Sys3AuthGraph; (l'', DeleteDerived, l') \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l'' \<in> Sys3Affects
+ 10. \<And>ep l' auth l''. \<lbrakk>(OrdinaryLabel l, Reset, ep) \<in> Sys3AuthGraph; (l', auth, ep) \<in> Sys3AuthGraph; auth \<in> {SyncSend, Receive}; (l', Write, l'') \<in> Sys3AuthGraph; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> l'' \<in> Sys3Affects
+A total of 12 subgoals...<\STATESEP>apply (auto simp:Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Affects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>UT3\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys3UT3Reads_correct_bw : "x \<in> Sys3Reads \<Longrightarrow> x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel (UT3))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Sys3Reads \<Longrightarrow> x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel UT3)<\STATESEP>apply (simp add: Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Reads_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel UT3 \<or> x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (rule_tac auth = SyncSend in reads_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, x) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel EP3 \<Longrightarrow> SyncSend \<in> {SyncSend, Receive}
+ 3. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> SyncSend \<in> {SyncSend, Receive}
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (simp add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (rule_tac ep = "OrdinaryLabel (EP3)" in read_sync_ep_read_receivers)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> OrdinaryLabel EP3 \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> (x, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))<\STATESEP>apply (rule_tac auth = SyncSend in reads_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> SyncSend \<in> {SyncSend, Receive}
+ 3. x = OrdinaryLabel T3 \<Longrightarrow> (x, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))<\STATESEP>apply (simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> SyncSend \<in> {SyncSend, Receive}
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> (x, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))<\STATESEP>apply (rule insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> (x, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))<\STATESEP>apply (simp add: insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3UT3Affects_correct_bw : "x \<in> Sys3Affects \<Longrightarrow> x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (UT3))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Sys3Affects \<Longrightarrow> x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel UT3)<\STATESEP>apply (simp add:Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Affects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel UT3 \<or> x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (simp add:affects_lrefl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (rule_tac auth=SyncSend in affects_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, x) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel EP3 \<Longrightarrow> SyncSend \<in> {Receive, Notify, SyncSend, Call, Reset}
+ 3. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> SyncSend \<in> {Receive, Notify, SyncSend, Call, Reset}
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (simp add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel UT3)<\STATESEP>apply (rule_tac auth=SyncSend and l' = "OrdinaryLabel (T3)" and ep="OrdinaryLabel (EP3)" in affects_send)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> SyncSend \<in> {SyncSend, Notify, Call}
+ 3. x = OrdinaryLabel T3 \<Longrightarrow> (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 4. x = OrdinaryLabel T3 \<Longrightarrow> (OrdinaryLabel T3, Write, x) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))<\STATESEP>apply (simp_all add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>T3\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys3T3Reads_correct_bw : "x \<in> Sys3Reads \<Longrightarrow> x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel (T3))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Sys3Reads \<Longrightarrow> x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel T3)<\STATESEP>apply (simp add: Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Reads_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel UT3 \<or> x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (rule_tac ep = "OrdinaryLabel (EP3)" in read_sync_ep_read_senders)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> OrdinaryLabel EP3 \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)
+ 2. x = OrdinaryLabel UT3 \<Longrightarrow> (x, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 3. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (rule_tac auth = Receive in reads_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel UT3 \<Longrightarrow> Receive \<in> {SyncSend, Receive}
+ 3. x = OrdinaryLabel UT3 \<Longrightarrow> (x, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 4. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> Receive \<in> {SyncSend, Receive}
+ 2. x = OrdinaryLabel UT3 \<Longrightarrow> (x, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 3. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> (x, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp add: insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (rule_tac auth = Receive in reads_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> (OrdinaryLabel T3, Receive, x) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel EP3 \<Longrightarrow> Receive \<in> {SyncSend, Receive}
+ 3. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> Receive \<in> {SyncSend, Receive}
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3T3Affects_correct_bw : "x \<in> Sys3Affects \<Longrightarrow> x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (T3))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Sys3Affects \<Longrightarrow> x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel T3)<\STATESEP>apply (simp add:Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Affects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel UT3 \<or> x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> OrdinaryLabel UT3 \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (rule_tac l = "OrdinaryLabel (T3)" and l' = "OrdinaryLabel (UT3)" and ep="OrdinaryLabel (EP3)" in affects_recv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel UT3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 3. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp_all add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (rule_tac auth=Receive in affects_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> (OrdinaryLabel T3, Receive, x) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel EP3 \<Longrightarrow> Receive \<in> {Receive, Notify, SyncSend, Call, Reset}
+ 3. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> Receive \<in> {Receive, Notify, SyncSend, Call, Reset}
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel T3)<\STATESEP>apply (simp add:affects_lrefl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>EP3\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition Sys3EP3Affects :: "(Sys3Labels subject_label) set"
+where
+  "Sys3EP3Affects \<equiv> { OrdinaryLabel (EP3) }"<\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys3EP3Reads_correct_bw : "x \<in> Sys3Reads \<Longrightarrow> x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel (EP3))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Sys3Reads \<Longrightarrow> x \<in> subjectReads Sys3AuthGraph (OrdinaryLabel EP3)<\STATESEP>apply (simp add: Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3Reads_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel UT3 \<or> x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> OrdinaryLabel UT3 \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply (rule_tac ep = "OrdinaryLabel (EP3)" and b = "OrdinaryLabel (UT3)" in read_sync_ep_read_senders)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> OrdinaryLabel EP3 \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)
+ 2. x = OrdinaryLabel UT3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 3. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply (simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel UT3 \<Longrightarrow> (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))
+ 2. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply (simp add:insertI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel EP3 \<or> x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel EP3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> x \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)<\STATESEP>apply (rule_tac ep = "OrdinaryLabel (EP3)" in read_sync_ep_read_receivers)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. x = OrdinaryLabel T3 \<Longrightarrow> OrdinaryLabel EP3 \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel EP3)
+ 2. x = OrdinaryLabel T3 \<Longrightarrow> (x, Receive, OrdinaryLabel EP3) \<in> insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))<\STATESEP>apply simp_all<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3EP3Affects_correct_fw : "x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (EP3)) \<Longrightarrow> x \<in> Sys3EP3Affects"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel EP3) \<Longrightarrow> x \<in> Sys3EP3Affects<\STATESEP>apply (induct x rule:subjectAffects.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. OrdinaryLabel EP3 \<in> Sys3EP3Affects
+ 2. \<And>auth l'. \<lbrakk>(OrdinaryLabel EP3, auth, l') \<in> Sys3AuthGraph; auth \<in> {Control, Write}\<rbrakk> \<Longrightarrow> l' \<in> Sys3EP3Affects
+ 3. \<And>auth l'. \<lbrakk>(OrdinaryLabel EP3, auth, l') \<in> Sys3AuthGraph; auth \<in> {Receive, Notify, SyncSend, Call, Reset}\<rbrakk> \<Longrightarrow> l' \<in> Sys3EP3Affects
+ 4. \<And>auth ep l' l''. \<lbrakk>(OrdinaryLabel EP3, auth, ep) \<in> Sys3AuthGraph; auth \<in> {SyncSend, Notify, Call}; (l', Receive, ep) \<in> Sys3AuthGraph; (l', Write, l'') \<in> Sys3AuthGraph\<rbrakk> \<Longrightarrow> l'' \<in> Sys3EP3Affects
+ 5. \<And>ep l'. \<lbrakk>(OrdinaryLabel EP3, Receive, ep) \<in> Sys3AuthGraph; (l', SyncSend, ep) \<in> Sys3AuthGraph\<rbrakk> \<Longrightarrow> l' \<in> Sys3EP3Affects
+ 6. \<And>l'. (l', Reply, OrdinaryLabel EP3) \<in> Sys3AuthGraph \<Longrightarrow> l' \<in> Sys3EP3Affects
+ 7. \<And>l' l''. \<lbrakk>(OrdinaryLabel EP3, Reply, l') \<in> Sys3AuthGraph; (l', Write, l'') \<in> Sys3AuthGraph\<rbrakk> \<Longrightarrow> l'' \<in> Sys3EP3Affects
+ 8. \<And>l'. (OrdinaryLabel EP3, DeleteDerived, l') \<in> Sys3AuthGraph \<Longrightarrow> l' \<in> Sys3EP3Affects
+ 9. \<And>l' l''. \<lbrakk>(OrdinaryLabel EP3, DeleteDerived, l') \<in> Sys3AuthGraph; (l'', DeleteDerived, l') \<in> Sys3AuthGraph\<rbrakk> \<Longrightarrow> l'' \<in> Sys3EP3Affects
+ 10. \<And>ep l' auth l''. \<lbrakk>(OrdinaryLabel EP3, Reset, ep) \<in> Sys3AuthGraph; (l', auth, ep) \<in> Sys3AuthGraph; auth \<in> {SyncSend, Receive}; (l', Write, l'') \<in> Sys3AuthGraph\<rbrakk> \<Longrightarrow> l'' \<in> Sys3EP3Affects
+A total of 12 subgoals...<\STATESEP>apply (auto simp:Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3EP3Affects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3EP3Affects_correct_bw : "x \<in> Sys3EP3Affects \<Longrightarrow> x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (EP3))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Sys3EP3Affects \<Longrightarrow> x \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel EP3)<\STATESEP>by (simp add:Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def Sys3EP3Affects_def affects_lrefl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3EP3Affects_correct : "subjectAffects Sys3AuthGraph (OrdinaryLabel (EP3)) = Sys3EP3Affects"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects Sys3AuthGraph (OrdinaryLabel EP3) = Sys3EP3Affects<\STATESEP>apply (rule subset_antisym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects Sys3AuthGraph (OrdinaryLabel EP3) \<subseteq> Sys3EP3Affects
+ 2. Sys3EP3Affects \<subseteq> subjectAffects Sys3AuthGraph (OrdinaryLabel EP3)<\STATESEP>apply (simp_all add:subsetI Sys3EP3Affects_correct_fw Sys3EP3Affects_correct_bw)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Generalisations pt2\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys3Reads_correct : "l \<in> {T3, UT3, EP3} \<Longrightarrow> subjectReads Sys3AuthGraph (OrdinaryLabel (l)) = Sys3Reads"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. l \<in> {T3, UT3, EP3} \<Longrightarrow> subjectReads Sys3AuthGraph (OrdinaryLabel l) = Sys3Reads<\STATESEP>by (auto simp:subsetI Sys3Reads_correct_fw Sys3UT3Reads_correct_bw Sys3T3Reads_correct_bw Sys3EP3Reads_correct_bw)<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3Affects_correct : "l \<in> {T3, UT3} \<Longrightarrow> subjectAffects Sys3AuthGraph (OrdinaryLabel (l)) = Sys3Affects"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. l \<in> {T3, UT3} \<Longrightarrow> subjectAffects Sys3AuthGraph (OrdinaryLabel l) = Sys3Affects<\STATESEP>by (auto simp:subsetI Sys3Affects_correct_fw Sys3UT3Affects_correct_bw Sys3T3Affects_correct_bw)<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>IRQ3\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma IRQ3Reads : " d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel (IRQ3)) \<Longrightarrow> d = OrdinaryLabel (IRQ3)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3) \<Longrightarrow> d = OrdinaryLabel IRQ3<\STATESEP>apply (simp add: Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. d \<in> subjectReads (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel IRQ3) \<Longrightarrow> d = OrdinaryLabel IRQ3<\STATESEP>apply (induct d rule: subjectReads.induct, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma IRQ3Affects : "d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (IRQ3)) \<Longrightarrow> d = OrdinaryLabel (IRQ3)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel IRQ3) \<Longrightarrow> d = OrdinaryLabel IRQ3<\STATESEP>apply (simp add: Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. d \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel IRQ3) \<Longrightarrow> d = OrdinaryLabel IRQ3<\STATESEP>apply (induct d rule: subjectAffects.induct, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma IRQ3ReadsAndAffects :
+  "\<lbrakk> d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel (l))
+   ; d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel (IRQ3))
+   \<rbrakk> \<Longrightarrow> l = IRQ3"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l); d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)\<rbrakk> \<Longrightarrow> l = IRQ3<\STATESEP>apply (drule IRQ3Reads)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l); d = OrdinaryLabel IRQ3\<rbrakk> \<Longrightarrow> l = IRQ3<\STATESEP>apply (simp add: Sys3AuthGraph_def Sys3AuthGraph_aux_def complete_AuthGraph_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>OrdinaryLabel IRQ3 \<in> subjectAffects (insert (OrdinaryLabel UT3, SyncSend, OrdinaryLabel EP3) (insert (OrdinaryLabel UT3, Reset, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Receive, OrdinaryLabel EP3) (insert (OrdinaryLabel T3, Reset, OrdinaryLabel EP3) {(l, a, l) |a l. l = OrdinaryLabel T3 \<or> l = OrdinaryLabel UT3})))) (OrdinaryLabel l); d = OrdinaryLabel IRQ3\<rbrakk> \<Longrightarrow> l = IRQ3<\STATESEP>apply (erule subjectAffects.cases, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsubsection \<open>Policy flows\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma Sys3_policyFlows_correct_fw : "(a,b) \<in> policyFlows Sys3AuthGraph \<Longrightarrow> (a,b) \<in> Sys3PolicyFlows"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, b) \<in> policyFlows Sys3AuthGraph \<Longrightarrow> (a, b) \<in> Sys3PolicyFlows<\STATESEP>apply (induct a b rule:policyFlows.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l. d \<in> partsSubjectAffects Sys3AuthGraph l \<Longrightarrow> (Partition l, d) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp add:partsSubjectAffects_def label_can_affect_partition_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l. d \<in> Partition ` {x. \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x)} \<Longrightarrow> (Partition l, d) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (erule imageE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; x \<in> {x. \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x)}\<rbrakk> \<Longrightarrow> (Partition l, d) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x)\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (case_tac "x \<in> {T3, UT3, EP3}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<in> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp add:Sys3Reads_correct Sys3Reads_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (case_tac "l \<in> {T3, UT3}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<in> {T3, UT3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<notin> {T3, UT3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 4. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp add:Sys3Affects_correct Sys3Affects_def Sys3PolicyFlows_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3; x = T3 \<or> x = UT3 \<or> x = EP3; l = T3 \<or> l = UT3\<rbrakk> \<Longrightarrow> l = UT3 \<and> x = UT3 \<or> l = UT3 \<and> x = EP3 \<or> l = UT3 \<and> x = T3 \<or> l = T3 \<and> x = T3 \<or> l = T3 \<and> x = UT3 \<or> l = T3 \<and> x = EP3 \<or> l = EP3 \<and> x = UT3 \<or> l = EP3 \<and> x = EP3 \<or> l = EP3 \<and> x = T3 \<or> l = IRQ3 \<and> x = IRQ3
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<notin> {T3, UT3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 4. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (erule exE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>d l x da. \<lbrakk>d = Partition x; x = T3 \<or> x = UT3 \<or> x = EP3; l = T3 \<or> l = UT3; da = OrdinaryLabel UT3 \<or> da = OrdinaryLabel EP3 \<or> da = OrdinaryLabel T3\<rbrakk> \<Longrightarrow> l = UT3 \<and> x = UT3 \<or> l = UT3 \<and> x = EP3 \<or> l = UT3 \<and> x = T3 \<or> l = T3 \<and> x = T3 \<or> l = T3 \<and> x = UT3 \<or> l = T3 \<and> x = EP3 \<or> l = EP3 \<and> x = UT3 \<or> l = EP3 \<and> x = EP3 \<or> l = EP3 \<and> x = T3 \<or> l = IRQ3 \<and> x = IRQ3
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<notin> {T3, UT3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 4. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply ((erule disjE)+, simp, simp, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<notin> {T3, UT3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (case_tac l)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3; l = UT3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3; l = T3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3; l = EP3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 4. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3; l = IRQ3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 5. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 6. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp, simp, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel EP3) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l = EP3\<rbrakk> \<Longrightarrow> (Partition EP3, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3; l = IRQ3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 4. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (auto simp:Sys3PolicyFlows_def)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l \<noteq> T3 \<and> l \<noteq> UT3; l = IRQ3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp add:Sys3PolicyFlows_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel IRQ3) \<and> (d = OrdinaryLabel UT3 \<or> d = OrdinaryLabel EP3 \<or> d = OrdinaryLabel T3); x = T3 \<or> x = UT3 \<or> x = EP3; l = IRQ3\<rbrakk> \<Longrightarrow> x = IRQ3
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (erule exE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x da. \<lbrakk>d = Partition x; x = T3 \<or> x = UT3 \<or> x = EP3; l = IRQ3; da \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel IRQ3) \<and> (da = OrdinaryLabel UT3 \<or> da = OrdinaryLabel EP3 \<or> da = OrdinaryLabel T3)\<rbrakk> \<Longrightarrow> x = IRQ3
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (erule conjE, drule IRQ3Affects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>d l x da. \<lbrakk>d = Partition x; x = T3 \<or> x = UT3 \<or> x = EP3; l = IRQ3; da = OrdinaryLabel UT3 \<or> da = OrdinaryLabel EP3 \<or> da = OrdinaryLabel T3; da = OrdinaryLabel IRQ3\<rbrakk> \<Longrightarrow> x = IRQ3
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (blast)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (case_tac x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}; x = UT3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 2. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}; x = T3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 3. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}; x = EP3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 4. \<And>d l x. \<lbrakk>d = Partition x; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel x); x \<notin> {T3, UT3, EP3}; x = IRQ3\<rbrakk> \<Longrightarrow> (Partition l, Partition x) \<in> Sys3PolicyFlows
+ 5. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp, simp, simp, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x. \<lbrakk>d = Partition IRQ3; \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3); x = IRQ3\<rbrakk> \<Longrightarrow> (Partition l, Partition IRQ3) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (erule exE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x da. \<lbrakk>d = Partition IRQ3; x = IRQ3; da \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l) \<and> da \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)\<rbrakk> \<Longrightarrow> (Partition l, Partition IRQ3) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (erule conjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x da. \<lbrakk>d = Partition IRQ3; x = IRQ3; da \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l); da \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)\<rbrakk> \<Longrightarrow> (Partition l, Partition IRQ3) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (frule IRQ3ReadsAndAffects, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d l x da. \<lbrakk>d = Partition IRQ3; x = IRQ3; da \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel l); da \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3); l = IRQ3\<rbrakk> \<Longrightarrow> (Partition l, Partition IRQ3) \<in> Sys3PolicyFlows
+ 2. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (simp add: Sys3PolicyFlows_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>d. (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (case_tac d, simp add: Sys3PolicyFlows_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d x1. d = Partition x1 \<Longrightarrow> x1 = EP3 \<or> x1 = UT3 \<or> x1 = T3 \<or> x1 = IRQ3
+ 2. \<And>d. d = PSched \<Longrightarrow> (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (rename_tac a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>d a. d = Partition a \<Longrightarrow> a = EP3 \<or> a = UT3 \<or> a = T3 \<or> a = IRQ3
+ 2. \<And>d. d = PSched \<Longrightarrow> (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (case_tac a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>d a. \<lbrakk>d = Partition a; a = UT3\<rbrakk> \<Longrightarrow> a = EP3 \<or> a = UT3 \<or> a = T3 \<or> a = IRQ3
+ 2. \<And>d a. \<lbrakk>d = Partition a; a = T3\<rbrakk> \<Longrightarrow> a = EP3 \<or> a = UT3 \<or> a = T3 \<or> a = IRQ3
+ 3. \<And>d a. \<lbrakk>d = Partition a; a = EP3\<rbrakk> \<Longrightarrow> a = EP3 \<or> a = UT3 \<or> a = T3 \<or> a = IRQ3
+ 4. \<And>d a. \<lbrakk>d = Partition a; a = IRQ3\<rbrakk> \<Longrightarrow> a = EP3 \<or> a = UT3 \<or> a = T3 \<or> a = IRQ3
+ 5. \<And>d. d = PSched \<Longrightarrow> (PSched, d) \<in> Sys3PolicyFlows<\STATESEP>apply (auto simp: Sys3PolicyFlows_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3_policyFlows_correct_bw : "(a,b) \<in> Sys3PolicyFlows \<Longrightarrow> (a,b) \<in> policyFlows Sys3AuthGraph"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, b) \<in> Sys3PolicyFlows \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (simp add:Sys3PolicyFlows_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a = Partition UT3 \<and> b = Partition UT3 \<or> a = Partition UT3 \<and> b = Partition EP3 \<or> a = Partition UT3 \<and> b = Partition T3 \<or> a = Partition T3 \<and> b = Partition T3 \<or> a = Partition T3 \<and> b = Partition UT3 \<or> a = Partition T3 \<and> b = Partition EP3 \<or> a = Partition EP3 \<and> b = Partition UT3 \<or> a = Partition EP3 \<and> b = Partition EP3 \<or> a = Partition EP3 \<and> b = Partition T3 \<or> a = Partition IRQ3 \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (erule disjE, simp, rule policy_affects, simp add: partsSubjectAffects_def label_can_affect_partition_def, rule imageI, simp add: Sys3Affects_correct Sys3Reads_correct Sys3Affects_def Sys3Reads_def, blast)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a = Partition EP3 \<and> b = Partition UT3 \<or> a = Partition EP3 \<and> b = Partition EP3 \<or> a = Partition EP3 \<and> b = Partition T3 \<or> a = Partition IRQ3 \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (erule disjE,simp, rule policy_affects, simp add: partsSubjectAffects_def label_can_affect_partition_def, rule imageI, simp add: Sys3EP3Affects_correct Sys3Reads_correct Sys3Reads_def Sys3EP3Affects_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. a = Partition IRQ3 \<and> b = Partition IRQ3 \<Longrightarrow> \<exists>d. d \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel IRQ3) \<and> d \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)
+ 2. a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (rule_tac x = "OrdinaryLabel (IRQ3)" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. a = Partition IRQ3 \<and> b = Partition IRQ3 \<Longrightarrow> OrdinaryLabel IRQ3 \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel IRQ3) \<and> OrdinaryLabel IRQ3 \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)
+ 2. a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. a = Partition IRQ3 \<and> b = Partition IRQ3 \<Longrightarrow> OrdinaryLabel IRQ3 \<in> subjectAffects Sys3AuthGraph (OrdinaryLabel IRQ3)
+ 2. a = Partition IRQ3 \<and> b = Partition IRQ3 \<Longrightarrow> OrdinaryLabel IRQ3 \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)
+ 3. a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (rule affects_lrefl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. a = Partition IRQ3 \<and> b = Partition IRQ3 \<Longrightarrow> OrdinaryLabel IRQ3 \<in> subjectReads Sys3AuthGraph (OrdinaryLabel IRQ3)
+ 2. a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (rule reads_lrefl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a = PSched \<and> b = Partition EP3 \<or> a = PSched \<and> b = Partition UT3 \<or> a = PSched \<and> b = Partition T3 \<or> a = PSched \<and> b = Partition IRQ3 \<or> a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (erule disjE, simp add: PSched_flows_to_all)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a = PSched \<and> b = PSched \<Longrightarrow> (a, b) \<in> policyFlows Sys3AuthGraph<\STATESEP>apply (simp add: PSched_flows_to_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Sys3_policyFlows_correct : "policyFlows Sys3AuthGraph = Sys3PolicyFlows"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. policyFlows Sys3AuthGraph = Sys3PolicyFlows<\STATESEP>by (auto simp:Sys3_policyFlows_correct_fw Sys3_policyFlows_correct_bw)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

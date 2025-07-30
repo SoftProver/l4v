@@ -1,0 +1,664 @@
+<\STATESEP>theory Eval_CAMKES_CDL
+imports
+  "Policy_CAMKES_CDL"
+  "DPolicy.Dpolicy"
+  "Lib.FastMap"
+  "Lib.RangeMap"
+  "Lib.FP_Eval"
+  "Lib.GenericTag"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>type_synonym asid_high = "7 word"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Generic policy labelling helpers\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition mapped_pts_of :: "cdl_heap \<Rightarrow> cdl_cap_map \<Rightarrow> cdl_object_id set"
+  where
+  "mapped_pts_of object_map pd_caps \<equiv>
+      {pt_id. \<exists>pt \<in> ran pd_caps.
+        case pt of FrameCap _ _ _ _ _ _ \<Rightarrow> False \<comment> \<open>ignore ARM section pages\<close>
+                 | _ \<Rightarrow> pt_id \<in> cap_objects pt}"<\STATESEP>0<\TRANSEP><\STATESEP>definition mapped_frames_of :: "cdl_heap \<Rightarrow> cdl_cap_map \<Rightarrow> cdl_object_id set"
+  where
+  "mapped_frames_of object_map pd_caps \<equiv>
+      {frame_id.
+         \<exists>pt_id \<in> mapped_pts_of object_map pd_caps.
+           \<exists>frame \<in> ran (object_slots (the (object_map pt_id))).
+             frame_id \<in> cap_objects frame}
+    \<union> {section_id.
+         \<exists>section \<in> ran pd_caps.
+            case section of FrameCap _ _ _ _ _ _ \<Rightarrow> section_id \<in> cap_objects section
+               | _ \<Rightarrow> False}"<\STATESEP>0<\TRANSEP><\STATESEP>method assign_schematic_set =
+  (((rule arg_cong[where f="insert _"])+)?, rule refl[where t="{}"])<\STATESEP>0<\TRANSEP><\STATESEP>method assign_schematic_eq_conjs =
+  (((rule conj_cong[where P="_ = _", OF refl])+)?, rule refl[where t="_ = _"])<\STATESEP>0<\TRANSEP><\STATESEP>method assign_schematic_dnf =
+  (((rule disj_cong, assign_schematic_eq_conjs)+)?, assign_schematic_eq_conjs)<\STATESEP>0<\TRANSEP><\STATESEP>lemma split_Collect_graph_edge:
+  "Collect P = Collect (\<lambda>(from, auth, to). P (from, auth, to))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Collect P = {(from, auth, to). P (from, auth, to)}<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma Collect_graph_cong_helper:
+  "(\<And>x y z. P x y z = P' x y z) \<Longrightarrow>
+   Collect (\<lambda>(x, y, z). P x y z) = Collect (\<lambda>(x, y, z). P' x y z)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y z. P x y z = P' x y z) \<Longrightarrow> {(x, y, z). P x y z} = {(x, y, z). P' x y z}<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma proj_Collect_prod:
+  "fst ` {(a, b). f a b} = {a. \<exists>b. f a b}"
+  "snd ` {(a, b). f a b} = {b. \<exists>a. f a b}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst ` {(a, b). f a b} = {a. \<exists>b. f a b} &&& snd ` {(a, b). f a b} = {b. \<exists>a. f a b}<\STATESEP>by force+<\STATESEP>1<\TRANSEP><\STATESEP>lemma complete_graph_is_transitive[rotated 1, consumes 2]:
+  "\<lbrakk> let edges = {(v, u). G v e u};
+         verts = fst ` edges \<union> snd ` edges
+     in \<forall>u \<in> verts. \<forall>v \<in> verts. G v e u;
+     G u e v; G v e w \<rbrakk>
+   \<Longrightarrow> G u e w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>let edges = {(v, u). G v e u}; verts = fst ` edges \<union> snd ` edges in \<forall>u\<in>verts. \<forall>v\<in>verts. G v e u; G u e v; G v e w\<rbrakk> \<Longrightarrow> G u e w<\STATESEP>apply (simp (no_asm_use) add: proj_Collect_prod flip: Collect_disj_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>u. (Ex (G u e) \<longrightarrow> (\<forall>v. (Ex (G v e) \<longrightarrow> G v e u) \<and> ((\<exists>va. G va e v) \<longrightarrow> G v e u))) \<and> ((\<exists>v. G v e u) \<longrightarrow> (\<forall>v. (Ex (G v e) \<longrightarrow> G v e u) \<and> ((\<exists>va. G va e v) \<longrightarrow> G v e u))); G u e v; G v e w\<rbrakk> \<Longrightarrow> G u e w<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma complete_graph_is_transitive'[rotated 1, consumes 2]:
+  "\<lbrakk> let edges = {(v, u). G v e u};
+         verts = fst ` edges \<union> snd ` edges
+     in \<forall>u \<in> verts. \<forall>v \<in> verts. u \<noteq> v \<longrightarrow> G v e u;
+     G u e v; G v e w; u \<noteq> v; v \<noteq> w; u \<noteq> w \<rbrakk>
+   \<Longrightarrow> G u e w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>let edges = {(v, u). G v e u}; verts = fst ` edges \<union> snd ` edges in \<forall>u\<in>verts. \<forall>v\<in>verts. u \<noteq> v \<longrightarrow> G v e u; G u e v; G v e w; u \<noteq> v; v \<noteq> w; u \<noteq> w\<rbrakk> \<Longrightarrow> G u e w<\STATESEP>apply (simp (no_asm_use) add: proj_Collect_prod flip: Collect_disj_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>u. (Ex (G u e) \<longrightarrow> (\<forall>v. (Ex (G v e) \<longrightarrow> u \<noteq> v \<longrightarrow> G v e u) \<and> ((\<exists>va. G va e v) \<longrightarrow> u \<noteq> v \<longrightarrow> G v e u))) \<and> ((\<exists>v. G v e u) \<longrightarrow> (\<forall>v. (Ex (G v e) \<longrightarrow> u \<noteq> v \<longrightarrow> G v e u) \<and> ((\<exists>va. G va e v) \<longrightarrow> u \<noteq> v \<longrightarrow> G v e u))); G u e v; G v e w; u \<noteq> v; v \<noteq> w; u \<noteq> w\<rbrakk> \<Longrightarrow> G u e w<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma Collect_case_prod_dnf:
+  "{(a, b). a = x \<and> b = y} = {(x, y)}"
+  "{(a, b). a = x \<and> b = y \<or> P a b} = insert (x, y) {(a, b). P a b}"
+  "{(a, b). b = y \<and> a = x} = set [(x, y)]"
+  "{(a, b). b = y \<and> a = x \<or> P a b} = insert (x, y) {(a, b). P a b}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ({(a, b). a = x \<and> b = y} = {(x, y)} &&& {(a, b). a = x \<and> b = y \<or> P a b} = insert (x, y) {(a, b). P a b}) &&& {(a, b). b = y \<and> a = x} = set [(x, y)] &&& {(a, b). b = y \<and> a = x \<or> P a b} = insert (x, y) {(a, b). P a b}<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma camkes_policy_wellformedI:
+  assumes "\<not>maySendIrqs"
+      and "\<And>a. (agent, a, agent) \<in> aag"
+      and "\<And>s auth r. (s, auth, r) \<in> aag \<Longrightarrow> (s, Control, s) \<in> aag"
+      and "\<And>s r. (s, auth.Grant, r) \<in> aag \<Longrightarrow> s = r"
+      and "\<And>s r. (s, Control, r) \<in> aag \<Longrightarrow> s = r"
+      and "\<And>s auth. (s, Control, s) \<in> aag \<Longrightarrow> (s, auth, s) \<in> aag"
+      and "\<And>s r. (s, Receive, r) \<in> aag \<Longrightarrow> s \<noteq> r \<Longrightarrow> (r, Control, r) \<in> aag \<Longrightarrow> False"
+      and "\<And>s r. (s, Call, r) \<in> aag \<Longrightarrow> s \<noteq> r \<Longrightarrow> (r, Control, r) \<in> aag \<Longrightarrow> False"
+      and "\<And>s ep. (s, Call, ep) \<in> aag \<Longrightarrow> (s, SyncSend, ep) \<in> aag"
+      and "\<And>s r. (s, Reply, r) \<in> aag \<Longrightarrow> (r, DeleteDerived, s) \<in> aag"
+      and "\<And>s r ep. (s, Call, ep) \<in> aag \<Longrightarrow> s \<noteq> ep \<Longrightarrow> (r, Receive, ep) \<in> aag
+                     \<Longrightarrow> (r, Reply, s) \<in> aag"
+      and "\<And>l1 l2 l3. (l1, DeleteDerived, l2) \<in> aag \<Longrightarrow> l1 \<noteq> l2 \<Longrightarrow>
+                       (l2, DeleteDerived, l3) \<in> aag \<Longrightarrow> l1 \<noteq> l3 \<Longrightarrow> l2 \<noteq> l3 \<Longrightarrow>
+                       (l1, DeleteDerived, l3) \<in> aag"
+  shows "policy_wellformed aag maySendIrqs irqSet agent"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. policy_wellformed aag maySendIrqs irqSet agent<\STATESEP>unfolding policy_wellformed_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>agent'. (agent, Control, agent') \<in> aag \<longrightarrow> agent = agent') \<and> (\<forall>a. (agent, a, agent) \<in> aag) \<and> (\<forall>s r ep. (s, auth.Grant, ep) \<in> aag \<and> (r, Receive, ep) \<in> aag \<longrightarrow> (s, Control, r) \<in> aag \<and> (r, Control, s) \<in> aag) \<and> (maySendIrqs \<longrightarrow> (\<forall>irq ntfn. irq \<in> irqSet \<and> (irq, Notify, ntfn) \<in> aag \<longrightarrow> (agent, Notify, ntfn) \<in> aag)) \<and> (\<forall>s ep. (s, Call, ep) \<in> aag \<longrightarrow> (s, SyncSend, ep) \<in> aag) \<and> (\<forall>s r ep. (s, Call, ep) \<in> aag \<and> (r, Receive, ep) \<in> aag \<longrightarrow> (r, Reply, s) \<in> aag) \<and> (\<forall>s r. (s, Reply, r) \<in> aag \<longrightarrow> (r, DeleteDerived, s) \<in> aag) \<and> (\<forall>l1 l2 l3. (l1, DeleteDerived, l2) \<in> aag \<longrightarrow> (l2, DeleteDerived, l3) \<in> aag \<longrightarrow> (l1, DeleteDerived, l3) \<in> aag) \<and> (\<forall>s r ep. (s, Call, ep) \<in> aag \<and> (r, Receive, ep) \<in> aag \<and> (r, auth.Grant, ep) \<in> aag \<longrightarrow> (s, Control, r) \<in> aag \<and> (r, Control, s) \<in> aag)<\STATESEP>apply (insert assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> maySendIrqs; \<And>a. (agent, a, agent) \<in> aag; \<And>s auth r. (s, auth, r) \<in> aag \<Longrightarrow> (s, Control, s) \<in> aag; \<And>s r. (s, auth.Grant, r) \<in> aag \<Longrightarrow> s = r; \<And>s r. (s, Control, r) \<in> aag \<Longrightarrow> s = r; \<And>s auth. (s, Control, s) \<in> aag \<Longrightarrow> (s, auth, s) \<in> aag; \<And>s r. \<lbrakk>(s, Receive, r) \<in> aag; s \<noteq> r; (r, Control, r) \<in> aag\<rbrakk> \<Longrightarrow> False; \<And>s r. \<lbrakk>(s, Call, r) \<in> aag; s \<noteq> r; (r, Control, r) \<in> aag\<rbrakk> \<Longrightarrow> False; \<And>s ep. (s, Call, ep) \<in> aag \<Longrightarrow> (s, SyncSend, ep) \<in> aag; \<And>s r. (s, Reply, r) \<in> aag \<Longrightarrow> (r, DeleteDerived, s) \<in> aag; \<And>s ep r. \<lbrakk>(s, Call, ep) \<in> aag; s \<noteq> ep; (r, Receive, ep) \<in> aag\<rbrakk> \<Longrightarrow> (r, Reply, s) \<in> aag; \<And>l1 l2 l3. \<lbrakk>(l1, DeleteDerived, l2) \<in> aag; l1 \<noteq> l2; (l2, DeleteDerived, l3) \<in> aag; l1 \<noteq> l3; l2 \<noteq> l3\<rbrakk> \<Longrightarrow> (l1, DeleteDerived, l3) \<in> aag\<rbrakk> \<Longrightarrow> (\<forall>agent'. (agent, Control, agent') \<in> aag \<longrightarrow> agent = agent') \<and> (\<forall>a. (agent, a, agent) \<in> aag) \<and> (\<forall>s r ep. (s, auth.Grant, ep) \<in> aag \<and> (r, Receive, ep) \<in> aag \<longrightarrow> (s, Control, r) \<in> aag \<and> (r, Control, s) \<in> aag) \<and> (maySendIrqs \<longrightarrow> (\<forall>irq ntfn. irq \<in> irqSet \<and> (irq, Notify, ntfn) \<in> aag \<longrightarrow> (agent, Notify, ntfn) \<in> aag)) \<and> (\<forall>s ep. (s, Call, ep) \<in> aag \<longrightarrow> (s, SyncSend, ep) \<in> aag) \<and> (\<forall>s r ep. (s, Call, ep) \<in> aag \<and> (r, Receive, ep) \<in> aag \<longrightarrow> (r, Reply, s) \<in> aag) \<and> (\<forall>s r. (s, Reply, r) \<in> aag \<longrightarrow> (r, DeleteDerived, s) \<in> aag) \<and> (\<forall>l1 l2 l3. (l1, DeleteDerived, l2) \<in> aag \<longrightarrow> (l2, DeleteDerived, l3) \<in> aag \<longrightarrow> (l1, DeleteDerived, l3) \<in> aag) \<and> (\<forall>s r ep. (s, Call, ep) \<in> aag \<and> (r, Receive, ep) \<in> aag \<and> (r, auth.Grant, ep) \<in> aag \<longrightarrow> (s, Control, r) \<in> aag \<and> (r, Control, s) \<in> aag)<\STATESEP>apply (safe; metis)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Word and pointer arithmetic helpers\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma ptr_range_in_range:
+  "0 < (p :: 'a::len word) + 2^sz \<Longrightarrow>
+   (x \<in> ptr_range p sz) = (RangeMap.in_range (p, p + 2^sz) x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < p + 2 ^ sz \<Longrightarrow> (x \<in> ptr_range p sz) = RangeMap.in_range (p, p + 2 ^ sz) x<\STATESEP>apply (simp add: ptr_range_def RangeMap.in_range.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < p + 2 ^ sz \<Longrightarrow> (p \<le> x \<and> x \<le> p + 2 ^ sz - 1) = (p \<le> x \<and> x < p + 2 ^ sz)<\STATESEP>apply uint_arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Collect_asid_high__eval_helper:
+  "asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} =
+   (if asid_high < 2^asid_high_bits then {of_nat asid_high} else {})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (case_tac "asid_high < 2^asid_high_bits")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})
+ 2. \<not> asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<not> asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (clarsimp simp: transform_asid_def asid_high_bits_of_def[abs_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<not> unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) < 2 ^ local.asid_high_bits; asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits))\<rbrakk> \<Longrightarrow> x = 0
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (erule contrapos_np)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)); x \<noteq> 0\<rbrakk> \<Longrightarrow> unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) < 2 ^ local.asid_high_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (subst arg_cong[where f="(<) _"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)); x \<noteq> 0\<rbrakk> \<Longrightarrow> 2 ^ local.asid_high_bits = ?y16 x
+ 2. \<And>x. \<lbrakk>asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)); x \<noteq> 0\<rbrakk> \<Longrightarrow> unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) < ?y16 x
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)); x \<noteq> 0\<rbrakk> \<Longrightarrow> unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) < ?y16 x
+ 2. \<And>x. \<lbrakk>asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)); x \<noteq> 0\<rbrakk> \<Longrightarrow> 2 ^ local.asid_high_bits = ?y16 x
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (rule unat_lt2p)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>asid_high = unat (UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)); x \<noteq> 0\<rbrakk> \<Longrightarrow> 2 ^ local.asid_high_bits = 2 ^ LENGTH(7)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (simp add: asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high_bits_of ` {asid. fst (transform_asid asid) = asid_high \<and> asid \<noteq> 0} = (if asid_high < 2 ^ local.asid_high_bits then {word_of_nat asid_high} else {})<\STATESEP>apply (simp add: transform_asid_def asid_high_bits_of_def[abs_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (\<lambda>x. UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) ` {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high \<and> asid \<noteq> 0} = {word_of_nat asid_high}<\STATESEP>apply (rule set_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (x \<in> (\<lambda>x. UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) ` {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high \<and> asid \<noteq> 0}) = (x \<in> {word_of_nat asid_high})<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>asid_high < 2 ^ local.asid_high_bits; x \<in> (\<lambda>x. UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) ` {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high \<and> asid \<noteq> 0}\<rbrakk> \<Longrightarrow> x \<in> {word_of_nat asid_high}
+ 2. \<And>x. \<lbrakk>asid_high < 2 ^ local.asid_high_bits; x \<in> {word_of_nat asid_high}\<rbrakk> \<Longrightarrow> x \<in> (\<lambda>x. UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) ` {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high \<and> asid \<noteq> 0}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>asid_high < 2 ^ local.asid_high_bits; x \<in> {word_of_nat asid_high}\<rbrakk> \<Longrightarrow> x \<in> (\<lambda>x. UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)) ` {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high \<and> asid \<noteq> 0}<\STATESEP>apply (clarsimp simp: Collect_conj_eq image_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> \<exists>x\<in>{asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}. word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (x >> local.asid_low_bits)<\STATESEP>apply (rule_tac x="(of_nat asid_high << asid_low_bits) + 1" in bexI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) ((word_of_nat asid_high << local.asid_low_bits) + 1 >> local.asid_low_bits)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (subst add.commute, subst shiftr_irrelevant)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> 1 < 2 ^ local.asid_low_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> is_aligned (word_of_nat asid_high << local.asid_low_bits) local.asid_low_bits
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (word_of_nat asid_high << local.asid_low_bits >> local.asid_low_bits)
+ 4. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> is_aligned (word_of_nat asid_high << local.asid_low_bits) local.asid_low_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (word_of_nat asid_high << local.asid_low_bits >> local.asid_low_bits)
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (clarsimp simp: is_aligned_shift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (word_of_nat asid_high << local.asid_low_bits >> local.asid_low_bits)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (subst shiftl_shiftr_id)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> local.asid_low_bits < LENGTH(32)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high < 2 ^ (LENGTH(32) - local.asid_low_bits)
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (word_of_nat asid_high)
+ 4. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high < 2 ^ (LENGTH(32) - local.asid_low_bits)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (word_of_nat asid_high)
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def word_of_nat_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = UCAST(32 \<rightarrow> 7) (word_of_nat asid_high)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (subst ucast_of_nat_small)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high < 2 ^ LENGTH(32)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = word_of_nat asid_high
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply (clarsimp simp: asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high = word_of_nat asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<in> {asid. unat (UCAST(32 \<rightarrow> 7) (asid >> local.asid_low_bits)) = asid_high} \<inter> {asid. asid \<noteq> 0}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (UCAST(32 \<rightarrow> 7) ((word_of_nat asid_high << local.asid_low_bits) + 1 >> local.asid_low_bits)) = asid_high \<and> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (UCAST(32 \<rightarrow> 7) ((word_of_nat asid_high << local.asid_low_bits) + 1 >> local.asid_low_bits)) = asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: unat_ucast_eq_unat_and_mask)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (((word_of_nat asid_high << local.asid_low_bits) + 1 >> local.asid_low_bits) && mask 7) = asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (subst add.commute, subst shiftr_irrelevant)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> 1 < 2 ^ local.asid_low_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> is_aligned (word_of_nat asid_high << local.asid_low_bits) local.asid_low_bits
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat ((word_of_nat asid_high << local.asid_low_bits >> local.asid_low_bits) && mask 7) = asid_high
+ 4. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> is_aligned (word_of_nat asid_high << local.asid_low_bits) local.asid_low_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat ((word_of_nat asid_high << local.asid_low_bits >> local.asid_low_bits) && mask 7) = asid_high
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: is_aligned_shift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat ((word_of_nat asid_high << local.asid_low_bits >> local.asid_low_bits) && mask 7) = asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (subst shiftl_shiftr_id)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> local.asid_low_bits < LENGTH(32)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high < 2 ^ (LENGTH(32) - local.asid_low_bits)
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (word_of_nat asid_high && mask 7) = asid_high
+ 4. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high < 2 ^ (LENGTH(32) - local.asid_low_bits)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (word_of_nat asid_high && mask 7) = asid_high
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def word_of_nat_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (word_of_nat asid_high && mask 7) = asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (fold asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (word_of_nat asid_high && mask local.asid_high_bits) = asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (subst less_mask_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high < 2 ^ local.asid_high_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (word_of_nat asid_high) = asid_high
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: asid_high_bits_def word_of_nat_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (word_of_nat asid_high) = asid_high
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (rule unat_of_nat_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> asid_high < 2 ^ LENGTH(32)
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (clarsimp simp: asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> (word_of_nat asid_high << local.asid_low_bits) + 1 \<noteq> 0<\STATESEP>apply (rule less_is_non_zero_p1[where k="2^asid_high_bits << asid_low_bits"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high << local.asid_low_bits < 2 ^ local.asid_high_bits << local.asid_low_bits<\STATESEP>apply (simp only: shiftl_t2n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> 2 ^ local.asid_low_bits * word_of_nat asid_high < 2 ^ local.asid_low_bits * 2 ^ local.asid_high_bits<\STATESEP>apply (subst mult.commute, subst mult.commute, rule word_mult_less_mono1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> word_of_nat asid_high < 2 ^ local.asid_high_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> 0 < 2 ^ local.asid_low_bits
+ 3. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (2 ^ local.asid_high_bits) * unat (2 ^ local.asid_low_bits) < 2 ^ LENGTH(32)<\STATESEP>apply (clarsimp simp: asid_high_bits_def word_of_nat_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> 0 < 2 ^ local.asid_low_bits
+ 2. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (2 ^ local.asid_high_bits) * unat (2 ^ local.asid_low_bits) < 2 ^ LENGTH(32)<\STATESEP>apply (clarsimp simp: asid_low_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asid_high < 2 ^ local.asid_high_bits \<Longrightarrow> unat (2 ^ local.asid_high_bits) * unat (2 ^ local.asid_low_bits) < 2 ^ LENGTH(32)<\STATESEP>apply (clarsimp simp: asid_low_bits_def asid_high_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Assorted helpers\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma fun_upds_to_map_of[THEN eq_reflection]:
+  "Map.empty = map_of []"
+  "((map_of xs)(k \<mapsto> v)) = map_of ((k, v) # xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>x. None) = map_of [] &&& (map_of xs)(k \<mapsto> v) = map_of ((k, v) # xs)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma subst_eqn_helper:
+  "(\<And>s. s = t \<longrightarrow> P s) \<Longrightarrow> P t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. s = t \<longrightarrow> P s) \<Longrightarrow> P t<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma iterate_labelling_helper:
+  "\<lbrakk> m = map_of binds;
+     distinct (map fst binds)
+   \<rbrakk> \<Longrightarrow>
+   (\<forall>obj label. m obj = Some label \<longrightarrow> label_of obj = label)
+    = list_all (\<lambda>(k, v). label_of k = v) binds"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>m = map_of binds; distinct (map fst binds)\<rbrakk> \<Longrightarrow> (\<forall>obj label. m obj = Some label \<longrightarrow> label_of obj = label) = list_all (\<lambda>(k, v). label_of k = v) binds<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>m = map_of binds; distinct (map fst binds); \<forall>obj label. m obj = Some label \<longrightarrow> label_of obj = label\<rbrakk> \<Longrightarrow> list_all (\<lambda>(k, v). label_of k = v) binds
+ 2. \<lbrakk>m = map_of binds; distinct (map fst binds); list_all (\<lambda>(k, v). label_of k = v) binds\<rbrakk> \<Longrightarrow> \<forall>obj label. m obj = Some label \<longrightarrow> label_of obj = label<\STATESEP>apply (blast intro: list_allI FastMap.map_of_lookups)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>m = map_of binds; distinct (map fst binds); list_all (\<lambda>(k, v). label_of k = v) binds\<rbrakk> \<Longrightarrow> \<forall>obj label. m obj = Some label \<longrightarrow> label_of obj = label<\STATESEP>apply (fastforce simp: list_all_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Integrity proof automation\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma helper_pcs_refined_policyI:
+  assumes cdt_policy: "\<And>p slot p' slot'.
+                          cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow>
+                          (pasObjectAbs aag p', Control, pasObjectAbs aag p) \<in> pasPolicy aag"
+      and delete_derived_policy: "\<And>p slot p' slot'.
+                          cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow>
+                          (pasObjectAbs aag p', DeleteDerived, pasObjectAbs aag p) \<in> pasPolicy aag"
+      and obj_policy: "\<And>p p_obj p_idx cap auth oref.
+                          \<lbrakk> cdl_objects s p = Some p_obj;
+                            object_slots p_obj p_idx = Some cap;
+                            auth \<in> cdl_cap_auth_conferred cap;
+                            oref \<in> cdl_obj_refs cap
+                          \<rbrakk> \<Longrightarrow> (pasObjectAbs aag p, auth, pasObjectAbs aag oref) \<in> pasPolicy aag"
+  shows "auth_graph_map (pasObjectAbs aag) (cdl_state_objs_to_policy s) \<subseteq> (pasPolicy aag)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. auth_graph_map (pasObjectAbs aag) (cdl_state_objs_to_policy s) \<subseteq> pasPolicy aag<\STATESEP>apply (clarsimp simp: cdl_state_objs_to_policy_def auth_graph_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x auth y. (x, auth, y) \<in> cdl_state_bits_to_policy (\<lambda>ref. opt_cap ref s) (cdl_cdt s) \<Longrightarrow> (pasObjectAbs aag x, auth, pasObjectAbs aag y) \<in> pasPolicy aag<\STATESEP>by (fastforce elim: cdl_state_bits_to_policy.cases
+                intro: obj_policy cdt_policy delete_derived_policy
+                simp: opt_cap_def slots_of_def
+                split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma helper_pcs_refined_policy__eval:
+      (* policy specification, to be generated *)
+  assumes policy_spec: "policy_spec \<subseteq> pasPolicy aag"
+      and label_spec: "\<And>p l. label_spec p = Some l \<Longrightarrow> pasObjectAbs aag p = l"
+      (* we don't handle the CDT for now, so these are unchanged *)
+      and cdt_policy:
+            "\<And>p slot p' slot'.
+                 cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow>
+                 (pasObjectAbs aag p', Control, pasObjectAbs aag p) \<in> pasPolicy aag"
+      and delete_derived_policy:
+            "\<And>p slot p' slot'.
+                 cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow>
+                 (pasObjectAbs aag p', DeleteDerived, pasObjectAbs aag p) \<in> pasPolicy aag"
+      (* main specification, as nested set traversals *)
+      and obj_policy:
+            "\<forall>(p, p_obj) \<in> graph_of (cdl_objects s).
+               (case label_spec p of
+                  Some pl \<Rightarrow>
+                     \<forall>(p_idx, cap) \<in> graph_of (object_slots p_obj).
+                       \<forall>auth \<in> cdl_cap_auth_conferred cap.
+                         \<forall>oref \<in> cdl_obj_refs cap.
+                            (case label_spec oref of
+                               Some orefl \<Rightarrow> generic_tag ''obj policy'' (p, cap, cdl_obj_refs cap)
+                                                 ((pl, auth, orefl) \<in> policy_spec)
+                             | _ \<Rightarrow> False)
+                | _ \<Rightarrow> False)"
+  shows "auth_graph_map (pasObjectAbs aag) (cdl_state_objs_to_policy s) \<subseteq> (pasPolicy aag)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. auth_graph_map (pasObjectAbs aag) (cdl_state_objs_to_policy s) \<subseteq> pasPolicy aag<\STATESEP>apply (rule helper_pcs_refined_policyI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>p slot p' slot'. cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow> (pasObjectAbs aag p', Control, pasObjectAbs aag p) \<in> pasPolicy aag
+ 2. \<And>p slot p' slot'. cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow> (pasObjectAbs aag p', DeleteDerived, pasObjectAbs aag p) \<in> pasPolicy aag
+ 3. \<And>p p_obj p_idx cap auth oref. \<lbrakk>cdl_objects s p = Some p_obj; object_slots p_obj p_idx = Some cap; auth \<in> cdl_cap_auth_conferred cap; oref \<in> cdl_obj_refs cap\<rbrakk> \<Longrightarrow> (pasObjectAbs aag p, auth, pasObjectAbs aag oref) \<in> pasPolicy aag<\STATESEP>apply (blast intro: cdt_policy)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>p slot p' slot'. cdl_cdt s (p, slot) = Some (p', slot') \<Longrightarrow> (pasObjectAbs aag p', DeleteDerived, pasObjectAbs aag p) \<in> pasPolicy aag
+ 2. \<And>p p_obj p_idx cap auth oref. \<lbrakk>cdl_objects s p = Some p_obj; object_slots p_obj p_idx = Some cap; auth \<in> cdl_cap_auth_conferred cap; oref \<in> cdl_obj_refs cap\<rbrakk> \<Longrightarrow> (pasObjectAbs aag p, auth, pasObjectAbs aag oref) \<in> pasPolicy aag<\STATESEP>apply (blast intro: delete_derived_policy)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p p_obj p_idx cap auth oref. \<lbrakk>cdl_objects s p = Some p_obj; object_slots p_obj p_idx = Some cap; auth \<in> cdl_cap_auth_conferred cap; oref \<in> cdl_obj_refs cap\<rbrakk> \<Longrightarrow> (pasObjectAbs aag p, auth, pasObjectAbs aag oref) \<in> pasPolicy aag<\STATESEP>apply (fastforce simp: remove_generic_tag
+                   intro: subsetD[OF policy_spec]
+                   dest: label_spec obj_policy[simplified graph_of_def, simplified, rule_format]
+                   split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>fun sorted_distinct :: "'a::linorder list \<Rightarrow> bool" where
+    "sorted_distinct (x # y # xs) = (x < y \<and> sorted_distinct (y # xs))"
+  | "sorted_distinct _ = True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sorted_distinct:
+  "sorted_distinct xs \<Longrightarrow> sorted xs \<and> distinct xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sorted_distinct xs \<Longrightarrow> sorted xs \<and> distinct xs<\STATESEP>by (induct xs rule: sorted_distinct.induct; fastforce)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sorted_distinct_conv:
+  "sorted_distinct xs = (sorted xs \<and> distinct xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sorted_distinct xs = (sorted xs \<and> distinct xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. sorted_distinct [] = (sorted [] \<and> distinct [])
+ 2. \<And>a xs. sorted_distinct xs = (sorted xs \<and> distinct xs) \<Longrightarrow> sorted_distinct (a # xs) = (sorted (a # xs) \<and> distinct (a # xs))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. sorted_distinct xs = (sorted xs \<and> distinct xs) \<Longrightarrow> sorted_distinct (a # xs) = (sorted (a # xs) \<and> distinct (a # xs))<\STATESEP>apply (rename_tac x xs, case_tac xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xs. \<lbrakk>sorted_distinct xs = (sorted xs \<and> distinct xs); xs = []\<rbrakk> \<Longrightarrow> sorted_distinct (x # xs) = (sorted (x # xs) \<and> distinct (x # xs))
+ 2. \<And>x xs a list. \<lbrakk>sorted_distinct xs = (sorted xs \<and> distinct xs); xs = a # list\<rbrakk> \<Longrightarrow> sorted_distinct (x # xs) = (sorted (x # xs) \<and> distinct (x # xs))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs a list. \<lbrakk>sorted_distinct xs = (sorted xs \<and> distinct xs); xs = a # list\<rbrakk> \<Longrightarrow> sorted_distinct (x # xs) = (sorted (x # xs) \<and> distinct (x # xs))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma graph_of_map_of:
+  "distinct (map fst binds) \<Longrightarrow> graph_of (map_of binds) = set binds"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct (map fst binds) \<Longrightarrow> graph_of (map_of binds) = set binds<\STATESEP>by (simp add: graph_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma graph_of_map_of_simp:
+  "sorted_distinct (map fst binds) \<Longrightarrow> graph_of (map_of binds) = set binds"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sorted_distinct (map fst binds) \<Longrightarrow> graph_of (map_of binds) = set binds<\STATESEP>by (simp add: graph_of_def sorted_distinct_conv)<\STATESEP>1<\TRANSEP><\STATESEP>definition "graph_of_map_of__eval_FAIL binds \<equiv> graph_of (map_of binds)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma graph_of_map_of__sorted_eval:
+  "graph_of (map_of binds) =
+     (if sorted_distinct (rev (map fst binds)) then set binds else graph_of_map_of__eval_FAIL binds)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. graph_of (map_of binds) = (if sorted_distinct (rev (map fst binds)) then set binds else graph_of_map_of__eval_FAIL binds)<\STATESEP>by (simp add: graph_of_map_of sorted_distinct_conv graph_of_map_of__eval_FAIL_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma graph_of_map_of__distinct_eval:
+  "graph_of (map_of binds) =
+     (if distinct (map fst binds) then set binds else graph_of_map_of__eval_FAIL binds)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. graph_of (map_of binds) = (if distinct (map fst binds) then set binds else graph_of_map_of__eval_FAIL binds)<\STATESEP>by (simp add: graph_of_map_of graph_of_map_of__eval_FAIL_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_map_of_ptr_range:
+  "\<lbrakk> RangeMap.range_map_of binds (p :: cdl_object_id) = Some ((p, p + 2^sz), l) \<rbrakk> \<Longrightarrow>
+   (x \<in> ptr_range p sz) = (p \<le> x \<and> x < p + 2^sz)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. RangeMap.range_map_of binds p = Some ((p, p + 2 ^ sz), l) \<Longrightarrow> (x \<in> ptr_range p sz) = (p \<le> x \<and> x < p + 2 ^ sz)<\STATESEP>apply (drule RangeMap.range_map_of_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((p, p + 2 ^ sz), l) \<in> set binds \<and> p \<le> p \<and> p < p + 2 ^ sz \<Longrightarrow> (x \<in> ptr_range p sz) = (p \<le> x \<and> x < p + 2 ^ sz)<\STATESEP>apply (subst ptr_range_in_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. ((p, p + 2 ^ sz), l) \<in> set binds \<and> p \<le> p \<and> p < p + 2 ^ sz \<Longrightarrow> 0 < p + 2 ^ sz
+ 2. ((p, p + 2 ^ sz), l) \<in> set binds \<and> p \<le> p \<and> p < p + 2 ^ sz \<Longrightarrow> RangeMap.in_range (p, p + 2 ^ sz) x = (p \<le> x \<and> x < p + 2 ^ sz)<\STATESEP>apply unat_arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((p, p + 2 ^ sz), l) \<in> set binds \<and> p \<le> p \<and> p < p + 2 ^ sz \<Longrightarrow> RangeMap.in_range (p, p + 2 ^ sz) x = (p \<le> x \<and> x < p + 2 ^ sz)<\STATESEP>apply (simp add: RangeMap.in_range.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_tree_ptr_range:
+  "\<lbrakk> RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds;
+     RangeMap.monotonic_key_ranges binds;
+     RangeMap.range_map_of binds (p :: cdl_object_id) = Some ((p, p + 2^sz), l);
+     x \<in> ptr_range p sz \<rbrakk> \<Longrightarrow>
+   RangeMap.lookup_range_tree tree x = Some ((p, p + 2^sz), l)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds; RangeMap.monotonic_key_ranges binds; RangeMap.range_map_of binds p = Some ((p, p + 2 ^ sz), l); x \<in> ptr_range p sz\<rbrakk> \<Longrightarrow> RangeMap.lookup_range_tree tree x = Some ((p, p + 2 ^ sz), l)<\STATESEP>apply (subst (asm) range_map_of_ptr_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds; RangeMap.monotonic_key_ranges binds; RangeMap.range_map_of binds p = Some ((p, p + 2 ^ sz), l)\<rbrakk> \<Longrightarrow> RangeMap.range_map_of ?binds p = Some ((p, p + 2 ^ sz), ?l)
+ 2. \<lbrakk>RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds; RangeMap.monotonic_key_ranges binds; RangeMap.range_map_of binds p = Some ((p, p + 2 ^ sz), l); p \<le> x \<and> x < p + 2 ^ sz\<rbrakk> \<Longrightarrow> RangeMap.lookup_range_tree tree x = Some ((p, p + 2 ^ sz), l)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds; RangeMap.monotonic_key_ranges binds; RangeMap.range_map_of binds p = Some ((p, p + 2 ^ sz), l); p \<le> x \<and> x < p + 2 ^ sz\<rbrakk> \<Longrightarrow> RangeMap.lookup_range_tree tree x = Some ((p, p + 2 ^ sz), l)<\STATESEP>apply (simp only:)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds; RangeMap.monotonic_key_ranges binds; RangeMap.range_map_of binds p = Some ((p, p + 2 ^ sz), l); p \<le> x \<and> x < p + 2 ^ sz\<rbrakk> \<Longrightarrow> RangeMap.range_map_of binds x = Some ((p, p + 2 ^ sz), l)<\STATESEP>apply (drule RangeMap.range_map_of_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>RangeMap.lookup_range_tree tree = RangeMap.range_map_of binds; RangeMap.monotonic_key_ranges binds; p \<le> x \<and> x < p + 2 ^ sz; ((p, p + 2 ^ sz), l) \<in> set binds \<and> p \<le> p \<and> p < p + 2 ^ sz\<rbrakk> \<Longrightarrow> RangeMap.range_map_of binds x = Some ((p, p + 2 ^ sz), l)<\STATESEP>apply (blast intro: RangeMap.range_map_of_single RangeMap.monotonic_key_ranges_disjoint)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma label_over_ptr_range:
+  assumes "RangeMap.monotonic_key_ranges binds"
+      and "\<And>x. label_spec x = map_option snd (RangeMap.range_map_of binds x)"
+  shows
+   "RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2^sz), l) \<Longrightarrow>
+    (\<forall>oref \<in> ptr_range (obj_id :: cdl_object_id) sz.
+       case label_spec oref of
+          Some l \<Rightarrow> P l | None \<Rightarrow> False)
+     = P l"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), l) \<Longrightarrow> (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l) = P l<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), l); \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l\<rbrakk> \<Longrightarrow> P l
+ 2. \<lbrakk>RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), l); P l\<rbrakk> \<Longrightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l<\STATESEP>apply (fastforce simp: range_map_of_ptr_range assms
+                    dest: RangeMap.range_map_of_SomeD bspec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), l); P l\<rbrakk> \<Longrightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l<\STATESEP>apply (clarsimp simp: assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>oref. \<lbrakk>RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), l); P l; oref \<in> ptr_range obj_id sz\<rbrakk> \<Longrightarrow> case RangeMap.range_map_of binds oref of None \<Rightarrow> False | Some x2 \<Rightarrow> P (snd x2)<\STATESEP>apply (subst (asm) range_map_of_ptr_range, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>oref. \<lbrakk>RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), l); P l; obj_id \<le> oref \<and> oref < obj_id + 2 ^ sz\<rbrakk> \<Longrightarrow> case RangeMap.range_map_of binds oref of None \<Rightarrow> False | Some x2 \<Rightarrow> P (snd x2)<\STATESEP>apply (subst RangeMap.range_map_of_single;
+         fastforce simp: RangeMap.range_map_of_single RangeMap.in_range.simps
+                   intro: RangeMap.monotonic_key_ranges_disjoint assms
+                   dest: RangeMap.range_map_of_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition label_over_ptr_range_FAILED
+  where "label_over_ptr_range_FAILED = Ball"<\STATESEP>0<\TRANSEP><\STATESEP>lemma label_over_ptr_range_fp_eval:
+  assumes "RangeMap.monotonic_key_ranges binds"
+      and "\<And>x. label_spec x = map_option snd (RangeMap.range_map_of binds x)"
+  shows
+   "(\<forall>oref \<in> ptr_range (obj_id :: cdl_object_id) sz.
+       case label_spec oref of Some l \<Rightarrow> P l | None \<Rightarrow> False)
+     = (case RangeMap.range_map_of binds obj_id of
+          Some ((obj_id', obj_end), l) \<Rightarrow>
+             if obj_id' = obj_id \<and> obj_end = obj_id + 2^sz \<comment> \<open> = ptr_range\<close>
+             then P l \<comment> \<open>this is the case we care about, the rest is just fluff\<close>
+             else (label_over_ptr_range_FAILED (ptr_range obj_id sz)
+                     (\<lambda>oref. case label_spec oref of Some l \<Rightarrow> P l | None \<Rightarrow> False))
+        | None \<Rightarrow> (label_over_ptr_range_FAILED (ptr_range obj_id sz)
+                     (\<lambda>oref. case label_spec oref of Some l \<Rightarrow> P l | None \<Rightarrow> False)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> label_over_ptr_range_FAILED (ptr_range obj_id sz) (\<lambda>oref. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l) | Some ((obj_id', obj_end), l) \<Rightarrow> if obj_id' = obj_id \<and> obj_end = obj_id + 2 ^ sz then P l else label_over_ptr_range_FAILED (ptr_range obj_id sz) (\<lambda>oref. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l))<\STATESEP>apply (simp only: label_over_ptr_range_FAILED_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l | Some ((obj_id', obj_end), l) \<Rightarrow> if obj_id' = obj_id \<and> obj_end = obj_id + 2 ^ sz then P l else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l)<\STATESEP>apply (subst option.case_cong[where ?f2.0="case_prod _", OF refl refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x2. RangeMap.range_map_of binds obj_id = Some x2 \<Longrightarrow> (case x2 of ((obj_id', obj_end), l) \<Rightarrow> if obj_id' = obj_id \<and> obj_end = obj_id + 2 ^ sz then P l else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = ?g2.0 x2
+ 2. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x \<Rightarrow> ?g2.0 x)<\STATESEP>apply (clarsimp simp only:)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ba. RangeMap.range_map_of binds obj_id = Some ((a, b), ba) \<Longrightarrow> (if a = obj_id \<and> b = obj_id + 2 ^ sz then P ba else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = ?g2.0 ((a, b), ba)
+ 2. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x \<Rightarrow> ?g2.0 x)<\STATESEP>apply wpfix<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ba. RangeMap.range_map_of binds obj_id = Some ((a, b), ba) \<Longrightarrow> (if a = obj_id \<and> b = obj_id + 2 ^ sz then P ba else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = ?g2.6 a b (a, b) ba ((a, b), ba)
+ 2. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x1 \<Rightarrow> ?g2.6 (fst (fst x1)) (snd (fst x1)) (fst x1) (snd x1) x1)<\STATESEP>apply (subst if_cong[OF refl _ refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b ba. \<lbrakk>RangeMap.range_map_of binds obj_id = Some ((a, b), ba); a = obj_id \<and> b = obj_id + 2 ^ sz\<rbrakk> \<Longrightarrow> P ba = ?u8 a b ba
+ 2. \<And>a b ba. RangeMap.range_map_of binds obj_id = Some ((a, b), ba) \<Longrightarrow> (if a = obj_id \<and> b = obj_id + 2 ^ sz then ?u8 a b ba else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = ?g2.9 a a b b ba (a, b) ba ((a, b), ba)
+ 3. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x1 \<Rightarrow> ?g2.6 (fst (fst x1)) (snd (fst x1)) (fst x1) (snd x1) x1)
+flex-flex pairs:
+\<lambda>a b ba. ?g2.9 a a b b ba (a, b) ba ((a, b), ba) \<equiv>\<^sup>? \<lambda>a b ba. ?g2.6 a b (a, b) ba ((a, b), ba)<\STATESEP>apply (clarsimp simp only:)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b ba. RangeMap.range_map_of binds obj_id = Some ((obj_id, obj_id + 2 ^ sz), ba) \<Longrightarrow> P ba = ?u8 obj_id (obj_id + 2 ^ sz) ba
+ 2. \<And>a b ba. RangeMap.range_map_of binds obj_id = Some ((a, b), ba) \<Longrightarrow> (if a = obj_id \<and> b = obj_id + 2 ^ sz then ?u8 a b ba else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = ?g2.9 a a b b ba (a, b) ba ((a, b), ba)
+ 3. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x1 \<Rightarrow> ?g2.6 (fst (fst x1)) (snd (fst x1)) (fst x1) (snd x1) x1)
+flex-flex pairs:
+\<lambda>a b ba. ?g2.9 a a b b ba (a, b) ba ((a, b), ba) \<equiv>\<^sup>? \<lambda>a b ba. ?g2.6 a b (a, b) ba ((a, b), ba)<\STATESEP>apply (erule label_over_ptr_range[OF assms, symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ba. RangeMap.range_map_of binds obj_id = Some ((a, b), ba) \<Longrightarrow> (if a = obj_id \<and> b = obj_id + 2 ^ sz then \<forall>oref\<in>ptr_range a sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = ?g2.9 a a b b ba (a, b) ba ((a, b), ba)
+ 2. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x1 \<Rightarrow> ?g2.6 (fst (fst x1)) (snd (fst x1)) (fst x1) (snd x1) x1)
+flex-flex pairs:
+\<lambda>a b ba. ?g2.9 a a b b ba (a, b) ba ((a, b), ba) \<equiv>\<^sup>? \<lambda>a b ba. ?g2.6 a b (a, b) ba ((a, b), ba)<\STATESEP>apply (rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x) = (case RangeMap.range_map_of binds obj_id of None \<Rightarrow> \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some x \<Rightarrow> P x | Some x1 \<Rightarrow> if fst (fst x1) = obj_id \<and> snd (fst x1) = obj_id + 2 ^ sz then \<forall>oref\<in>ptr_range (fst (fst x1)) sz. case label_spec oref of None \<Rightarrow> False | Some l \<Rightarrow> P l else \<forall>oref\<in>ptr_range obj_id sz. case label_spec oref of None \<Rightarrow> False | Some a \<Rightarrow> P a)<\STATESEP>apply (fastforce simp only: split: option.splits if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_state_irqs_to_policy__eval:
+  assumes policy_spec: "policy_spec \<subseteq> pasPolicy aag"
+      and obj_label_spec: "\<And>p l. obj_label_spec p = Some l \<Longrightarrow> pasObjectAbs aag p = l"
+      and irq_label_spec: "\<And>irq l. irq_label_spec irq = Some l \<Longrightarrow> pasIRQAbs aag irq = l"
+  shows "\<forall>(p, p_obj) \<in> graph_of (cdl_objects s).
+           (case obj_label_spec p of
+              Some pl \<Rightarrow>
+                 \<forall>(p_idx, cap) \<in> graph_of (object_slots p_obj).
+                   \<forall>irq \<in> cdl_cap_irqs_controlled cap.
+                      (case irq_label_spec irq of
+                           Some irql \<Rightarrow> generic_tag ''irq policy'' (p, cap, irq)
+                                            ((pl, Control, irql) \<in> policy_spec)
+                         | _ \<Rightarrow> False)
+            | _ \<Rightarrow> False)
+         \<Longrightarrow> cdl_state_irqs_to_policy aag s \<subseteq> pasPolicy aag"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>(p, p_obj)\<in>graph_of (cdl_objects s). case obj_label_spec p of None \<Rightarrow> False | Some pl \<Rightarrow> \<forall>(p_idx, cap)\<in>graph_of (object_slots p_obj). \<forall>irq\<in>cdl_cap_irqs_controlled cap. case irq_label_spec irq of None \<Rightarrow> False | Some irql \<Rightarrow> generic_tag ''irq policy'' (p, cap, irq) ((pl, Control, irql) \<in> policy_spec) \<Longrightarrow> cdl_state_irqs_to_policy aag s \<subseteq> pasPolicy aag<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b. \<lbrakk>\<forall>x\<in>graph_of (cdl_objects s). case x of (p, p_obj) \<Rightarrow> case obj_label_spec p of None \<Rightarrow> False | Some pl \<Rightarrow> \<forall>x\<in>graph_of (object_slots p_obj). case x of (p_idx, cap) \<Rightarrow> \<forall>irq\<in>cdl_cap_irqs_controlled cap. case irq_label_spec irq of None \<Rightarrow> False | Some irql \<Rightarrow> generic_tag ''irq policy'' (p, cap, irq) ((pl, Control, irql) \<in> policy_spec); (a, aa, b) \<in> cdl_state_irqs_to_policy aag s\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>apply (erule cdl_state_irqs_to_policy_aux.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b ref cap irq. \<lbrakk>\<forall>x\<in>graph_of (cdl_objects s). case x of (p, p_obj) \<Rightarrow> case obj_label_spec p of None \<Rightarrow> False | Some pl \<Rightarrow> \<forall>x\<in>graph_of (object_slots p_obj). case x of (p_idx, cap) \<Rightarrow> \<forall>irq\<in>cdl_cap_irqs_controlled cap. case irq_label_spec irq of None \<Rightarrow> False | Some irql \<Rightarrow> generic_tag ''irq policy'' (p, cap, irq) ((pl, Control, irql) \<in> policy_spec); a = pasObjectAbs aag (fst ref); aa = Control; b = pasIRQAbs aag irq; opt_cap ref s = Some cap; irq \<in> cdl_cap_irqs_controlled cap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>apply (fastforce simp: opt_cap_def slots_of_def graph_of_def remove_generic_tag
+                   split: option.splits
+                   dest: obj_label_spec irq_label_spec
+                   intro: subsetD[OF policy_spec])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_state_asids_to_policy__eval:
+  assumes policy_spec: "policy_spec \<subseteq> pasPolicy aag"
+      and obj_label_spec: "\<And>p l. obj_label_spec p = Some l \<Longrightarrow> pasObjectAbs aag p = l"
+      and asid_label_spec: "\<And>asid l. asid_label_spec (asid_high_bits_of asid) = Some l \<Longrightarrow>
+                                      pasASIDAbs aag asid = l"
+      and cap_asids:
+            "\<forall>(p, p_obj) \<in> graph_of (cdl_objects s).
+               (case obj_label_spec p of
+                  Some pl \<Rightarrow>
+                     \<forall>(p_idx, cap) \<in> graph_of (object_slots p_obj).
+                       \<forall>asid \<in> asid_high_bits_of ` cdl_cap_asid' cap.
+                          (case asid_label_spec asid of
+                               Some asidl \<Rightarrow> generic_tag ''asid policy'' (p, cap, asid)
+                                                 ((pl, Control, asidl) \<in> policy_spec)
+                             | _ \<Rightarrow> False)
+                | _ \<Rightarrow> False)"
+      and asid_table_lookups:
+            "\<forall>(asid_high, asid_pool_cap) \<in> graph_of (cdl_asid_table s).
+               \<not>is_null_cap asid_pool_cap \<longrightarrow>
+               (case asid_label_spec (of_nat asid_high) of
+                  Some asidl \<Rightarrow>
+                     (case cdl_objects s (cap_object asid_pool_cap) of
+                        Some asid_pool \<Rightarrow>
+                           \<forall>(asid_low, pd_cap) \<in> graph_of (object_slots asid_pool).
+                             if is_null_cap pd_cap then True else
+                                (case obj_label_spec (cap_object pd_cap) of
+                                     Some pdl \<Rightarrow> generic_tag ''asid PD policy'' (asid_high, pd_cap)
+                                                     ((asidl, Control, pdl) \<in> policy_spec)
+                                   | _ \<Rightarrow> False)
+                      | _ \<Rightarrow> False)
+                     \<and> (case obj_label_spec (cap_object asid_pool_cap) of
+                           Some asid_pool_l \<Rightarrow>
+                             generic_tag ''asid pool policy'' (asid_high, asid_pool_cap)
+                                 ((asid_pool_l, AAuth ASIDPoolMapsASID, asidl) \<in> policy_spec)
+                         | _ \<Rightarrow> False)
+                | _ \<Rightarrow> False)"
+
+  shows "cdl_state_asids_to_policy aag s \<subseteq> pasPolicy aag"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_state_asids_to_policy aag s \<subseteq> pasPolicy aag<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b. (a, aa, b) \<in> cdl_state_asids_to_policy aag s \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>apply (erule cdl_state_asids_to_policy_aux.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a aa b ptr cap asid. \<lbrakk>a = pasObjectAbs aag (fst ptr); aa = Control; b = pasASIDAbs aag asid; opt_cap ptr s = Some cap; asid \<in> cdl_cap_asid' cap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag
+ 2. \<And>a aa b asid poolcap pdcap pdptr. \<lbrakk>a = pasASIDAbs aag asid; aa = Control; b = pasObjectAbs aag pdptr; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; \<not> is_null_cap pdcap; pdptr = cap_object pdcap; opt_cap (cap_object poolcap, snd (transform_asid asid)) s = Some pdcap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag
+ 3. \<And>a aa b asid poolcap. \<lbrakk>a = pasObjectAbs aag (cap_object poolcap); aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs aag asid; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>using cap_asids[unfolded remove_generic_tag]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>(p, p_obj)\<in>graph_of (cdl_objects s). case obj_label_spec p of None \<Rightarrow> False | Some pl \<Rightarrow> \<forall>(p_idx, cap)\<in>graph_of (object_slots p_obj). \<forall>asid\<in>asid_high_bits_of ` cdl_cap_asid' cap. case asid_label_spec asid of None \<Rightarrow> False | Some asidl \<Rightarrow> (pl, Control, asidl) \<in> policy_spec
+
+goal (3 subgoals):
+ 1. \<And>a aa b ptr cap asid. \<lbrakk>a = pasObjectAbs aag (fst ptr); aa = Control; b = pasASIDAbs aag asid; opt_cap ptr s = Some cap; asid \<in> cdl_cap_asid' cap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag
+ 2. \<And>a aa b asid poolcap pdcap pdptr. \<lbrakk>a = pasASIDAbs aag asid; aa = Control; b = pasObjectAbs aag pdptr; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; \<not> is_null_cap pdcap; pdptr = cap_object pdcap; opt_cap (cap_object poolcap, snd (transform_asid asid)) s = Some pdcap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag
+ 3. \<And>a aa b asid poolcap. \<lbrakk>a = pasObjectAbs aag (cap_object poolcap); aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs aag asid; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>apply (fastforce simp: opt_cap_def slots_of_def graph_of_def
+                     dest: obj_label_spec asid_label_spec
+                     intro: subsetD[OF policy_spec]
+                     split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa b asid poolcap pdcap pdptr. \<lbrakk>a = pasASIDAbs aag asid; aa = Control; b = pasObjectAbs aag pdptr; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; \<not> is_null_cap pdcap; pdptr = cap_object pdcap; opt_cap (cap_object poolcap, snd (transform_asid asid)) s = Some pdcap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag
+ 2. \<And>a aa b asid poolcap. \<lbrakk>a = pasObjectAbs aag (cap_object poolcap); aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs aag asid; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>using asid_table_lookups[unfolded remove_generic_tag]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>(asid_high, asid_pool_cap)\<in>graph_of (cdl_asid_table s). \<not> is_null_cap asid_pool_cap \<longrightarrow> (case asid_label_spec (word_of_nat asid_high) of None \<Rightarrow> False | Some asidl \<Rightarrow> (case cdl_objects s (cap_object asid_pool_cap) of None \<Rightarrow> False | Some asid_pool \<Rightarrow> \<forall>(asid_low, pd_cap)\<in>graph_of (object_slots asid_pool). if is_null_cap pd_cap then True else case obj_label_spec (cap_object pd_cap) of None \<Rightarrow> False | Some pdl \<Rightarrow> (asidl, Control, pdl) \<in> policy_spec) \<and> (case obj_label_spec (cap_object asid_pool_cap) of None \<Rightarrow> False | Some asid_pool_l \<Rightarrow> (asid_pool_l, AAuth ASIDPoolMapsASID, asidl) \<in> policy_spec))
+
+goal (2 subgoals):
+ 1. \<And>a aa b asid poolcap pdcap pdptr. \<lbrakk>a = pasASIDAbs aag asid; aa = Control; b = pasObjectAbs aag pdptr; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; \<not> is_null_cap pdcap; pdptr = cap_object pdcap; opt_cap (cap_object poolcap, snd (transform_asid asid)) s = Some pdcap\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag
+ 2. \<And>a aa b asid poolcap. \<lbrakk>a = pasObjectAbs aag (cap_object poolcap); aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs aag asid; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>apply (fastforce simp: opt_cap_def slots_of_def graph_of_def transform_asid_def
+                    dest: obj_label_spec asid_label_spec
+                    intro: subsetD[OF policy_spec]
+                    split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b asid poolcap. \<lbrakk>a = pasObjectAbs aag (cap_object poolcap); aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs aag asid; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>using asid_table_lookups[unfolded remove_generic_tag]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>(asid_high, asid_pool_cap)\<in>graph_of (cdl_asid_table s). \<not> is_null_cap asid_pool_cap \<longrightarrow> (case asid_label_spec (word_of_nat asid_high) of None \<Rightarrow> False | Some asidl \<Rightarrow> (case cdl_objects s (cap_object asid_pool_cap) of None \<Rightarrow> False | Some asid_pool \<Rightarrow> \<forall>(asid_low, pd_cap)\<in>graph_of (object_slots asid_pool). if is_null_cap pd_cap then True else case obj_label_spec (cap_object pd_cap) of None \<Rightarrow> False | Some pdl \<Rightarrow> (asidl, Control, pdl) \<in> policy_spec) \<and> (case obj_label_spec (cap_object asid_pool_cap) of None \<Rightarrow> False | Some asid_pool_l \<Rightarrow> (asid_pool_l, AAuth ASIDPoolMapsASID, asidl) \<in> policy_spec))
+
+goal (1 subgoal):
+ 1. \<And>a aa b asid poolcap. \<lbrakk>a = pasObjectAbs aag (cap_object poolcap); aa = AAuth ASIDPoolMapsASID; b = pasASIDAbs aag asid; cdl_asid_table s (fst (transform_asid asid)) = Some poolcap; \<not> is_null_cap poolcap; asid \<noteq> 0\<rbrakk> \<Longrightarrow> (a, aa, b) \<in> pasPolicy aag<\STATESEP>apply (fastforce simp: opt_cap_def slots_of_def graph_of_def transform_asid_def
+                   dest: obj_label_spec asid_label_spec
+                   intro: subsetD[OF policy_spec]
+                   split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Automation simpsets\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma Ball_eval:
+  "Ball (insert x s) P = (P x \<and> Ball s P)"
+  "Ball Set.empty P = True"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Ball (insert x s) P = (P x \<and> Ball s P) &&& Ball {} P = True<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma ball_cong_weak:
+  "\<And>s s' P. s = s' \<Longrightarrow> Ball s P = Ball s' P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' P. s = s' \<Longrightarrow> Ball s P = Ball s' P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas finite_set_simps =
+        insert_iff empty_iff
+        Un_insert_left Un_empty_left
+        Int_insert_left Int_empty_left
+        insert_Diff_if empty_Diff<\STATESEP>0<\TRANSEP><\STATESEP>lemma bintrunc_1_1:
+  "bintrunc 1 1 = 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit 1 1 = 1<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas word_rel_simps_small =
+  order_refl (* shortcut *)
+  rel_simps simp_thms
+  word_less_alt word_le_def word_uint_eq_iff uint_0_eq uint_1
+  (* need bintrunc to reduce numerals mod word size *)
+  uint_bintrunc bintrunc_numeral_simps bintrunc_1_1
+  numeral_One
+  (* evaluating word size for bintrunc -- yuck *)
+  len_num0 len_num1 len_bit0 len_bit1
+  arith_simps mult_1_right pred_numeral_simps numeral_plus_one
+  arith_special<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+let
+  val eval = Raw_Simplifier.rewrite @{context} false
+               (map_filter FP_Eval.maybe_convert_eqn @{thms word_rel_simps_small});
+  fun check word_typ cmp cmp_term x y = let
+    val xt = HOLogic.mk_number word_typ x;
+    val yt = HOLogic.mk_number word_typ y;
+    val prop = Const (cmp_term, word_typ --> word_typ --> @{typ bool}) $ xt $ yt;
+    val prop = (if cmp (x, y) then prop else @{term "HOL.Not"} $ prop)
+               |> Thm.cterm_of @{context};
+    val result = eval prop |> Thm.rhs_of;
+  in if Thm.term_of result = @{term True} then () else
+       error ("word_rel_simps_small test failed for: " ^ @{make_string} prop ^
+              "\n  Result: " ^ @{make_string} result) end
+in
+  [@{typ word32}, @{typ word64}, @{typ "3 word"}]
+  |> app (fn word_typ =>
+      [(op<, @{const_name less}), (op<=, @{const_name less_eq}), (op=, @{const_name HOL.eq})]
+      |> app (fn (cmp, cmp_term) =>
+          List.tabulate (8, I)
+          |> app (fn x =>
+              List.tabulate (8, I)
+              |> app (fn y =>
+                  check word_typ cmp cmp_term x y
+              )
+          )
+      )
+  )
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma pow_2_numeral:
+  "(2::'a::{numeral,semiring_1,power})^0 = 1"
+  "(2::'a)^1 = 2"
+  "(2::'a)^numeral n = 2 * 2^(numeral n - 1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (2::'a) ^ 0 = (1::'a) &&& (2::'a) ^ 1 = (2::'a) &&& (2::'a) ^ numeral n = (2::'a) * (2::'a) ^ (numeral n - 1)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (2::'a) ^ 1 = (2::'a)
+ 2. (2::'a) ^ numeral n = (2::'a) * (2::'a) ^ (numeral n - 1)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (2::'a) ^ numeral n = (2::'a) * (2::'a) ^ (numeral n - 1)<\STATESEP>apply (metis numeral_eq_Suc pred_numeral_def power_Suc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas word_pow_arith_simps =
+  pow_2_numeral uint_word_arith_bintrs
+  uint_0_eq uint_1 uint_bintrunc bintrunc_Suc_numeral numeral_One
+  arith_simps arith_special
+  nat_0 nat_one_as_int[symmetric] nat_numeral nat_numeral_diff_1 mult_1_right<\STATESEP>0<\TRANSEP><\STATESEP>lemmas object_slots_eval_simps
+         [simplified fun_upds_to_map_of] = (* NB: convert Map.empty for FP_Eval compatibility *)
+    object_slots_def cdl_object.case
+    cdl_asid_pool.simps
+    cdl_cnode.simps
+    cdl_irq_node.simps
+    cdl_page_table.simps
+    cdl_page_directory.simps
+    cdl_tcb.simps<\STATESEP>0<\TRANSEP><\STATESEP>lemmas obj_policy_eval_simps =
+        (* basics *)
+        simp_thms if_True if_False
+        Ball_eval option.case cdl_cap.case prod.case
+        list.set prod.sel option.map option.set
+
+        object_slots_eval_simps
+        cdl_obj_refs.simps
+
+        (* converting graph_of (map_of <caps...>) *)
+        graph_of_map_of__sorted_eval rev.simps append.simps
+        sorted_distinct.simps rel_simps list.map
+
+        (* evaluating asid integrity *)
+        cdl_cap_asid'.simps
+        is_null_cap_def cap_object_simps
+        image_empty
+        semiring_1_class.of_nat_0 semiring_1_class.of_nat_1 semiring_1_class.of_nat_numeral
+
+        (* evaluating irq integrity *)
+        cdl_cap_irqs_controlled.simps
+
+        (* evaluating cdl_cap_auth_conferred for obj integrity *)
+        cdl_cap_auth_conferred_def
+        cap_rights_to_auth_def vspace_cap_rights_to_auth_def
+        rights.distinct finite_set_simps<\STATESEP>0<\TRANSEP><\STATESEP>lemmas obj_policy_eval_congs =
+        if_weak_cong FP_Eval.let_weak_cong'
+        ball_cong_weak option.case_cong_weak prod.case_cong_weak
+        cdl_object.case_cong_weak cdl_cap.case_cong_weak<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

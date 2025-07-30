@@ -1,0 +1,154 @@
+<\STATESEP>theory Crunch_Test_NonDet
+imports
+  Lib.Crunch_Instances_NonDet
+  Crunch_Test_Qualified_NonDet
+  Lib.GenericLib
+  Lib.Defs
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo1 (x :: nat) \<equiv> do
+    modify ((+) x);
+    modify ((+) x)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo2 \<equiv> do
+    crunch_foo1 12;
+    crunch_foo1 13
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (valid, empty_fail, no_fail) (add: Nondet_Monad.bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch (empty_fail) empty_fail: crunch_foo2<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (add: crunch_foo1)<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt: crunch_foo2 "\<lambda>x. x > y"
+  (ignore_del: crunch_foo1)<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (del: crunch_foo1)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_always_true (x :: nat) \<equiv> \<lambda>_. True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma crunch_foo1_at_2:
+  "True \<Longrightarrow> \<lbrace>crunch_always_true 3 and crunch_always_true 2\<rbrace>
+      crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 2 and K True\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<Longrightarrow> \<lbrace>crunch_always_true 3 and crunch_always_true 2\<rbrace> crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 2 and K True\<rbrace><\STATESEP>by (simp add: crunch_always_true_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma crunch_foo1_at_3[wp]:
+  "\<lbrace>crunch_always_true 3\<rbrace> crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 3\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>crunch_always_true 3\<rbrace> crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 3\<rbrace><\STATESEP>by (simp add: crunch_always_true_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_crunch_foo1:
+  "True \<Longrightarrow> no_fail (crunch_always_true 2 and crunch_always_true 3) (crunch_foo1 x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<Longrightarrow> no_fail (crunch_always_true 2 and crunch_always_true 3) (crunch_foo1 x)<\STATESEP>apply (simp add:crunch_always_true_def crunch_foo1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (do y <- modify ((+) x);
+modify ((+) x)
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P (do y <- modify ((+) x);
+modify ((+) x)
+od)
+ 2. \<And>s. True \<Longrightarrow> ?P s<\STATESEP>apply (wp, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch (no_fail) no_fail: crunch_foo2
+  (wp: crunch_foo1_at_2[simplified])<\STATESEP>0<\TRANSEP><\STATESEP>crunch (valid) at_2: crunch_foo2 "crunch_always_true 2"
+  (wp: crunch_foo1_at_2[simplified])<\STATESEP>0<\TRANSEP><\STATESEP>fun crunch_foo3 :: "nat => nat => 'a => (nat,unit) nondet_monad" where
+  "crunch_foo3 0 x _ = crunch_foo1 x"
+| "crunch_foo3 (Suc n) x y = crunch_foo3 n x y"<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt2: crunch_foo3 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>crunch (empty_fail) empty_fail2: crunch_foo3<\STATESEP>0<\TRANSEP><\STATESEP>crunch (empty_fail) empty_fail: crunch_foo3
+  (ignore: crunch_foo1 simp: crunch_foo3_empty_fail2)<\STATESEP>0<\TRANSEP><\STATESEP>class foo_class =
+  fixes stuff :: 'a
+begin<\STATESEP>0<\TRANSEP><\STATESEP>fun crunch_foo4 :: "nat => nat => 'a => (nat,unit) nondet_monad" where
+  "crunch_foo4 0 x _ s = crunch_foo1 x s"
+| "crunch_foo4 (Suc n) x y s = crunch_foo4 n x y s"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo5 x (y::'a) \<equiv> crunch_foo1 x"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma crunch_foo4_alt:
+  "crunch_foo4 n x y \<equiv> crunch_foo1 x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. crunch_foo4 n x y \<equiv> crunch_foo1 x<\STATESEP>apply (induct n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. crunch_foo4 0 x y = crunch_foo1 x
+ 2. \<And>n. crunch_foo4 n x y = crunch_foo1 x \<Longrightarrow> crunch_foo4 (Suc n) x y = crunch_foo1 x<\STATESEP>apply (simp add: fun_eq_iff)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch gt3: crunch_foo4 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>crunch (no_fail) no_fail2: crunch_foo4
+  (rule: crunch_foo4_alt)<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt3': crunch_foo4 "\<lambda>x. x > y"
+  (rule: crunch_foo4_alt)<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt4: crunch_foo5 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo6 \<equiv> return () >>= (\<lambda>_. return ())"<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (del: bind)<\STATESEP>0<\TRANSEP><\STATESEP>locale test_locale =
+fixes fixed_return_unit :: "(unit, unit) nondet_monad"
+
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo7 \<equiv> return () >>= (\<lambda>_. return ())"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo6 P
+(ignore: bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo7 P
+(ignore: bind)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo8 \<equiv> fixed_return_unit >>= (\<lambda>_. fixed_return_unit)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo9 (x :: nat) \<equiv> do
+    modify ((+) x);
+    modify ((+) x)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test: crunch_foo9 "\<lambda>x. x > y" (ignore: bind)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo10 (x :: nat) \<equiv> do
+    modify ((+) x);
+    modify ((+) x)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>lemma crunch_foo10_def2[crunch_def]:
+  "crunch_foo10 = crunch_foo9"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. crunch_foo10 = crunch_foo9<\STATESEP>unfolding crunch_foo10_def[abs_def] crunch_foo9_def[abs_def]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>x. do modify ((+) x);
+modify ((+) x)
+od) = (\<lambda>x. do modify ((+) x);
+modify ((+) x)
+od)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo10 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (add: bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch test': crunch_foo9 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>interpretation test_locale "return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<lbrace>Q\<rbrace> crunch_foo7 \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> crunch_foo7 \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by wp<\STATESEP>1<\TRANSEP><\STATESEP>crunch test2: crunch_foo7 P
+  (wp_del: crunch_foo7_test)<\STATESEP>0<\TRANSEP><\STATESEP>locale test_sublocale<\STATESEP>0<\TRANSEP><\STATESEP>sublocale test_sublocale < test_locale "return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>context test_sublocale begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo8 P<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>consts foo_const :: "(unit, unit) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>defs foo_const_def: "foo_const \<equiv> Crunch_Test_Qualified_NonDet.foo_const"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test: foo_const P<\STATESEP>0<\TRANSEP><\STATESEP>crunches crunch_foo3, crunch_foo4, crunch_foo5
+  for silly: "\<lambda>s. True \<noteq> False"
+  and (no_fail) nf
+  and (empty_fail) ef
+  (rule: crunch_foo4_alt wp_del: hoare_vcg_prop)<\STATESEP>0<\TRANSEP><\STATESEP>consts crunch_foo11 :: "(nat, unit) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>consts Q :: "bool \<Rightarrow> nat \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>consts R :: "nat \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>axiomatization
+  where test1: "\<lbrace>Q x\<rbrace> crunch_foo11 \<lbrace>\<lambda>_. Q x\<rbrace>"
+  and test2: "\<lbrace>\<lambda>s. P (R s)\<rbrace> crunch_foo11 \<lbrace>\<lambda>_ s. P (R s)\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test3: crunch_foo11 "\<lambda>s. Q (R s) s"
+  (wp: test1 wps: test2 ignore: crunch_foo11)<\STATESEP>0<\TRANSEP><\STATESEP>record 'a state =
+  state' :: nat
+  ext :: 'a<\STATESEP>0<\TRANSEP><\STATESEP>definition do_nat_op :: "(nat, unit) nondet_monad \<Rightarrow> ('a state,unit) nondet_monad" where
+  "do_nat_op f \<equiv>
+     do
+       s \<leftarrow> get;
+       (_,s') \<leftarrow> select_f (mk_ef (f (state' s)));
+       modify (\<lambda>state. state\<lparr>state' := s'\<rparr>)
+     od"<\STATESEP>0<\TRANSEP><\STATESEP>lemma do_nat_op_ef:
+  "empty_fail f \<Longrightarrow> empty_fail (do_nat_op f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> empty_fail (do_nat_op f)<\STATESEP>unfolding do_nat_op_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> empty_fail (do s <- get;
+(uu_, s') <- select_f (mk_ef (f (state' s)));
+modify (state'_update (\<lambda>_. s'))
+od)<\STATESEP>apply (wpsimp wp: empty_fail_bind empty_fail_get empty_fail_select_f
+              simp: mk_ef_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma nf_do_nat_op:
+  "no_fail P f \<Longrightarrow> empty_fail f \<Longrightarrow> no_fail (P \<circ> state') (do_nat_op f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P f; empty_fail f\<rbrakk> \<Longrightarrow> no_fail (P \<circ> state') (do_nat_op f)<\STATESEP>unfolding do_nat_op_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_fail P f; empty_fail f\<rbrakk> \<Longrightarrow> no_fail (P \<circ> state') (do s <- get;
+(uu_, s') <- select_f (mk_ef (f (state' s)));
+modify (state'_update (\<lambda>_. s'))
+od)<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>no_fail P f; empty_fail f; P (state' s); snd (mk_ef (f (state' s)))\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (fastforce simp: mk_ef_def no_fail_def empty_fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "crunch_foo12_nat (x :: nat) = modify ((+) x)"<\STATESEP>0<\TRANSEP><\STATESEP>consts wrap_ext_op :: "(nat state, unit) nondet_monad \<Rightarrow> ('a state,unit) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>consts unwrap_ext :: "'a state \<Rightarrow> nat state"<\STATESEP>0<\TRANSEP><\STATESEP>definition do_extended_op :: "(nat state, unit) nondet_monad \<Rightarrow> ('a state,unit) nondet_monad" where
+  "do_extended_op eop \<equiv> do
+                         ex \<leftarrow> get;
+                         (_,es') \<leftarrow> select_f (mk_ef ((wrap_ext_op eop) ex));
+                         modify (\<lambda>state. state\<lparr>ext := (ext es')\<rparr>)
+                        od"<\STATESEP>0<\TRANSEP><\STATESEP>axiomatization
+  where do_extended_op_ef[wp]: "empty_fail f \<Longrightarrow> empty_fail (do_extended_op f)"
+  and nf_do_extended_op[wp]: "no_fail P f \<Longrightarrow> empty_fail f \<Longrightarrow> no_fail (P \<circ> unwrap_ext) (do_extended_op f)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo12_ext (x :: nat) = modify (ext_update ((+) x))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo12 x \<equiv>
+     do
+       do_extended_op (crunch_foo12_ext x);
+       do_nat_op (crunch_foo12_nat x)
+     od"<\STATESEP>0<\TRANSEP><\STATESEP>crunches crunch_foo12
+  for (empty_fail) ef[wp]
+  and (no_fail) nf
+  (wp: empty_fail_bind)<\STATESEP>0<\TRANSEP><\STATESEP>definition crunch_foo13_pre :: "('a state,unit) nondet_monad" where
+  "crunch_foo13_pre \<equiv> return ()"<\STATESEP>0<\TRANSEP><\STATESEP>axiomatization
+  where nf_crunch_foo13_pre[wp]: "no_fail (crunch_always_true 0) crunch_foo13_pre"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo13 x \<equiv>
+     do
+       crunch_foo13_pre;
+       do_extended_op (crunch_foo12_ext x);
+       do_nat_op (crunch_foo12_nat x)
+     od"<\STATESEP>0<\TRANSEP><\STATESEP>crunches crunch_foo13
+  for (no_fail) nf<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

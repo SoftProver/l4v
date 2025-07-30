@@ -1,0 +1,1402 @@
+<\STATESEP>theory BCorres2_AI
+imports
+  ArchEmptyFail_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>locale BCorres2_AI =
+  fixes state  :: "'a::state_ext itself"
+  assumes handle_arch_fault_reply_bcorres[wp]:
+    "\<And>a b c d.
+      bcorres (handle_arch_fault_reply a b c d :: 'a state \<Rightarrow> _)
+              (handle_arch_fault_reply a b c d)"
+  assumes arch_get_sanitise_register_info_bcorres[wp]:
+    "\<And>t. bcorres (arch_get_sanitise_register_info t :: 'a state \<Rightarrow> _)
+                  (arch_get_sanitise_register_info t)"
+  assumes make_arch_fault_msg_bcorres[wp]:
+    "\<And> a b.
+      bcorres (make_arch_fault_msg a b :: 'a state \<Rightarrow> _)
+              (make_arch_fault_msg a b)"
+  assumes arch_switch_to_thread_bcorres[wp]:
+    "\<And>t. bcorres (arch_switch_to_thread t :: 'a state \<Rightarrow> _)
+        (arch_switch_to_thread t)"
+  assumes arch_switch_to_idle_thread_bcorres[wp]:
+    "bcorres (arch_switch_to_idle_thread :: 'a state \<Rightarrow> _)
+        arch_switch_to_idle_thread"<\STATESEP>0<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: deleting_irq_handler truncate_state
+  (simp: gets_the_def swp_def)<\STATESEP>0<\TRANSEP><\STATESEP>lemma update_restart_pc_bcorres[wp]:
+  "bcorres (update_restart_pc t) (update_restart_pc t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (update_restart_pc t) (update_restart_pc t)<\STATESEP>by (wp
+      | clarsimp simp: update_restart_pc_def as_user_def bind_select_f_bind'
+                split: prod.splits)+<\STATESEP>1<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: suspend, finalise_cap truncate_state<\STATESEP>0<\TRANSEP><\STATESEP>definition all_but_exst where
+  "all_but_exst P \<equiv> (\<lambda>s. P (kheap s) (cdt s) (is_original_cap s)
+                      (cur_thread s) (idle_thread s)
+                      (machine_state s) (interrupt_irq_node s)
+                      (interrupt_states s) (arch_state s))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ef_mk_ef: "empty_fail f \<Longrightarrow> mk_ef (f s) = f s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> mk_ef (f s) = f s<\STATESEP>apply (clarsimp simp add: empty_fail_def mk_ef_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s) \<Longrightarrow> (fst (f s), fst (f s) = {} \<or> snd (f s)) = f s<\STATESEP>apply (drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (f s) = {} \<longrightarrow> snd (f s) \<Longrightarrow> (fst (f s), fst (f s) = {} \<or> snd (f s)) = f s<\STATESEP>apply (case_tac "f s")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>fst (f s) = {} \<longrightarrow> snd (f s); f s = (a, b)\<rbrakk> \<Longrightarrow> (fst (f s), fst (f s) = {} \<or> snd (f s)) = f s<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_but_obvious: "all_but_exst (\<lambda>a b c d e f g h i.
+                    x = \<lparr>kheap = a, cdt = b, is_original_cap = c,
+                     cur_thread = d, idle_thread = e,
+                     machine_state = f, interrupt_irq_node = g,
+                     interrupt_states = h, arch_state = i, exst = (exst x)\<rparr>) x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. all_but_exst (\<lambda>a b c d e f g h i. x = \<lparr>kheap = a, cdt = b, is_original_cap = c, cur_thread = d, idle_thread = e, machine_state = f, interrupt_irq_node = g, interrupt_states = h, arch_state = i, exst = exst x\<rparr>) x<\STATESEP>apply (simp add: all_but_exst_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bluh: assumes a: "x =
+        \<lparr>kheap = kheap ba, cdt = cdt ba,
+           is_original_cap = is_original_cap ba,
+           cur_thread = cur_thread ba, idle_thread = idle_thread ba,
+           machine_state = machine_state ba,
+           interrupt_irq_node = interrupt_irq_node ba,
+           interrupt_states = interrupt_states ba,
+           arch_state = arch_state ba, exst = exst x\<rparr>"
+     shows "x\<lparr>exst := exst ba\<rparr> = ba"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x\<lparr>exst := exst ba\<rparr> = ba<\STATESEP>apply (subst a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lparr>kheap = kheap ba, cdt = cdt ba, is_original_cap = is_original_cap ba, cur_thread = cur_thread ba, idle_thread = idle_thread ba, machine_state = machine_state ba, interrupt_irq_node = interrupt_irq_node ba, interrupt_states = interrupt_states ba, arch_state = arch_state ba, exst = exst x\<rparr>\<lparr>exst := exst ba\<rparr> = ba<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_cs_trans_state[simp]: "valid_cs a b (trans_state g s) = valid_cs a b s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_cs a b (trans_state g s) = valid_cs a b s<\STATESEP>by(simp add: valid_cs_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas obj_at[simp] = more_update.obj_at_update[of a b g s for a b g s]<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_tcb_state[simp]: "valid_tcb_state a (trans_state g s) = valid_tcb_state a s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_tcb_state a (trans_state g s) = valid_tcb_state a s<\STATESEP>by (simp add: valid_tcb_state_def split: thread_state.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_bound_ntfn[simp]: "valid_bound_ntfn a (trans_state g s) = valid_bound_ntfn a s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_bound_ntfn a (trans_state g s) = valid_bound_ntfn a s<\STATESEP>by (simp add: valid_bound_ntfn_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_arch_tcb_trans[simp]: "valid_arch_tcb t (trans_state g s) = valid_arch_tcb t s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_arch_tcb t (trans_state g s) = valid_arch_tcb t s<\STATESEP>by (auto elim: valid_arch_tcb_pspaceI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_tcb_trans_state[simp]: "valid_tcb a b (trans_state g s) = valid_tcb a b s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_tcb a b (trans_state g s) = valid_tcb a b s<\STATESEP>apply (simp add: valid_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas valid_bound_tcb[simp] = valid_bound_tcb_exst[of a g s for a g s]<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_ep_trans_state[simp]: "valid_ep a (trans_state g s) = valid_ep a s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_ep a (trans_state g s) = valid_ep a s<\STATESEP>apply (simp add: valid_ep_def split: endpoint.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_ntfn_trans_state[simp]: "valid_ntfn a (trans_state g s) = valid_ntfn a s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_ntfn a (trans_state g s) = valid_ntfn a s<\STATESEP>apply (simp add: valid_ntfn_def split: ntfn.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_obj_trans_state[simp]: "valid_obj a b (trans_state g s) = valid_obj a b s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_obj a b (trans_state g s) = valid_obj a b s<\STATESEP>apply (simp add: valid_obj_def
+              split: kernel_object.splits option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma dxo_ex: "((),x :: det_ext state) \<in> fst (do_extended_op f s) \<Longrightarrow>
+       \<exists>e :: det_ext. x = (trans_state (\<lambda>_. e) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((), x) \<in> fst (do_extended_op f s) \<Longrightarrow> \<exists>e. x = trans_state (\<lambda>_. e) s<\STATESEP>apply (clarsimp simp add: do_extended_op_def
+                            bind_def gets_def in_monad
+                            select_f_def mk_ef_def
+                            trans_state_update'
+                            wrap_ext_op_det_ext_ext_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>b. \<lbrakk>((), b) \<in> fst (f s); x = s\<lparr>exst := exst b\<rparr>\<rbrakk> \<Longrightarrow> \<exists>e. s\<lparr>exst := exst b\<rparr> = s\<lparr>exst := e\<rparr><\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>locale is_extended' =
+  fixes f :: "'a det_ext_monad"
+  assumes a: "\<And>P. \<lbrace>all_but_exst P\<rbrace> f \<lbrace>\<lambda>_. all_but_exst P\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>context is_extended' begin<\STATESEP>0<\TRANSEP><\STATESEP>lemmas v = use_valid[OF _ a, OF _ all_but_obvious,simplified all_but_exst_def, THEN bluh]<\STATESEP>0<\TRANSEP><\STATESEP>lemma ex_st: "(a,x :: det_ext state) \<in> fst (f s) \<Longrightarrow>
+       \<exists>e :: det_ext. x = (trans_state (\<lambda>_. e) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, x) \<in> fst (f s) \<Longrightarrow> \<exists>e. x = trans_state (\<lambda>_. e) s<\STATESEP>apply (drule v)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s\<lparr>exst := exst x\<rparr> = x \<Longrightarrow> \<exists>e. x = trans_state (\<lambda>_. e) s<\STATESEP>apply (simp add: trans_state_update')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s\<lparr>exst := exst x\<rparr> = x \<Longrightarrow> \<exists>e. x = s\<lparr>exst := e\<rparr><\STATESEP>apply (rule_tac x="exst x" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s\<lparr>exst := exst x\<rparr> = x \<Longrightarrow> x = s\<lparr>exst := exst x\<rparr><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas all_but_exst[wp] = a[simplified all_but_exst_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemma lift_inv: "(\<And>s g. P (trans_state g s) = P s) \<Longrightarrow>
+       \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s g. P (trans_state g s) = P s) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (clarsimp simp add: valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>s g. P (trans_state g s) = P s; P s; (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> P b<\STATESEP>apply (drule ex_st)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>s g. P (trans_state g s) = P s; P s; \<exists>e. b = trans_state (\<lambda>_. e) s\<rbrakk> \<Longrightarrow> P b<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation (input) "I P \<equiv> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_.P\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma obj_at[wp]: "I (obj_at a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>obj_at a b\<rbrace> f \<lbrace>\<lambda>_. obj_at a b\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma st_tcb_at[wp]: "I (st_tcb_at a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>st_tcb_at a b\<rbrace> f \<lbrace>\<lambda>_. st_tcb_at a b\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_obj[wp]: "I (valid_obj a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_obj a b\<rbrace> f \<lbrace>\<lambda>_. valid_obj a b\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_pspace[wp]: "I (valid_pspace)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_pspace\<rbrace> f \<lbrace>\<lambda>_. valid_pspace\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_mdb[wp]: "I valid_mdb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_mdb\<rbrace> f \<lbrace>\<lambda>_. valid_mdb\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_ioc[wp]: "I valid_ioc"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_ioc\<rbrace> f \<lbrace>\<lambda>_. valid_ioc\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_idle[wp]: "I valid_idle"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_idle\<rbrace> f \<lbrace>\<lambda>_. valid_idle\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma only_idle[wp]: "I only_idle"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>only_idle\<rbrace> f \<lbrace>\<lambda>_. only_idle\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_unsafe_then_cap[wp]: "I if_unsafe_then_cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>if_unsafe_then_cap\<rbrace> f \<lbrace>\<lambda>_. if_unsafe_then_cap\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_reply_caps[wp]: "I valid_reply_caps"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_reply_caps\<rbrace> f \<lbrace>\<lambda>_. valid_reply_caps\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_reply_masters[wp]: "I valid_reply_masters"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_reply_masters\<rbrace> f \<lbrace>\<lambda>_. valid_reply_masters\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_global_refs[wp]: "I valid_global_refs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_global_refs\<rbrace> f \<lbrace>\<lambda>_. valid_global_refs\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_arch_state[wp]: "I valid_arch_state"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_arch_state\<rbrace> f \<lbrace>\<lambda>_. valid_arch_state\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_irq_node[wp]: "I valid_irq_node"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_irq_node\<rbrace> f \<lbrace>\<lambda>_. valid_irq_node\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_irq_handlers[wp]: "I valid_irq_handlers"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_irq_handlers\<rbrace> f \<lbrace>\<lambda>_. valid_irq_handlers\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_machine_state[wp]: "I valid_machine_state"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_machine_state\<rbrace> f \<lbrace>\<lambda>_. valid_machine_state\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_vspace_objs[wp]: "I valid_vspace_objs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_vspace_objs\<rbrace> f \<lbrace>\<lambda>_. valid_vspace_objs\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_arch_caps[wp]: "I valid_arch_caps"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_arch_caps\<rbrace> f \<lbrace>\<lambda>_. valid_arch_caps\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_global_objs[wp]: "I valid_global_objs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_global_objs\<rbrace> f \<lbrace>\<lambda>_. valid_global_objs\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_global_vspace_mappings[wp]: "I valid_global_vspace_mappings"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_global_vspace_mappings\<rbrace> f \<lbrace>\<lambda>_. valid_global_vspace_mappings\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_kernel_mappings[wp]: "I valid_kernel_mappings"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_kernel_mappings\<rbrace> f \<lbrace>\<lambda>_. valid_kernel_mappings\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equal_kernel_mappings[wp]: "I equal_kernel_mappings"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>equal_kernel_mappings\<rbrace> f \<lbrace>\<lambda>_. equal_kernel_mappings\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_asid_map[wp]: "I valid_asid_map"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_asid_map\<rbrace> f \<lbrace>\<lambda>_. valid_asid_map\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pspace_in_kernel_window[wp]: "I pspace_in_kernel_window"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_in_kernel_window\<rbrace> f \<lbrace>\<lambda>_. pspace_in_kernel_window\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_refs_in_kernel_window[wp]: "I cap_refs_in_kernel_window"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>cap_refs_in_kernel_window\<rbrace> f \<lbrace>\<lambda>_. cap_refs_in_kernel_window\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma invs[wp]: "I invs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs\<rbrace> f \<lbrace>\<lambda>_. invs\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cur_tcb[wp]: "I cur_tcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>cur_tcb\<rbrace> f \<lbrace>\<lambda>_. cur_tcb\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma  valid_objs[wp]: "I (valid_objs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_objs\<rbrace> f \<lbrace>\<lambda>_. valid_objs\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pspace_aligned[wp]: "I (pspace_aligned)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned\<rbrace> f \<lbrace>\<lambda>_. pspace_aligned\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pspace_distinct[wp]: "I (pspace_distinct)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_distinct\<rbrace> f \<lbrace>\<lambda>_. pspace_distinct\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma caps_of_state[wp]: "I (\<lambda>s. P (caps_of_state s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (caps_of_state s)\<rbrace> f \<lbrace>\<lambda>_ s. P (caps_of_state s)\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cte_wp_at[wp]: "I (\<lambda>s. P (cte_wp_at P' p s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cte_wp_at P' p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (cte_wp_at P' p s)\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_cap_to_obj_dr_emp[wp]: "I (no_cap_to_obj_dr_emp x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>no_cap_to_obj_dr_emp x\<rbrace> f \<lbrace>\<lambda>_. no_cap_to_obj_dr_emp x\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_vs_lookup[wp]: "I (valid_vs_lookup)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_vs_lookup\<rbrace> f \<lbrace>\<lambda>_. valid_vs_lookup\<rbrace><\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<lbrace>valid_vs_lookup\<rbrace> f \<lbrace>\<lambda>_. valid_vs_lookup\<rbrace><\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<lbrace>valid_vs_lookup\<rbrace> f \<lbrace>\<lambda>_. valid_vs_lookup\<rbrace><\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. \<lbrace>valid_vs_lookup\<rbrace> f \<lbrace>\<lambda>_. valid_vs_lookup\<rbrace><\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_vs_lookup\<rbrace> f \<lbrace>\<lambda>_. valid_vs_lookup\<rbrace><\STATESEP>by (rule lift_inv, simp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>valid_vs_lookup\<rbrace> f \<lbrace>\<lambda>_. valid_vs_lookup\<rbrace>
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma typ_at[wp]: "I (\<lambda>s. P (typ_at T p s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (typ_at T p s)\<rbrace> f \<lbrace>\<lambda>_ s. P (typ_at T p s)\<rbrace><\STATESEP>by (rule lift_inv,simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas typ_ats[wp] = abs_typ_at_lifts [OF typ_at]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>locale is_extended = is_extended' +
+  constrains f :: "unit det_ext_monad"
+  assumes b: "empty_fail f"<\STATESEP>0<\TRANSEP><\STATESEP>context is_extended begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma dxo_eq[simp]:
+  "do_extended_op f = f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do_extended_op f = f<\STATESEP>apply (simp add: do_extended_op_def all_but_exst_def
+                   get_def select_f_def modify_def put_def
+                   wrap_ext_op_det_ext_ext_def ef_mk_ef[OF b])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do ex <- \<lambda>s. ({(s, s)}, False);
+(uu_, es') <- \<lambda>s. (fst (f ex) \<times> {s}, snd (f ex));
+s <- \<lambda>s. ({(s, s)}, False);
+\<lambda>_. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)
+od = f<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (do ex <- \<lambda>s. ({(s, s)}, False);
+(uu_, es') <- \<lambda>s. (fst (f ex) \<times> {s}, snd (f ex));
+s <- \<lambda>s. ({(s, s)}, False);
+\<lambda>_. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)
+od) x = f x<\STATESEP>apply (simp add: bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (x, xa) \<Rightarrow> (case x of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) xa), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x)) = f x<\STATESEP>apply rule<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x r t. (r, t) \<in> fst (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x)) \<Longrightarrow> (r, t) \<in> fst (f x)
+ 2. \<And>x r t. (r, t) \<in> fst (f x) \<Longrightarrow> (r, t) \<in> fst (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x))
+ 3. \<And>x. snd (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x)) = snd (f x)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x t. \<exists>xa\<in>fst (f x). ((), t) \<in> fst ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x) \<Longrightarrow> ((), t) \<in> fst (f x)
+ 2. \<And>x r t. (r, t) \<in> fst (f x) \<Longrightarrow> (r, t) \<in> fst (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x))
+ 3. \<And>x. snd (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x)) = snd (f x)<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x t b. \<lbrakk>((), b) \<in> fst (f x); ((), t) \<in> fst ({((), x\<lparr>exst := exst b\<rparr>)}, False)\<rbrakk> \<Longrightarrow> ((), t) \<in> fst (f x)
+ 2. \<And>x r t. (r, t) \<in> fst (f x) \<Longrightarrow> (r, t) \<in> fst (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x))
+ 3. \<And>x. snd (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x)) \<Longrightarrow> snd (f x)
+ 4. \<And>x. snd (f x) \<Longrightarrow> snd (\<Union>a\<in>fst (f x) \<times> {x}. fst (case a of (a, b) \<Rightarrow> (case a of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) b), (\<exists>xa\<in>fst (f x). snd ((case xa of (uu_, es') \<Rightarrow> \<lambda>s. ({((), s\<lparr>exst := exst es'\<rparr>)}, False)) x)) \<or> snd (f x))<\STATESEP>apply (simp | force | frule v)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma all_but_exst_update[simp]:
+  "all_but_exst P (trans_state f s) = all_but_exst P s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. all_but_exst P (trans_state f s) = all_but_exst P s<\STATESEP>apply (simp add: all_but_exst_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch all_but_exst[wp]: set_scheduler_action,tcb_sched_action,next_domain,
+                         cap_move_ext "all_but_exst P"
+  (simp: Let_def ignore_del: tcb_sched_action cap_move_ext)<\STATESEP>0<\TRANSEP><\STATESEP>crunch (empty_fail) empty_fail[wp]: cap_move_ext
+  (ignore_del: cap_move_ext)<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation set_scheduler_action_extended: is_extended "set_scheduler_action a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_extended (set_scheduler_action a)<\STATESEP>by (unfold_locales; wp)<\STATESEP>1<\TRANSEP><\STATESEP>global_interpretation tcb_sched_action_extended: is_extended "tcb_sched_action a b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_extended (tcb_sched_action a b)<\STATESEP>by (unfold_locales; wp)<\STATESEP>1<\TRANSEP><\STATESEP>global_interpretation next_domain_extended: is_extended "next_domain"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_extended next_domain<\STATESEP>by (unfold_locales; wp)<\STATESEP>1<\TRANSEP><\STATESEP>global_interpretation cap_move_ext: is_extended "cap_move_ext a b c d"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_extended (cap_move_ext a b c d)<\STATESEP>by (unfold_locales; wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas rec_del_simps_ext =
+    rec_del.simps [THEN ext[where f="rec_del args" for args]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma rec_del_s_bcorres[wp]:
+notes rec_del.simps[simp del]
+shows
+"s_bcorres (rec_del c) (rec_del c) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (rec_del c) (rec_del c) s<\STATESEP>proof (induct s rule: rec_del.induct, simp_all only: fail_s_bcorres_underlying rec_del_simps_ext(5-))<\STATESEP>1<\TRANSEP>proof (state)
+goal (4 subgoals):
+ 1. \<And>slot exposed s. s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall slot exposed)) (rec_del (CTEDeleteCall slot exposed)) s
+ 2. \<And>slot exposed s. \<lbrakk>\<And>rv st rva sta rvb stb rvc stc. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (fst rvb) slot exposed)) (rec_del (ReduceZombieCall (fst rvb) slot exposed)) stc; \<And>rv st rva sta rvb stb rvc stc rvd std rve ste. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb); (Inr rvd, std) \<in> fst (rec_del (ReduceZombieCall (fst rvb) slot exposed) stc); (Inr rve, ste) \<in> fst (preemption_point std)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) ste\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+ 3. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 4. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>case (1 slot exposed s)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+
+goal (4 subgoals):
+ 1. \<And>slot exposed s. s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall slot exposed)) (rec_del (CTEDeleteCall slot exposed)) s
+ 2. \<And>slot exposed s. \<lbrakk>\<And>rv st rva sta rvb stb rvc stc. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (fst rvb) slot exposed)) (rec_del (ReduceZombieCall (fst rvb) slot exposed)) stc; \<And>rv st rva sta rvb stb rvc stc rvd std rve ste. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb); (Inr rvd, std) \<in> fst (rec_del (ReduceZombieCall (fst rvb) slot exposed) stc); (Inr rve, ste) \<in> fst (preemption_point std)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) ste\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+ 3. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 4. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (rec_del (CTEDeleteCall slot exposed)) (rec_del (CTEDeleteCall slot exposed)) s<\STATESEP>apply (simp add: rec_del.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (doE (success, cleanup_info) <- rec_del (FinaliseSlotCall slot exposed);
+y <- liftE (when (exposed \<or> success) (empty_slot slot cleanup_info));
+returnOk undefined
+odE) (doE (success, cleanup_info) <- rec_del (FinaliseSlotCall slot exposed);
+y <- liftE (when (exposed \<or> success) (empty_slot slot cleanup_info));
+returnOk undefined
+odE) s<\STATESEP>apply wp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>r s'. (Inr r, s') \<in> fst (rec_del (FinaliseSlotCall slot exposed) s) \<Longrightarrow> s_bcorres (case r of (success, cleanup_info) \<Rightarrow> doE y <- liftE (when (exposed \<or> success) (empty_slot slot cleanup_info));
+returnOk undefined
+odE) (case r of (success, cleanup_info) \<Rightarrow> doE y <- liftE (when (exposed \<or> success) (empty_slot slot cleanup_info));
+returnOk undefined
+odE) s'
+ 2. s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s<\STATESEP>apply (simp split: prod.splits  | intro impI conjI allI)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>r s' x1 x2. \<lbrakk>(Inr (x1, x2), s') \<in> fst (rec_del (FinaliseSlotCall slot exposed) s); r = (x1, x2)\<rbrakk> \<Longrightarrow> s_bcorres (doE y <- liftE (when (exposed \<or> x1) (empty_slot slot x2));
+returnOk undefined
+odE) (doE y <- liftE (when (exposed \<or> x1) (empty_slot slot x2));
+returnOk undefined
+odE) s'
+ 2. s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s<\STATESEP>apply (wp drop_sbcorres_underlying)[1]<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s<\STATESEP>apply (wp "1")<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s_bcorres (rec_del (CTEDeleteCall slot exposed)) (rec_del (CTEDeleteCall slot exposed)) s
+
+goal (3 subgoals):
+ 1. \<And>slot exposed s. \<lbrakk>\<And>rv st rva sta rvb stb rvc stc. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (fst rvb) slot exposed)) (rec_del (ReduceZombieCall (fst rvb) slot exposed)) stc; \<And>rv st rva sta rvb stb rvc stc rvd std rve ste. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb); (Inr rvd, std) \<in> fst (rec_del (ReduceZombieCall (fst rvb) slot exposed) stc); (Inr rve, ste) \<in> fst (preemption_point std)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) ste\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+ 2. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 3. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (3 subgoals):
+ 1. \<And>slot exposed s. \<lbrakk>\<And>rv st rva sta rvb stb rvc stc. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (fst rvb) slot exposed)) (rec_del (ReduceZombieCall (fst rvb) slot exposed)) stc; \<And>rv st rva sta rvb stb rvc stc rvd std rve ste. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb); (Inr rvd, std) \<in> fst (rec_del (ReduceZombieCall (fst rvb) slot exposed) stc); (Inr rve, ste) \<in> fst (preemption_point std)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) ste\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+ 2. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 3. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>case (2 slot exposed s)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>(Inr ?rv, ?st) \<in> fst ((without_preemption $ get_cap slot) s); ?rv \<noteq> NullCap; (Inr ?rva, ?sta) \<in> fst ((without_preemption $ is_final_cap ?rv) ?st); (Inr ?rvb, ?stb) \<in> fst ((without_preemption $ finalise_cap ?rv ?rva) ?sta); \<not> cap_removeable (fst ?rvb) slot; \<not> (cap_cyclic_zombie (fst ?rvb) slot \<and> \<not> exposed); (Inr ?rvc, ?stc) \<in> fst ((without_preemption $ set_cap (fst ?rvb) slot) ?stb)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (fst ?rvb) slot exposed)) (rec_del (ReduceZombieCall (fst ?rvb) slot exposed)) ?stc
+\<lbrakk>(Inr ?rv, ?st) \<in> fst ((without_preemption $ get_cap slot) s); ?rv \<noteq> NullCap; (Inr ?rva, ?sta) \<in> fst ((without_preemption $ is_final_cap ?rv) ?st); (Inr ?rvb, ?stb) \<in> fst ((without_preemption $ finalise_cap ?rv ?rva) ?sta); \<not> cap_removeable (fst ?rvb) slot; \<not> (cap_cyclic_zombie (fst ?rvb) slot \<and> \<not> exposed); (Inr ?rvc, ?stc) \<in> fst ((without_preemption $ set_cap (fst ?rvb) slot) ?stb); (Inr ?rvd, ?std) \<in> fst (rec_del (ReduceZombieCall (fst ?rvb) slot exposed) ?stc); (Inr ?rve, ?ste) \<in> fst (preemption_point ?std)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) ?ste
+
+goal (3 subgoals):
+ 1. \<And>slot exposed s. \<lbrakk>\<And>rv st rva sta rvb stb rvc stc. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (fst rvb) slot exposed)) (rec_del (ReduceZombieCall (fst rvb) slot exposed)) stc; \<And>rv st rva sta rvb stb rvc stc rvd std rve ste. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); rv \<noteq> NullCap; (Inr rva, sta) \<in> fst ((without_preemption $ is_final_cap rv) st); (Inr rvb, stb) \<in> fst ((without_preemption $ finalise_cap rv rva) sta); \<not> cap_removeable (fst rvb) slot; \<not> (cap_cyclic_zombie (fst rvb) slot \<and> \<not> exposed); (Inr rvc, stc) \<in> fst ((without_preemption $ set_cap (fst rvb) slot) stb); (Inr rvd, std) \<in> fst (rec_del (ReduceZombieCall (fst rvb) slot exposed) stc); (Inr rve, ste) \<in> fst (preemption_point std)\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) ste\<rbrakk> \<Longrightarrow> s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+ 2. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 3. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s<\STATESEP>apply (simp add: rec_del.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (doE cap <- liftE (get_cap slot);
+if cap = NullCap then returnOk (True, NullCap) else doE is_final <- liftE (is_final_cap cap);
+(remainder, cleanup_info) <- liftE (finalise_cap cap is_final);
+if cap_removeable remainder slot then returnOk (True, cleanup_info) else if cap_cyclic_zombie remainder slot \<and> \<not> exposed then doE y <- liftE (set_cap remainder slot);
+returnOk (False, NullCap)
+odE else doE y <- liftE (set_cap remainder slot);
+y <- rec_del (ReduceZombieCall remainder slot exposed);
+y <- preemption_point;
+rec_del (FinaliseSlotCall slot exposed)
+odE
+odE
+odE) (doE cap <- liftE (get_cap slot);
+if cap = NullCap then returnOk (True, NullCap) else doE is_final <- liftE (is_final_cap cap);
+(remainder, cleanup_info) <- liftE (finalise_cap cap is_final);
+if cap_removeable remainder slot then returnOk (True, cleanup_info) else if cap_cyclic_zombie remainder slot \<and> \<not> exposed then doE y <- liftE (set_cap remainder slot);
+returnOk (False, NullCap)
+odE else doE y <- liftE (set_cap remainder slot);
+y <- rec_del (ReduceZombieCall remainder slot exposed);
+y <- preemption_point;
+rec_del (FinaliseSlotCall slot exposed)
+odE
+odE
+odE) s<\STATESEP>apply (wp "2" | wpc | simp split: prod.splits | intro impI conjI allI | (rule ssubst[rotated, where s="fst x" for x], rule "2",simp+) | wp (once) drop_sbcorres_underlying)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s_bcorres (rec_del (FinaliseSlotCall slot exposed)) (rec_del (FinaliseSlotCall slot exposed)) s
+
+goal (2 subgoals):
+ 1. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 2. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 2. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>case (3 slot exposed s)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (2 subgoals):
+ 1. \<And>ptr bits n slot s. s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False)) s
+ 2. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ False)) (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ False)) s_<\STATESEP>apply (simp add: rec_del.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (doE y <- assertE ((slot, replicate (zombie_cte_bits exposed) False) \<noteq> slot_);
+y <- liftE (cap_swap_for_delete (slot, replicate (zombie_cte_bits exposed) False) slot_);
+returnOk undefined
+odE) (doE y <- assertE ((slot, replicate (zombie_cte_bits exposed) False) \<noteq> slot_);
+y <- liftE (cap_swap_for_delete (slot, replicate (zombie_cte_bits exposed) False) slot_);
+returnOk undefined
+odE) s_<\STATESEP>apply (wp | wp (once) drop_sbcorres_underlying)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s_bcorres (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ False)) (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ False)) s_
+
+goal (1 subgoal):
+ 1. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>case (4 slot exposed s)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(Inr ?rv, ?st) \<in> fst (returnOk (slot, nat_to_cref (zombie_cte_bits exposed) s) s_) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall ?rv False)) (rec_del (CTEDeleteCall ?rv False)) ?st
+
+goal (1 subgoal):
+ 1. \<And>ptr bits n slot s. (\<And>rv st. (Inr rv, st) \<in> fst (returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n) s) \<Longrightarrow> s_bcorres (rec_del (CTEDeleteCall rv False)) (rec_del (CTEDeleteCall rv False)) st) \<Longrightarrow> s_bcorres (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) (rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True)) s<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ True)) (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ True)) s_<\STATESEP>apply (simp add: rec_del.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (doE y <- rec_del (CTEDeleteCall (slot, nat_to_cref (zombie_cte_bits exposed) s) False);
+new_cap <- liftE (get_cap slot_);
+y <- if new_cap = Zombie slot exposed (Suc s) then liftE (set_cap (Zombie slot exposed s) slot_) else assertE (new_cap = NullCap \<or> is_zombie new_cap \<and> first_cslot_of new_cap = slot_ \<and> (slot, replicate (zombie_cte_bits exposed) False) \<noteq> slot_);
+returnOk undefined
+odE) (doE y <- rec_del (CTEDeleteCall (slot, nat_to_cref (zombie_cte_bits exposed) s) False);
+new_cap <- liftE (get_cap slot_);
+y <- if new_cap = Zombie slot exposed (Suc s) then liftE (set_cap (Zombie slot exposed s) slot_) else assertE (new_cap = NullCap \<or> is_zombie new_cap \<and> first_cslot_of new_cap = slot_ \<and> (slot, replicate (zombie_cte_bits exposed) False) \<noteq> slot_);
+returnOk undefined
+odE) s_<\STATESEP>apply (simp add: in_monad | wp "4" | intro impI conjI | wp (once) drop_sbcorres_underlying)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s_bcorres (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ True)) (rec_del (ReduceZombieCall (Zombie slot exposed (Suc s)) slot_ True)) s_
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemmas rec_del_bcorres[wp] = use_sbcorres_underlying[OF rec_del_s_bcorres]<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_delete_bcorres'[wp]:
+  assumes finalise_cap_bcorres[wp]:
+    "\<And>r ra. bcorres (finalise_cap r ra :: 'a::state_ext state \<Rightarrow> _) (finalise_cap r ra)"
+  shows "bcorres (cap_delete slot :: 'a state \<Rightarrow> _) (cap_delete slot)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (cap_delete slot) (cap_delete slot)<\STATESEP>unfolding cap_delete_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (doE rec_del (CTEDeleteCall slot True);
+returnOk ()
+odE) (doE rec_del (CTEDeleteCall slot True);
+returnOk ()
+odE)<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>r. bcorres (K_bind (returnOk ()) r) (K_bind (returnOk ()) r)
+ 2. bcorres (rec_del (CTEDeleteCall slot True)) (rec_del (CTEDeleteCall slot True))<\STATESEP>apply (simp add: returnOk_bcorres_underlying)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (rec_del (CTEDeleteCall slot True)) (rec_del (CTEDeleteCall slot True))<\STATESEP>apply (wp rec_del_bcorres)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_revoke_s_bcorres:
+  shows
+  "s_bcorres (cap_revoke slot) (cap_revoke slot) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (cap_revoke slot) (cap_revoke slot) s<\STATESEP>proof (induct rule: cap_revoke.induct[where ?a1.0=s])<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>slot s. (\<And>rv st rva sta rvb stb rvc stc rvd std rve ste rvf stf rvg stg. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, sta) \<in> fst ((without_preemption $ gets cdt) st); (Inr rvb, stb) \<in> fst ((returnOk $ descendants_of slot rva) sta); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, stc) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) stb); (Inr rvd, std) \<in> fst ((without_preemption $ get_cap rvc) stc); (Inr rve, ste) \<in> fst (assertE (rvd \<noteq> NullCap) std); (Inr rvf, stf) \<in> fst (cap_delete rvc ste); (Inr rvg, stg) \<in> fst (preemption_point stf)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) stg) \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s<\STATESEP>case (1 slot s)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>(Inr ?rv, ?st) \<in> fst ((without_preemption $ get_cap slot) s); (Inr ?rva, ?sta) \<in> fst ((without_preemption $ gets cdt) ?st); (Inr ?rvb, ?stb) \<in> fst ((returnOk $ descendants_of slot ?rva) ?sta); ?rv \<noteq> NullCap \<and> ?rvb \<noteq> {}; (Inr ?rvc, ?stc) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) ?rvb) ?stb); (Inr ?rvd, ?std) \<in> fst ((without_preemption $ get_cap ?rvc) ?stc); (Inr ?rve, ?ste) \<in> fst (assertE (?rvd \<noteq> NullCap) ?std); (Inr ?rvf, ?stf) \<in> fst (cap_delete ?rvc ?ste); (Inr ?rvg, ?stg) \<in> fst (preemption_point ?stf)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) ?stg
+
+goal (1 subgoal):
+ 1. \<And>slot s. (\<And>rv st rva sta rvb stb rvc stc rvd std rve ste rvf stf rvg stg. \<lbrakk>(Inr rv, st) \<in> fst ((without_preemption $ get_cap slot) s); (Inr rva, sta) \<in> fst ((without_preemption $ gets cdt) st); (Inr rvb, stb) \<in> fst ((returnOk $ descendants_of slot rva) sta); rv \<noteq> NullCap \<and> rvb \<noteq> {}; (Inr rvc, stc) \<in> fst ((without_preemption $ select_ext (next_revoke_cap slot) rvb) stb); (Inr rvd, std) \<in> fst ((without_preemption $ get_cap rvc) stc); (Inr rve, ste) \<in> fst (assertE (rvd \<noteq> NullCap) std); (Inr rvf, stf) \<in> fst (cap_delete rvc ste); (Inr rvg, stg) \<in> fst (preemption_point stf)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) stg) \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (cap_revoke slot) (cap_revoke slot) s<\STATESEP>apply (simp add: cap_revoke.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (doE cap <- liftE (get_cap slot);
+cdt <- liftE (gets cdt);
+whenE (cap \<noteq> NullCap \<and> descendants_of slot cdt \<noteq> {}) (doE child <- liftE (select_ext (next_revoke_cap slot) (descendants_of slot cdt));
+cap <- liftE (get_cap child);
+y <- assertE (cap \<noteq> NullCap);
+y <- cap_delete child;
+y <- preemption_point;
+cap_revoke slot
+odE)
+odE) (doE cap <- liftE (get_cap slot);
+cdt <- liftE (gets cdt);
+whenE (cap \<noteq> NullCap \<and> descendants_of slot cdt \<noteq> {}) (doE child <- liftE (select_ext (next_revoke_cap slot) (descendants_of slot cdt));
+cap <- liftE (get_cap child);
+y <- assertE (cap \<noteq> NullCap);
+y <- cap_delete child;
+y <- preemption_point;
+cap_revoke slot
+odE)
+odE) s<\STATESEP>apply wp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>r s' ra s'a rb s'b rc s'c rd s'd re s'e rf s'f. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr re, s'e) \<in> fst (cap_delete rb s'd); (Inr rf, s'f) \<in> fst (preemption_point s'e)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s'f
+ 2. \<And>r s' ra s'a rb s'b rc s'c rd s'd re s'e. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr re, s'e) \<in> fst (cap_delete rb s'd)\<rbrakk> \<Longrightarrow> s_bcorres preemption_point preemption_point s'e
+ 3. \<And>r s' ra s'a rb s'b rc s'c rd s'd. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c)\<rbrakk> \<Longrightarrow> s_bcorres (cap_delete rb) (cap_delete rb) s'd
+ 4. \<And>r s' ra s'a rb s'b rc s'c. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b)\<rbrakk> \<Longrightarrow> s_bcorres (assertE (rc \<noteq> NullCap)) (assertE (rc \<noteq> NullCap)) s'c
+ 5. \<And>r s' ra s'a rb s'b. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (liftE (get_cap rb)) (liftE (get_cap rb)) s'b
+ 6. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}\<rbrakk> \<Longrightarrow> s_bcorres (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) s'a
+ 7. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s')\<rbrakk> \<Longrightarrow> (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {})
+ 8. \<And>r s'. (Inr r, s') \<in> fst (liftE (get_cap slot) s) \<Longrightarrow> s_bcorres (liftE (gets cdt)) (liftE (gets cdt)) s'
+ 9. s_bcorres (liftE (get_cap slot)) (liftE (get_cap slot)) s<\STATESEP>apply (wp gets_s_bcorres_underlyingE' | simp)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>r s' ra s'a rb s'b rc s'c s'd s'e s'f. \<lbrakk>(r, s') \<in> fst (get_cap slot s); (ra, s'a) \<in> fst (gets cdt s'); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot ra) s'a); (rc, s'c) \<in> fst (get_cap rb s'b); (Inr (), s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr (), s'e) \<in> fst (cap_delete rb s'd); (Inr (), s'f) \<in> fst (preemption_point s'e)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s'f
+ 2. \<And>r s' ra s'a rb s'b rc s'c rd s'd re s'e. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr re, s'e) \<in> fst (cap_delete rb s'd)\<rbrakk> \<Longrightarrow> s_bcorres preemption_point preemption_point s'e
+ 3. \<And>r s' ra s'a rb s'b rc s'c rd s'd. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c)\<rbrakk> \<Longrightarrow> s_bcorres (cap_delete rb) (cap_delete rb) s'd
+ 4. \<And>r s' ra s'a rb s'b rc s'c. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b)\<rbrakk> \<Longrightarrow> s_bcorres (assertE (rc \<noteq> NullCap)) (assertE (rc \<noteq> NullCap)) s'c
+ 5. \<And>r s' ra s'a rb s'b. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (liftE (get_cap rb)) (liftE (get_cap rb)) s'b
+ 6. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}\<rbrakk> \<Longrightarrow> s_bcorres (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) s'a
+ 7. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s')\<rbrakk> \<Longrightarrow> (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {})
+ 8. \<And>r s'. (Inr r, s') \<in> fst (liftE (get_cap slot) s) \<Longrightarrow> s_bcorres (liftE (gets cdt)) (liftE (gets cdt)) s'
+ 9. s_bcorres (liftE (get_cap slot)) (liftE (get_cap slot)) s<\STATESEP>apply (subgoal_tac "(Inr (exst s'a),s'a) \<in> fst (liftE (gets exst) s'a)")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>r s' ra s'a rb s'b rc s'c s'd s'e s'f. \<lbrakk>(r, s') \<in> fst (get_cap slot s); (ra, s'a) \<in> fst (gets cdt s'); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot ra) s'a); (rc, s'c) \<in> fst (get_cap rb s'b); (Inr (), s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr (), s'e) \<in> fst (cap_delete rb s'd); (Inr (), s'f) \<in> fst (preemption_point s'e); (Inr (exst s'a), s'a) \<in> fst (liftE (gets exst) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s'f
+ 2. \<And>r s' ra s'a rb s'b rc s'c s'd s'e s'f. \<lbrakk>(r, s') \<in> fst (get_cap slot s); (ra, s'a) \<in> fst (gets cdt s'); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot ra) s'a); (rc, s'c) \<in> fst (get_cap rb s'b); (Inr (), s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr (), s'e) \<in> fst (cap_delete rb s'd); (Inr (), s'f) \<in> fst (preemption_point s'e)\<rbrakk> \<Longrightarrow> (Inr (exst s'a), s'a) \<in> fst (liftE (gets exst) s'a)
+ 3. \<And>r s' ra s'a rb s'b rc s'c rd s'd re s'e. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr re, s'e) \<in> fst (cap_delete rb s'd)\<rbrakk> \<Longrightarrow> s_bcorres preemption_point preemption_point s'e
+ 4. \<And>r s' ra s'a rb s'b rc s'c rd s'd. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c)\<rbrakk> \<Longrightarrow> s_bcorres (cap_delete rb) (cap_delete rb) s'd
+ 5. \<And>r s' ra s'a rb s'b rc s'c. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b)\<rbrakk> \<Longrightarrow> s_bcorres (assertE (rc \<noteq> NullCap)) (assertE (rc \<noteq> NullCap)) s'c
+ 6. \<And>r s' ra s'a rb s'b. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (liftE (get_cap rb)) (liftE (get_cap rb)) s'b
+ 7. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}\<rbrakk> \<Longrightarrow> s_bcorres (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) s'a
+ 8. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s')\<rbrakk> \<Longrightarrow> (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {})
+ 9. \<And>r s'. (Inr r, s') \<in> fst (liftE (get_cap slot) s) \<Longrightarrow> s_bcorres (liftE (gets cdt)) (liftE (gets cdt)) s'
+ 10. s_bcorres (liftE (get_cap slot)) (liftE (get_cap slot)) s<\STATESEP>prefer 2<\STATESEP>3<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>r s' ra s'a rb s'b rc s'c s'd s'e s'f. \<lbrakk>(r, s') \<in> fst (get_cap slot s); (ra, s'a) \<in> fst (gets cdt s'); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot ra) s'a); (rc, s'c) \<in> fst (get_cap rb s'b); (Inr (), s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr (), s'e) \<in> fst (cap_delete rb s'd); (Inr (), s'f) \<in> fst (preemption_point s'e)\<rbrakk> \<Longrightarrow> (Inr (exst s'a), s'a) \<in> fst (liftE (gets exst) s'a)
+ 2. \<And>r s' ra s'a rb s'b rc s'c s'd s'e s'f. \<lbrakk>(r, s') \<in> fst (get_cap slot s); (ra, s'a) \<in> fst (gets cdt s'); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot ra) s'a); (rc, s'c) \<in> fst (get_cap rb s'b); (Inr (), s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr (), s'e) \<in> fst (cap_delete rb s'd); (Inr (), s'f) \<in> fst (preemption_point s'e); (Inr (exst s'a), s'a) \<in> fst (liftE (gets exst) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s'f
+ 3. \<And>r s' ra s'a rb s'b rc s'c rd s'd re s'e. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr re, s'e) \<in> fst (cap_delete rb s'd)\<rbrakk> \<Longrightarrow> s_bcorres preemption_point preemption_point s'e
+ 4. \<And>r s' ra s'a rb s'b rc s'c rd s'd. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c)\<rbrakk> \<Longrightarrow> s_bcorres (cap_delete rb) (cap_delete rb) s'd
+ 5. \<And>r s' ra s'a rb s'b rc s'c. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b)\<rbrakk> \<Longrightarrow> s_bcorres (assertE (rc \<noteq> NullCap)) (assertE (rc \<noteq> NullCap)) s'c
+ 6. \<And>r s' ra s'a rb s'b. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (liftE (get_cap rb)) (liftE (get_cap rb)) s'b
+ 7. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}\<rbrakk> \<Longrightarrow> s_bcorres (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) s'a
+ 8. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s')\<rbrakk> \<Longrightarrow> (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {})
+ 9. \<And>r s'. (Inr r, s') \<in> fst (liftE (get_cap slot) s) \<Longrightarrow> s_bcorres (liftE (gets cdt)) (liftE (gets cdt)) s'
+ 10. s_bcorres (liftE (get_cap slot)) (liftE (get_cap slot)) s<\STATESEP>apply (simp add: in_monad)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>r s' ra s'a rb s'b rc s'c s'd s'e s'f. \<lbrakk>(r, s') \<in> fst (get_cap slot s); (ra, s'a) \<in> fst (gets cdt s'); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot ra) s'a); (rc, s'c) \<in> fst (get_cap rb s'b); (Inr (), s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr (), s'e) \<in> fst (cap_delete rb s'd); (Inr (), s'f) \<in> fst (preemption_point s'e); (Inr (exst s'a), s'a) \<in> fst (liftE (gets exst) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (cap_revoke slot) (cap_revoke slot) s'f
+ 2. \<And>r s' ra s'a rb s'b rc s'c rd s'd re s'e. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c); (Inr re, s'e) \<in> fst (cap_delete rb s'd)\<rbrakk> \<Longrightarrow> s_bcorres preemption_point preemption_point s'e
+ 3. \<And>r s' ra s'a rb s'b rc s'c rd s'd. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c)\<rbrakk> \<Longrightarrow> s_bcorres (cap_delete rb) (cap_delete rb) s'd
+ 4. \<And>r s' ra s'a rb s'b rc s'c. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b)\<rbrakk> \<Longrightarrow> s_bcorres (assertE (rc \<noteq> NullCap)) (assertE (rc \<noteq> NullCap)) s'c
+ 5. \<And>r s' ra s'a rb s'b. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (liftE (get_cap rb)) (liftE (get_cap rb)) s'b
+ 6. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}\<rbrakk> \<Longrightarrow> s_bcorres (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) s'a
+ 7. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s')\<rbrakk> \<Longrightarrow> (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {})
+ 8. \<And>r s'. (Inr r, s') \<in> fst (liftE (get_cap slot) s) \<Longrightarrow> s_bcorres (liftE (gets cdt)) (liftE (gets cdt)) s'
+ 9. s_bcorres (liftE (get_cap slot)) (liftE (get_cap slot)) s<\STATESEP>apply (rule "1"[simplified],(simp add: in_monad | force)+)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>r s' ra rb s'b rc s'c s'e. \<lbrakk>(r, s') \<in> fst (get_cap slot s); ra = cdt s'; r \<noteq> NullCap \<and> descendants_of slot (cdt s') \<noteq> {}; (rb, s'b) \<in> fst (select_ext (next_revoke_cap slot) (descendants_of slot (cdt s')) s'); (rc, s'c) \<in> fst (get_cap rb s'b); rc \<noteq> NullCap; (Inr (), s'e) \<in> fst (cap_delete rb s'c)\<rbrakk> \<Longrightarrow> s_bcorres preemption_point preemption_point s'e
+ 2. \<And>r s' ra s'a rb s'b rc s'c rd s'd. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b); (Inr rd, s'd) \<in> fst (assertE (rc \<noteq> NullCap) s'c)\<rbrakk> \<Longrightarrow> s_bcorres (cap_delete rb) (cap_delete rb) s'd
+ 3. \<And>r s' ra s'a rb s'b rc s'c. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a); (Inr rc, s'c) \<in> fst (liftE (get_cap rb) s'b)\<rbrakk> \<Longrightarrow> s_bcorres (assertE (rc \<noteq> NullCap)) (assertE (rc \<noteq> NullCap)) s'c
+ 4. \<And>r s' ra s'a rb s'b. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}; (Inr rb, s'b) \<in> fst (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra)) s'a)\<rbrakk> \<Longrightarrow> s_bcorres (liftE (get_cap rb)) (liftE (get_cap rb)) s'b
+ 5. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s'); (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}); r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}\<rbrakk> \<Longrightarrow> s_bcorres (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) (liftE (select_ext (next_revoke_cap slot) (descendants_of slot ra))) s'a
+ 6. \<And>r s' ra s'a. \<lbrakk>(Inr r, s') \<in> fst (liftE (get_cap slot) s); (Inr ra, s'a) \<in> fst (liftE (gets cdt) s')\<rbrakk> \<Longrightarrow> (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {}) = (r \<noteq> NullCap \<and> descendants_of slot ra \<noteq> {})
+ 7. \<And>r s'. (Inr r, s') \<in> fst (liftE (get_cap slot) s) \<Longrightarrow> s_bcorres (liftE (gets cdt)) (liftE (gets cdt)) s'
+ 8. s_bcorres (liftE (get_cap slot)) (liftE (get_cap slot)) s<\STATESEP>apply (simp add:  | force | wp drop_sbcorres_underlying)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s_bcorres (cap_revoke slot) (cap_revoke slot) s
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemmas cap_revoke_bcorres[wp] = use_sbcorres_underlying[OF cap_revoke_s_bcorres]<\STATESEP>0<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: "Tcb_A.restart",as_user,option_update_thread truncate_state (simp: gets_the_def ignore: clearMemory check_cap_at gets_the getRegister setRegister getRestartPC setNextPC)<\STATESEP>0<\TRANSEP><\STATESEP>lemma check_cap_at_bcorres[wp]: "bcorres f f' \<Longrightarrow> bcorres (check_cap_at a b f) (check_cap_at a b f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (check_cap_at a b f) (check_cap_at a b f')<\STATESEP>apply (simp add: check_cap_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (do cap' <- get_cap b;
+when (same_object_as a cap') f
+od) (do cap' <- get_cap b;
+when (same_object_as a cap') f'
+od)<\STATESEP>apply (wp | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma invoke_domain_bcorres[wp]: "bcorres (invoke_domain t d) (invoke_domain t d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (invoke_domain t d) (invoke_domain t d)<\STATESEP>by (simp add: invoke_domain_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma truncate_state_detype[simp]: "truncate_state (detype x s) = detype x (truncate_state s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. truncate_state (detype x s) = detype x (truncate_state s)<\STATESEP>apply (simp add: detype_def trans_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma resolve_address_bits'_sbcorres:
+  shows
+  "s_bcorres (resolve_address_bits' TYPE('a::state_ext) a)
+            (resolve_address_bits' TYPE(unit) a) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (resolve_address_bits' TYPE('a) a) (resolve_address_bits' TYPE(unit) a) s<\STATESEP>proof (induct a arbitrary: s rule: resolve_address_bits'.induct[where ?a0.0="TYPE('a::state_ext)"])<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>z cap cref x. (\<And>x61 x62 x63 v s s' rv st rva sta rvb stb rvc stc x. \<lbrakk>cap = CNodeCap x61 x62 x63; x62 + length x63 \<noteq> 0; (Inr v, s') \<in> fst (whenE (\<not> x63 \<le> cref) (throwError $ GuardMismatch (length cref) x63) s); (Inr rv, st) \<in> fst (whenE (length cref < x62 + length x63) (throwError $ DepthMismatch (length cref) (x62 + length x63)) s'); (Inr rva, sta) \<in> fst ((returnOk $ take x62 (drop (length x63) cref)) st); (Inr rvb, stb) \<in> fst ((returnOk $ drop (x62 + length x63) cref) sta); rvb \<noteq> []; (Inr rvc, stc) \<in> fst ((liftE $ get_cap (x61, rva)) stb); is_cnode_cap rvc\<rbrakk> \<Longrightarrow> s_bcorres (resolve_address_bits' z (rvc, rvb)) (resolve_address_bits' TYPE(unit) (rvc, rvb)) x) \<Longrightarrow> s_bcorres (resolve_address_bits' z (cap, cref)) (resolve_address_bits' TYPE(unit) (cap, cref)) x<\STATESEP>case (1 z cap cref s')<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>cap = CNodeCap ?x61.0 ?x62.0 ?x63.0; ?x62.0 + length ?x63.0 \<noteq> 0; (Inr ?v, ?s') \<in> fst (whenE (\<not> ?x63.0 \<le> cref) (throwError $ GuardMismatch (length cref) ?x63.0) ?s); (Inr ?rv, ?st) \<in> fst (whenE (length cref < ?x62.0 + length ?x63.0) (throwError $ DepthMismatch (length cref) (?x62.0 + length ?x63.0)) ?s'); (Inr ?rva, ?sta) \<in> fst ((returnOk $ take ?x62.0 (drop (length ?x63.0) cref)) ?st); (Inr ?rvb, ?stb) \<in> fst ((returnOk $ drop (?x62.0 + length ?x63.0) cref) ?sta); ?rvb \<noteq> []; (Inr ?rvc, ?stc) \<in> fst ((liftE $ get_cap (?x61.0, ?rva)) ?stb); is_cnode_cap ?rvc\<rbrakk> \<Longrightarrow> s_bcorres (resolve_address_bits' z (?rvc, ?rvb)) (resolve_address_bits' TYPE(unit) (?rvc, ?rvb)) ?sa
+
+goal (1 subgoal):
+ 1. \<And>z cap cref x. (\<And>x61 x62 x63 v s s' rv st rva sta rvb stb rvc stc x. \<lbrakk>cap = CNodeCap x61 x62 x63; x62 + length x63 \<noteq> 0; (Inr v, s') \<in> fst (whenE (\<not> x63 \<le> cref) (throwError $ GuardMismatch (length cref) x63) s); (Inr rv, st) \<in> fst (whenE (length cref < x62 + length x63) (throwError $ DepthMismatch (length cref) (x62 + length x63)) s'); (Inr rva, sta) \<in> fst ((returnOk $ take x62 (drop (length x63) cref)) st); (Inr rvb, stb) \<in> fst ((returnOk $ drop (x62 + length x63) cref) sta); rvb \<noteq> []; (Inr rvc, stc) \<in> fst ((liftE $ get_cap (x61, rva)) stb); is_cnode_cap rvc\<rbrakk> \<Longrightarrow> s_bcorres (resolve_address_bits' z (rvc, rvb)) (resolve_address_bits' TYPE(unit) (rvc, rvb)) x) \<Longrightarrow> s_bcorres (resolve_address_bits' z (cap, cref)) (resolve_address_bits' TYPE(unit) (cap, cref)) x<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (resolve_address_bits' z (cap, cref)) (resolve_address_bits' TYPE(unit) (cap, cref)) s'<\STATESEP>apply (simp add: resolve_address_bits'.simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (case cap of CNodeCap oref radix_bits guard \<Rightarrow> if radix_bits + length guard = 0 then fail else doE whenE (\<not> guard \<le> cref) (throwError $ GuardMismatch (length cref) guard);
+whenE (length cref < radix_bits + length guard) (throwError $ DepthMismatch (length cref) (radix_bits + length guard));
+offset <- returnOk $ take radix_bits (drop (length guard) cref);
+rest <- returnOk $ drop (radix_bits + length guard) cref;
+if rest = [] then returnOk ((oref, offset), []) else doE next_cap <- liftE $ get_cap (oref, offset);
+if is_cnode_cap next_cap then resolve_address_bits' z (next_cap, rest) else returnOk ((oref, offset), rest)
+odE
+odE | _ \<Rightarrow> throwError InvalidRoot) (case cap of CNodeCap oref radix_bits guard \<Rightarrow> if radix_bits + length guard = 0 then fail else doE whenE (\<not> guard \<le> cref) (throwError $ GuardMismatch (length cref) guard);
+whenE (length cref < radix_bits + length guard) (throwError $ DepthMismatch (length cref) (radix_bits + length guard));
+offset <- returnOk $ take radix_bits (drop (length guard) cref);
+rest <- returnOk $ drop (radix_bits + length guard) cref;
+if rest = [] then returnOk ((oref, offset), []) else doE next_cap <- liftE $ get_cap (oref, offset);
+if is_cnode_cap next_cap then resolve_address_bits' TYPE(unit) (next_cap, rest) else returnOk ((oref, offset), rest)
+odE
+odE | _ \<Rightarrow> throwError InvalidRoot) s'<\STATESEP>apply (wp | wpc | intro impI conjI allI | simp split: cap.splits | (rule "1", (simp add: in_monad | force)+) | wp (once) drop_sbcorres_underlying)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+s_bcorres (resolve_address_bits' z (cap, cref)) (resolve_address_bits' TYPE(unit) (cap, cref)) s'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma resolve_address_bits_bcorres[wp]: "bcorres (resolve_address_bits a) (resolve_address_bits a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (resolve_address_bits a) (resolve_address_bits a)<\STATESEP>apply (simp add: resolve_address_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (resolve_address_bits' TYPE('a) a) (resolve_address_bits' TYPE(unit) a)<\STATESEP>apply (rule use_sbcorres_underlying)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. s_bcorres (resolve_address_bits' TYPE('a) a) (resolve_address_bits' TYPE(unit) a) s<\STATESEP>apply (rule resolve_address_bits'_sbcorres)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_cap_fault_on_failure[wp]: "bcorres f f' \<Longrightarrow> bcorres (cap_fault_on_failure a b f) (cap_fault_on_failure a b f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (cap_fault_on_failure a b f) (cap_fault_on_failure a b f')<\STATESEP>apply (simp add: cap_fault_on_failure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (f <handle2> throwError \<circ> CapFault a b) (f' <handle2> throwError \<circ> CapFault a b)<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas in_use_frame_truncate[simp] = more_update.in_user_frame_update[where f="\<lambda>_.()"]<\STATESEP>0<\TRANSEP><\STATESEP>lemma lookup_error_on_failure_bcorres[wp]: "bcorres b b' \<Longrightarrow> bcorres (lookup_error_on_failure a b) (lookup_error_on_failure a b')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres b b' \<Longrightarrow> bcorres (lookup_error_on_failure a b) (lookup_error_on_failure a b')<\STATESEP>apply (simp add: lookup_error_on_failure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres b b' \<Longrightarrow> bcorres (b <handle2> throwError \<circ> FailedLookup a) (b' <handle2> throwError \<circ> FailedLookup a)<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_on_failure_bcorres[wp]: "bcorres f f' \<Longrightarrow> bcorres (empty_on_failure f) (empty_on_failure f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (empty_on_failure f) (empty_on_failure f')<\STATESEP>apply (simp add: empty_on_failure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (f <catch> (\<lambda>x. return [])) (f' <catch> (\<lambda>x. return []))<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma unify_failure_bcorres[wp]: "bcorres f f' \<Longrightarrow> bcorres (unify_failure f) (unify_failure f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (unify_failure f) (unify_failure f')<\STATESEP>apply (simp add: unify_failure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (f <handle2> (\<lambda>x. throwError ())) (f' <handle2> (\<lambda>x. throwError ()))<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma const_on_failure_bcorres[wp]: "bcorres f f' \<Longrightarrow> bcorres (const_on_failure c f) (const_on_failure c f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (const_on_failure c f) (const_on_failure c f')<\STATESEP>apply (simp add: const_on_failure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres f f' \<Longrightarrow> bcorres (f <catch> (\<lambda>x. return c)) (f' <catch> (\<lambda>x. return c))<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: lookup_target_slot,lookup_cap,load_cap_transfer truncate_state (simp: gets_the_def ignore: loadWord)<\STATESEP>0<\TRANSEP><\STATESEP>lemma get_receive_slots_bcorres[wp]: "bcorres (get_receive_slots a b) (get_receive_slots a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (get_receive_slots a b) (get_receive_slots a b)<\STATESEP>by (cases b; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in BCorres2_AI) make_fault_msg_bcorres[wp]:
+  "bcorres (make_fault_msg a b :: 'a state \<Rightarrow> _) (make_fault_msg a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (make_fault_msg a b) (make_fault_msg a b)<\STATESEP>apply (cases a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x11 x12 x13. a = CapFault x11 x12 x13 \<Longrightarrow> bcorres (make_fault_msg a b) (make_fault_msg a b)
+ 2. \<And>x2. a = UnknownSyscallException x2 \<Longrightarrow> bcorres (make_fault_msg a b) (make_fault_msg a b)
+ 3. \<And>x31 x32. a = UserException x31 x32 \<Longrightarrow> bcorres (make_fault_msg a b) (make_fault_msg a b)
+ 4. \<And>x4. a = ArchFault x4 \<Longrightarrow> bcorres (make_fault_msg a b) (make_fault_msg a b)<\STATESEP>apply (wp | wpc | simp | intro impI conjI allI)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in BCorres2_AI) handle_fault_reply_bcorres[wp]:
+  "bcorres (handle_fault_reply a b c d :: 'a state \<Rightarrow> _) (handle_fault_reply a b c d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (handle_fault_reply a b c d) (handle_fault_reply a b c d)<\STATESEP>apply (cases a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x11 x12 x13. a = CapFault x11 x12 x13 \<Longrightarrow> bcorres (handle_fault_reply a b c d) (handle_fault_reply a b c d)
+ 2. \<And>x2. a = UnknownSyscallException x2 \<Longrightarrow> bcorres (handle_fault_reply a b c d) (handle_fault_reply a b c d)
+ 3. \<And>x31 x32. a = UserException x31 x32 \<Longrightarrow> bcorres (handle_fault_reply a b c d) (handle_fault_reply a b c d)
+ 4. \<And>x4. a = ArchFault x4 \<Longrightarrow> bcorres (handle_fault_reply a b c d) (handle_fault_reply a b c d)<\STATESEP>apply (wp | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: lookup_source_slot,ensure_empty,lookup_pivot_slot truncate_state<\STATESEP>0<\TRANSEP><\STATESEP>declare option.case_cong[cong]<\STATESEP>0<\TRANSEP><\STATESEP>crunch (bcorres)bcorres[wp]: range_check truncate_state<\STATESEP>0<\TRANSEP><\STATESEP>lemma decode_read_registers_bcorres[wp]: "bcorres (decode_read_registers a (cap.ThreadCap b)) (decode_read_registers a (cap.ThreadCap b))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (decode_read_registers a (ThreadCap b)) (decode_read_registers a (ThreadCap b))<\STATESEP>apply (simp add: decode_read_registers_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (case a of [] \<Rightarrow> throwError TruncatedMessage | [flags] \<Rightarrow> throwError TruncatedMessage | flags # n # x \<Rightarrow> doE range_check n 1 $ word_of_nat (length frameRegisters + length gpRegisters);
+p <- case ThreadCap b of ThreadCap p \<Rightarrow> returnOk p;
+self <- liftE $ gets cur_thread;
+whenE (p = self) $ throwError IllegalOperation;
+returnOk $ ReadRegisters p (flags !! 0) n ArchDefaultExtraRegisters
+odE) (case a of [] \<Rightarrow> throwError TruncatedMessage | [flags] \<Rightarrow> throwError TruncatedMessage | flags # n # x \<Rightarrow> doE range_check n 1 $ word_of_nat (length frameRegisters + length gpRegisters);
+p <- case ThreadCap b of ThreadCap p \<Rightarrow> returnOk p;
+self <- liftE $ gets cur_thread;
+whenE (p = self) $ throwError IllegalOperation;
+returnOk $ ReadRegisters p (flags !! 0) n ArchDefaultExtraRegisters
+odE)<\STATESEP>apply (wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma decode_write_registers_bcorres[wp]: "bcorres (decode_write_registers a (cap.ThreadCap b)) (decode_write_registers a (cap.ThreadCap b))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (decode_write_registers a (ThreadCap b)) (decode_write_registers a (ThreadCap b))<\STATESEP>apply (simp add: decode_write_registers_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (case a of [] \<Rightarrow> throwError TruncatedMessage | [flags] \<Rightarrow> throwError TruncatedMessage | flags # n # values \<Rightarrow> doE whenE (length values < unat n) $ throwError TruncatedMessage;
+p <- case ThreadCap b of ThreadCap p \<Rightarrow> returnOk p;
+self <- liftE $ gets cur_thread;
+whenE (p = self) $ throwError IllegalOperation;
+returnOk $ WriteRegisters p (flags !! 0) (take (unat n) values) ArchDefaultExtraRegisters
+odE) (case a of [] \<Rightarrow> throwError TruncatedMessage | [flags] \<Rightarrow> throwError TruncatedMessage | flags # n # values \<Rightarrow> doE whenE (length values < unat n) $ throwError TruncatedMessage;
+p <- case ThreadCap b of ThreadCap p \<Rightarrow> returnOk p;
+self <- liftE $ gets cur_thread;
+whenE (p = self) $ throwError IllegalOperation;
+returnOk $ WriteRegisters p (flags !! 0) (take (unat n) values) ArchDefaultExtraRegisters
+odE)<\STATESEP>apply (wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma decode_copy_registers_bcorres[wp]: "bcorres (decode_copy_registers a (cap.ThreadCap b) e) (decode_copy_registers a (cap.ThreadCap b) e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (decode_copy_registers a (ThreadCap b) e) (decode_copy_registers a (ThreadCap b) e)<\STATESEP>apply (simp add: decode_copy_registers_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (case a of [] \<Rightarrow> throwError TruncatedMessage | flags # x \<Rightarrow> doE suspend_source <- returnOk (flags !! 0);
+resume_target <- returnOk (flags !! 1);
+transfer_frame <- returnOk (flags !! 2);
+transfer_integer <- returnOk (flags !! 3);
+whenE (e = []) $ throwError TruncatedMessage;
+src_tcb <- case e of [] \<Rightarrow> throwError $ InvalidCapability 1 | ThreadCap p # x \<Rightarrow> returnOk p | _ # x \<Rightarrow> throwError $ InvalidCapability 1;
+p <- case ThreadCap b of ThreadCap p \<Rightarrow> returnOk p;
+returnOk $ CopyRegisters p src_tcb suspend_source resume_target transfer_frame transfer_integer ArchDefaultExtraRegisters
+odE) (case a of [] \<Rightarrow> throwError TruncatedMessage | flags # x \<Rightarrow> doE suspend_source <- returnOk (flags !! 0);
+resume_target <- returnOk (flags !! 1);
+transfer_frame <- returnOk (flags !! 2);
+transfer_integer <- returnOk (flags !! 3);
+whenE (e = []) $ throwError TruncatedMessage;
+src_tcb <- case e of [] \<Rightarrow> throwError $ InvalidCapability 1 | ThreadCap p # x \<Rightarrow> returnOk p | _ # x \<Rightarrow> throwError $ InvalidCapability 1;
+p <- case ThreadCap b of ThreadCap p \<Rightarrow> returnOk p;
+returnOk $ CopyRegisters p src_tcb suspend_source resume_target transfer_frame transfer_integer ArchDefaultExtraRegisters
+odE)<\STATESEP>apply (wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_first:"x \<in> fst (f s) \<Longrightarrow> x \<in> fst ((f \<sqinter> g) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> fst (f s) \<Longrightarrow> x \<in> fst ((f \<sqinter> g) s)<\STATESEP>by (simp add: alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_second:"x \<in> fst (g s) \<Longrightarrow> x \<in> fst ((f \<sqinter> g) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> fst (g s) \<Longrightarrow> x \<in> fst ((f \<sqinter> g) s)<\STATESEP>by (simp add: alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bcorres_underlying_dest: "bcorres_underlying l f k \<Longrightarrow> ((),s') \<in> fst (f s) \<Longrightarrow>
+       ((),l s') \<in> fst (k (l s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>bcorres_underlying l f k; ((), s') \<in> fst (f s)\<rbrakk> \<Longrightarrow> ((), l s') \<in> fst (k (l s))<\STATESEP>apply (clarsimp simp add: bcorres_underlying_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. (\<lambda>x. case x of (x, y) \<Rightarrow> ((), l y)) ` fst (f s) \<subseteq> fst (k (l s)); ((), s') \<in> fst (f s)\<rbrakk> \<Longrightarrow> ((), l s') \<in> fst (k (l s))<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma trans_state_twice[simp]: "trans_state (\<lambda>_. e) (trans_state f s) = trans_state (\<lambda>_. e) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. trans_state (\<lambda>_. e) (trans_state f s) = trans_state (\<lambda>_. e) s<\STATESEP>by (rule trans_state_update'')<\STATESEP>1<\TRANSEP><\STATESEP>lemma guarded_sub_switch: "((),x) \<in> fst (guarded_switch_to word s) \<Longrightarrow>
+       ((),x) \<in> fst (switch_to_thread word s)
+       \<and> (\<exists>y. get_tcb word s = Some y \<and> runnable (tcb_state y))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((), x) \<in> fst (guarded_switch_to word s) \<Longrightarrow> ((), x) \<in> fst (switch_to_thread word s) \<and> (\<exists>y. get_tcb word s = Some y \<and> runnable (tcb_state y))<\STATESEP>apply (clarsimp simp add: guarded_switch_to_def bind_def
+                            get_thread_state_def
+                            thread_get_def
+                            in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma truncate_state_updates[simp]:
+  "truncate_state (scheduler_action_update f s) = truncate_state s"
+  "truncate_state (ready_queues_update g s) = truncate_state s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. truncate_state (scheduler_action_update f s) = truncate_state s &&& truncate_state (ready_queues_update g s) = truncate_state s<\STATESEP>by (rule trans_state_update'')+<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_before_assert_opt:
+  "do s \<leftarrow> assert_opt x; s' \<leftarrow> get; f s s' od
+    = do s' \<leftarrow> get; s \<leftarrow> assert_opt x; f s s' od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do s <- assert_opt x;
+get >>= f s
+od = do s' <- get;
+s <- assert_opt x;
+f s s'
+od<\STATESEP>apply (cases x, simp_all add: assert_opt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = None \<Longrightarrow> fail = do s' <- get;
+fail
+od<\STATESEP>apply (simp add: ext exec_get)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma s_bcorres_get_left:
+  "(s_bcorres_underlying t (get >>= f) g s)
+    = (s_bcorres_underlying t (f s) g s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres_underlying t (get >>= f) g s = s_bcorres_underlying t (f s) g s<\STATESEP>by (simp add: s_bcorres_underlying_def exec_get)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_outside_alternative:
+  "alternative (get >>= f) g
+    = do s \<leftarrow> get; alternative (f s) g od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (get >>= f \<sqinter> g) = do s <- get;
+f s \<sqinter> g
+od<\STATESEP>by (simp add: alternative_def exec_get fun_eq_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas schedule_unfold_all = schedule_def allActiveTCBs_def
+                        get_thread_state_def thread_get_def getActiveTCB_def<\STATESEP>0<\TRANSEP><\STATESEP>context BCorres2_AI begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma switch_thread_bcorreses:
+  "bcorres (switch_to_idle_thread :: 'a state \<Rightarrow> _) switch_to_idle_thread"
+  "bcorres (switch_to_thread t :: 'a state \<Rightarrow> _) (switch_to_thread t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres switch_to_idle_thread switch_to_idle_thread &&& bcorres (switch_to_thread t) (switch_to_thread t)<\STATESEP>apply (simp_all add: switch_to_idle_thread_def switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. bcorres (do thread <- gets idle_thread;
+y <- arch_switch_to_idle_thread;
+modify (cur_thread_update (\<lambda>_. thread))
+od) (do thread <- gets idle_thread;
+y <- arch_switch_to_idle_thread;
+modify (cur_thread_update (\<lambda>_. thread))
+od)
+ 2. bcorres (do state <- get;
+y <- assert (\<exists>y. get_tcb t state = Some y);
+y <- arch_switch_to_thread t;
+y <- do_extended_op (tcb_sched_action tcb_sched_dequeue t);
+modify (cur_thread_update (\<lambda>_. t))
+od) (do state <- get;
+y <- assert (\<exists>y. get_tcb t state = Some y);
+y <- arch_switch_to_thread t;
+y <- do_extended_op (tcb_sched_action tcb_sched_dequeue t);
+modify (cur_thread_update (\<lambda>_. t))
+od)<\STATESEP>apply (wp | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma guarded_switch_bcorres: "s_bcorres (guarded_switch_to t :: 'a state \<Rightarrow> _) schedule s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s_bcorres (guarded_switch_to t) schedule s<\STATESEP>using switch_thread_bcorreses(2)[where t=t]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+bcorres (switch_to_thread t) (switch_to_thread t)
+
+goal (1 subgoal):
+ 1. s_bcorres (guarded_switch_to t) schedule s<\STATESEP>apply (clarsimp simp: schedule_unfold_all s_bcorres_underlying_def
+                        in_monad in_select
+            split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba. \<lbrakk>bcorres (switch_to_thread t) (switch_to_thread t); ((), ba) \<in> fst (guarded_switch_to t s); ((), truncate_state ba) \<notin> fst ((if idle_thread s = cur_thread s then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread) (truncate_state s))\<rbrakk> \<Longrightarrow> \<exists>thread. (\<exists>y. (case get_tcb thread s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable (tcb_state tcb) then Some tcb else None) = Some y) \<and> ((), truncate_state ba) \<in> fst ((if thread = cur_thread s then return () \<sqinter> switch_to_thread (cur_thread s) else switch_to_thread thread) (truncate_state s))<\STATESEP>apply (drule guarded_sub_switch)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba. \<lbrakk>bcorres (switch_to_thread t) (switch_to_thread t); ((), truncate_state ba) \<notin> fst ((if idle_thread s = cur_thread s then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread) (truncate_state s)); ((), ba) \<in> fst (switch_to_thread t s) \<and> (\<exists>y. get_tcb t s = Some y \<and> runnable (tcb_state y))\<rbrakk> \<Longrightarrow> \<exists>thread. (\<exists>y. (case get_tcb thread s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable (tcb_state tcb) then Some tcb else None) = Some y) \<and> ((), truncate_state ba) \<in> fst ((if thread = cur_thread s then return () \<sqinter> switch_to_thread (cur_thread s) else switch_to_thread thread) (truncate_state s))<\STATESEP>apply (rule_tac x=t in exI, clarsimp split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba y. \<lbrakk>bcorres (switch_to_thread t) (switch_to_thread t); ((), truncate_state ba) \<notin> fst ((if idle_thread s = cur_thread s then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread) (truncate_state s)); ((), ba) \<in> fst (switch_to_thread t s); get_tcb t s = Some y; runnable (tcb_state y)\<rbrakk> \<Longrightarrow> ((), truncate_state ba) \<in> fst ((if t = cur_thread s then return () \<sqinter> switch_to_thread (cur_thread s) else switch_to_thread t) (truncate_state s))<\STATESEP>apply (drule_tac s=s in drop_sbcorres_underlying)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba y. \<lbrakk>((), truncate_state ba) \<notin> fst ((if idle_thread s = cur_thread s then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread) (truncate_state s)); ((), ba) \<in> fst (switch_to_thread t s); get_tcb t s = Some y; runnable (tcb_state y); s_bcorres (switch_to_thread t) (switch_to_thread t) s\<rbrakk> \<Longrightarrow> ((), truncate_state ba) \<in> fst ((if t = cur_thread s then return () \<sqinter> switch_to_thread (cur_thread s) else switch_to_thread t) (truncate_state s))<\STATESEP>apply (clarsimp simp: s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba y. \<lbrakk>((), truncate_state ba) \<notin> fst ((if idle_thread s = cur_thread s then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread) (truncate_state s)); ((), ba) \<in> fst (switch_to_thread t s); get_tcb t s = Some y; runnable (tcb_state y); (\<lambda>x. case x of (x, y) \<Rightarrow> ((), truncate_state y)) ` fst (switch_to_thread t s) \<subseteq> fst (switch_to_thread t (truncate_state s))\<rbrakk> \<Longrightarrow> (t = cur_thread s \<longrightarrow> ((), truncate_state ba) \<in> fst ((return () \<sqinter> switch_to_thread (cur_thread s)) (truncate_state s))) \<and> (t \<noteq> cur_thread s \<longrightarrow> ((), truncate_state ba) \<in> fst (switch_to_thread t (truncate_state s)))<\STATESEP>apply (auto intro!: alternative_second)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma choose_thread_bcorres: "BCorres2_AI TYPE(det_ext)
+    \<Longrightarrow> s_bcorres choose_thread schedule s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. BCorres2_AI TYPE(det_ext) \<Longrightarrow> s_bcorres choose_thread schedule s<\STATESEP>apply (frule BCorres2_AI.switch_thread_bcorreses(1))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>BCorres2_AI TYPE(det_ext); bcorres switch_to_idle_thread switch_to_idle_thread\<rbrakk> \<Longrightarrow> s_bcorres choose_thread schedule s<\STATESEP>apply (simp add: choose_thread_def gets_def s_bcorres_get_left
+                   BCorres2_AI.guarded_switch_bcorres)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>BCorres2_AI TYPE(det_ext); bcorres switch_to_idle_thread switch_to_idle_thread\<rbrakk> \<Longrightarrow> (\<forall>prio. ready_queues s (cur_domain s) prio = []) \<longrightarrow> s_bcorres switch_to_idle_thread schedule s<\STATESEP>apply (clarsimp simp: schedule_def s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba. \<lbrakk>BCorres2_AI TYPE(det_ext); bcorres switch_to_idle_thread switch_to_idle_thread; \<forall>prio. ready_queues s (cur_domain s) prio = []; ((), ba) \<in> fst (switch_to_idle_thread s)\<rbrakk> \<Longrightarrow> ((), truncate_state ba) \<in> fst ((do cur <- gets cur_thread;
+threads <- allActiveTCBs;
+thread <- select threads;
+if thread = cur then return () \<sqinter> switch_to_thread cur else switch_to_thread thread
+od \<sqinter> do cur <- gets cur_thread;
+idl <- gets idle_thread;
+if idl = cur then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread
+od) (truncate_state s))<\STATESEP>apply (drule_tac s=s in drop_sbcorres_underlying)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba. \<lbrakk>BCorres2_AI TYPE(det_ext); \<forall>prio. ready_queues s (cur_domain s) prio = []; ((), ba) \<in> fst (switch_to_idle_thread s); s_bcorres switch_to_idle_thread switch_to_idle_thread s\<rbrakk> \<Longrightarrow> ((), truncate_state ba) \<in> fst ((do cur <- gets cur_thread;
+threads <- allActiveTCBs;
+thread <- select threads;
+if thread = cur then return () \<sqinter> switch_to_thread cur else switch_to_thread thread
+od \<sqinter> do cur <- gets cur_thread;
+idl <- gets idle_thread;
+if idl = cur then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread
+od) (truncate_state s))<\STATESEP>apply (clarsimp simp: s_bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ba. \<lbrakk>BCorres2_AI TYPE(det_ext); \<forall>prio. ready_queues s (cur_domain s) prio = []; ((), ba) \<in> fst (switch_to_idle_thread s); (\<lambda>x. case x of (x, y) \<Rightarrow> ((), truncate_state y)) ` fst (switch_to_idle_thread s) \<subseteq> fst (switch_to_idle_thread (truncate_state s))\<rbrakk> \<Longrightarrow> ((), truncate_state ba) \<in> fst ((do cur <- gets cur_thread;
+threads <- allActiveTCBs;
+thread <- select threads;
+if thread = cur then return () \<sqinter> switch_to_thread cur else switch_to_thread thread
+od \<sqinter> do cur <- gets cur_thread;
+idl <- gets idle_thread;
+if idl = cur then return () \<sqinter> switch_to_idle_thread else switch_to_idle_thread
+od) (truncate_state s))<\STATESEP>apply (auto intro!: alternative_second simp: exec_gets)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_sched_action_bcorres:
+  "bcorres (tcb_sched_action a b) (return ())"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bcorres (tcb_sched_action a b) (return ())<\STATESEP>by (clarsimp simp: bcorres_underlying_def s_bcorres_underlying_def return_def
+              dest!: tcb_sched_action_extended.ex_st)<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_s_bcorres_underlying[wp]:
+  "(P \<Longrightarrow> s_bcorres_underlying t f f' s) \<Longrightarrow> (\<not>P \<Longrightarrow> s_bcorres_underlying t g g' s)
+  \<Longrightarrow> s_bcorres_underlying t (if P then f else g) (if P then f' else g') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> s_bcorres_underlying t f f' s; \<not> P \<Longrightarrow> s_bcorres_underlying t g g' s\<rbrakk> \<Longrightarrow> s_bcorres_underlying t (if P then f else g) (if P then f' else g') s<\STATESEP>by (simp add: return_s_bcorres_underlying)<\STATESEP>1<\TRANSEP><\STATESEP>lemma schedule_choose_new_thread_bcorres1:
+  "BCorres2_AI TYPE(det_ext) \<Longrightarrow> bcorres schedule_choose_new_thread schedule"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. BCorres2_AI TYPE(det_ext) \<Longrightarrow> bcorres schedule_choose_new_thread schedule<\STATESEP>unfolding schedule_choose_new_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. BCorres2_AI TYPE(det_ext) \<Longrightarrow> bcorres (do dom_time <- gets domain_time;
+when (dom_time = 0) next_domain;
+choose_thread;
+set_scheduler_action resume_cur_thread
+od) schedule<\STATESEP>apply (clarsimp simp: bcorres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> s_bcorres (do dom_time <- gets domain_time;
+y <- when (dom_time = 0) next_domain;
+y <- choose_thread;
+set_scheduler_action resume_cur_thread
+od) schedule s<\STATESEP>apply (simp add: schedule_det_ext_ext_def s_bcorres_get_left
+                   gets_def get_thread_state_def thread_get_def gets_the_def
+                   bind_assoc get_before_assert_opt ethread_get_def schedule_switch_thread_fastfail_def
+                   when_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> (domain_time s = 0 \<longrightarrow> s_bcorres (do y <- next_domain;
+y <- choose_thread;
+set_scheduler_action resume_cur_thread
+od) schedule s) \<and> (domain_time s \<noteq> 0 \<longrightarrow> s_bcorres (do y <- choose_thread;
+set_scheduler_action resume_cur_thread
+od) schedule s)<\STATESEP>apply (rule conjI; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>BCorres2_AI TYPE(det_ext); domain_time s = 0\<rbrakk> \<Longrightarrow> s_bcorres (do y <- next_domain;
+y <- choose_thread;
+set_scheduler_action resume_cur_thread
+od) schedule s
+ 2. \<And>s. \<lbrakk>BCorres2_AI TYPE(det_ext); domain_time s \<noteq> 0\<rbrakk> \<Longrightarrow> s_bcorres (do y <- choose_thread;
+set_scheduler_action resume_cur_thread
+od) schedule s<\STATESEP>apply (rule s_bcorres_underlying_split[where g'="\<lambda>_. return ()",
+                  OF _ choose_thread_bcorres, simplified]
+               s_bcorres_underlying_split[where f'="return ()", simplified]
+         | fastforce simp: s_bcorres_underlying_def set_scheduler_action_def
+                           when_def exec_gets simpler_modify_def return_def
+                           next_domain_def Let_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma schedule_bcorres1:
+  notes bsplits =
+          s_bcorres_underlying_split[where g'="\<lambda>_. return ()",
+                                     OF _ choose_thread_bcorres, simplified]
+          s_bcorres_underlying_split[where g'="\<lambda>_. return ()",
+                                     OF _ BCorres2_AI.guarded_switch_bcorres, simplified]
+          s_bcorres_underlying_split[where f'="return ()", simplified]
+  notes bdefs = schedule_det_ext_ext_def s_bcorres_get_left
+                gets_def get_thread_state_def thread_get_def gets_the_def
+                bind_assoc get_before_assert_opt ethread_get_def
+                schedule_switch_thread_fastfail_def when_def
+                tcb_sched_action_bcorres drop_sbcorres_underlying return_s_bcorres_underlying
+  notes unfolds = s_bcorres_underlying_def set_scheduler_action_def
+                   simpler_modify_def return_def
+  shows "BCorres2_AI TYPE(det_ext) \<Longrightarrow> bcorres (schedule :: (unit,det_ext) s_monad) schedule"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. BCorres2_AI TYPE(det_ext) \<Longrightarrow> bcorres schedule schedule<\STATESEP>supply if_split[split del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. BCorres2_AI TYPE(det_ext) \<Longrightarrow> bcorres schedule schedule<\STATESEP>apply (clarsimp simp: bcorres_underlying_def fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> s_bcorres schedule schedule s<\STATESEP>apply (simp add: bdefs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> s_bcorres (do tcb <- assert_opt (get_tcb (cur_thread s) s);
+case scheduler_action s of resume_cur_thread \<Rightarrow> do id <- gets idle_thread;
+assert (runnable (tcb_state tcb) \<or> cur_thread s = id);
+return ()
+od | switch_thread candidate \<Rightarrow> do when (runnable (tcb_state tcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority candidate;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state tcb) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to candidate;
+set_scheduler_action resume_cur_thread
+od
+od | choose_new_thread \<Rightarrow> do when (runnable (tcb_state tcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od
+od) schedule s<\STATESEP>apply (simp add: assert_opt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> s_bcorres (do tcb <- case get_tcb (cur_thread s) s of None \<Rightarrow> fail | Some v \<Rightarrow> return v;
+case scheduler_action s of resume_cur_thread \<Rightarrow> do id <- gets idle_thread;
+assert (runnable (tcb_state tcb) \<or> cur_thread s = id);
+return ()
+od | switch_thread candidate \<Rightarrow> do when (runnable (tcb_state tcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority candidate;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state tcb) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to candidate;
+set_scheduler_action resume_cur_thread
+od
+od | choose_new_thread \<Rightarrow> do when (runnable (tcb_state tcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od
+od) schedule s<\STATESEP>apply (simp split: option.split, intro conjI impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = None\<rbrakk> \<Longrightarrow> s_bcorres fail schedule s
+ 2. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> \<forall>x2. get_tcb (cur_thread s) s = Some x2 \<longrightarrow> s_bcorres (case scheduler_action s of resume_cur_thread \<Rightarrow> do id <- gets idle_thread;
+assert (runnable (tcb_state x2) \<or> cur_thread s = id);
+return ()
+od | switch_thread candidate \<Rightarrow> do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority candidate;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state x2) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to candidate;
+set_scheduler_action resume_cur_thread
+od
+od | choose_new_thread \<Rightarrow> do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od) schedule s<\STATESEP>apply (simp add: s_bcorres_underlying_def fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. BCorres2_AI TYPE(det_ext) \<Longrightarrow> \<forall>x2. get_tcb (cur_thread s) s = Some x2 \<longrightarrow> s_bcorres (case scheduler_action s of resume_cur_thread \<Rightarrow> do id <- gets idle_thread;
+assert (runnable (tcb_state x2) \<or> cur_thread s = id);
+return ()
+od | switch_thread candidate \<Rightarrow> do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority candidate;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state x2) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to candidate;
+set_scheduler_action resume_cur_thread
+od
+od | choose_new_thread \<Rightarrow> do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od) schedule s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2\<rbrakk> \<Longrightarrow> s_bcorres (case scheduler_action s of resume_cur_thread \<Rightarrow> do id <- gets idle_thread;
+assert (runnable (tcb_state x2) \<or> cur_thread s = id);
+return ()
+od | switch_thread candidate \<Rightarrow> do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority candidate;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state x2) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append candidate;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to candidate;
+set_scheduler_action resume_cur_thread
+od
+od | choose_new_thread \<Rightarrow> do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od) schedule s<\STATESEP>apply (split scheduler_action.split, intro conjI impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2; scheduler_action s = resume_cur_thread\<rbrakk> \<Longrightarrow> s_bcorres (do id <- gets idle_thread;
+assert (runnable (tcb_state x2) \<or> cur_thread s = id);
+return ()
+od) schedule s
+ 2. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2\<rbrakk> \<Longrightarrow> \<forall>x2a. scheduler_action s = switch_thread x2a \<longrightarrow> s_bcorres (do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority x2a;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue x2a;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state x2) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append x2a;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to x2a;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s
+ 3. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2; scheduler_action s = choose_new_thread\<rbrakk> \<Longrightarrow> s_bcorres (do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od) schedule s<\STATESEP>subgoal for s<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2_; scheduler_action s = resume_cur_thread\<rbrakk> \<Longrightarrow> s_bcorres (do id <- gets idle_thread;
+assert (runnable (tcb_state x2_) \<or> cur_thread s = id);
+return ()
+od) schedule s<\STATESEP>apply (clarsimp simp: s_bcorres_underlying_def schedule_def allActiveTCBs_def
+                            in_monad in_select getActiveTCB_def
+                       split: if_split)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2_; scheduler_action s = resume_cur_thread; runnable (tcb_state x2_) \<or> cur_thread s = idle_thread s\<rbrakk> \<Longrightarrow> (runnable (tcb_state x2_) \<longrightarrow> idle_thread s \<noteq> cur_thread s \<longrightarrow> (\<exists>thread. thread \<noteq> cur_thread s \<longrightarrow> (\<exists>y. (case get_tcb thread s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable (tcb_state tcb) then Some tcb else None) = Some y) \<and> ((), truncate_state s) \<in> fst (switch_to_thread thread (truncate_state s))) \<or> ((), truncate_state s) \<in> fst (switch_to_idle_thread (truncate_state s))) \<and> (\<not> runnable (tcb_state x2_) \<longrightarrow> idle_thread s \<noteq> cur_thread s \<longrightarrow> (\<exists>thread. thread \<noteq> cur_thread s \<and> (thread \<noteq> cur_thread s \<longrightarrow> (\<exists>y. (case get_tcb thread s of None \<Rightarrow> None | Some tcb \<Rightarrow> if runnable (tcb_state tcb) then Some tcb else None) = Some y) \<and> ((), truncate_state s) \<in> fst (switch_to_thread thread (truncate_state s)))) \<or> ((), truncate_state s) \<in> fst (switch_to_idle_thread (truncate_state s)))<\STATESEP>apply (fastforce simp add: switch_to_idle_thread_def in_monad in_select ex_bool_eq)<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2\<rbrakk> \<Longrightarrow> \<forall>x2a. scheduler_action s = switch_thread x2a \<longrightarrow> s_bcorres (do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority x2a;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue x2a;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state x2) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append x2a;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to x2a;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s
+ 2. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2; scheduler_action s = choose_new_thread\<rbrakk> \<Longrightarrow> s_bcorres (do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od) schedule s<\STATESEP>subgoal for s cttcb<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb\<rbrakk> \<Longrightarrow> \<forall>x2. scheduler_action s = switch_thread x2 \<longrightarrow> s_bcorres (do when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority x2;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do tcb_sched_action tcb_sched_enqueue x2;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = target_prio then do tcb_sched_action tcb_sched_append x2;
+set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (do y <- when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority x2;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = target_prio then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s<\STATESEP>apply (rule bsplits)+<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s)) s)\<rbrakk> \<Longrightarrow> s_bcorres (do it <- gets idle_thread;
+target_prio <- ethread_get tcb_priority x2;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> it) tcb_priority (cur_thread s);
+fastfail <- schedule_switch_thread_fastfail (cur_thread s) it ct_prio target_prio;
+cur_dom <- gets cur_domain;
+highest <- gets (is_highest_prio cur_dom target_prio);
+if fastfail \<and> \<not> highest then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = target_prio then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (simp add: bdefs)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s)\<rbrakk> \<Longrightarrow> s_bcorres (do tcb <- assert_opt (get_etcb x2 s');
+ct_prio <- ethread_get_when (cur_thread s \<noteq> idle_thread s') tcb_priority (cur_thread s);
+fastfail <- if cur_thread s \<noteq> idle_thread s' then return (tcb_priority tcb < ct_prio) else return True;
+s <- get;
+sa <- get;
+if fastfail \<and> \<not> is_highest_prio (cur_domain s) (tcb_priority tcb) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = tcb_priority tcb then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (simp add: assert_opt_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s)\<rbrakk> \<Longrightarrow> s_bcorres (do tcb <- case get_etcb x2 s' of None \<Rightarrow> fail | Some v \<Rightarrow> return v;
+ct_prio <- ethread_get_when (cur_thread s \<noteq> idle_thread s') tcb_priority (cur_thread s);
+fastfail <- if cur_thread s \<noteq> idle_thread s' then return (tcb_priority tcb < ct_prio) else return True;
+s <- get;
+sa <- get;
+if fastfail \<and> \<not> is_highest_prio (cur_domain s) (tcb_priority tcb) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = tcb_priority tcb then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (split option.split, simp, intro conjI impI)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); get_etcb x2 s' = None\<rbrakk> \<Longrightarrow> s_bcorres fail schedule s'
+ 2. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s)\<rbrakk> \<Longrightarrow> \<forall>x2a. get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do ct_prio <- ethread_get_when (cur_thread s \<noteq> idle_thread s') tcb_priority (cur_thread s);
+fastfail <- if cur_thread s \<noteq> idle_thread s' then return (tcb_priority x2a < ct_prio) else return True;
+s <- get;
+sa <- get;
+if fastfail \<and> \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 3. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (simp add: s_bcorres_underlying_def fail_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s)\<rbrakk> \<Longrightarrow> \<forall>x2a. get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do ct_prio <- ethread_get_when (cur_thread s \<noteq> idle_thread s') tcb_priority (cur_thread s);
+fastfail <- if cur_thread s \<noteq> idle_thread s' then return (tcb_priority x2a < ct_prio) else return True;
+s <- get;
+sa <- get;
+if fastfail \<and> \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (clarsimp simp: ethread_get_when_def split: if_split)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x2 s'. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s)\<rbrakk> \<Longrightarrow> (cur_thread s \<noteq> idle_thread s' \<longrightarrow> (\<forall>x2a. get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do ct_prio <- ethread_get tcb_priority (cur_thread s);
+s <- get;
+sa <- get;
+if tcb_priority x2a < ct_prio \<and> \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')) \<and> (cur_thread s = idle_thread s' \<longrightarrow> (\<forall>x2a. (runnable (tcb_state cttcb) \<and> undefined = tcb_priority x2a \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) undefined sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od
+od) schedule s') \<and> ((runnable (tcb_state cttcb) \<longrightarrow> undefined \<noteq> tcb_priority x2a) \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')))
+ 2. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (rule conjI; clarsimp)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); cur_thread s \<noteq> idle_thread s'; get_etcb x2 s' = Some x2a\<rbrakk> \<Longrightarrow> s_bcorres (do ct_prio <- ethread_get tcb_priority (cur_thread s);
+s <- get;
+sa <- get;
+if tcb_priority x2a < ct_prio \<and> \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> ct_prio = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (idle_thread s') s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (idle_thread s') else return ()) s); cur_thread s = idle_thread s'\<rbrakk> \<Longrightarrow> (runnable (tcb_state cttcb) \<and> undefined = tcb_priority x2a \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) undefined sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od
+od) schedule s') \<and> ((runnable (tcb_state cttcb) \<longrightarrow> undefined \<noteq> tcb_priority x2a) \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')
+ 3. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (simp add: bdefs)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); cur_thread s \<noteq> idle_thread s'; get_etcb x2 s' = Some x2a\<rbrakk> \<Longrightarrow> s_bcorres (do tcb <- assert_opt (get_etcb (cur_thread s) s');
+if tcb_priority x2a < tcb_priority tcb \<and> \<not> is_highest_prio (cur_domain s') (tcb_priority x2a) s' then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> tcb_priority tcb = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (idle_thread s') s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (idle_thread s') else return ()) s); cur_thread s = idle_thread s'\<rbrakk> \<Longrightarrow> (runnable (tcb_state cttcb) \<and> undefined = tcb_priority x2a \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) undefined sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od
+od) schedule s') \<and> ((runnable (tcb_state cttcb) \<longrightarrow> undefined \<noteq> tcb_priority x2a) \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')
+ 3. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (simp add: assert_opt_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); cur_thread s \<noteq> idle_thread s'; get_etcb x2 s' = Some x2a\<rbrakk> \<Longrightarrow> s_bcorres (do tcb <- case get_etcb (cur_thread s) s' of None \<Rightarrow> fail | Some v \<Rightarrow> return v;
+if tcb_priority x2a < tcb_priority tcb \<and> \<not> is_highest_prio (cur_domain s') (tcb_priority x2a) s' then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> tcb_priority tcb = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s'
+ 2. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (idle_thread s') s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (idle_thread s') else return ()) s); cur_thread s = idle_thread s'\<rbrakk> \<Longrightarrow> (runnable (tcb_state cttcb) \<and> undefined = tcb_priority x2a \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) undefined sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od
+od) schedule s') \<and> ((runnable (tcb_state cttcb) \<longrightarrow> undefined \<noteq> tcb_priority x2a) \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')
+ 3. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (split option.split, simp, intro conjI impI)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); cur_thread s \<noteq> idle_thread s'; get_etcb x2 s' = Some x2a; get_etcb (cur_thread s) s' = None\<rbrakk> \<Longrightarrow> s_bcorres fail schedule s'
+ 2. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); cur_thread s \<noteq> idle_thread s'; get_etcb x2 s' = Some x2a\<rbrakk> \<Longrightarrow> \<forall>x2b. get_etcb (cur_thread s) s' = Some x2b \<longrightarrow> s_bcorres (if tcb_priority x2a < tcb_priority x2b \<and> \<not> is_highest_prio (cur_domain s') (tcb_priority x2a) s' then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> tcb_priority x2b = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od) schedule s'
+ 3. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (idle_thread s') s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (idle_thread s') else return ()) s); cur_thread s = idle_thread s'\<rbrakk> \<Longrightarrow> (runnable (tcb_state cttcb) \<and> undefined = tcb_priority x2a \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) undefined sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od
+od) schedule s') \<and> ((runnable (tcb_state cttcb) \<longrightarrow> undefined \<noteq> tcb_priority x2a) \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')
+ 4. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (simp add: s_bcorres_underlying_def fail_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (cur_thread s) else return ()) s); cur_thread s \<noteq> idle_thread s'; get_etcb x2 s' = Some x2a\<rbrakk> \<Longrightarrow> \<forall>x2b. get_etcb (cur_thread s) s' = Some x2b \<longrightarrow> s_bcorres (if tcb_priority x2a < tcb_priority x2b \<and> \<not> is_highest_prio (cur_domain s') (tcb_priority x2a) s' then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else if runnable (tcb_state cttcb) \<and> tcb_priority x2b = tcb_priority x2a then do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od) schedule s'
+ 2. \<And>x2 s' x2a. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (idle_thread s') s = Some cttcb; scheduler_action s = switch_thread x2; ((), s') \<in> fst ((if runnable (tcb_state cttcb) then tcb_sched_action tcb_sched_enqueue (idle_thread s') else return ()) s); cur_thread s = idle_thread s'\<rbrakk> \<Longrightarrow> (runnable (tcb_state cttcb) \<and> undefined = tcb_priority x2a \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) undefined sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- tcb_sched_action tcb_sched_append x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od
+od) schedule s') \<and> ((runnable (tcb_state cttcb) \<longrightarrow> undefined \<noteq> tcb_priority x2a) \<longrightarrow> get_etcb x2 s' = Some x2a \<longrightarrow> s_bcorres (do s <- get;
+sa <- get;
+if \<not> is_highest_prio (cur_domain s) (tcb_priority x2a) sa then do y <- tcb_sched_action tcb_sched_enqueue x2;
+y <- set_scheduler_action choose_new_thread;
+schedule_choose_new_thread
+od else do y <- guarded_switch_to x2;
+set_scheduler_action resume_cur_thread
+od
+od) schedule s')
+ 3. \<And>x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some cttcb; scheduler_action s = switch_thread x2\<rbrakk> \<Longrightarrow> s_bcorres (when (runnable (tcb_state cttcb)) (tcb_sched_action tcb_sched_enqueue (cur_thread s))) (return ()) s<\STATESEP>apply (clarsimp simp: bdefs split: if_split
+              | rule conjI
+              | rule bsplits
+              | erule drop_sbcorres_underlying[OF schedule_choose_new_thread_bcorres1]
+              | fastforce simp: unfolds)+<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x2. \<lbrakk>BCorres2_AI TYPE(det_ext); get_tcb (cur_thread s) s = Some x2; scheduler_action s = choose_new_thread\<rbrakk> \<Longrightarrow> s_bcorres (do when (runnable (tcb_state x2)) (tcb_sched_action tcb_sched_enqueue (cur_thread s));
+schedule_choose_new_thread
+od) schedule s<\STATESEP>apply (clarsimp simp: bdefs split: if_split
+         | rule conjI
+         | rule bsplits
+         | erule drop_sbcorres_underlying[OF schedule_choose_new_thread_bcorres1])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

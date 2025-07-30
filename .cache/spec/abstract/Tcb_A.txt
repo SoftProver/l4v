@@ -1,0 +1,215 @@
+<\STATESEP>chapter "Threads and TCBs"<\STATESEP>0<\TRANSEP><\STATESEP>theory Tcb_A
+imports TcbAcc_A Schedule_A ArchTcb_A
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts
+  arch_activate_idle_thread
+  sanitise_register
+  arch_get_sanitise_register_info
+  arch_post_modify_registers<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section "Activating Threads"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "setup_reply_master thread \<equiv> do
+     old_cap <- get_cap (thread, tcb_cnode_index 2);
+     when (old_cap = NullCap) $ do
+         set_original (thread, tcb_cnode_index 2) True;
+         set_cap (ReplyCap thread True {AllowGrant, AllowWrite}) (thread, tcb_cnode_index 2)
+     od
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  restart :: "obj_ref \<Rightarrow> (unit,'z::state_ext) s_monad" where
+ "restart thread \<equiv> do
+    state \<leftarrow> get_thread_state thread;
+    when (\<not> runnable state \<and> \<not> idle state) $ do
+      cancel_ipc thread;
+      setup_reply_master thread;
+      set_thread_state thread Restart;
+      do_extended_op (tcb_sched_action (tcb_sched_enqueue) thread);
+      do_extended_op (possible_switch_to thread)
+    od
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  activate_thread :: "(unit,'z::state_ext) s_monad" where
+  "activate_thread \<equiv> do
+     thread \<leftarrow> gets cur_thread;
+     state \<leftarrow> get_thread_state thread;
+     (case state
+       of Running \<Rightarrow> return ()
+        | Restart \<Rightarrow> (do
+            pc \<leftarrow> as_user thread getRestartPC;
+            as_user thread $ setNextPC pc;
+            set_thread_state thread Running
+          od)
+        | IdleThreadState \<Rightarrow> arch_activate_idle_thread thread
+        | _ \<Rightarrow> fail)
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>section "Thread Message Formats"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  load_word_offs :: "obj_ref \<Rightarrow> nat \<Rightarrow> (machine_word,'z::state_ext) s_monad" where
+ "load_word_offs ptr offs \<equiv>
+    do_machine_op $ loadWord (ptr + of_nat (offs * word_size))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  load_word_offs_word :: "obj_ref \<Rightarrow> data \<Rightarrow> (machine_word,'z::state_ext) s_monad" where
+ "load_word_offs_word ptr offs \<equiv>
+    do_machine_op $ loadWord (ptr + (offs * word_size))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  copy_mrs :: "obj_ref \<Rightarrow> obj_ref option \<Rightarrow> obj_ref \<Rightarrow>
+               obj_ref option \<Rightarrow> length_type \<Rightarrow> (length_type,'z::state_ext) s_monad" where
+  "copy_mrs sender sbuf receiver rbuf n \<equiv>
+   do
+     hardware_mrs \<leftarrow> return $ take (unat n) msg_registers;
+     mapM (\<lambda>r. do
+         v \<leftarrow> as_user sender $ getRegister r;
+         as_user receiver $ setRegister r v
+       od) hardware_mrs;
+     buf_mrs \<leftarrow> case (sbuf, rbuf) of
+       (Some sb_ptr, Some rb_ptr) \<Rightarrow> mapM (\<lambda>x. do
+                                       v \<leftarrow> load_word_offs sb_ptr x;
+                                       store_word_offs rb_ptr x v
+                                     od)
+               [length msg_registers + 1 ..< Suc (unat n)]
+     | _ \<Rightarrow> return [];
+     return $ min n $ nat_to_len $ length hardware_mrs + length buf_mrs
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_tcb_ctable_ptr :: "obj_ref \<Rightarrow> cslot_ptr" where
+  "get_tcb_ctable_ptr tcb_ref \<equiv> (tcb_ref, tcb_cnode_index 0)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_tcb_vtable_ptr :: "obj_ref \<Rightarrow> cslot_ptr" where
+  "get_tcb_vtable_ptr tcb_ref \<equiv> (tcb_ref, tcb_cnode_index 1)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  option_update_thread :: "obj_ref \<Rightarrow> ('a \<Rightarrow> tcb \<Rightarrow> tcb) \<Rightarrow> 'a option \<Rightarrow> (unit,'z::state_ext) s_monad" where
+ "option_update_thread thread fn \<equiv> case_option (return ()) (\<lambda>v. thread_set (fn v) thread)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  check_cap_at :: "cap \<Rightarrow> cslot_ptr \<Rightarrow> (unit,'z::state_ext) s_monad \<Rightarrow> (unit,'z::state_ext) s_monad" where
+ "check_cap_at cap slot m \<equiv> do
+    cap' \<leftarrow> get_cap slot;
+    when (same_object_as cap cap') m
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  bind_notification :: "obj_ref \<Rightarrow> obj_ref \<Rightarrow> (unit,'z::state_ext) s_monad"
+where
+  "bind_notification tcbptr ntfnptr \<equiv> do
+     ntfn \<leftarrow> get_notification ntfnptr;
+     ntfn' \<leftarrow> return $ ntfn_set_bound_tcb ntfn (Some tcbptr);
+     set_notification ntfnptr ntfn';
+     set_bound_notification tcbptr $ Some ntfnptr
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>fun
+  invoke_tcb :: "tcb_invocation \<Rightarrow> (data list,'z::state_ext) p_monad"
+where
+  "invoke_tcb (Suspend thread) = liftE (do suspend thread; return [] od)"
+| "invoke_tcb (Resume thread) = liftE (do restart thread; return [] od)"
+
+| "invoke_tcb (ThreadControl target slot faultep mcp priority croot vroot buffer)
+   = doE
+    liftE $ option_update_thread target (tcb_fault_handler_update o K) faultep;
+    liftE $  case mcp of None \<Rightarrow> return()
+     | Some (newmcp, _) \<Rightarrow> set_mcpriority target newmcp;
+    (case croot of None \<Rightarrow> returnOk ()
+     | Some (new_cap, src_slot) \<Rightarrow> doE
+      cap_delete (target, tcb_cnode_index 0);
+      liftE $ check_cap_at new_cap src_slot
+            $ check_cap_at (ThreadCap target) slot
+            $ cap_insert new_cap src_slot (target, tcb_cnode_index 0)
+    odE);
+    (case vroot of None \<Rightarrow> returnOk ()
+     | Some (new_cap, src_slot) \<Rightarrow> doE
+      cap_delete (target, tcb_cnode_index 1);
+      liftE $ check_cap_at new_cap src_slot
+            $ check_cap_at (ThreadCap target) slot
+            $ cap_insert new_cap src_slot (target, tcb_cnode_index 1)
+    odE);
+    (case buffer of None \<Rightarrow> returnOk ()
+     | Some (ptr, frame) \<Rightarrow> doE
+      cap_delete (target, tcb_cnode_index 4);
+      liftE $ thread_set (\<lambda>t. t \<lparr> tcb_ipc_buffer := ptr \<rparr>) target;
+      liftE $ case frame of None \<Rightarrow> return ()
+       | Some (new_cap, src_slot) \<Rightarrow>
+            check_cap_at new_cap src_slot
+          $ check_cap_at (ThreadCap target) slot
+          $ cap_insert new_cap src_slot (target, tcb_cnode_index 4);
+      cur \<leftarrow> liftE $ gets cur_thread;
+      liftE $ when (target = cur) (do_extended_op reschedule_required)
+    odE);
+    liftE $ case priority
+              of None \<Rightarrow> return()
+               | Some (prio, _) \<Rightarrow> do_extended_op (set_priority target prio);
+    returnOk []
+  odE"
+
+| "invoke_tcb (CopyRegisters dest src suspend_source resume_target transfer_frame transfer_integer transfer_arch) =
+  (liftE $ do
+    when suspend_source $ suspend src;
+    when resume_target $ restart dest;
+    when transfer_frame $ do
+        mapM_x (\<lambda>r. do
+                v \<leftarrow> as_user src $ getRegister r;
+                as_user dest $ setRegister r v
+        od) frame_registers;
+        pc \<leftarrow> as_user dest getRestartPC;
+        as_user dest $ setNextPC pc
+    od;
+    when transfer_integer $
+        mapM_x (\<lambda>r. do
+                v \<leftarrow> as_user src $ getRegister r;
+                as_user dest $ setRegister r v
+        od) gpRegisters;
+    cur \<leftarrow> gets cur_thread;
+    arch_post_modify_registers cur dest;
+    when (dest = cur) (do_extended_op reschedule_required);
+    return []
+  od)"
+
+| "invoke_tcb (ReadRegisters src suspend_source n arch) =
+  (liftE $ do
+    when suspend_source $ suspend src;
+    self \<leftarrow> gets cur_thread;
+    regs \<leftarrow> return (take (unat n) $ frame_registers @ gp_registers);
+    as_user src $ mapM getRegister regs
+  od)"
+
+| "invoke_tcb (WriteRegisters dest resume_target values arch) =
+  (liftE $ do
+    self \<leftarrow> gets cur_thread;
+    b \<leftarrow> arch_get_sanitise_register_info dest;
+    as_user dest $ do
+        zipWithM (\<lambda>r v. setRegister r (sanitise_register b r v))
+            (frameRegisters @ gpRegisters) values;
+        pc \<leftarrow> getRestartPC;
+        setNextPC pc
+    od;
+    arch_post_modify_registers self dest;
+    when resume_target $ restart dest;
+    when (dest = self) (do_extended_op reschedule_required);
+    return []
+  od)"
+
+| "invoke_tcb (NotificationControl tcb (Some ntfnptr)) =
+  (liftE $ do
+    bind_notification tcb ntfnptr;
+    return []
+  od)"
+
+| "invoke_tcb (NotificationControl tcb None) =
+  (liftE $ do
+    unbind_notification tcb;
+    return []
+  od)"
+
+| "invoke_tcb (SetTLSBase tcb tls_base) =
+  (liftE $ do
+    as_user tcb $ setRegister tlsBaseRegister tls_base;
+    cur \<leftarrow> gets cur_thread;
+    when (tcb = cur) (do_extended_op reschedule_required);
+    return []
+  od)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  set_domain :: "obj_ref \<Rightarrow> domain \<Rightarrow> unit det_ext_monad" where
+  "set_domain tptr new_dom \<equiv> do
+     cur \<leftarrow> gets cur_thread;
+     tcb_sched_action tcb_sched_dequeue tptr;
+     thread_set_domain tptr new_dom;
+     ts \<leftarrow> get_thread_state tptr;
+     when (runnable ts) (tcb_sched_action tcb_sched_enqueue tptr);
+     when (tptr = cur) reschedule_required
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition invoke_domain:: "obj_ref \<Rightarrow> domain \<Rightarrow> (data list,'z::state_ext) p_monad"
+where
+  "invoke_domain thread domain \<equiv>
+     liftE (do do_extended_op (set_domain thread domain); return [] od)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_mrs :: "obj_ref \<Rightarrow> obj_ref option \<Rightarrow> message_info \<Rightarrow>
+              (message list,'z::state_ext) s_monad" where
+  "get_mrs thread buf info \<equiv> do
+     context \<leftarrow> thread_get (arch_tcb_get_registers o tcb_arch) thread;
+     cpu_mrs \<leftarrow> return (map context msg_registers);
+     buf_mrs \<leftarrow> case buf
+       of None      \<Rightarrow> return []
+        | Some pptr \<Rightarrow> mapM (\<lambda>x. load_word_offs pptr x)
+               [length msg_registers + 1 ..< Suc msg_max_length];
+     return (take (unat (mi_length info)) $ cpu_mrs @ buf_mrs)
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

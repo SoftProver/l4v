@@ -1,0 +1,1300 @@
+<\STATESEP>theory MonadicRewrite
+imports
+  Monads.Nondet_VCG
+  ExtraCorres
+  Monads.Nondet_Empty_Fail
+  Rules_Tac
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition monadic_rewrite ::
+  "bool \<Rightarrow> bool \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> bool"
+  where
+   "monadic_rewrite F E P f g \<equiv>
+      \<forall>s. P s \<and> (F \<longrightarrow> \<not> snd (f s))
+          \<longrightarrow> (E \<longrightarrow> f s = g s) \<and> (\<not> E \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_inst:
+  "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by assumption<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_refl_generic:
+  "monadic_rewrite F E P f f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f f<\STATESEP>by (simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_refl = monadic_rewrite_refl_generic[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_sym:
+  "monadic_rewrite False True P f g \<Longrightarrow> monadic_rewrite False True P g f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite False True P f g \<Longrightarrow> monadic_rewrite False True P g f<\STATESEP>by (simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_impossible:
+  "monadic_rewrite F E \<bottom> f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>_. False) f g<\STATESEP>by (clarsimp simp: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_guard_imp:
+  "\<lbrakk> monadic_rewrite F E Q f g; \<And>s. P s \<Longrightarrow> Q s \<rbrakk> \<Longrightarrow> monadic_rewrite F E P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E Q f g; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by (auto simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_trans:
+  "\<lbrakk> monadic_rewrite F E P f g; monadic_rewrite F E Q g h \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and Q) f h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; monadic_rewrite F E Q g h\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and Q) f h<\STATESEP>by (auto simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_trans_dup:
+  "\<lbrakk> monadic_rewrite F E P f g; monadic_rewrite F E P g h \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E P f h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; monadic_rewrite F E P g h\<rbrakk> \<Longrightarrow> monadic_rewrite F E P f h<\STATESEP>by (rule monadic_rewrite_guard_imp, (rule monadic_rewrite_trans; assumption), simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_from_simple:
+  "P \<longrightarrow> f = g \<Longrightarrow> monadic_rewrite F E (\<lambda>_. P) f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P \<longrightarrow> f = g \<Longrightarrow> monadic_rewrite F E (\<lambda>_. P) f g<\STATESEP>by (simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gen_asm:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q f g \<rbrakk> \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. P) and Q) f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> monadic_rewrite F E Q f g) \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. P) and Q) f g<\STATESEP>by (auto simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_name_pre:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> monadic_rewrite F E ((=) s) f g \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> monadic_rewrite F E ((=) s) f g) \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by (auto simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_cases:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q a b; \<not> P \<Longrightarrow> monadic_rewrite F E R a b \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) a b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> monadic_rewrite F E Q a b; \<not> P \<Longrightarrow> monadic_rewrite F E R a b\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) a b<\STATESEP>by (cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_is_refl:
+  "x = y \<Longrightarrow> monadic_rewrite F E \<top> x y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x = y \<Longrightarrow> monadic_rewrite F E (\<lambda>_. True) x y<\STATESEP>by (simp add: monadic_rewrite_refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_pre_imp_eq:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> f s = g s \<rbrakk> \<Longrightarrow> monadic_rewrite F E P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> f s = g s) \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by (simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_guard_arg_cong:
+  "(\<And>s. P s \<Longrightarrow> x = y) \<Longrightarrow> monadic_rewrite F E P (f x) (f y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> x = y) \<Longrightarrow> monadic_rewrite F E P (f x) (f y)<\STATESEP>by (clarsimp simp: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_exists:
+  "(\<And>v. monadic_rewrite F E (Q v) m m')
+   \<Longrightarrow> monadic_rewrite F E ((\<lambda>s. \<forall>v. P v s \<longrightarrow> Q v s) and (\<lambda>s. \<exists>v. P v s)) m m'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>v. monadic_rewrite F E (Q v) m m') \<Longrightarrow> monadic_rewrite F E ((\<lambda>s. \<forall>v. P v s \<longrightarrow> Q v s) and (\<lambda>s. \<exists>v. P v s)) m m'<\STATESEP>by (auto simp: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_exists_v:
+  "\<lbrakk> \<And>v. monadic_rewrite E F (Q v) f g \<rbrakk>
+   \<Longrightarrow> monadic_rewrite E F (\<lambda>x. (\<exists>v. P v x) & (\<forall>v. P v x \<longrightarrow> Q v x)) f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>v. monadic_rewrite E F (Q v) f g) \<Longrightarrow> monadic_rewrite E F (\<lambda>x. (\<exists>v. P v x) \<and> (\<forall>v. P v x \<longrightarrow> Q v x)) f g<\STATESEP>by (rule monadic_rewrite_name_pre)
+     (fastforce elim: monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_weaken_flags:
+  "monadic_rewrite (F \<and> F') (E \<or> E') P f g
+   \<Longrightarrow> monadic_rewrite F' E' P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite (F \<and> F') (E \<or> E') P f g \<Longrightarrow> monadic_rewrite F' E' P f g<\STATESEP>by (auto simp: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_weaken_flags':
+  "monadic_rewrite F E P f g
+   \<Longrightarrow> monadic_rewrite F' E' ((\<lambda>_. (F \<longrightarrow> F') \<and> (E' \<longrightarrow> E)) and P) f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F' E' ((\<lambda>_. (F \<longrightarrow> F') \<and> (E' \<longrightarrow> E)) and P) f g<\STATESEP>apply (rule monadic_rewrite_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; (F \<longrightarrow> F') \<and> (E' \<longrightarrow> E)\<rbrakk> \<Longrightarrow> monadic_rewrite F' E' P f g<\STATESEP>apply (rule monadic_rewrite_weaken_flags[where F=F and E=E])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; (F \<longrightarrow> F') \<and> (E' \<longrightarrow> E)\<rbrakk> \<Longrightarrow> monadic_rewrite (F \<and> F') (E \<or> E') P f g<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma snd_bind:
+  "snd ((a >>= b) s) = (snd (a s) \<or> (\<exists>(r, s') \<in> fst (a s). snd (b r s')))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. snd ((a >>= b) s) = (snd (a s) \<or> (\<exists>(r, s')\<in>fst (a s). snd (b r s')))<\STATESEP>by (auto simp add: bind_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bind:
+  "\<lbrakk> monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= (\<lambda>x. h x)) (g >>= (\<lambda>x. j x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply (cases E)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)
+ 2. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply (clarsimp simp: monadic_rewrite_def snd_bind imp_conjL)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> f s = g s; \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> h x s = j x s; \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s')))\<rbrakk> \<Longrightarrow> (f >>= h) s = (g >>= j) s
+ 2. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply (drule spec, drule(1) mp, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> h x s = j x s; \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E; P s; R s; F \<longrightarrow> \<not> snd (g s) \<and> (\<forall>x\<in>fst (g s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s'))); f s = g s\<rbrakk> \<Longrightarrow> (f >>= h) s = (g >>= j) s
+ 2. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply (rule bind_apply_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> h x s = j x s; \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E; P s; R s; F \<longrightarrow> \<not> snd (g s) \<and> (\<forall>x\<in>fst (g s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s'))); f s = g s\<rbrakk> \<Longrightarrow> f s = g s
+ 2. \<And>s rv st. \<lbrakk>\<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> h x s = j x s; \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E; P s; R s; F \<longrightarrow> \<not> snd (g s) \<and> (\<forall>x\<in>fst (g s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s'))); f s = g s; (rv, st) \<in> fst (g s)\<rbrakk> \<Longrightarrow> h rv st = j rv st
+ 3. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s rv st. \<lbrakk>\<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> h x s = j x s; \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E; P s; R s; F \<longrightarrow> \<not> snd (g s) \<and> (\<forall>x\<in>fst (g s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s'))); f s = g s; (rv, st) \<in> fst (g s)\<rbrakk> \<Longrightarrow> h rv st = j rv st
+ 2. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply (frule(2) use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s rv st. \<lbrakk>\<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> h x s = j x s; \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; E; P s; R s; F \<longrightarrow> \<not> snd (g s) \<and> (\<forall>x\<in>fst (g s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s'))); f s = g s; (rv, st) \<in> fst (g s); Q rv st\<rbrakk> \<Longrightarrow> h rv st = j rv st
+ 2. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>apply (clarsimp simp: monadic_rewrite_def snd_bind imp_conjL)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> (case x of (r, s') \<Rightarrow> snd (h r s')))\<rbrakk> \<Longrightarrow> fst ((g >>= j) s) \<subseteq> fst ((f >>= h) s) \<and> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). case x of (r, s') \<Rightarrow> snd (h r s'))) \<and> ((\<exists>x\<in>fst (g s). case x of (r, s') \<Rightarrow> snd (j r s')) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). case x of (r, s') \<Rightarrow> snd (h r s')))<\STATESEP>apply (simp add: bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (\<Union>x\<in>fst (g s). fst (j (fst x) (snd x))) \<subseteq> (\<Union>x\<in>fst (f s). fst (h (fst x) (snd x))) \<and> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (\<Union>x\<in>fst (g s). fst (j (fst x) (snd x))) \<subseteq> (\<Union>x\<in>fst (f s). fst (h (fst x) (snd x)))
+ 2. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply (rule UN_mono)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> fst (g s) \<subseteq> fst (f s)
+ 2. \<And>s x. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x))); x \<in> fst (g s)\<rbrakk> \<Longrightarrow> fst (j (fst x) (snd x)) \<subseteq> fst (h (fst x) (snd x))
+ 3. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x))); x \<in> fst (g s)\<rbrakk> \<Longrightarrow> fst (j (fst x) (snd x)) \<subseteq> fst (h (fst x) (snd x))
+ 2. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b aa ba. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x))); (a, b) \<in> fst (g s); (aa, ba) \<in> fst (j a b)\<rbrakk> \<Longrightarrow> (aa, ba) \<in> fst (h a b)
+ 2. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply (frule(2) use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b aa ba. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x))); (a, b) \<in> fst (g s); (aa, ba) \<in> fst (j a b); Q a b\<rbrakk> \<Longrightarrow> (aa, ba) \<in> fst (h a b)
+ 2. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))) \<and> ((\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x))))<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> snd (g s) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))
+ 2. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s) \<and> (\<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)))\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (j (fst x) (snd x))) \<longrightarrow> snd (f s) \<or> (\<exists>x\<in>fst (f s). snd (h (fst x) (snd x)))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s); (a, b) \<in> fst (g s); snd (j a b); \<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x))\<rbrakk> \<Longrightarrow> snd (f s)<\STATESEP>apply (frule(2) use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<forall>s. P s \<longrightarrow> (F \<longrightarrow> \<not> snd (f s)) \<longrightarrow> fst (g s) \<subseteq> fst (f s) \<and> (snd (g s) \<longrightarrow> snd (f s)); \<And>x. \<forall>s. Q x s \<longrightarrow> (F \<longrightarrow> \<not> snd (h x s)) \<longrightarrow> fst (j x s) \<subseteq> fst (h x s) \<and> (snd (j x s) \<longrightarrow> snd (h x s)); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>; \<not> E; P s; R s; F \<longrightarrow> \<not> snd (f s); (a, b) \<in> fst (g s); snd (j a b); \<forall>x\<in>fst (f s). \<not> snd (h (fst x) (snd x)); Q a b\<rbrakk> \<Longrightarrow> snd (f s)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bindE:
+  "\<lbrakk> monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>,- \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and R) (f >>=E (\<lambda>x. h x)) (g >>=E (\<lambda>x. j x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>=E h) (g >>=E j)<\STATESEP>apply (simp add: bindE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= lift h) (g >>= lift j)<\STATESEP>apply (erule monadic_rewrite_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> monadic_rewrite F E (?Q x) (lift h x) (lift j x)
+ 2. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>?Q\<rbrace><\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>?Q\<rbrace>
+ 2. \<And>x. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> monadic_rewrite F E (?Q x) (lift h x) (lift j x)<\STATESEP>apply (simp add: validE_R_def validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. case x of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s) (lift h x) (lift j x)<\STATESEP>apply (case_tac x; simp add: lift_def monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bind_head:
+  "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (f >>= h) (g >>= h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (f >>= h) (g >>= h)<\STATESEP>by (rule monadic_rewrite_bind[OF _ monadic_rewrite_refl hoare_vcg_prop,
+                                simplified pred_top_right_neutral])<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bindE_head:
+  "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E (P and (\<lambda>s. True)) (f >>=E h) (g >>=E h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E (P and (\<lambda>s. True)) (f >>=E h) (g >>=E h)<\STATESEP>by (rule monadic_rewrite_bindE[OF _ monadic_rewrite_refl hoare_vcg_propE_R])<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_bind_tail
+  = monadic_rewrite_bind[OF monadic_rewrite_refl, simplified pred_top_left_neutral]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas monadic_rewrite_bindE_tail
+  = monadic_rewrite_bindE[OF monadic_rewrite_refl, simplified pred_top_left_neutral]<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_bind_l:
+  "\<lbrakk> monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= (\<lambda>x. h x)) (g >>= (\<lambda>x. j x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>using monadic_rewrite_trans[OF monadic_rewrite_bind_tail monadic_rewrite_bind_head]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>\<And>x. monadic_rewrite ?F ?E (?Q2 x) (?h2 x) (?h1 x); \<lbrace>?P\<rbrace> ?f1 \<lbrace>?Q2\<rbrace>; monadic_rewrite ?F ?E ?Q ?f1 ?g1\<rbrakk> \<Longrightarrow> monadic_rewrite ?F ?E (?P and ?Q) (?f1 >>= ?h2) (?g1 >>= ?h1)
+
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f >>= h) (g >>= j)<\STATESEP>by (metis pred_conj_comm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_named_bindE:
+  "\<lbrakk> monadic_rewrite F E ((=) s) f f';
+    \<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv) \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E ((=) s) (f >>=E (\<lambda>rv. g rv)) (f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E ((=) s) f f'; \<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv)\<rbrakk> \<Longrightarrow> monadic_rewrite F E ((=) s) (f >>=E g) (f' >>=E g')<\STATESEP>apply (rule monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F E ((=) s) f f'; \<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv)\<rbrakk> \<Longrightarrow> monadic_rewrite F E ?Q (f >>=E g) (f' >>=E g')
+ 2. \<And>sa. \<lbrakk>monadic_rewrite F E ((=) s) f f'; \<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv); s = sa\<rbrakk> \<Longrightarrow> ?Q sa<\STATESEP>apply (erule_tac R="(=) s" and Q="\<lambda>rv s'. (Inr rv, s') \<in> fst (f' s)" in monadic_rewrite_bindE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. (\<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv)) \<Longrightarrow> monadic_rewrite F E (\<lambda>s'. (Inr x, s') \<in> fst (f' s)) (g x) (g' x)
+ 2. (\<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv)) \<Longrightarrow> \<lbrace>(=) s\<rbrace> f' \<lbrace>\<lambda>rv s'. (Inr rv, s') \<in> fst (f' s)\<rbrace>, -
+ 3. \<And>sa. \<lbrakk>monadic_rewrite F E ((=) s) f f'; \<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv); s = sa\<rbrakk> \<Longrightarrow> ((=) s and (=) s) sa<\STATESEP>apply (rule monadic_rewrite_name_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x sa. \<lbrakk>\<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv); (Inr x, sa) \<in> fst (f' s)\<rbrakk> \<Longrightarrow> monadic_rewrite F E ((=) sa) (g x) (g' x)
+ 2. (\<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv)) \<Longrightarrow> \<lbrace>(=) s\<rbrace> f' \<lbrace>\<lambda>rv s'. (Inr rv, s') \<in> fst (f' s)\<rbrace>, -
+ 3. \<And>sa. \<lbrakk>monadic_rewrite F E ((=) s) f f'; \<And>rv s'. (Inr rv, s') \<in> fst (f' s) \<Longrightarrow> monadic_rewrite F E ((=) s') (g rv) (g' rv); s = sa\<rbrakk> \<Longrightarrow> ((=) s and (=) s) sa<\STATESEP>apply (clarsimp simp add: validE_R_def validE_def valid_def
+                       split: sum.split)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_drop_return:
+  "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (do y \<leftarrow> return x; f od) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (do y <- return x;
+f
+od) g<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_add_return:
+  "monadic_rewrite F E P (do y \<leftarrow> return x; f od) g \<Longrightarrow> monadic_rewrite F E P f g "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P (do y <- return x;
+f
+od) g \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_do_flip:
+  "monadic_rewrite E F P (do c \<leftarrow> j; a \<leftarrow> f; b \<leftarrow> g c; return (a, c) od)
+                         (do c \<leftarrow> j; b \<leftarrow> g c; a \<leftarrow> f; return (a, c) od) \<Longrightarrow>
+   monadic_rewrite E F P (do c \<leftarrow> j; a \<leftarrow> f; b \<leftarrow> g c; h a c od)
+                         (do c \<leftarrow> j; b \<leftarrow> g c; a \<leftarrow> f; h a c od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite E F P (do c <- j;
+a <- f;
+b <- g c;
+return (a, c)
+od) (do c <- j;
+b <- g c;
+a <- f;
+return (a, c)
+od) \<Longrightarrow> monadic_rewrite E F P (do c <- j;
+a <- f;
+b <- g c;
+h a c
+od) (do c <- j;
+b <- g c;
+a <- f;
+h a c
+od)<\STATESEP>apply (drule_tac h="\<lambda>(a, b). h a b" in monadic_rewrite_bind_head)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite E F P (do (a, b) <- do c <- j;
+a <- f;
+b <- g c;
+return (a, c)
+od;
+h a b
+od) (do (a, b) <- do c <- j;
+b <- g c;
+a <- f;
+return (a, c)
+od;
+h a b
+od) \<Longrightarrow> monadic_rewrite E F P (do c <- j;
+a <- f;
+b <- g c;
+h a c
+od) (do c <- j;
+b <- g c;
+a <- f;
+h a c
+od)<\STATESEP>apply (simp add: bind_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bind_eta_r:
+  "monadic_rewrite F E P f (do x <- g; h x od)
+   \<Longrightarrow> monadic_rewrite F E P f (g >>= h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f (g >>= h) \<Longrightarrow> monadic_rewrite F E P f (g >>= h)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bind_eta_l:
+  "monadic_rewrite F E P (do x <- f; h x od) g
+   \<Longrightarrow> monadic_rewrite F E P (f >>= h) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P (f >>= h) g \<Longrightarrow> monadic_rewrite F E P (f >>= h) g<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bindE_eta_r:
+  "monadic_rewrite F E P f (doE x <- g; h x odE)
+   \<Longrightarrow> monadic_rewrite F E P f (g >>=E h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f (g >>=E h) \<Longrightarrow> monadic_rewrite F E P f (g >>=E h)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bindE_eta_l:
+  "monadic_rewrite F E P (doE x <- f; h x odE) g
+   \<Longrightarrow> monadic_rewrite F E P (f >>=E h) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P (f >>=E h) g \<Longrightarrow> monadic_rewrite F E P (f >>=E h) g<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_catch:
+  "\<lbrakk> monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -,\<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and R) (f <catch> (\<lambda>x. h x)) (g <catch> (\<lambda>x. j x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (f <catch> h) (g <catch> j)<\STATESEP>apply (simp add: catch_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (do x <- f;
+case x of Inl e \<Rightarrow> h e | Inr b \<Rightarrow> return b
+od) (do x <- g;
+case x of Inl e \<Rightarrow> j e | Inr b \<Rightarrow> return b
+od)<\STATESEP>apply (erule monadic_rewrite_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (?Q x) (case x of Inl e \<Rightarrow> h e | Inr b \<Rightarrow> return b) (case x of Inl e \<Rightarrow> j e | Inr b \<Rightarrow> return b)
+ 2. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>?Q\<rbrace><\STATESEP>defer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>?Q\<rbrace>
+ 2. \<And>x. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (?Q x) (case x of Inl e \<Rightarrow> h e | Inr b \<Rightarrow> return b) (case x of Inl e \<Rightarrow> j e | Inr b \<Rightarrow> return b)<\STATESEP>apply (simp add: validE_E_def validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<And>x. monadic_rewrite F E (Q x) (h x) (j x); \<lbrace>R\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. case x of Inl e \<Rightarrow> Q e s | Inr r \<Rightarrow> True) (case x of Inl e \<Rightarrow> h e | Inr b \<Rightarrow> return b) (case x of Inl e \<Rightarrow> j e | Inr b \<Rightarrow> return b)<\STATESEP>apply (case_tac x, simp_all add: lift_def monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_drop_modify:
+  "monadic_rewrite F E (\<lambda>s. f s = s) (modify f >>= v) (v ())"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. f s = s) (modify f >>= v) (v ())<\STATESEP>by (simp add: monadic_rewrite_def bind_def simpler_modify_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_modify_noop:
+  "monadic_rewrite F E (\<lambda>s. f s = s) (modify f) (return ())"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. f s = s) (modify f) (return ())<\STATESEP>by (clarsimp simp: monadic_rewrite_def simpler_modify_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_l':
+  "\<lbrakk> \<And>rv. monadic_rewrite F E (Q rv) (x rv) y;
+     \<And>P. m \<lbrace>P\<rbrace>; empty_fail m;
+     \<not> F \<longrightarrow> no_fail P' m;
+     \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= (\<lambda>rv. x rv)) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= x) y<\STATESEP>apply (cases E)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= x) y
+ 2. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= x) y<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= x) y<\STATESEP>apply (clarsimp simp: monadic_rewrite_def bind_def prod_eq_iff)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> ((\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s)) = snd (y s)<\STATESEP>apply (subgoal_tac "\<not> snd (m s)")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> ((\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s)) = snd (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (simp add: empty_fail_def, drule_tac x=s in spec)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s)\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (prop_tac "\<forall>(rv, s') \<in> fst (m s). x rv s' = y s")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s)\<rbrakk> \<Longrightarrow> \<forall>(rv, s')\<in>fst (m s). x rv s' = y s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) \<noteq> {}; (a, b) \<in> fst (m s)\<rbrakk> \<Longrightarrow> x a b = y s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (drule (1) in_inv_by_hoareD)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) \<noteq> {}; (a, b) \<in> fst (m s); b = s\<rbrakk> \<Longrightarrow> x a b = y s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (frule (2) use_valid)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) \<noteq> {}; (a, b) \<in> fst (m s); b = s; Q a b\<rbrakk> \<Longrightarrow> x a b = y s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (clarsimp simp: Ball_def prod_eq_iff)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s) \<and> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (rule conjI)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) = fst (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (rule equalityI)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<subseteq> fst (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb))
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 4. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (clarsimp simp: Ball_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb))
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 3. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (fastforce simp: Ball_def elim!: nonemptyE elim: rev_bexI)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). x rv s' = y s\<rbrakk> \<Longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) = snd (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (simp add: Bex_def Ball_def cong: conj_cong)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<exists>a b. (a, b) \<in> fst (m s)) \<longrightarrow> \<not> snd (y s); \<not> snd (m s); fst (m s) \<noteq> {}; \<forall>a b. (a, b) \<in> fst (m s) \<longrightarrow> x a b = y s\<rbrakk> \<Longrightarrow> ((\<exists>a b. (a, b) \<in> fst (m s)) \<and> snd (y s)) = snd (y s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply auto[1]<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (x rv s) = fst (y s) \<and> snd (x rv s) = snd (y s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)<\STATESEP>apply (clarsimp simp: no_fail_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= x) y<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') (m >>= x) y<\STATESEP>apply (clarsimp simp: monadic_rewrite_def bind_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply (prop_tac "\<not> snd (m s)")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<not> snd (m s)
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply (fastforce simp: no_failD)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply (prop_tac "\<forall>v \<in> fst (m s). Q (fst v) (snd v) \<and> snd v = s")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); (a, b) \<in> fst (m s)\<rbrakk> \<Longrightarrow> Q a b \<and> b = s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply (frule(2) use_valid)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); (a, b) \<in> fst (m s); Q a b\<rbrakk> \<Longrightarrow> Q a b \<and> b = s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply (frule use_valid, assumption, rule refl)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); (a, b) \<in> fst (m s); Q a b; ?t48 s b a b = ?t47 s b a b\<rbrakk> \<Longrightarrow> Q a b \<and> b = s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))
+flex-flex pairs:
+\<lambda>s. ?t47 s s \<equiv>\<^sup>? \<lambda>s. ?t48 s s<\STATESEP>apply simp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<and> \<not> snd (m s); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)) \<or> snd (m s))<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)))<\STATESEP>apply (frule (1) empty_failD2)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (case xa of (xa, xb) \<Rightarrow> x xa xb)); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s; \<exists>v. v \<in> fst (m s)\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>a\<in>fst (m s). fst (case a of (xa, xb) \<Rightarrow> x xa xb)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (case xa of (xa, xb) \<Rightarrow> x xa xb)))<\STATESEP>apply (clarsimp simp: split_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x rv s)) \<longrightarrow> fst (y s) \<subseteq> fst (x rv s) \<and> (snd (y s) \<longrightarrow> snd (x rv s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<not> F \<longrightarrow> no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> (\<forall>xa\<in>fst (m s). \<not> snd (x (fst xa) s)); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s; (a, b) \<in> fst (m s)\<rbrakk> \<Longrightarrow> fst (y s) \<subseteq> (\<Union>xa\<in>fst (m s). fst (x (fst xa) s)) \<and> (snd (y s) \<longrightarrow> (\<exists>xa\<in>fst (m s). snd (x (fst xa) s)))<\STATESEP>apply fastforce<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_l_F:
+  "\<lbrakk> \<And>rv. monadic_rewrite True E (Q rv) (x rv) y;
+     \<And>P. m \<lbrace>P\<rbrace>; empty_fail m;
+     \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite True E P (m >>= (\<lambda>rv. x rv)) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite True E (Q rv) (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite True E P (m >>= x) y<\STATESEP>by (rule monadic_rewrite_symb_exec_l'[where P'=\<top> and F=True, simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_l_nF
+  = monadic_rewrite_symb_exec_l'[where F=False, simplified simp_thms]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_l
+  = monadic_rewrite_symb_exec_l_F
+    monadic_rewrite_symb_exec_l_nF<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_r':
+  "\<lbrakk> \<And>rv. monadic_rewrite F E (Q rv) x (y rv);
+     \<And>P. m \<lbrace>P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m;
+     \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= (\<lambda>rv. y rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= y)<\STATESEP>apply (cases E)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= y)
+ 2. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= y)<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= y)<\STATESEP>apply (clarsimp simp: monadic_rewrite_def bind_def prod_eq_iff)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s)\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = ((\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa)) \<or> snd (m s))<\STATESEP>apply (drule (1) no_failD)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = ((\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa)) \<or> snd (m s))<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply (simp add: empty_fail_def, drule_tac x=s in spec)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s)\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply (prop_tac "\<forall>(rv, s') \<in> fst (m s). y rv s' = x s")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s)\<rbrakk> \<Longrightarrow> \<forall>(rv, s')\<in>fst (m s). y rv s' = x s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). y rv s' = x s\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) \<noteq> {}; (a, b) \<in> fst (m s)\<rbrakk> \<Longrightarrow> y a b = x s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). y rv s' = x s\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply (drule (1) in_inv_by_hoareD)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) \<noteq> {}; (a, b) \<in> fst (m s); b = s\<rbrakk> \<Longrightarrow> y a b = x s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). y rv s' = x s\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply (drule (2) use_valid)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) \<noteq> {}; b = s; Q a b\<rbrakk> \<Longrightarrow> y a b = x s
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). y rv s' = x s\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply (clarsimp simp: Ball_def prod_eq_iff)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (x s) = fst (y rv s) \<and> snd (x s) = snd (y rv s); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); fst (m s) = {} \<longrightarrow> snd (m s); \<forall>(rv, s')\<in>fst (m s). y rv s' = x s\<rbrakk> \<Longrightarrow> fst (x s) = (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<and> snd (x s) = (\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa))<\STATESEP>apply (auto elim!: nonemptyE elim: rev_bexI simp add: Bex_def Ball_def cong: conj_cong)<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= y)<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F E (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; E \<longrightarrow> empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P') x (m >>= y)<\STATESEP>apply (clarsimp simp: monadic_rewrite_def bind_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s)\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<subseteq> fst (x s) \<and> ((\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa)) \<longrightarrow> snd (x s)) \<and> (snd (m s) \<longrightarrow> snd (x s))<\STATESEP>apply (drule(1) no_failD)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<subseteq> fst (x s) \<and> ((\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa)) \<longrightarrow> snd (x s)) \<and> (snd (m s) \<longrightarrow> snd (x s))<\STATESEP>apply (subgoal_tac "\<forall>v \<in> fst (m s). Q (fst v) (snd v) \<and> snd v = s")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (m s). fst (case a of (x, xa) \<Rightarrow> y x xa)) \<subseteq> fst (x s) \<and> ((\<exists>x\<in>fst (m s). snd (case x of (x, xa) \<Rightarrow> y x xa)) \<longrightarrow> snd (x s)) \<and> (snd (m s) \<longrightarrow> snd (x s))
+ 2. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s<\STATESEP>apply fastforce<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s)\<rbrakk> \<Longrightarrow> \<forall>v\<in>fst (m s). Q (fst v) (snd v) \<and> snd v = s<\STATESEP>apply clarsimp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); (a, b) \<in> fst (m s)\<rbrakk> \<Longrightarrow> Q a b \<and> b = s<\STATESEP>apply (frule(2) use_valid)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); (a, b) \<in> fst (m s); Q a b\<rbrakk> \<Longrightarrow> Q a b \<and> b = s<\STATESEP>apply (frule use_valid, assumption, rule refl)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>rv. \<forall>s. Q rv s \<and> (F \<longrightarrow> \<not> snd (x s)) \<longrightarrow> fst (y rv s) \<subseteq> fst (x s) \<and> (snd (y rv s) \<longrightarrow> snd (x s)); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>; \<not> E; P s; P' s; F \<longrightarrow> \<not> snd (x s); \<not> snd (m s); (a, b) \<in> fst (m s); Q a b; ?t102 s b a b = ?t101 s b a b\<rbrakk> \<Longrightarrow> Q a b \<and> b = s
+flex-flex pairs:
+\<lambda>s. ?t101 s s \<equiv>\<^sup>? \<lambda>s. ?t102 s s<\STATESEP>apply simp<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_r_nE:
+  "\<lbrakk> \<And>rv. monadic_rewrite F False (Q rv) x (y rv);
+     \<And>P. m \<lbrace>P\<rbrace>; no_fail P' m;
+     \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F False (P and P') x (m >>= (\<lambda>rv. y rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite F False (Q rv) x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F False (P and P') x (m >>= y)<\STATESEP>by (rule monadic_rewrite_symb_exec_r'[where E=False, simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_r_E
+  = monadic_rewrite_symb_exec_r'[where E=True, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_r
+  = monadic_rewrite_symb_exec_r_nE
+    monadic_rewrite_symb_exec_r_E<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_l_known_F:
+  "\<lbrakk> monadic_rewrite True E Q (x rv) y;
+     \<And>P. m \<lbrace>P\<rbrace>; empty_fail m;
+     \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' _. rv' = rv \<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite True E (P and Q) (m >>= x) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite True E Q (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' _. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite True E (P and Q) (m >>= x) y<\STATESEP>by (erule monadic_rewrite_trans[rotated])
+     (rule monadic_rewrite_symb_exec_l_F[OF monadic_rewrite_pre_imp_eq]; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_l_known_nF:
+  "\<lbrakk> monadic_rewrite False E Q (x rv) y;
+     \<And>P. m \<lbrace>P\<rbrace>; empty_fail m; no_fail P' m;
+     \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv \<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite False E (P and P' and Q) (m >>= x) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite False E Q (x rv) y; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite False E (P and P' and Q) (m >>= x) y<\STATESEP>by (erule monadic_rewrite_trans[rotated])
+     (rule monadic_rewrite_symb_exec_l_nF[OF monadic_rewrite_pre_imp_eq]; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_l_known
+  = monadic_rewrite_symb_exec_l_known_F
+    monadic_rewrite_symb_exec_l_known_nF<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_r_known_E:
+  "\<lbrakk> monadic_rewrite F True Q x (y rv);
+     \<And>P. m \<lbrace>P\<rbrace>; empty_fail m; no_fail P' m;
+     \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv \<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F True (P and P' and Q) x (m >>= y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F True Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F True (P and P' and Q) x (m >>= y)<\STATESEP>apply (rule monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F True Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F True ?Q x (m >>= y)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F True Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>; (P and P' and Q) s\<rbrakk> \<Longrightarrow> ?Q s<\STATESEP>apply (erule monadic_rewrite_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F True ?Q3 (y rv) (m >>= y)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F True Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>; (P and P' and Q) s\<rbrakk> \<Longrightarrow> (Q and ?Q3) s<\STATESEP>apply (rule monadic_rewrite_symb_exec_r_E[OF monadic_rewrite_pre_imp_eq, rotated -1], simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_r_known_nE:
+  "\<lbrakk> monadic_rewrite F False Q x (y rv);
+     \<And>P. m \<lbrace>P\<rbrace>; no_fail P' m;
+     \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv \<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F False (P and P' and Q) x (m >>= y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F False Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F False (P and P' and Q) x (m >>= y)<\STATESEP>apply (rule monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F False Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F False ?Q x (m >>= y)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F False Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>; (P and P' and Q) s\<rbrakk> \<Longrightarrow> ?Q s<\STATESEP>apply (erule monadic_rewrite_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F False ?Q3 (y rv) (m >>= y)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F False Q x (y rv); \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m; \<lbrace>P\<rbrace> m \<lbrace>\<lambda>rv' s. rv' = rv\<rbrace>; (P and P' and Q) s\<rbrakk> \<Longrightarrow> (Q and ?Q3) s<\STATESEP>apply (rule monadic_rewrite_symb_exec_r_nE[OF monadic_rewrite_pre_imp_eq, rotated -1], simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_r_known
+  = monadic_rewrite_symb_exec_r_known_E
+    monadic_rewrite_symb_exec_r_known_nE<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_l_drop_F:
+  "\<lbrakk> monadic_rewrite True E P g h; \<And>P. m \<lbrace>P\<rbrace>; empty_fail m \<rbrakk>
+   \<Longrightarrow> monadic_rewrite True E P (m >>= (\<lambda>_. g)) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite True E P g h; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m\<rbrakk> \<Longrightarrow> monadic_rewrite True E P (do _ <- m;
+g
+od) h<\STATESEP>by (rule monadic_rewrite_symb_exec_l, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_l_drop_nF:
+  "\<lbrakk> monadic_rewrite False E P g h; \<And>P. m \<lbrace>P\<rbrace>; empty_fail m; no_fail P' m \<rbrakk>
+   \<Longrightarrow> monadic_rewrite False E (P and P') (m >>= (\<lambda>_. g)) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite False E P g h; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m\<rbrakk> \<Longrightarrow> monadic_rewrite False E (P and P') (do _ <- m;
+g
+od) h<\STATESEP>by (rule monadic_rewrite_symb_exec_l, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_l_drop
+  = monadic_rewrite_symb_exec_l_drop_F
+    monadic_rewrite_symb_exec_l_drop_nF<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_r_drop_E:
+  "\<lbrakk> monadic_rewrite F True P g h; \<And>P. m \<lbrace>P\<rbrace>; empty_fail m; no_fail P' m \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F True (P and P') g (m >>= (\<lambda>_. h))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F True P g h; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; empty_fail m; no_fail P' m\<rbrakk> \<Longrightarrow> monadic_rewrite F True (P and P') g (do _ <- m;
+h
+od)<\STATESEP>by (rule monadic_rewrite_symb_exec_r, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_symb_exec_r_drop_nE:
+  "\<lbrakk> monadic_rewrite F False P g h; \<And>P. m \<lbrace>P\<rbrace>; no_fail P' m \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F False (P and P') g (m >>= (\<lambda>_. h))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F False P g h; \<And>P. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>_. P\<rbrace>; no_fail P' m\<rbrakk> \<Longrightarrow> monadic_rewrite F False (P and P') g (do _ <- m;
+h
+od)<\STATESEP>by (rule monadic_rewrite_symb_exec_r, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_symb_exec_r_drop
+  = monadic_rewrite_symb_exec_r_drop_E
+    monadic_rewrite_symb_exec_r_drop_nE<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_if:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q a c; \<not> P \<Longrightarrow> monadic_rewrite F E R b d \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s))
+                          (If P a b) (If P c d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> monadic_rewrite F E Q a c; \<not> P \<Longrightarrow> monadic_rewrite F E R b d\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) (if P then a else b) (if P then c else d)<\STATESEP>by (cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_r:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q a b; \<not> P \<Longrightarrow> monadic_rewrite F E R a c \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) a (If P b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> monadic_rewrite F E Q a b; \<not> P \<Longrightarrow> monadic_rewrite F E R a c\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) a (if P then b else c)<\STATESEP>by (cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_r_True:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q a b \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. P) and Q) a (If P b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> monadic_rewrite F E Q a b) \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. P) and Q) a (if P then b else c)<\STATESEP>by (rule monadic_rewrite_gen_asm, cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_r_False:
+  "\<lbrakk> \<not> P \<Longrightarrow> monadic_rewrite F E R a c \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. \<not> P) and R) a (If P b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> monadic_rewrite F E R a c) \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. \<not> P) and R) a (if P then b else c)<\STATESEP>by (rule monadic_rewrite_gen_asm, cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_named_if
+  = monadic_rewrite_if[where Q="(=) s" and R="(=) s", simplified] for s<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_l:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q b a; \<not> P \<Longrightarrow> monadic_rewrite F E R c a \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) (If P b c) a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> monadic_rewrite F E Q b a; \<not> P \<Longrightarrow> monadic_rewrite F E R c a\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)) (if P then b else c) a<\STATESEP>by (cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_l_True:
+  "\<lbrakk> P \<Longrightarrow> monadic_rewrite F E Q b a \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. P) and Q) (If P b c) a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> monadic_rewrite F E Q b a) \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. P) and Q) (if P then b else c) a<\STATESEP>by (rule monadic_rewrite_gen_asm, cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_l_False:
+  "\<lbrakk> \<not> P \<Longrightarrow> monadic_rewrite F E R c a \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. \<not> P) and R) (If P b c) a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> monadic_rewrite F E R c a) \<Longrightarrow> monadic_rewrite F E ((\<lambda>_. \<not> P) and R) (if P then b else c) a<\STATESEP>by (rule monadic_rewrite_gen_asm, cases P, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_if_known:
+  "monadic_rewrite F E ((\<lambda>s. C = X) and \<top>) (if C then f else g) (if X then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E ((\<lambda>s. C = X) and (\<lambda>_. True)) (if C then f else g) (if X then f else g)<\STATESEP>by (rule monadic_rewrite_gen_asm)
+     (simp add: monadic_rewrite_refl split del: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_liftM:
+  "monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (liftM fn f) (liftM fn g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P f g \<Longrightarrow> monadic_rewrite F E P (liftM fn f) (liftM fn g)<\STATESEP>by (clarsimp simp: liftM_def elim!: monadic_rewrite_bind_head)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_liftE
+  = monadic_rewrite_liftM[where fn=Inr, folded liftE_liftM]<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_split_fn:
+  "\<lbrakk> monadic_rewrite F E P (liftM fn a) c;
+     \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv));
+     \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and R) (a >>= (\<lambda>rv. b rv)) (c >>= d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and R) (a >>= b) (c >>= d)<\STATESEP>apply (rule monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E ?Q (a >>= b) (c >>= d)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>; (P and R) s\<rbrakk> \<Longrightarrow> ?Q s<\STATESEP>apply (rule monadic_rewrite_trans[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E ?Q3 ?g3 (c >>= d)
+ 2. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E ?P3 (a >>= b) ?g3
+ 3. \<And>s. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>; (P and R) s\<rbrakk> \<Longrightarrow> (?P3 and ?Q3) s<\STATESEP>apply (erule monadic_rewrite_bind_head)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E ?P3 (a >>= b) (liftM fn a >>= d)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>; (P and R) s\<rbrakk> \<Longrightarrow> (?P3 and P) s<\STATESEP>apply (simp add: liftM_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>monadic_rewrite F E P (do x <- a;
+return (fn x)
+od) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monadic_rewrite F E ?P3 (a >>= b) (do x <- a;
+d (fn x)
+od)
+ 2. \<And>s. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>; (P and R) s\<rbrakk> \<Longrightarrow> (?P3 and P) s<\STATESEP>apply (erule(1) monadic_rewrite_bind_tail)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>monadic_rewrite F E P (liftM fn a) c; \<And>rv. monadic_rewrite F E (Q rv) (b rv) (d (fn rv)); \<lbrace>R\<rbrace> a \<lbrace>Q\<rbrace>; (P and R) s\<rbrakk> \<Longrightarrow> (R and P) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_add_assert:
+  "monadic_rewrite F E (\<lambda>s. P) m (assert P >>= (\<lambda>_. m))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. P) m (do _ <- assert P;
+m
+od)<\STATESEP>by (simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_assert:
+  "\<lbrakk> Q \<Longrightarrow> monadic_rewrite True E P (f ()) g \<rbrakk>
+   \<Longrightarrow> monadic_rewrite True E (\<lambda>s. Q \<longrightarrow> P s) (assert Q >>= f) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Q \<Longrightarrow> monadic_rewrite True E P (f ()) g) \<Longrightarrow> monadic_rewrite True E (\<lambda>s. Q \<longrightarrow> P s) (assert Q >>= f) g<\STATESEP>by (simp add: assert_def split: if_split)
+     (simp add: monadic_rewrite_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_assert2:
+  "\<lbrakk> Q \<Longrightarrow> monadic_rewrite F E P (f ()) g \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E ((\<lambda>s. Q \<longrightarrow> P s) and (\<lambda>_. Q)) (assert Q >>= f) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Q \<Longrightarrow> monadic_rewrite F E P (f ()) g) \<Longrightarrow> monadic_rewrite F E ((\<lambda>s. Q \<longrightarrow> P s) and (\<lambda>_. Q)) (assert Q >>= f) g<\STATESEP>by (auto simp add: assert_def monadic_rewrite_def fail_def split: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_state_assert:
+  "monadic_rewrite F E P (f ()) g
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (F \<longrightarrow> Q s \<longrightarrow> P s) \<and> (\<not>F \<longrightarrow> P s \<and> Q s))
+                      (state_assert Q >>= f) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P (f ()) g \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (F \<longrightarrow> Q s \<longrightarrow> P s) \<and> (\<not> F \<longrightarrow> P s \<and> Q s)) (state_assert Q >>= f) g<\STATESEP>by (fastforce simp: monadic_rewrite_def exec_get state_assert_def bind_assoc assert_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_stateAssert:
+  "monadic_rewrite F E P (f ()) g
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (F \<longrightarrow> Q s \<longrightarrow> P s) \<and> (\<not>F \<longrightarrow> P s \<and> Q s))
+                      (stateAssert Q xs >>= f) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P (f ()) g \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (F \<longrightarrow> Q s \<longrightarrow> P s) \<and> (\<not> F \<longrightarrow> P s \<and> Q s)) (stateAssert Q xs >>= f) g<\STATESEP>by (fastforce simp: monadic_rewrite_def exec_get stateAssert_def bind_assoc assert_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_alternative_r:
+  "\<lbrakk> monadic_rewrite F E P a b; monadic_rewrite F E Q a c \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and Q) a (b \<sqinter> c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P a b; monadic_rewrite F E Q a c\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and Q) a (b \<sqinter> c)<\STATESEP>by (auto simp: monadic_rewrite_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_alternatives:
+  "\<lbrakk> monadic_rewrite E F P a c; monadic_rewrite E F Q b d \<rbrakk>
+   \<Longrightarrow> monadic_rewrite E F (P and Q) (a \<sqinter> b) (c \<sqinter> d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite E F P a c; monadic_rewrite E F Q b d\<rbrakk> \<Longrightarrow> monadic_rewrite E F (P and Q) (a \<sqinter> b) (c \<sqinter> d)<\STATESEP>by (auto simp: monadic_rewrite_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_bind_alternative:
+  "\<lbrakk> \<And>P. f \<lbrace>P\<rbrace> \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F False \<top> (alternative (f >>= (\<lambda>x. g x)) h)
+                                (f >>= (\<lambda>x. alternative (g x) h))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>) \<Longrightarrow> monadic_rewrite F False (\<lambda>_. True) (f >>= g \<sqinter> h) (do x <- f;
+g x \<sqinter> h
+od)<\STATESEP>apply (clarsimp simp: monadic_rewrite_def bind_def
+                        alternative_def imp_conjL)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s)\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (f s). fst (case a of (x, s) \<Rightarrow> (fst (g x s) \<union> fst (h s), snd (g x s) \<or> snd (h s)))) \<subseteq> (\<Union>a\<in>fst (f s). fst (case a of (x, xa) \<Rightarrow> g x xa)) \<union> fst (h s) \<and> ((\<exists>x\<in>fst (f s). snd (case x of (x, s) \<Rightarrow> (fst (g x s) \<union> fst (h s), snd (g x s) \<or> snd (h s)))) \<longrightarrow> (\<exists>x\<in>fst (f s). snd (case x of (x, xa) \<Rightarrow> g x xa)) \<or> snd (f s) \<or> snd (h s))<\STATESEP>apply (subgoal_tac "\<forall>x \<in> fst (f s). snd x = s")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s); \<forall>x\<in>fst (f s). snd x = s\<rbrakk> \<Longrightarrow> (\<Union>a\<in>fst (f s). fst (case a of (x, s) \<Rightarrow> (fst (g x s) \<union> fst (h s), snd (g x s) \<or> snd (h s)))) \<subseteq> (\<Union>a\<in>fst (f s). fst (case a of (x, xa) \<Rightarrow> g x xa)) \<union> fst (h s) \<and> ((\<exists>x\<in>fst (f s). snd (case x of (x, s) \<Rightarrow> (fst (g x s) \<union> fst (h s), snd (g x s) \<or> snd (h s)))) \<longrightarrow> (\<exists>x\<in>fst (f s). snd (case x of (x, xa) \<Rightarrow> g x xa)) \<or> snd (f s) \<or> snd (h s))
+ 2. \<And>s. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s)\<rbrakk> \<Longrightarrow> \<forall>x\<in>fst (f s). snd x = s<\STATESEP>apply (simp add: image_image split_def cong: image_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (g (fst x) s)) \<and> \<not> snd (f s) \<and> \<not> snd (h s); \<forall>x\<in>fst (f s). snd x = s\<rbrakk> \<Longrightarrow> fst (f s) \<noteq> {} \<longrightarrow> (\<exists>x\<in>fst (f s). snd (g (fst x) s) \<or> snd (h s)) \<longrightarrow> (\<exists>x\<in>fst (f s). snd (g (fst x) s)) \<or> snd (f s) \<or> snd (h s)
+ 2. \<And>s. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s)\<rbrakk> \<Longrightarrow> \<forall>x\<in>fst (f s). snd x = s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s)\<rbrakk> \<Longrightarrow> \<forall>x\<in>fst (f s). snd x = s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s); (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> b = s<\STATESEP>apply (drule hoare_eq_P)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>F \<longrightarrow> (\<forall>x\<in>fst (f s). \<not> snd (case x of (x, xa) \<Rightarrow> g x xa)) \<and> \<not> snd (f s) \<and> \<not> snd (h s); (a, b) \<in> fst (f s); \<lbrace>(=) (?s45 s a b)\<rbrace> f \<lbrace>\<lambda>_. (=) (?s45 s a b)\<rbrace>\<rbrakk> \<Longrightarrow> b = s<\STATESEP>apply (frule use_valid, (assumption | rule refl | simp)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_bind_alternative_l
+  = monadic_rewrite_trans[OF monadic_rewrite_bind_alternative, simplified pred_top_left_neutral]<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_alternative_l:
+  "monadic_rewrite F False \<top> (alternative f g) g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F False (\<lambda>_. True) (f \<sqinter> g) g<\STATESEP>by (clarsimp simp: monadic_rewrite_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_introduce_alternative:
+  "\<lbrakk> f = f'; monadic_rewrite F E P (alternative f' f) g \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f = f'; monadic_rewrite F E P (f' \<sqinter> f) g\<rbrakk> \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by (simp add: alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_pick_alternative_1:
+  "monadic_rewrite F False \<top> (alternative f g) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F False (\<lambda>_. True) (f \<sqinter> g) f<\STATESEP>by (auto simp add: monadic_rewrite_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_pick_alternative_2 = monadic_rewrite_alternative_l<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_select_x:
+  "monadic_rewrite F False (\<lambda>s. x \<in> S) (select S) (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F False (\<lambda>s. x \<in> S) (select S) (return x)<\STATESEP>by (simp add: monadic_rewrite_def return_def select_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas monadic_rewrite_select_pick_x
+  = monadic_rewrite_bind_head[OF monadic_rewrite_select_x[where x=x], simplified,
+                              THEN monadic_rewrite_trans] for x<\STATESEP>0<\TRANSEP><\STATESEP>lemma monadic_rewrite_add_get:
+  "monadic_rewrite F E P (do x <- get; f od) (do x <- get; g od)
+   \<Longrightarrow> monadic_rewrite F E P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E P (do x <- get;
+f
+od) (do x <- get;
+g
+od) \<Longrightarrow> monadic_rewrite F E P f g<\STATESEP>by (clarsimp simp: bind_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_add_gets:
+  "monadic_rewrite F E \<top> m (gets f >>= (\<lambda>_. m))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>_. True) m (do _ <- gets f;
+m
+od)<\STATESEP>by (simp add: monadic_rewrite_def exec_gets)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gets_known:
+  "monadic_rewrite F E (\<lambda>s. f s = rv) (gets f >>= m) (m rv)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. f s = rv) (gets f >>= m) (m rv)<\STATESEP>by (simp add: monadic_rewrite_def exec_gets)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gets_the_known_v:
+  "monadic_rewrite F E (\<lambda>s. f s = Some v)
+     (gets_the f) (return v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. f s = Some v) (gets_the f) (return v)<\STATESEP>by (simp add: monadic_rewrite_def gets_the_def
+                exec_gets assert_opt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gets_the_walk:
+  "\<lbrakk> \<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv);
+     \<And>Q. f \<lbrace>\<lambda>s. Q (pf s)\<rbrace>;
+     \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f \<rbrakk>
+   \<Longrightarrow> monadic_rewrite True False R (f >>= (\<lambda>rv. g rv))
+                                   (do v \<leftarrow> gets_the pf; x \<leftarrow> f; g' x v od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False R (f >>= g) (do v <- gets_the pf;
+x <- f;
+g' x v
+od)<\STATESEP>apply (rule monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False ?Q (f >>= g) (do v <- gets_the pf;
+x <- f;
+g' x v
+od)
+ 2. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> ?Q s<\STATESEP>apply (rule monadic_rewrite_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False ?P3 (f >>= g) ?g3
+ 2. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False ?Q3 ?g3 (do v <- gets_the pf;
+x <- f;
+g' x v
+od)
+ 3. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (?P3 and ?Q3) s<\STATESEP>apply (erule(1) monadic_rewrite_bind_tail)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False ?Q3 (do x <- f;
+gets_the pf >>= g' x
+od) (do v <- gets_the pf;
+x <- f;
+g' x v
+od)
+ 2. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and ?Q3) s<\STATESEP>apply (simp add: gets_the_def bind_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False ?Q3 (do x <- f;
+xa <- gets pf;
+assert_opt xa >>= g' x
+od) (do x <- gets pf;
+v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 2. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and ?Q3) s<\STATESEP>apply (rule monadic_rewrite_symb_exec_r)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q8 x) (do x <- f;
+xa <- gets pf;
+assert_opt xa >>= g' x
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 2. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 3. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>?Q8\<rbrace>
+ 5. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule monadic_rewrite_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?P13 x) (do x <- f;
+xa <- gets pf;
+assert_opt xa >>= g' x
+od) (?g13 x)
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q13 x) (?g13 x) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 3. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. ?P13 x and ?Q13 x\<rbrace>
+ 6. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule monadic_rewrite_bind_tail)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>x xa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q16 x xa) (do x <- gets pf;
+assert_opt x >>= g' xa
+od) (?j16 x xa)
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P13 x\<rbrace> f \<lbrace>?Q16 x\<rbrace>
+ 3. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q13 x) (f >>= ?j16 x) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 4. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 6. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. ?P13 x and ?Q13 x\<rbrace>
+ 7. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule_tac rv=x in monadic_rewrite_symb_exec_l_known_F)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>x xa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q19 x xa) (assert_opt x >>= g' xa) (?j16 x xa)
+ 2. \<And>x xa Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 3. \<And>x xa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> empty_fail (gets pf)
+ 4. \<And>x xa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P19 x xa\<rbrace> gets pf \<lbrace>\<lambda>rv' _. rv' = x\<rbrace>
+ 5. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P13 x\<rbrace> f \<lbrace>\<lambda>xa. ?P19 x xa and ?Q19 x xa\<rbrace>
+ 6. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q13 x) (f >>= ?j16 x) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 7. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 8. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 9. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. ?P13 x and ?Q13 x\<rbrace>
+ 10. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>x xa Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 2. \<And>x xa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> empty_fail (gets pf)
+ 3. \<And>x xa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P19 x xa\<rbrace> gets pf \<lbrace>\<lambda>rv' _. rv' = x\<rbrace>
+ 4. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P13 x\<rbrace> f \<lbrace>\<lambda>xa. ?P19 x xa and (\<lambda>_. True)\<rbrace>
+ 5. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q13 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 6. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 7. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 8. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. ?P13 x and ?Q13 x\<rbrace>
+ 9. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (wp empty_fail_gets)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P13 x\<rbrace> f \<lbrace>\<lambda>xa s. pf s = x \<and> True\<rbrace>
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q13 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 3. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. ?P13 x and ?Q13 x\<rbrace>
+ 6. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?Q13 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 2. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 3. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and ?Q13 x\<rbrace>
+ 5. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule_tac P="x = None" in monadic_rewrite_cases[where Q=\<top>])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x = None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (\<lambda>_. True) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x \<noteq> None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?R36 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 3. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> ?R36 x s))\<rbrace>
+ 6. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (simp add: assert_opt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+(case x of None \<Rightarrow> fail | Some v \<Rightarrow> return v) >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x = None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (\<lambda>_. True) (do x <- f;
+fail
+od) fail
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x \<noteq> None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?R36 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 3. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> ?R36 x s))\<rbrace>
+ 6. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (clarsimp simp: monadic_rewrite_def fail_def snd_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. P rv s \<and> \<not> snd (g rv s) \<longrightarrow> fst ((do x <- gets pf;
+(case x of None \<Rightarrow> fail | Some x \<Rightarrow> return x) >>= g' rv
+od) s) \<subseteq> fst (g rv s) \<and> \<not> snd (gets pf s) \<and> (\<forall>x\<in>fst (gets pf s). \<not> (case x of (r, s') \<Rightarrow> snd ((case r of None \<Rightarrow> fail | Some x \<Rightarrow> return x) s') \<or> (\<exists>x\<in>fst ((case r of None \<Rightarrow> fail | Some x \<Rightarrow> return x) s'). case x of (r, s') \<Rightarrow> snd (g' rv r s')))); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; \<forall>a b. (a, b) \<notin> fst (f s)\<rbrakk> \<Longrightarrow> snd (f s)
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x \<noteq> None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?R36 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 3. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> ?R36 x s))\<rbrace>
+ 6. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule ccontr, drule(1) empty_failD2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>rv. \<forall>s. P rv s \<and> \<not> snd (g rv s) \<longrightarrow> fst ((do x <- gets pf;
+(case x of None \<Rightarrow> fail | Some x \<Rightarrow> return x) >>= g' rv
+od) s) \<subseteq> fst (g rv s) \<and> \<not> snd (gets pf s) \<and> (\<forall>x\<in>fst (gets pf s). \<not> (case x of (r, s') \<Rightarrow> snd ((case r of None \<Rightarrow> fail | Some x \<Rightarrow> return x) s') \<or> (\<exists>x\<in>fst ((case r of None \<Rightarrow> fail | Some x \<Rightarrow> return x) s'). case x of (r, s') \<Rightarrow> snd (g' rv r s')))); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; \<forall>a b. (a, b) \<notin> fst (f s); \<not> snd (f s); \<exists>v. v \<in> fst (f s)\<rbrakk> \<Longrightarrow> False
+ 2. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x \<noteq> None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?R36 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 3. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 5. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> ?R36 x s))\<rbrace>
+ 6. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; x \<noteq> None\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?R36 x) (do xa <- f;
+assert_opt x >>= g' xa
+od) (do v <- assert_opt x;
+x <- f;
+g' x v
+od)
+ 2. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 3. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> ?R36 x s))\<rbrace>
+ 5. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (simp add: assert_opt_def case_option_If2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+(if \<exists>y. x = Some y then return (the x) else fail) >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; \<exists>y. x = Some y\<rbrakk> \<Longrightarrow> monadic_rewrite True False (?R36 x) (do xa <- f;
+g' xa (the x)
+od) (do xa <- f;
+g' xa (the x)
+od)
+ 2. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 3. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 4. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> ?R36 x s))\<rbrace>
+ 5. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply (rule monadic_rewrite_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>Pa. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>Pa\<rbrace> gets pf \<lbrace>\<lambda>_. Pa\<rbrace>
+ 2. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> no_fail ?P'8 (gets pf)
+ 3. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (do x <- gets pf;
+assert_opt x >>= g' rv
+od); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f\<rbrakk> \<Longrightarrow> \<lbrace>?P8\<rbrace> gets pf \<lbrace>\<lambda>x. (\<lambda>s. pf s = x \<and> True) and (\<lambda>s. (x = None \<longrightarrow> True) \<and> (x \<noteq> None \<longrightarrow> True))\<rbrace>
+ 4. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and (?P8 and ?P'8)) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>rv. monadic_rewrite True False (P rv) (g rv) (gets_the pf >>= g' rv); \<And>Q. \<lbrace>\<lambda>s. Q (pf s)\<rbrace> f \<lbrace>\<lambda>_ s. Q (pf s)\<rbrace>; \<lbrace>R\<rbrace> f \<lbrace>P\<rbrace>; empty_fail f; R s\<rbrakk> \<Longrightarrow> (R and ((\<lambda>s. ((\<lambda>sa. pf sa = pf s \<and> True) and (\<lambda>sa. (pf s = None \<longrightarrow> True) \<and> (pf s \<noteq> None \<longrightarrow> True))) s) and (\<lambda>_. True))) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gets_l:
+  "(\<And>x. monadic_rewrite F E (P x) (g x) m)
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. P (f s) s) (gets f >>= (\<lambda>x. g x)) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. monadic_rewrite F E (P x) (g x) m) \<Longrightarrow> monadic_rewrite F E (\<lambda>s. P (f s) s) (gets f >>= g) m<\STATESEP>by (auto simp add: monadic_rewrite_def exec_gets)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gets_the_bind:
+  assumes mr: "(\<And>rv. monadic_rewrite F E (Q rv) (g rv) m)"
+  shows "monadic_rewrite F E (\<lambda>s. f s \<noteq> None \<and> Q (the (f s)) s) (gets_the f >>= (\<lambda>rv. g rv)) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. f s \<noteq> None \<and> Q (the (f s)) s) (gets_the f >>= g) m<\STATESEP>apply (rule monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monadic_rewrite F E ?Q (gets_the f >>= g) m
+ 2. \<And>s. f s \<noteq> None \<and> Q (the (f s)) s \<Longrightarrow> ?Q s<\STATESEP>apply (rule monadic_rewrite_exists[where P="\<lambda>v s. f s = Some v"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>v. monadic_rewrite F E (?Q3 v) (gets_the f >>= g) m
+ 2. \<And>s. f s \<noteq> None \<and> Q (the (f s)) s \<Longrightarrow> ((\<lambda>s. \<forall>v. f s = Some v \<longrightarrow> ?Q3 v s) and (\<lambda>s. \<exists>v. f s = Some v)) s<\STATESEP>apply (subst return_bind[symmetric, where f="\<lambda>_. m"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>v. monadic_rewrite F E (?Q6 v (?v6 v)) (gets_the f >>= g) (do _ <- return (?x6 v);
+m
+od)
+ 2. \<And>s. f s \<noteq> None \<and> Q (the (f s)) s \<Longrightarrow> ((\<lambda>s. \<forall>v. f s = Some v \<longrightarrow> ?Q6 v (?v6 v) s) and (\<lambda>s. \<exists>v. f s = Some v)) s<\STATESEP>apply (rule monadic_rewrite_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>v. monadic_rewrite F E (?P14 v (?v6 v)) (gets_the f) (return (?x6 v))
+ 2. \<And>v uu_. monadic_rewrite F E (?Q8 v uu_) (g uu_) m
+ 3. \<And>v. \<lbrace>?R13 v (?v6 v)\<rbrace> return (?x6 v) \<lbrace>?Q8 v\<rbrace>
+ 4. \<And>s. f s \<noteq> None \<and> Q (the (f s)) s \<Longrightarrow> ((\<lambda>s. \<forall>v. f s = Some v \<longrightarrow> (?P14 v (?v6 v) and ?R13 v (?v6 v)) s) and (\<lambda>s. \<exists>v. f s = Some v)) s<\STATESEP>apply (rule_tac v=v in monadic_rewrite_gets_the_known_v)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>v uu_. monadic_rewrite F E (?Q8 v uu_) (g uu_) m
+ 2. \<And>v. \<lbrace>?R13 v v\<rbrace> return v \<lbrace>?Q8 v\<rbrace>
+ 3. \<And>s. f s \<noteq> None \<and> Q (the (f s)) s \<Longrightarrow> ((\<lambda>s. \<forall>v. f s = Some v \<longrightarrow> ((\<lambda>a. f a = Some v) and ?R13 v v) s) and (\<lambda>s. \<exists>v. f s = Some v)) s<\STATESEP>apply (rule mr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>v. \<lbrace>?R13 v v\<rbrace> return v \<lbrace>Q\<rbrace>
+ 2. \<And>s. f s \<noteq> None \<and> Q (the (f s)) s \<Longrightarrow> ((\<lambda>s. \<forall>v. f s = Some v \<longrightarrow> ((\<lambda>a. f a = Some v) and ?R13 v v) s) and (\<lambda>s. \<exists>v. f s = Some v)) s<\STATESEP>apply wpsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_gets_the_gets:
+  "monadic_rewrite F E (\<lambda>s. f s \<noteq> None) (gets_the f) (gets (the o f))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E (\<lambda>s. f s \<noteq> None) (gets_the f) (gets (the \<circ> f))<\STATESEP>apply (simp add: monadic_rewrite_def gets_the_def assert_opt_def exec_gets
+            split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s x2. f s = Some x2 \<longrightarrow> (F \<longrightarrow> \<not> snd (return x2 s)) \<longrightarrow> (E \<longrightarrow> return x2 s = gets (the \<circ> f) s) \<and> (\<not> E \<longrightarrow> fst (gets (the \<circ> f) s) \<subseteq> fst (return x2 s) \<and> (snd (gets (the \<circ> f) s) \<longrightarrow> snd (return x2 s)))<\STATESEP>apply (auto simp: simpler_gets_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_oapply_liftM_rewrite:
+  "monadic_rewrite False True (\<lambda>s. f s p \<noteq> None)
+                   (gets (oapply p \<circ> f)) (liftM Some (gets_map f p))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite False True (\<lambda>s. f s p \<noteq> None) (gets (oapply p \<circ> f)) (liftM Some (gets_map f p))<\STATESEP>unfolding monadic_rewrite_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. f s p \<noteq> None \<and> (False \<longrightarrow> \<not> snd (gets (oapply p \<circ> f) s)) \<longrightarrow> (True \<longrightarrow> gets (oapply p \<circ> f) s = liftM Some (gets_map f p) s) \<and> (\<not> True \<longrightarrow> fst (liftM Some (gets_map f p) s) \<subseteq> fst (gets (oapply p \<circ> f) s) \<and> (snd (liftM Some (gets_map f p) s) \<longrightarrow> snd (gets (oapply p \<circ> f) s)))<\STATESEP>by (simp add: liftM_def simpler_gets_def bind_def gets_map_def assert_opt_def return_def
+           split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_case_option:
+  "\<lbrakk> \<And>y. x = Some y \<Longrightarrow> monadic_rewrite E F (P x) f (g y);
+     x = None \<Longrightarrow> monadic_rewrite E F Q f h \<rbrakk>
+   \<Longrightarrow> monadic_rewrite E F (\<lambda>s. (\<forall>y. x = Some y \<longrightarrow> P x s) \<and> (x = None \<longrightarrow> Q s))
+                          f (case x of Some y \<Rightarrow> g y | None \<Rightarrow> h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>y. x = Some y \<Longrightarrow> monadic_rewrite E F (P x) f (g y); x = None \<Longrightarrow> monadic_rewrite E F Q f h\<rbrakk> \<Longrightarrow> monadic_rewrite E F (\<lambda>s. (\<forall>y. x = Some y \<longrightarrow> P x s) \<and> (x = None \<longrightarrow> Q s)) f (case x of None \<Rightarrow> h | Some y \<Rightarrow> g y)<\STATESEP>by (cases x, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_case_sum:
+  "\<lbrakk> \<And>v. x = Inl v \<Longrightarrow> monadic_rewrite F E (P v) (a v) (c v);
+     \<And>v. x = Inr v \<Longrightarrow> monadic_rewrite F E (Q v) (b v) (d v) \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (\<not> isRight x \<longrightarrow> P (theLeft x) s) \<and> (isRight x \<longrightarrow> Q (theRight x) s))
+        (case_sum a b x) (case_sum c d x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>v. x = Inl v \<Longrightarrow> monadic_rewrite F E (P v) (a v) (c v); \<And>v. x = Inr v \<Longrightarrow> monadic_rewrite F E (Q v) (b v) (d v)\<rbrakk> \<Longrightarrow> monadic_rewrite F E (\<lambda>s. (\<not> isRight x \<longrightarrow> P (theLeft x) s) \<and> (isRight x \<longrightarrow> Q (theRight x) s)) (case x of Inl x \<Rightarrow> a x | Inr x \<Rightarrow> b x) (case x of Inl x \<Rightarrow> c x | Inr x \<Rightarrow> d x)<\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_refine_valid:
+  "\<lbrakk> monadic_rewrite F E P f g;
+     \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>;
+     F \<longrightarrow> no_fail P'' f \<rbrakk>
+   \<Longrightarrow> \<lbrace>P and P' and P''\<rbrace> g \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>; F \<longrightarrow> no_fail P'' f\<rbrakk> \<Longrightarrow> \<lbrace>P and P' and P''\<rbrace> g \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp: monadic_rewrite_def valid_def no_fail_def imp_conjL Ball_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_refine_validE_R:
+  "\<lbrakk> monadic_rewrite F E P f g;
+     \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, -;
+     F \<longrightarrow> no_fail P'' f \<rbrakk>
+   \<Longrightarrow> \<lbrace>P and P' and P''\<rbrace> g \<lbrace>Q\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E P f g; \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, -; F \<longrightarrow> no_fail P'' f\<rbrakk> \<Longrightarrow> \<lbrace>P and P' and P''\<rbrace> g \<lbrace>Q\<rbrace>, -<\STATESEP>by (simp add: validE_R_def validE_def monadic_rewrite_refine_valid)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_is_valid:
+  "\<lbrakk> monadic_rewrite False E P' f f'; \<lbrace>P\<rbrace> do x <- f; g x od \<lbrace>Q\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>P and P'\<rbrace> do x <- f'; g x od \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite False E P' f f'; \<lbrace>P\<rbrace> f >>= g \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f' >>= g \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp: monadic_rewrite_def valid_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_to_eq:
+  "monadic_rewrite False True \<top> f g \<Longrightarrow> f = g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite False True (\<lambda>_. True) f g \<Longrightarrow> f = g<\STATESEP>by (simp add: monadic_rewrite_def fun_eq_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_transverse:
+  "\<lbrakk> monadic_rewrite False True Q c b; monadic_rewrite F E P a b \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and Q) a c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite False True Q c b; monadic_rewrite F E P a b\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and Q) a c<\STATESEP>by (auto simp add: monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_weaken_failure:
+  "\<lbrakk> monadic_rewrite True True P f f'; no_fail P' f; no_fail Q' f' \<rbrakk>
+   \<Longrightarrow> monadic_rewrite F E (P and P' and Q') f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite True True P f f'; no_fail P' f; no_fail Q' f'\<rbrakk> \<Longrightarrow> monadic_rewrite F E (P and P' and Q') f f'<\STATESEP>by (clarsimp simp: monadic_rewrite_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_corres_l_generic:
+  "\<lbrakk> monadic_rewrite F E Q a a';
+     corres_underlying R nf nf' r P P' a' c;
+     F \<longrightarrow> nf \<rbrakk>
+   \<Longrightarrow> corres_underlying R nf nf' r (P and Q) P' a c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E Q a a'; corres_underlying R nf nf' r P P' a' c; F \<longrightarrow> nf\<rbrakk> \<Longrightarrow> corres_underlying R nf nf' r (P and Q) P' a c<\STATESEP>by (fastforce simp add: corres_underlying_def monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_corres_l:
+  "\<lbrakk> monadic_rewrite False E Q a a';
+     corres_underlying R nf nf' r P P' a' c \<rbrakk>
+   \<Longrightarrow> corres_underlying R nf nf' r (P and Q) P' a c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite False E Q a a'; corres_underlying R nf nf' r P P' a' c\<rbrakk> \<Longrightarrow> corres_underlying R nf nf' r (P and Q) P' a c<\STATESEP>by (rule monadic_rewrite_corres_l_generic, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_corres_r_generic:
+  "\<lbrakk> monadic_rewrite F E Q c' c;
+     corres_underlying R nf nf'' r P P' a c';
+     F \<longrightarrow> nf''; nf' \<longrightarrow> nf'' \<rbrakk>
+   \<Longrightarrow> corres_underlying R nf nf' r P (P' and Q) a c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E Q c' c; corres_underlying R nf nf'' r P P' a c'; F \<longrightarrow> nf''; nf' \<longrightarrow> nf''\<rbrakk> \<Longrightarrow> corres_underlying R nf nf' r P (P' and Q) a c<\STATESEP>by (fastforce simp: corres_underlying_def monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_corres_r_generic_ex_abs:
+  "\<lbrakk> monadic_rewrite F E (\<lambda>s'. Q s' \<and> ex_abs_underlying sr P s') c' c;
+     corres_underlying sr nf nf'' r P P' a c';
+     F \<longrightarrow> nf''; nf' \<longrightarrow> nf'' \<rbrakk>
+   \<Longrightarrow> corres_underlying sr nf nf' r P (P' and Q) a c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite F E (\<lambda>s'. Q s' \<and> ex_abs_underlying sr P s') c' c; corres_underlying sr nf nf'' r P P' a c'; F \<longrightarrow> nf''; nf' \<longrightarrow> nf''\<rbrakk> \<Longrightarrow> corres_underlying sr nf nf' r P (P' and Q) a c<\STATESEP>by (fastforce simp: corres_underlying_def monadic_rewrite_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monadic_rewrite_corres_r:
+  "\<lbrakk> monadic_rewrite False True Q c c';
+     corres_underlying R nf nf' r P P' a c' \<rbrakk>
+   \<Longrightarrow> corres_underlying R nf nf' r P (P' and Q) a c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monadic_rewrite False True Q c c'; corres_underlying R nf nf' r P P' a c'\<rbrakk> \<Longrightarrow> corres_underlying R nf nf' r P (P' and Q) a c<\STATESEP>by (erule (1) monadic_rewrite_corres_r_generic[OF monadic_rewrite_sym], simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corres_gets_the_bind
+  = monadic_rewrite_corres_l[OF monadic_rewrite_bind_head[OF monadic_rewrite_gets_the_gets]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma oblivious_monadic_rewrite:
+  "oblivious f m \<Longrightarrow> monadic_rewrite F E \<top> (do modify f; m od) (do m; modify f od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. oblivious f m \<Longrightarrow> monadic_rewrite F E (\<lambda>_. True) (do modify f;
+m
+od) (do m;
+modify f
+od)<\STATESEP>by (clarsimp simp: monadic_rewrite_def oblivious_modify_swap)<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpc_helper_monadic_rewrite:
+  "monadic_rewrite F E Q m m'
+   \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (monadic_rewrite F E P m m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monadic_rewrite F E Q m m' \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (monadic_rewrite F E P m m')<\STATESEP>by (auto simp: wpc_helper_def elim!: monadic_rewrite_guard_imp)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. monadic_rewrite F E Q' m m'" wpc_helper_monadic_rewrite<\STATESEP>0<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. monadic_rewrite F E Q' (m >>= c) m'" wpc_helper_monadic_rewrite<\STATESEP>0<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. monadic_rewrite F E Q' (m >>=E c) m'" wpc_helper_monadic_rewrite<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems monadic_rewrite_pre<\STATESEP>0<\TRANSEP><\STATESEP>declare monadic_rewrite_guard_imp[monadic_rewrite_pre]<\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_pre = (WP_Pre.pre_tac monadic_rewrite_pre)?<\STATESEP>0<\TRANSEP><\STATESEP>lemmas monadic_rewrite_step_l =
+  monadic_rewrite_bind_tail[THEN monadic_rewrite_bind_eta_r]
+  monadic_rewrite_bindE_tail[THEN monadic_rewrite_bindE_eta_r]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas monadic_rewrite_step_r =
+  monadic_rewrite_bind_tail[THEN monadic_rewrite_bind_eta_l]
+  monadic_rewrite_bindE_tail[THEN monadic_rewrite_bindE_eta_l]<\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_solve_head methods m =
+  (rule monadic_rewrite_bind_head monadic_rewrite_bindE_head)?,
+  solves \<open>m, (rule monadic_rewrite_refl)?\<close><\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_single_pass methods start step action finalise =
+  determ start,
+  fwd_all_new
+    \<open>(repeat_unless action \<open>determ step\<close>)\<close>
+    \<open>if_then_else \<open>has_concl "monadic_rewrite ?F ?E ?P ?r ?l"\<close> succeed finalise\<close><\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_l_method methods action finalise =
+  monadic_rewrite_single_pass \<open>monadic_rewrite_pre, rule monadic_rewrite_trans\<close>
+                              \<open>determ \<open>rule monadic_rewrite_step_l\<close>\<close>
+                              action
+                              finalise<\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_r_method methods action finalise =
+  monadic_rewrite_single_pass \<open>monadic_rewrite_pre, rule monadic_rewrite_trans[rotated]\<close>
+                              \<open>determ \<open>rule monadic_rewrite_step_r\<close>\<close>
+                              action
+                              finalise<\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_symb_exec_resolutions methods m =
+  if_then_else \<open>has_concl "empty_fail ?f"\<close> m
+  \<open>if_then_else \<open>has_concl "no_fail ?P ?f"\<close> m
+  \<open>if_then_else \<open>has_concl "?Q \<longrightarrow> empty_fail ?f"\<close> m
+  \<open>if_then_else \<open>has_concl "?Q \<longrightarrow> no_fail ?P ?f"\<close> m
+  \<open>if_then_else \<open>has_concl "?f \<lbrace>?P\<rbrace>"\<close> m
+   fail\<close>\<close>\<close>\<close><\STATESEP>0<\TRANSEP><\STATESEP>method monadic_rewrite_symb_exec methods r m =
+  (monadic_rewrite_pre, no_name_eta, r; (monadic_rewrite_symb_exec_resolutions m)?)<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+structure Monadic_Rewrite = struct
+
+val solves_wpsimp =
+  let
+    fun wpsimp st = Method_Closure.apply_method st @{method wpsimp} [] [] [] st
+    fun solves_wpsimp_tac st = Method_Closure.apply_method st @{method solves} [] [] [wpsimp] st
+  in solves_wpsimp_tac end
+
+(* monadic_rewrite_l/r_method \<open>monadic_rewrite_solve_head \<open>rule r\<close>\<close> [finalise] *)
+fun rewrite_rl monadic_rewrite_rl_method_name =
+  Attrib.thm -- (Scan.option Method.text_closure)
+  >> (fn (thm, finalise_method_opt) => fn ctxt => fn facts =>
+  let
+    (* rule r *)
+    fun rtac st = METHOD (HEADGOAL o Method.rule_tac st [thm]);
+    (* monadic_rewrite_solve_head \<open>rule r\<close> *)
+    fun mr_sh_tac st = Method_Closure.apply_method st @{method monadic_rewrite_solve_head}
+                                                   [] [] [rtac] st;
+    (* finalise *)
+    fun finalise_tac st =
+      case finalise_method_opt
+        of SOME m => METHOD (method_evaluate m st)
+         | NONE => solves_wpsimp st
+    (* assemble *)
+    fun tac st = Method_Closure.apply_method st monadic_rewrite_rl_method_name
+                                             [] [] [mr_sh_tac, finalise_tac] st;
+  in
+    tac ctxt facts
+  end)
+
+(* monadic_rewrite_symb_exec \<open>rule rule_thms\<close> [finalise] *)
+fun symb_exec rule_thms =
+  Scan.option Method.text_closure >> (fn finalise_method_opt => fn ctxt => fn facts =>
+  let
+    (* rule rule_thms *)
+    fun rtac st = METHOD (HEADGOAL o Method.rule_tac st rule_thms)
+    (* finalise *)
+    fun finalise_tac st =
+      case finalise_method_opt
+        of SOME m => METHOD (method_evaluate m st)
+         | NONE => solves_wpsimp st
+    (* assemble *)
+    fun tac st = Method_Closure.apply_method st @{method monadic_rewrite_symb_exec}
+                                             [] [] [rtac, finalise_tac] st
+  in
+    tac ctxt facts
+  end)
+
+(* apply (monadic_rewrite_symb_exec \<open>rules_tac rv=value in thms\<close> [finalise]) *)
+fun symb_exec_known thms =
+  (Scan.lift Parse.embedded_inner_syntax -- Scan.lift Parse.for_fixes
+  -- (Scan.option Method.text_closure))
+  >> (fn ((syn, fixes), finalise_method_opt) => fn ctxt => fn facts =>
+  let
+    (* rules_tac rv=syn in thms *)
+    val rtac = METHOD
+               o Multi_Rule_Insts.single_instantiate_tac Rule_Insts.res_inst_tac "rv" syn fixes thms;
+    (* finalise *)
+    fun finalise_tac st =
+      case finalise_method_opt
+        of SOME m => METHOD (method_evaluate m st)
+         | NONE => solves_wpsimp st
+    (* assemble *)
+    fun tac st = Method_Closure.apply_method st @{method monadic_rewrite_symb_exec}
+                                             [] [] [rtac, finalise_tac] st
+  in
+    tac ctxt facts
+  end)
+
+end\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_l = \<open>Monadic_Rewrite.rewrite_rl @{method monadic_rewrite_l_method}\<close>
+  \<open>apply rule in monadic_rewrite LHS with customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_r = \<open>Monadic_Rewrite.rewrite_rl @{method monadic_rewrite_r_method}\<close>
+  \<open>apply rule in monadic_rewrite RHS with customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_symb_exec_l =
+  \<open>Monadic_Rewrite.symb_exec @{thms monadic_rewrite_symb_exec_l monadic_rewrite_symb_exec_l'}\<close>
+  \<open>symbolic execution on monadic_rewrite LHS with customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_symb_exec_r =
+  \<open>Monadic_Rewrite.symb_exec @{thms monadic_rewrite_symb_exec_r monadic_rewrite_symb_exec_r'}\<close>
+  \<open>symbolic execution on monadic_rewrite RHS with customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_symb_exec_l_drop =
+  \<open>Monadic_Rewrite.symb_exec @{thms monadic_rewrite_symb_exec_l_drop}\<close>
+  \<open>drop monadic_rewrite LHS statement via symbolic execution with customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_symb_exec_r_drop =
+  \<open>Monadic_Rewrite.symb_exec @{thms monadic_rewrite_symb_exec_r_drop}\<close>
+  \<open>drop monadic_rewrite RHS statement via symbolic execution with customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_symb_exec_l_known =
+  \<open>Monadic_Rewrite.symb_exec_known @{thms monadic_rewrite_symb_exec_l_known}\<close>
+  \<open>symbolic execution on monadic_rewrite LHS with known value and customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup monadic_rewrite_symb_exec_r_known =
+  \<open>Monadic_Rewrite.symb_exec_known @{thms monadic_rewrite_symb_exec_r_known}\<close>
+  \<open>symbolic execution on monadic_rewrite RHS with known value and customisable side-condition method\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

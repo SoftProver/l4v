@@ -1,0 +1,1785 @@
+<\STATESEP>chapter "Abstract Separation Algebra"<\STATESEP>0<\TRANSEP><\STATESEP>theory Separation_Algebra
+imports
+  Arbitrary_Comm_Monoid
+  "HOL-Library.Adhoc_Overloading"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Input syntax for lifting boolean predicates to separation predicates\<close><\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_and :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool" (infixr "and" 35) where
+  "a and b \<equiv> \<lambda>s. a s \<and> b s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_or :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool" (infixr "or" 30) where
+  "a or b \<equiv> \<lambda>s. a s \<or> b s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_not :: "('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool" ("not _" [40] 40) where
+  "not a \<equiv> \<lambda>s. \<not>a s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_imp :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool" (infixr "imp" 25) where
+  "a imp b \<equiv> \<lambda>s. a s \<longrightarrow> b s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_K :: "'b \<Rightarrow> 'a \<Rightarrow> 'b" ("\<langle>_\<rangle>") where
+  "\<langle>f\<rangle> \<equiv> \<lambda>s. f"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_ex :: "('b \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool" (binder "EXS " 10) where
+  "EXS x. P x \<equiv> \<lambda>s. \<exists>x. P x s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input)
+  pred_all :: "('b \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> bool" (binder "ALLS " 10) where
+  "ALLS x. P x \<equiv> \<lambda>s. \<forall>x. P x s"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Associative/Commutative Monoid Basis of Separation Algebras\<close><\STATESEP>0<\TRANSEP><\STATESEP>class pre_sep_algebra = zero + plus +
+  fixes sep_disj :: "'a => 'a => bool" (infix "##" 60)
+
+  assumes sep_disj_zero [simp]: "x ## 0"
+  assumes sep_disj_commuteI: "x ## y \<Longrightarrow> y ## x"
+
+  assumes sep_add_zero [simp]: "x + 0 = x"
+  assumes sep_add_commute: "x ## y \<Longrightarrow> x + y = y + x"
+
+  assumes sep_add_assoc:
+    "\<lbrakk> x ## y; y ## z; x ## z \<rbrakk> \<Longrightarrow> (x + y) + z = x + (y + z)"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_disj_commute: "x ## y = y ## x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## y = y ## x<\STATESEP>by (blast intro: sep_disj_commuteI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_add_left_commute:
+  assumes a: "a ## b" "b ## c" "a ## c"
+  shows "b + (a + c) = a + (b + c)" (is "?lhs = ?rhs")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>have "?lhs = b + a + c"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. b + (a + c) = b + a + c<\STATESEP>using a<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+a ## b
+b ## c
+a ## c
+
+goal (1 subgoal):
+ 1. b + (a + c) = b + a + c<\STATESEP>by (simp add: sep_add_assoc[symmetric] sep_disj_commute)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+b + (a + c) = b + a + c
+
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+b + (a + c) = b + a + c
+
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>have "... = a + b + c"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. b + a + c = a + b + c<\STATESEP>using a<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+a ## b
+b ## c
+a ## c
+
+goal (1 subgoal):
+ 1. b + a + c = a + b + c<\STATESEP>by (simp add: sep_add_commute sep_disj_commute)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+b + a + c = a + b + c
+
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+b + a + c = a + b + c
+
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>have "... = ?rhs"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a + b + c = a + (b + c)<\STATESEP>using a<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+a ## b
+b ## c
+a ## c
+
+goal (1 subgoal):
+ 1. a + b + c = a + (b + c)<\STATESEP>by (simp add: sep_add_assoc sep_disj_commute)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a + b + c = a + (b + c)
+
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+b + (a + c) = a + (b + c)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+b + (a + c) = a + (b + c)
+
+goal (1 subgoal):
+ 1. b + (a + c) = a + (b + c)<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+this:
+b + (a + c) = a + (b + c)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemmas sep_add_ac = sep_add_assoc sep_add_commute sep_add_left_commute
+                    sep_disj_commute<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Separation Algebra as Defined by Calcagno et al.\<close><\STATESEP>0<\TRANSEP><\STATESEP>class sep_algebra = pre_sep_algebra +
+  assumes sep_disj_addD1: "\<lbrakk> x ## y + z; y ## z \<rbrakk> \<Longrightarrow> x ## y"
+  assumes sep_disj_addI1: "\<lbrakk> x ## y + z; y ## z \<rbrakk> \<Longrightarrow> x + y ## z"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Basic Construct Definitions and Abbreviations\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_conj :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)" (infixr "**" 36)
+  where
+  "P ** Q \<equiv> \<lambda>h. \<exists>x y. x ## y \<and> h = x + y \<and> P x \<and> Q y"<\STATESEP>0<\TRANSEP><\STATESEP>notation
+  sep_conj (infixr "\<and>*" 36)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output)
+  sep_conj (infixr "\<and>\<^sup>*" 36)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_empty :: "'a \<Rightarrow> bool" ("\<box>") where
+  "\<box> \<equiv> \<lambda>h. h = 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_impl :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)" (infixr "\<longrightarrow>*" 25)
+  where
+  "P \<longrightarrow>* Q \<equiv> \<lambda>h. \<forall>h'. h ## h' \<and> P h' \<longrightarrow> Q (h + h')"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_substate :: "'a \<Rightarrow> 'a \<Rightarrow> bool" (infix "\<preceq>" 60) where
+  "x \<preceq> y \<equiv> \<exists>z. x ## z \<and> x + z = y"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "sep_true \<equiv> \<langle>True\<rangle>"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "sep_false \<equiv> \<langle>False\<rangle>"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Disjunction/Addition Properties\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma disjoint_zero_sym [simp]: "0 ## x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0::'a) ## x<\STATESEP>by (simp add: sep_disj_commute)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_add_zero_sym [simp]: "0 + x = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0::'a) + x = x<\STATESEP>by (simp add: sep_add_commute)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_disj_addD2: "\<lbrakk> x ## y + z; y ## z \<rbrakk> \<Longrightarrow> x ## z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x ## y + z; y ## z\<rbrakk> \<Longrightarrow> x ## z<\STATESEP>by (metis sep_add_commute sep_disj_addD1 sep_disj_commuteI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_disj_addD: "\<lbrakk> x ## y + z; y ## z \<rbrakk> \<Longrightarrow> x ## y \<and> x ## z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x ## y + z; y ## z\<rbrakk> \<Longrightarrow> x ## y \<and> x ## z<\STATESEP>by (metis sep_disj_addD1 sep_disj_addD2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_add_disjD: "\<lbrakk> x + y ## z; x ## y \<rbrakk> \<Longrightarrow> x ## z \<and> y ## z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x + y ## z; x ## y\<rbrakk> \<Longrightarrow> x ## z \<and> y ## z<\STATESEP>by (metis sep_disj_addD sep_disj_commuteI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_disj_addI2:
+  "\<lbrakk> x ## y + z; y ## z \<rbrakk> \<Longrightarrow> x + z ## y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x ## y + z; y ## z\<rbrakk> \<Longrightarrow> x + z ## y<\STATESEP>using sep_add_commute sep_disj_addI1 sep_disj_commuteI<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x ## ?y \<Longrightarrow> ?x + ?y = ?y + ?x
+\<lbrakk>?x ## ?y + ?z; ?y ## ?z\<rbrakk> \<Longrightarrow> ?x + ?y ## ?z
+?x ## ?y \<Longrightarrow> ?y ## ?x
+
+goal (1 subgoal):
+ 1. \<lbrakk>x ## y + z; y ## z\<rbrakk> \<Longrightarrow> x + z ## y<\STATESEP>by presburger<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_add_disjI1:
+  "\<lbrakk> x + y ## z; x ## y \<rbrakk> \<Longrightarrow> x + z ## y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x + y ## z; x ## y\<rbrakk> \<Longrightarrow> x + z ## y<\STATESEP>by (metis sep_add_commute sep_disj_addI1 sep_disj_commuteI sep_add_disjD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_add_disjI2:
+  "\<lbrakk> x + y ## z; x ## y \<rbrakk> \<Longrightarrow> z + y ## x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x + y ## z; x ## y\<rbrakk> \<Longrightarrow> z + y ## x<\STATESEP>by (metis sep_add_commute sep_disj_addI1 sep_disj_commuteI sep_add_disjD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_disj_addI3:
+  "x + y ## z \<Longrightarrow> x ## y \<Longrightarrow> x ## y + z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x + y ## z; x ## y\<rbrakk> \<Longrightarrow> x ## y + z<\STATESEP>by (metis sep_add_commute sep_disj_addI1 sep_disj_commuteI sep_add_disjD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_disj_add:
+  "\<lbrakk> y ## z; x ## y \<rbrakk> \<Longrightarrow> x ## y + z = x + y ## z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>y ## z; x ## y\<rbrakk> \<Longrightarrow> x ## y + z = x + y ## z<\STATESEP>by (metis sep_disj_addI1 sep_disj_addI3)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Substate Properties\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_substate_disj_add:
+  "x ## y \<Longrightarrow> x \<preceq> x + y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## y \<Longrightarrow> x \<preceq> x + y<\STATESEP>unfolding sep_substate_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## y \<Longrightarrow> \<exists>z. x ## z \<and> x + z = x + y<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_substate_disj_add':
+  "x ## y \<Longrightarrow> x \<preceq> y + x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## y \<Longrightarrow> x \<preceq> y + x<\STATESEP>by (simp add: sep_add_ac sep_substate_disj_add)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Separating Conjunction Properties\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conjD:
+  "(P \<and>* Q) h \<Longrightarrow> \<exists>x y. x ## y \<and> h = x + y \<and> P x \<and> Q y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q) h \<Longrightarrow> \<exists>x y. x ## y \<and> h = x + y \<and> P x \<and> Q y<\STATESEP>by (simp add: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conjE:
+  "\<lbrakk> (P ** Q) h; \<And>x y. \<lbrakk> P x; Q y; x ## y; h = x + y \<rbrakk> \<Longrightarrow> X \<rbrakk> \<Longrightarrow> X"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* Q) h; \<And>x y. \<lbrakk>P x; Q y; x ## y; h = x + y\<rbrakk> \<Longrightarrow> X\<rbrakk> \<Longrightarrow> X<\STATESEP>by (auto simp: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conjI:
+  "\<lbrakk> P x; Q y; x ## y; h = x + y \<rbrakk> \<Longrightarrow> (P ** Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; Q y; x ## y; h = x + y\<rbrakk> \<Longrightarrow> (P \<and>* Q) h<\STATESEP>by (auto simp: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_commuteI:
+  "(P ** Q) h \<Longrightarrow> (Q ** P) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q) h \<Longrightarrow> (Q \<and>* P) h<\STATESEP>by (auto intro!: sep_conjI elim!: sep_conjE simp: sep_add_ac)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_commute:
+  "(P ** Q) = (Q ** P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q) = (Q \<and>* P)<\STATESEP>by (rule ext) (auto intro: sep_conj_commuteI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_assoc:
+  "((P ** Q) ** R) = (P ** Q ** R)" (is "?lhs = ?rhs")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((P \<and>* Q) \<and>* R) = (P \<and>* Q \<and>* R)<\STATESEP>proof (rule ext, rule iffI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>x. ((P \<and>* Q) \<and>* R) x \<Longrightarrow> (P \<and>* Q \<and>* R) x
+ 2. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>fix h<\STATESEP>2<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>x. ((P \<and>* Q) \<and>* R) x \<Longrightarrow> (P \<and>* Q \<and>* R) x
+ 2. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>assume a: "?lhs h"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+((P \<and>* Q) \<and>* R) h
+
+goal (2 subgoals):
+ 1. \<And>x. ((P \<and>* Q) \<and>* R) x \<Longrightarrow> (P \<and>* Q \<and>* R) x
+ 2. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+((P \<and>* Q) \<and>* R) h<\STATESEP>obtain x y z where "P x" and "Q y" and "R z"
+                      and "x ## y" and "x ## z" and "y ## z" and "x + y ## z"
+                      and "h = x + y + z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+((P \<and>* Q) \<and>* R) h
+
+goal (1 subgoal):
+ 1. (\<And>x y z. \<lbrakk>P x; Q y; R z; x ## y; x ## z; y ## z; x + y ## z; h = x + y + z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (auto dest!: sep_conjD dest: sep_add_disjD)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x + y ## z
+h = x + y + z
+
+goal (2 subgoals):
+ 1. \<And>x. ((P \<and>* Q) \<and>* R) x \<Longrightarrow> (P \<and>* Q \<and>* R) x
+ 2. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x + y ## z
+h = x + y + z
+
+goal (2 subgoals):
+ 1. \<And>x. ((P \<and>* Q) \<and>* R) x \<Longrightarrow> (P \<and>* Q \<and>* R) x
+ 2. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x + y ## z
+h = x + y + z<\STATESEP>have "x ## y + z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x + y ## z
+h = x + y + z
+
+goal (1 subgoal):
+ 1. x ## y + z<\STATESEP>by (simp add: sep_disj_add)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x ## y + z
+
+goal (2 subgoals):
+ 1. \<And>x. ((P \<and>* Q) \<and>* R) x \<Longrightarrow> (P \<and>* Q \<and>* R) x
+ 2. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x + y ## z
+h = x + y + z
+x ## y + z<\STATESEP>show "?rhs h"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x + y ## z
+h = x + y + z
+x ## y + z
+
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) h<\STATESEP>by (auto simp: sep_add_ac intro!: sep_conjI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<and>* Q \<and>* R) h
+
+goal (1 subgoal):
+ 1. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>fix h<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>assume a: "?rhs h"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P \<and>* Q \<and>* R) h
+
+goal (1 subgoal):
+ 1. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(P \<and>* Q \<and>* R) h<\STATESEP>obtain x y z where "P x" and "Q y" and "R z"
+                      and "x ## y" and "x ## z" and "y ## z" and "x ## y + z"
+                      and "h = x + y + z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(P \<and>* Q \<and>* R) h
+
+goal (1 subgoal):
+ 1. (\<And>x y z. \<lbrakk>P x; Q y; R z; x ## y; x ## z; y ## z; x ## y + z; h = x + y + z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (fastforce elim!: sep_conjE simp: sep_add_ac dest: sep_disj_addD)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x ## y + z
+h = x + y + z
+
+goal (1 subgoal):
+ 1. \<And>x. (P \<and>* Q \<and>* R) x \<Longrightarrow> ((P \<and>* Q) \<and>* R) x<\STATESEP>thus "?lhs h"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P x
+Q y
+R z
+x ## y
+x ## z
+y ## z
+x ## y + z
+h = x + y + z
+
+goal (1 subgoal):
+ 1. ((P \<and>* Q) \<and>* R) h<\STATESEP>by (metis sep_conj_def sep_disj_addI1)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+((P \<and>* Q) \<and>* R) h
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma sep_conj_impl:
+  "\<lbrakk> (P ** Q) h; \<And>h. P h \<Longrightarrow> P' h; \<And>h. Q h \<Longrightarrow> Q' h \<rbrakk> \<Longrightarrow> (P' ** Q') h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* Q) h; \<And>h. P h \<Longrightarrow> P' h; \<And>h. Q h \<Longrightarrow> Q' h\<rbrakk> \<Longrightarrow> (P' \<and>* Q') h<\STATESEP>by (erule sep_conjE, auto intro!: sep_conjI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_impl1:
+  assumes P: "\<And>h. P h \<Longrightarrow> I h"
+  shows "(P ** R) h \<Longrightarrow> (I ** R) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* R) h \<Longrightarrow> (I \<and>* R) h<\STATESEP>by (auto intro: sep_conj_impl P)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_globalise:
+  "\<lbrakk> (P ** R) h; (\<And>h. P h \<Longrightarrow> Q h) \<rbrakk> \<Longrightarrow> (Q ** R) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* R) h; \<And>h. P h \<Longrightarrow> Q h\<rbrakk> \<Longrightarrow> (Q \<and>* R) h<\STATESEP>by (fast elim: sep_conj_impl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_trivial_strip1:
+  "Q = R \<Longrightarrow> (P ** Q) = (P ** R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Q = R \<Longrightarrow> (P \<and>* Q) = (P \<and>* R)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_trivial_strip2:
+  "Q = R \<Longrightarrow> (Q ** P) = (R ** P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Q = R \<Longrightarrow> (Q \<and>* P) = (R \<and>* P)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma disjoint_subheaps_exist:
+  "\<exists>x y. x ## y \<and> h = x + y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>x y. x ## y \<and> h = x + y<\STATESEP>by (rule_tac x=0 in exI, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_left_commute: (* for permutative rewriting *)
+  "(P ** (Q ** R)) = (Q ** (P ** R))" (is "?x = ?y")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)<\STATESEP>have "?x = ((Q ** R) ** P)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = ((Q \<and>* R) \<and>* P)<\STATESEP>by (simp add: sep_conj_commute)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<and>* Q \<and>* R) = ((Q \<and>* R) \<and>* P)
+
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P \<and>* Q \<and>* R) = ((Q \<and>* R) \<and>* P)
+
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)<\STATESEP>have "\<dots> = (Q ** (R ** P))"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((Q \<and>* R) \<and>* P) = (Q \<and>* R \<and>* P)<\STATESEP>by (subst sep_conj_assoc, simp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+((Q \<and>* R) \<and>* P) = (Q \<and>* R \<and>* P)
+
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(P \<and>* Q \<and>* R) = (Q \<and>* R \<and>* P)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(P \<and>* Q \<and>* R) = (Q \<and>* R \<and>* P)
+
+goal (1 subgoal):
+ 1. (P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)<\STATESEP>by (simp add: sep_conj_commute)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<and>* Q \<and>* R) = (Q \<and>* P \<and>* R)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemmas sep_conj_ac = sep_conj_commute sep_conj_assoc sep_conj_left_commute<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_empty_zero [simp,intro!]: "\<box> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<box> (0::'a)<\STATESEP>by (simp add: sep_empty_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Properties of @{text sep_true} and @{text sep_false}\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conj_sep_true:
+  "P h \<Longrightarrow> (P ** sep_true) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P h \<Longrightarrow> (P \<and>* (\<lambda>s. True)) h<\STATESEP>by (simp add: sep_conjI[where y=0])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true':
+  "P h \<Longrightarrow> (sep_true ** P) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P h \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h<\STATESEP>by (simp add: sep_conjI[where x=0])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_true [simp]:
+  "(sep_true ** sep_true) = sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<and>* (\<lambda>s. True)) = (\<lambda>s. True)<\STATESEP>unfolding sep_conj_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>h. \<exists>x y. x ## y \<and> h = x + y \<and> True \<and> True) = (\<lambda>s. True)<\STATESEP>by (auto intro: disjoint_subheaps_exist)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_false_right [simp]:
+  "(P ** sep_false) = sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* (\<lambda>s. False)) = (\<lambda>s. False)<\STATESEP>by (force elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_false_left [simp]:
+  "(sep_false ** P) = sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. False) \<and>* P) = (\<lambda>s. False)<\STATESEP>by (subst sep_conj_commute) (rule sep_conj_false_right)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Properties of @{const sep_empty}\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conj_empty [simp]:
+  "(P ** \<box>) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* \<box>) = P<\STATESEP>by (simp add: sep_conj_def sep_empty_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_empty'[simp]:
+  "(\<box> ** P) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<box> \<and>* P) = P<\STATESEP>by (subst sep_conj_commute, rule sep_conj_empty)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_emptyI:
+  "P h \<Longrightarrow> (P ** \<box>) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P h \<Longrightarrow> (P \<and>* \<box>) h<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_emptyE:
+  "\<lbrakk> P s; (P ** \<box>) s \<Longrightarrow> (Q ** R) s \<rbrakk> \<Longrightarrow> (Q ** R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; (P \<and>* \<box>) s \<Longrightarrow> (Q \<and>* R) s\<rbrakk> \<Longrightarrow> (Q \<and>* R) s<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Properties of top (@{text sep_true})\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conj_true_P [simp]:
+  "(sep_true ** (sep_true ** P)) = (sep_true ** P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<and>* (\<lambda>s. True) \<and>* P) = ((\<lambda>s. True) \<and>* P)<\STATESEP>by (simp add: sep_conj_assoc[symmetric])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_disj:
+  "((P or Q) ** R) = ((P ** R) or (Q ** R))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. P s \<or> Q s) \<and>* R) = (\<lambda>s. (P \<and>* R) s \<or> (Q \<and>* R) s)<\STATESEP>by (rule ext, auto simp: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true_left:
+  "(P ** Q) h \<Longrightarrow> (sep_true ** Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q) h \<Longrightarrow> ((\<lambda>s. True) \<and>* Q) h<\STATESEP>by (erule sep_conj_impl, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true_right:
+  "(P ** Q) h \<Longrightarrow> (P ** sep_true) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q) h \<Longrightarrow> (P \<and>* (\<lambda>s. True)) h<\STATESEP>by (subst (asm) sep_conj_commute, drule sep_conj_sep_true_left,
+      simp add: sep_conj_ac)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Separating Conjunction with Quantifiers\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conj_conj:
+  "((P and Q) ** R) h \<Longrightarrow> ((P ** R) and (Q ** R)) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. P s \<and> Q s) \<and>* R) h \<Longrightarrow> (P \<and>* R) h \<and> (Q \<and>* R) h<\STATESEP>by (force intro: sep_conjI elim!: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_exists1:
+  "((EXS x. P x) ** Q) = (EXS x. (P x ** Q))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. \<exists>x. P x s) \<and>* Q) = (\<lambda>s. \<exists>x. (P x \<and>* Q) s)<\STATESEP>by (force intro: sep_conjI elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_exists2:
+  "(P ** (EXS x. Q x)) = (EXS x. P ** Q x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* (\<lambda>s. \<exists>x. Q x s)) = (\<lambda>s. \<exists>x. (P \<and>* Q x) s)<\STATESEP>by (force intro!: sep_conjI elim!: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sep_conj_exists = sep_conj_exists1 sep_conj_exists2<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conj_spec1:
+  "((ALLS x. P x) ** Q) h \<Longrightarrow> (P x ** Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. \<forall>x. P x s) \<and>* Q) h \<Longrightarrow> (P x \<and>* Q) h<\STATESEP>by (force intro: sep_conjI elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_spec2:
+  "(P ** (ALLS x. Q x)) h \<Longrightarrow> (P ** Q x) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* (\<lambda>s. \<forall>x. Q x s)) h \<Longrightarrow> (P \<and>* Q x) h<\STATESEP>by (force intro: sep_conjI elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sep_conj_spec = sep_conj_spec1 sep_conj_spec2<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Properties of Separating Implication\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_implI:
+  assumes a: "\<And>h'. \<lbrakk> h ## h'; P h' \<rbrakk> \<Longrightarrow> Q (h + h')"
+  shows "(P \<longrightarrow>* Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<longrightarrow>* Q) h<\STATESEP>unfolding sep_impl_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>h'. h ## h' \<and> P h' \<longrightarrow> Q (h + h')<\STATESEP>by (auto elim: a)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_implD:
+  "(x \<longrightarrow>* y) h \<Longrightarrow> \<forall>h'. h ## h' \<and> x h' \<longrightarrow> y (h + h')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x \<longrightarrow>* y) h \<Longrightarrow> \<forall>h'. h ## h' \<and> x h' \<longrightarrow> y (h + h')<\STATESEP>by (force simp: sep_impl_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_implE:
+  "(x \<longrightarrow>* y) h \<Longrightarrow> (\<forall>h'. h ## h' \<and> x h' \<longrightarrow> y (h + h') \<Longrightarrow> Q) \<Longrightarrow> Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(x \<longrightarrow>* y) h; \<forall>h'. h ## h' \<and> x h' \<longrightarrow> y (h + h') \<Longrightarrow> Q\<rbrakk> \<Longrightarrow> Q<\STATESEP>by (auto dest: sep_implD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_true [simp]:
+  "(P \<longrightarrow>* sep_true) = sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<longrightarrow>* (\<lambda>s. True)) = (\<lambda>s. True)<\STATESEP>by (force intro!: sep_implI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_false [simp]:
+  "(sep_false \<longrightarrow>* P) = sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. False) \<longrightarrow>* P) = (\<lambda>s. True)<\STATESEP>by (force intro!: sep_implI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_true_P:
+  "(sep_true \<longrightarrow>* P) h \<Longrightarrow> P h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<longrightarrow>* P) h \<Longrightarrow> P h<\STATESEP>by (clarsimp dest!: sep_implD elim!: allE[where x=0])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_true_false [simp]:
+  "(sep_true \<longrightarrow>* sep_false) = sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<longrightarrow>* (\<lambda>s. False)) = (\<lambda>s. False)<\STATESEP>by (force dest: sep_impl_sep_true_P)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_impl:
+  "\<lbrakk> P h; \<And>h. (P ** Q) h \<Longrightarrow> R h \<rbrakk> \<Longrightarrow> (Q \<longrightarrow>* R) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h\<rbrakk> \<Longrightarrow> (Q \<longrightarrow>* R) h<\STATESEP>proof (rule sep_implI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h'. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h; h ## h'; Q h'\<rbrakk> \<Longrightarrow> R (h + h')<\STATESEP>fix h' h<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h'. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h; h ## h'; Q h'\<rbrakk> \<Longrightarrow> R (h + h')<\STATESEP>assume "P h" and "h ## h'" and "Q h'"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P h
+h ## h'
+Q h'
+
+goal (1 subgoal):
+ 1. \<And>h'. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h; h ## h'; Q h'\<rbrakk> \<Longrightarrow> R (h + h')<\STATESEP>hence "(P ** Q) (h + h')"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P h
+h ## h'
+Q h'
+
+goal (1 subgoal):
+ 1. (P \<and>* Q) (h + h')<\STATESEP>by (force intro: sep_conjI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<and>* Q) (h + h')
+
+goal (1 subgoal):
+ 1. \<And>h'. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h; h ## h'; Q h'\<rbrakk> \<Longrightarrow> R (h + h')<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P \<and>* Q) (h + h')
+
+goal (1 subgoal):
+ 1. \<And>h'. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h; h ## h'; Q h'\<rbrakk> \<Longrightarrow> R (h + h')<\STATESEP>assume "\<And>h. (P ** Q) h \<Longrightarrow> R h"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P \<and>* Q) ?h \<Longrightarrow> R ?h
+
+goal (1 subgoal):
+ 1. \<And>h'. \<lbrakk>P h; \<And>h. (P \<and>* Q) h \<Longrightarrow> R h; h ## h'; Q h'\<rbrakk> \<Longrightarrow> R (h + h')<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(P \<and>* Q) (h + h')
+(P \<and>* Q) ?h \<Longrightarrow> R ?h<\STATESEP>show "R (h + h')"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(P \<and>* Q) (h + h')
+(P \<and>* Q) ?h \<Longrightarrow> R ?h
+
+goal (1 subgoal):
+ 1. R (h + h')<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+R (h + h')
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma sep_conj_sep_impl2:
+  "\<lbrakk> (P ** Q) h; \<And>h. P h \<Longrightarrow> (Q \<longrightarrow>* R) h \<rbrakk> \<Longrightarrow> R h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* Q) h; \<And>h. P h \<Longrightarrow> (Q \<longrightarrow>* R) h\<rbrakk> \<Longrightarrow> R h<\STATESEP>by (force dest: sep_implD elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_impl_sep_conj2:
+  "(P ** R) h \<Longrightarrow> (P ** (Q \<longrightarrow>* (Q ** R))) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* R) h \<Longrightarrow> (P \<and>* (Q \<longrightarrow>* Q \<and>* R)) h<\STATESEP>by (erule (1) sep_conj_impl, erule sep_conj_sep_impl, simp add: sep_conj_ac)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Pure assertions\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pure :: "('a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "pure P \<equiv> \<forall>h h'. P h = P h'"<\STATESEP>0<\TRANSEP><\STATESEP>lemma pure_sep_true:
+  "pure sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pure (\<lambda>s. True)<\STATESEP>by (simp add: pure_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_sep_false:
+  "pure sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pure (\<lambda>s. False)<\STATESEP>by (simp add: pure_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_split:
+  "pure P = (P = sep_true \<or> P = sep_false)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pure P = (P = (\<lambda>s. True) \<or> P = (\<lambda>s. False))<\STATESEP>by (force simp: pure_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_sep_conj:
+  "\<lbrakk> pure P; pure Q \<rbrakk> \<Longrightarrow> pure (P \<and>* Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>pure P; pure Q\<rbrakk> \<Longrightarrow> pure (P \<and>* Q)<\STATESEP>by (force simp: pure_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_sep_impl:
+  "\<lbrakk> pure P; pure Q \<rbrakk> \<Longrightarrow> pure (P \<longrightarrow>* Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>pure P; pure Q\<rbrakk> \<Longrightarrow> pure (P \<longrightarrow>* Q)<\STATESEP>by (force simp: pure_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_conj_sep_conj:
+  "\<lbrakk> (P and Q) h; pure P \<or> pure Q \<rbrakk> \<Longrightarrow> (P \<and>* Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P h \<and> Q h; pure P \<or> pure Q\<rbrakk> \<Longrightarrow> (P \<and>* Q) h<\STATESEP>by (metis pure_def sep_add_zero sep_conjI sep_conj_commute sep_disj_zero)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_sep_conj_conj:
+  "\<lbrakk> (P \<and>* Q) h; pure P; pure Q \<rbrakk> \<Longrightarrow> (P and Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* Q) h; pure P; pure Q\<rbrakk> \<Longrightarrow> P h \<and> Q h<\STATESEP>by (force simp: pure_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_conj_sep_conj_assoc:
+  "pure P \<Longrightarrow> ((P and Q) \<and>* R) = (P and (Q \<and>* R))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pure P \<Longrightarrow> ((\<lambda>s. P s \<and> Q s) \<and>* R) = (\<lambda>s. P s \<and> (Q \<and>* R) s)<\STATESEP>by (auto simp: pure_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_sep_impl_impl:
+  "\<lbrakk> (P \<longrightarrow>* Q) h; pure P \<rbrakk> \<Longrightarrow> P h \<longrightarrow> Q h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<longrightarrow>* Q) h; pure P\<rbrakk> \<Longrightarrow> P h \<longrightarrow> Q h<\STATESEP>by (force simp: pure_split dest: sep_impl_sep_true_P)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_impl_sep_impl:
+  "\<lbrakk> P h \<longrightarrow> Q h; pure P; pure Q \<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P h \<longrightarrow> Q h; pure P; pure Q\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h<\STATESEP>by (force simp: pure_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_conj_right: "(Q \<and>* (\<langle>P'\<rangle> and Q')) = (\<langle>P'\<rangle> and (Q \<and>* Q'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Q \<and>* (\<lambda>s. P' \<and> Q' s)) = (\<lambda>s. P' \<and> (Q \<and>* Q') s)<\STATESEP>by (rule ext, rule, rule, clarsimp elim!: sep_conjE)
+     (erule sep_conj_impl, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_conj_right': "(Q \<and>* (P' and \<langle>Q'\<rangle>)) = (\<langle>Q'\<rangle> and (Q \<and>* P'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Q \<and>* (\<lambda>s. P' s \<and> Q')) = (\<lambda>s. Q' \<and> (Q \<and>* P') s)<\STATESEP>by (simp add: conj_comms pure_conj_right)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_conj_left: "((\<langle>P'\<rangle> and Q') \<and>* Q) = (\<langle>P'\<rangle> and (Q' \<and>* Q))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. P' \<and> Q' s) \<and>* Q) = (\<lambda>s. P' \<and> (Q' \<and>* Q) s)<\STATESEP>by (simp add: pure_conj_right sep_conj_ac)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_conj_left': "((P' and \<langle>Q'\<rangle>) \<and>* Q) = (\<langle>Q'\<rangle> and (P' \<and>* Q))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. P' s \<and> Q') \<and>* Q) = (\<lambda>s. Q' \<and> (P' \<and>* Q) s)<\STATESEP>by (subst conj_comms, subst pure_conj_left, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas pure_conj = pure_conj_right pure_conj_right' pure_conj_left
+    pure_conj_left'<\STATESEP>0<\TRANSEP><\STATESEP>declare pure_conj[simp add]<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Intuitionistic assertions\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition intuitionistic :: "('a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "intuitionistic P \<equiv> \<forall>h h'. P h \<and> h \<preceq> h' \<longrightarrow> P h'"<\STATESEP>0<\TRANSEP><\STATESEP>lemma intuitionisticI:
+  "(\<And>h h'. \<lbrakk> P h; h \<preceq> h' \<rbrakk> \<Longrightarrow> P h') \<Longrightarrow> intuitionistic P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>h h'. \<lbrakk>P h; h \<preceq> h'\<rbrakk> \<Longrightarrow> P h') \<Longrightarrow> intuitionistic P<\STATESEP>by (unfold intuitionistic_def, fast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionisticD:
+  "\<lbrakk> intuitionistic P; P h; h \<preceq> h' \<rbrakk> \<Longrightarrow> P h'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>intuitionistic P; P h; h \<preceq> h'\<rbrakk> \<Longrightarrow> P h'<\STATESEP>by (unfold intuitionistic_def, fast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pure_intuitionistic:
+  "pure P \<Longrightarrow> intuitionistic P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pure P \<Longrightarrow> intuitionistic P<\STATESEP>by (clarsimp simp: intuitionistic_def pure_def, fast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_conj:
+  "\<lbrakk> intuitionistic P; intuitionistic Q \<rbrakk> \<Longrightarrow> intuitionistic (P and Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>intuitionistic P; intuitionistic Q\<rbrakk> \<Longrightarrow> intuitionistic (\<lambda>s. P s \<and> Q s)<\STATESEP>by (force intro: intuitionisticI dest: intuitionisticD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_disj:
+  "\<lbrakk> intuitionistic P; intuitionistic Q \<rbrakk> \<Longrightarrow> intuitionistic (P or Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>intuitionistic P; intuitionistic Q\<rbrakk> \<Longrightarrow> intuitionistic (\<lambda>s. P s \<or> Q s)<\STATESEP>by (force intro: intuitionisticI dest: intuitionisticD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_forall:
+  "(\<And>x. intuitionistic (P x)) \<Longrightarrow> intuitionistic (ALLS x. P x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. intuitionistic (P x)) \<Longrightarrow> intuitionistic (\<lambda>s. \<forall>x. P x s)<\STATESEP>by (force intro: intuitionisticI dest: intuitionisticD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_exists:
+  "(\<And>x. intuitionistic (P x)) \<Longrightarrow> intuitionistic (EXS x. P x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. intuitionistic (P x)) \<Longrightarrow> intuitionistic (\<lambda>s. \<exists>x. P x s)<\STATESEP>by (force intro: intuitionisticI dest: intuitionisticD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_sep_conj_sep_true:
+  "intuitionistic (sep_true \<and>* P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intuitionistic ((\<lambda>s. True) \<and>* P)<\STATESEP>proof (rule intuitionisticI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>fix h h' r<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>assume a: "(sep_true \<and>* P) h"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+((\<lambda>s. True) \<and>* P) h
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+((\<lambda>s. True) \<and>* P) h<\STATESEP>obtain x y where P: "P y" and h: "h = x + y" and xyd: "x ## y"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. True) \<and>* P) h
+
+goal (1 subgoal):
+ 1. (\<And>y x. \<lbrakk>P y; h = x + y; x ## y\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by - (drule sep_conjD, clarsimp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P y
+h = x + y
+x ## y
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P y
+h = x + y
+x ## y
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>assume a2: "h \<preceq> h'"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+h \<preceq> h'<\STATESEP>obtain z where h': "h' = h + z" and hzd: "h ## z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. (\<And>z. \<lbrakk>h' = h + z; h ## z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_substate_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>have "(P \<and>* sep_true) (y + (x + z))"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* (\<lambda>s. True)) (y + (x + z))<\STATESEP>using P h hzd xyd<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+P y
+h = x + y
+h ## z
+x ## y
+
+goal (1 subgoal):
+ 1. (P \<and>* (\<lambda>s. True)) (y + (x + z))<\STATESEP>by (metis sep_add_disjI1 sep_disj_commute sep_conjI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<and>* (\<lambda>s. True)) (y + (x + z))
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<and>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<and>* P) h'<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+P y
+h = x + y
+x ## y
+h' = h + z
+h ## z
+(P \<and>* (\<lambda>s. True)) (y + (x + z))<\STATESEP>show "(sep_true \<and>* P) h'"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P y
+h = x + y
+x ## y
+h' = h + z
+h ## z
+(P \<and>* (\<lambda>s. True)) (y + (x + z))
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<and>* P) h'<\STATESEP>using hzd<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+P y
+h = x + y
+x ## y
+h' = h + z
+h ## z
+(P \<and>* (\<lambda>s. True)) (y + (x + z))
+h ## z
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<and>* P) h'<\STATESEP>by (auto simp: sep_conj_commute sep_add_ac dest!: sep_disj_addD)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+((\<lambda>s. True) \<and>* P) h'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma intuitionistic_sep_impl_sep_true:
+  "intuitionistic (sep_true \<longrightarrow>* P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intuitionistic ((\<lambda>s. True) \<longrightarrow>* P)<\STATESEP>proof (rule intuitionisticI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<longrightarrow>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) h'<\STATESEP>fix h h'<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<longrightarrow>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) h'<\STATESEP>assume imp: "(sep_true \<longrightarrow>* P) h" and hh': "h \<preceq> h'"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+((\<lambda>s. True) \<longrightarrow>* P) h
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<longrightarrow>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) h'<\STATESEP>from hh'<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+h \<preceq> h'<\STATESEP>obtain z where h': "h' = h + z" and hzd: "h ## z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. (\<And>z. \<lbrakk>h' = h + z; h ## z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_substate_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>((\<lambda>s. True) \<longrightarrow>* P) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) h'<\STATESEP>show "(sep_true \<longrightarrow>* P) h'"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<longrightarrow>* P) h'<\STATESEP>using imp h' hzd<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. True) \<longrightarrow>* P) h
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. True) \<longrightarrow>* P) h'<\STATESEP>apply (clarsimp dest!: sep_implD)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>h' = h + z; h ## z; \<forall>h'. h ## h' \<longrightarrow> P (h + h')\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) (h + z)<\STATESEP>apply (metis sep_add_assoc sep_add_disjD sep_disj_addI3 sep_implI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+((\<lambda>s. True) \<longrightarrow>* P) h'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma intuitionistic_sep_conj:
+  assumes ip: "intuitionistic (P::('a \<Rightarrow> bool))"
+  shows "intuitionistic (P \<and>* Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intuitionistic (P \<and>* Q)<\STATESEP>proof (rule intuitionisticI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>fix h h'<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>assume sc: "(P \<and>* Q) h" and hh': "h \<preceq> h'"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P \<and>* Q) h
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>from hh'<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+h \<preceq> h'<\STATESEP>obtain z where h': "h' = h + z" and hzd: "h ## z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. (\<And>z. \<lbrakk>h' = h + z; h ## z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_substate_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>from sc<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(P \<and>* Q) h<\STATESEP>obtain x y where px: "P x" and qy: "Q y"
+                       and h: "h = x + y" and xyd: "x ## y"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(P \<and>* Q) h
+
+goal (1 subgoal):
+ 1. (\<And>x y. \<lbrakk>P x; Q y; h = x + y; x ## y\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_conj_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P x
+Q y
+h = x + y
+x ## y
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>have "x ## z"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## z<\STATESEP>using hzd h xyd<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+h ## z
+h = x + y
+x ## y
+
+goal (1 subgoal):
+ 1. x ## z<\STATESEP>by (metis sep_add_disjD)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>with ip px<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+intuitionistic P
+P x
+x ## z<\STATESEP>have "P (x + z)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+intuitionistic P
+P x
+x ## z
+
+goal (1 subgoal):
+ 1. P (x + z)<\STATESEP>by (fastforce elim: intuitionisticD sep_substate_disj_add)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P (x + z)
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<and>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<and>* Q) h'<\STATESEP>thus "(P \<and>* Q) h'"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P (x + z)
+
+goal (1 subgoal):
+ 1. (P \<and>* Q) h'<\STATESEP>using h' h hzd qy xyd<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+P (x + z)
+h' = h + z
+h = x + y
+h ## z
+Q y
+x ## y
+
+goal (1 subgoal):
+ 1. (P \<and>* Q) h'<\STATESEP>by (metis (full_types) sep_add_commute sep_add_disjD sep_add_disjI2
+              sep_add_left_commute sep_conjI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<and>* Q) h'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma intuitionistic_sep_impl:
+  assumes iq: "intuitionistic Q"
+  shows "intuitionistic (P \<longrightarrow>* Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intuitionistic (P \<longrightarrow>* Q)<\STATESEP>proof (rule intuitionisticI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>fix h h'<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>assume imp: "(P \<longrightarrow>* Q) h" and hh': "h \<preceq> h'"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P \<longrightarrow>* Q) h
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>from hh'<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+h \<preceq> h'<\STATESEP>obtain z where h': "h' = h + z" and hzd: "h ## z"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+h \<preceq> h'
+
+goal (1 subgoal):
+ 1. (\<And>z. \<lbrakk>h' = h + z; h ## z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_substate_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+h' = h + z
+h ## z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>fix x<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>assume px: "P x" and hzx: "h + z ## x"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+P x
+h + z ## x
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>have "h + x \<preceq> h + x + z"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. h + x \<preceq> h + x + z<\STATESEP>using hzx hzd<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+h + z ## x
+h ## z
+
+goal (1 subgoal):
+ 1. h + x \<preceq> h + x + z<\STATESEP>by (metis sep_add_disjI1 sep_substate_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+h + x \<preceq> h + x + z
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>with imp hzd iq px hzx<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(P \<longrightarrow>* Q) h
+h ## z
+intuitionistic Q
+P x
+h + z ## x
+h + x \<preceq> h + x + z<\STATESEP>have "Q (h + z + x)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(P \<longrightarrow>* Q) h
+h ## z
+intuitionistic Q
+P x
+h + z ## x
+h + x \<preceq> h + x + z
+
+goal (1 subgoal):
+ 1. Q (h + z + x)<\STATESEP>by (metis intuitionisticD sep_add_assoc sep_add_ac sep_add_disjD sep_implE)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+Q (h + z + x)
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>P ?x2; h + z ## ?x2\<rbrakk> \<Longrightarrow> Q (h + z + ?x2)
+
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>(P \<longrightarrow>* Q) h; h \<preceq> h'\<rbrakk> \<Longrightarrow> (P \<longrightarrow>* Q) h'<\STATESEP>with imp h' hzd iq<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(P \<longrightarrow>* Q) h
+h' = h + z
+h ## z
+intuitionistic Q
+\<lbrakk>P ?x2; h + z ## ?x2\<rbrakk> \<Longrightarrow> Q (h + z + ?x2)<\STATESEP>show "(P \<longrightarrow>* Q) h'"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(P \<longrightarrow>* Q) h
+h' = h + z
+h ## z
+intuitionistic Q
+\<lbrakk>P ?x2; h + z ## ?x2\<rbrakk> \<Longrightarrow> Q (h + z + ?x2)
+
+goal (1 subgoal):
+ 1. (P \<longrightarrow>* Q) h'<\STATESEP>by (fastforce intro: sep_implI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P \<longrightarrow>* Q) h'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma strongest_intuitionistic:
+  "\<not>(\<exists>Q. (\<forall>h. (Q h \<longrightarrow> (P \<and>* sep_true) h)) \<and> intuitionistic Q \<and> Q \<noteq> (P \<and>* sep_true) \<and> (\<forall>h. P h \<longrightarrow> Q h))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<nexists>Q. (\<forall>h. Q h \<longrightarrow> (P \<and>* (\<lambda>s. True)) h) \<and> intuitionistic Q \<and> Q \<noteq> (P \<and>* (\<lambda>s. True)) \<and> (\<forall>h. P h \<longrightarrow> Q h)<\STATESEP>by (fastforce intro!: ext sep_substate_disj_add dest!: sep_conjD intuitionisticD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma weakest_intuitionistic:
+  "\<not> (\<exists>Q. (\<forall>h. ((sep_true \<longrightarrow>* P) h \<longrightarrow> Q h)) \<and> intuitionistic Q \<and>
+      Q \<noteq> (sep_true \<longrightarrow>* P) \<and> (\<forall>h. Q h \<longrightarrow> P h))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<nexists>Q. (\<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h) \<and> intuitionistic Q \<and> Q \<noteq> ((\<lambda>s. True) \<longrightarrow>* P) \<and> (\<forall>h. Q h \<longrightarrow> P h)<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>Q. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h\<rbrakk> \<Longrightarrow> Q = ((\<lambda>s. True) \<longrightarrow>* P)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>Q x. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h\<rbrakk> \<Longrightarrow> Q x = ((\<lambda>s. True) \<longrightarrow>* P) x<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>Q x. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; Q x\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) x
+ 2. \<And>Q x. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; ((\<lambda>s. True) \<longrightarrow>* P) x\<rbrakk> \<Longrightarrow> Q x<\STATESEP>apply (rule sep_implI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>Q x h'. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; Q x; x ## h'; True\<rbrakk> \<Longrightarrow> P (x + h')
+ 2. \<And>Q x. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; ((\<lambda>s. True) \<longrightarrow>* P) x\<rbrakk> \<Longrightarrow> Q x<\STATESEP>apply (drule_tac h="x" and h'="x + h'" in intuitionisticD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>Q x h'. \<lbrakk>\<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; Q x; x ## h'; True\<rbrakk> \<Longrightarrow> Q x
+ 2. \<And>Q x h'. \<lbrakk>\<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; Q x; x ## h'; True\<rbrakk> \<Longrightarrow> x \<preceq> x + h'
+ 3. \<And>Q x h'. \<lbrakk>\<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; Q x; x ## h'; True; Q (x + h')\<rbrakk> \<Longrightarrow> P (x + h')
+ 4. \<And>Q x. \<lbrakk>intuitionistic Q; \<forall>h. ((\<lambda>s. True) \<longrightarrow>* P) h \<longrightarrow> Q h; \<forall>h. Q h \<longrightarrow> P h; ((\<lambda>s. True) \<longrightarrow>* P) x\<rbrakk> \<Longrightarrow> Q x<\STATESEP>apply (clarsimp simp: sep_add_ac sep_substate_disj_add)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_sep_conj_sep_true_P:
+  "\<lbrakk> (P \<and>* sep_true) s; intuitionistic P \<rbrakk> \<Longrightarrow> P s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* (\<lambda>s. True)) s; intuitionistic P\<rbrakk> \<Longrightarrow> P s<\STATESEP>by (force dest: intuitionisticD elim: sep_conjE sep_substate_disj_add)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_sep_conj_sep_true_simp:
+  "intuitionistic P \<Longrightarrow> (P \<and>* sep_true) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intuitionistic P \<Longrightarrow> (P \<and>* (\<lambda>s. True)) = P<\STATESEP>by (fast intro!: sep_conj_sep_true
+           elim: intuitionistic_sep_conj_sep_true_P)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_sep_impl_sep_true_P:
+  "\<lbrakk> P h; intuitionistic P \<rbrakk> \<Longrightarrow> (sep_true \<longrightarrow>* P) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P h; intuitionistic P\<rbrakk> \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) h<\STATESEP>by (force intro!: sep_implI dest: intuitionisticD
+            intro: sep_substate_disj_add)<\STATESEP>1<\TRANSEP><\STATESEP>lemma intuitionistic_sep_impl_sep_true_simp:
+  "intuitionistic P \<Longrightarrow> (sep_true \<longrightarrow>* P) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intuitionistic P \<Longrightarrow> ((\<lambda>s. True) \<longrightarrow>* P) = P<\STATESEP>by (fast elim: sep_impl_sep_true_P intuitionistic_sep_impl_sep_true_P)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Strictly exact assertions\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition strictly_exact :: "('a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "strictly_exact P \<equiv> \<forall>h h'. P h \<and> P h' \<longrightarrow> h = h'"<\STATESEP>0<\TRANSEP><\STATESEP>lemma strictly_exactD:
+  "\<lbrakk> strictly_exact P; P h; P h' \<rbrakk> \<Longrightarrow> h = h'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>strictly_exact P; P h; P h'\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>by (unfold strictly_exact_def, fast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strictly_exactI:
+  "(\<And>h h'. \<lbrakk> P h; P h' \<rbrakk> \<Longrightarrow> h = h') \<Longrightarrow> strictly_exact P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>h h'. \<lbrakk>P h; P h'\<rbrakk> \<Longrightarrow> h = h') \<Longrightarrow> strictly_exact P<\STATESEP>by (unfold strictly_exact_def, fast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma strictly_exact_sep_conj:
+  "\<lbrakk> strictly_exact P; strictly_exact Q \<rbrakk> \<Longrightarrow> strictly_exact (P \<and>* Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>strictly_exact P; strictly_exact Q\<rbrakk> \<Longrightarrow> strictly_exact (P \<and>* Q)<\STATESEP>apply (rule strictly_exactI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>strictly_exact P; strictly_exact Q; (P \<and>* Q) h; (P \<and>* Q) h'\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply (erule sep_conjE)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h h' x y xa ya. \<lbrakk>strictly_exact P; strictly_exact Q; P x; Q y; x ## y; h = x + y; P xa; Q ya; xa ## ya; h' = xa + ya\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply (drule_tac h="x" and h'="xa" in strictly_exactD, assumption+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h h' x y xa ya. \<lbrakk>strictly_exact Q; P x; Q y; x ## y; h = x + y; P xa; Q ya; xa ## ya; h' = xa + ya; x = xa\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply (drule_tac h="y" and h'="ya" in strictly_exactD, assumption+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h h' x y xa ya. \<lbrakk>P x; Q y; x ## y; h = x + y; P xa; Q ya; xa ## ya; h' = xa + ya; x = xa; y = ya\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma strictly_exact_conj_impl:
+  "\<lbrakk> (Q \<and>* sep_true) h; P h; strictly_exact Q \<rbrakk> \<Longrightarrow> (Q \<and>* (Q \<longrightarrow>* P)) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(Q \<and>* (\<lambda>s. True)) h; P h; strictly_exact Q\<rbrakk> \<Longrightarrow> (Q \<and>* (Q \<longrightarrow>* P)) h<\STATESEP>by (force intro: sep_conjI sep_implI dest: strictly_exactD elim!: sep_conjE
+            simp: sep_add_commute sep_add_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Separation Algebra with Stronger, but More Intuitive Disjunction Axiom\<close><\STATESEP>0<\TRANSEP><\STATESEP>class stronger_sep_algebra = pre_sep_algebra +
+  assumes sep_add_disj_eq [simp]: "y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_disj_add_eq [simp]: "x ## y \<Longrightarrow> x + y ## z = (x ## z \<and> y ## z)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## y \<Longrightarrow> x + y ## z = (x ## z \<and> y ## z)<\STATESEP>by (metis sep_add_disj_eq sep_disj_commute)<\STATESEP>1<\TRANSEP><\STATESEP>subclass sep_algebra<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. class.sep_algebra (+) (0::'a) (##)<\STATESEP>by standard auto<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>interpretation sep: ab_semigroup_mult "(**)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. class.ab_semigroup_mult (\<and>*)<\STATESEP>by unfold_locales (simp add: sep_conj_ac)+<\STATESEP>1<\TRANSEP><\STATESEP>interpretation sep: comm_monoid "(**)" \<box><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. comm_monoid (\<and>*) \<box><\STATESEP>by unfold_locales simp<\STATESEP>1<\TRANSEP><\STATESEP>interpretation sep: comm_monoid_mult "(**)" \<box><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. class.comm_monoid_mult (\<and>*) \<box><\STATESEP>by unfold_locales simp<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Folding separating conjunction over lists and sets of predicates\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_list_conj :: "('a::sep_algebra \<Rightarrow> bool) list \<Rightarrow> ('a \<Rightarrow> bool)"  where
+  "sep_list_conj Ps \<equiv> foldl ((**)) \<box> Ps"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  sep_map_list_conj :: "('b \<Rightarrow> 'a::sep_algebra \<Rightarrow> bool) \<Rightarrow> 'b list \<Rightarrow> ('a \<Rightarrow> bool)"
+where
+  "sep_map_list_conj g S \<equiv> sep_list_conj (map g S)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  sep_map_set_conj :: "('b \<Rightarrow> 'a::sep_algebra \<Rightarrow> bool) \<Rightarrow> 'b set \<Rightarrow> ('a \<Rightarrow> bool)"
+where
+  "sep_map_set_conj g S \<equiv> sep.prod g S"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_set_conj :: "('a::sep_algebra \<Rightarrow> bool) set \<Rightarrow> ('a \<Rightarrow> bool)"  where
+  "sep_set_conj S \<equiv> sep.prod id S"<\STATESEP>0<\TRANSEP><\STATESEP>consts
+  sep_conj_lifted :: "'b \<Rightarrow> ('a::sep_algebra \<Rightarrow> bool)" ("\<And>* _" [60] 90)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_conj_lifted ("\<And>\<^sup>* _" [60] 90)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_list_conj ("\<And>\<^sup>* _" [60] 90)<\STATESEP>0<\TRANSEP><\STATESEP>adhoc_overloading sep_conj_lifted sep_list_conj<\STATESEP>0<\TRANSEP><\STATESEP>adhoc_overloading sep_conj_lifted sep_set_conj<\STATESEP>0<\TRANSEP><\STATESEP>text\<open>Now: lots of fancy syntax. First, @{term "sep_map_set_conj (%x. g) A"} is written @{text"\<And>+x\<in>A. g"}.\<close><\STATESEP>0<\TRANSEP><\STATESEP>syntax
+  "_sep_map_set_conj" :: "pttrn => 'a set => 'b => 'b::comm_monoid_add"    ("(3SETSEPCONJ _:_. _)" [0, 51, 10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (xsymbols)
+  "_sep_map_set_conj" :: "pttrn => 'a set => 'b => 'b::comm_monoid_add"    ("(3\<And>*_\<in>_. _)" [0, 51, 10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (HTML output)
+  "_sep_map_set_conj" :: "pttrn => 'a set => 'b => 'b::comm_monoid_add"    ("(3\<And>*_\<in>_. _)" [0, 51, 10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (latex output)
+  "_sep_map_set_conj" :: "pttrn => 'a set => 'b => 'b::comm_monoid_add"    ("(3\<And>\<^sup>*(00\<^bsub>_\<in>_\<^esub>) _)" [0, 51, 10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>translations \<comment> \<open>Beware of argument permutation!\<close>
+  "SETSEPCONJ x:A. g" == "CONST sep_map_set_conj (%x. g) A"
+  "\<And>* x\<in>A. g" == "CONST sep_map_set_conj (%x. g) A"<\STATESEP>0<\TRANSEP><\STATESEP>text\<open>Instead of @{term"\<And>*x\<in>{x. P}. g"} we introduce the shorter @{text"\<And>+x|P. g"}.\<close><\STATESEP>0<\TRANSEP><\STATESEP>syntax
+  "_qsep_map_set_conj" :: "pttrn \<Rightarrow> bool \<Rightarrow> 'a \<Rightarrow> 'a" ("(3SETSEPCONJ _ |/ _./ _)" [0,0,10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (xsymbols)
+  "_qsep_map_set_conj" :: "pttrn \<Rightarrow> bool \<Rightarrow> 'a \<Rightarrow> 'a" ("(3\<And>*_ | (_)./ _)" [0,0,10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (HTML output)
+  "_qsep_map_set_conj" :: "pttrn \<Rightarrow> bool \<Rightarrow> 'a \<Rightarrow> 'a" ("(3\<And>*_ | (_)./ _)" [0,0,10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (latex output)
+  "_qsep_map_set_conj" :: "pttrn \<Rightarrow> bool \<Rightarrow> 'a \<Rightarrow> 'a" ("(3\<And>\<^sup>*(00\<^bsub>_ | (_)\<^esub>) /_)" [0,0,10] 10)<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  "SETSEPCONJ x|P. g" => "CONST sep_map_set_conj (%x. g) {x. P}"
+  "\<And>*x|P. g" => "CONST sep_map_set_conj (%x. g) {x. P}"<\STATESEP>0<\TRANSEP><\STATESEP>print_translation \<open>
+let
+  fun setsepconj_tr' [Abs (x, Tx, t), Const (@{const_syntax Collect}, _) $ Abs (y, Ty, P)] =
+        if x <> y then raise Match
+        else
+          let
+            val x' = Syntax_Trans.mark_bound_body (x, Tx);
+            val t' = subst_bound (x', t);
+            val P' = subst_bound (x', P);
+          in
+            Syntax.const @{syntax_const "_qsep_map_set_conj"} $ Syntax_Trans.mark_bound_abs (x, Tx) $ P' $ t'
+          end
+    | setsepconj_tr' _ = raise Match;
+in [(@{const_syntax sep_map_set_conj}, K setsepconj_tr')] end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>interpretation sep: folding "(\<and>*)" \<box><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. folding (\<and>*)<\STATESEP>by unfold_locales (simp add: comp_def sep_conj_ac)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<And>* [\<box>,P] = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* [\<box>, P] = P<\STATESEP>by (simp add: sep_list_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<And>* {\<box>} = \<box>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* {\<box>} = \<box><\STATESEP>by (simp add: sep_set_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<And>* {P,\<box>} = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* {P, \<box>} = P<\STATESEP>by (cases "P = \<box>", auto simp: sep_set_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "(\<And>* x\<in>{0,1::nat}. if x=0 then \<box> else P) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (SETSEPCONJ x:{0, 1}. if x = 0 then \<box> else P) = P<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_sep_list_conj_cong:
+  "(\<And>x. x \<in> set xs \<Longrightarrow> f x = g x) \<Longrightarrow> \<And>* map f xs = \<And>* map g xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> set xs \<Longrightarrow> f x = g x) \<Longrightarrow> \<And>* map f xs = \<And>* map g xs<\STATESEP>by (metis map_cong)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_Nil [simp]: "\<And>* [] = \<box>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* [] = \<box><\STATESEP>by (simp add: sep_list_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in semigroup) foldl_assoc:
+   "foldl f (f x y) zs = f x (foldl f y zs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) (x \<^bold>* y) zs = x \<^bold>* foldl (\<^bold>*) y zs<\STATESEP>by (induct zs arbitrary: y) (simp_all add:assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in monoid) foldl_absorb1:
+  "f x (foldl f z zs) = foldl f x zs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<^bold>* foldl (\<^bold>*) \<^bold>1 zs = foldl (\<^bold>*) x zs<\STATESEP>by (induct zs) (simp_all add:foldl_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>context comm_monoid
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma foldl_map_filter:
+  "f (foldl f z (map P (filter t xs))) (foldl f z (map P (filter (not t) xs))) = foldl f z (map P xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs)<\STATESEP>proof (induct xs)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t [])) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) [])) = foldl (\<^bold>*) \<^bold>1 (map P [])
+ 2. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (2 subgoals):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t [])) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) [])) = foldl (\<^bold>*) \<^bold>1 (map P [])
+ 2. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t [])) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) [])) = foldl (\<^bold>*) \<^bold>1 (map P [])<\STATESEP>by clarsimp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (map P (filter t [])) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) [])) = foldl (\<^bold>*) \<^bold>1 (map P [])
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>case (Cons x xs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs)
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>hence IH:
+    "foldl f z (map P xs) =  f (foldl f z (map P (filter t xs))) (foldl f z (map P [x\<leftarrow>xs . \<not> t x]))"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs)
+
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P xs) = foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>x. \<not> t x) xs))<\STATESEP>by (simp only: eq_commute)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (map P xs) = foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>x. \<not> t x) xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>have foldl_Cons':
+    "\<And>x xs. foldl f z (x # xs) = f x (foldl f z xs)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs. foldl (\<^bold>*) \<^bold>1 (x # xs) = x \<^bold>* foldl (\<^bold>*) \<^bold>1 xs<\STATESEP>by (simp, subst foldl_absorb1[symmetric], rule refl)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (?x # ?xs) = ?x \<^bold>* foldl (\<^bold>*) \<^bold>1 ?xs
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (?x # ?xs) = ?x \<^bold>* foldl (\<^bold>*) \<^bold>1 ?xs
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>assume "t x"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+t x
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>hence ?case<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+t x
+
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))<\STATESEP>by (auto simp del: foldl_Cons simp add: foldl_Cons' IH ac_simps)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>assume "\<not> t x"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<not> t x
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>hence ?case<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+\<not> t x
+
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))<\STATESEP>by (auto simp del: foldl_Cons simp add: foldl_Cons' IH ac_simps)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<not> t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map P (filter t xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) xs)) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (a # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (a # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs))<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+\<not> t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+\<not> t x \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+foldl (\<^bold>*) \<^bold>1 (map P (filter t (x # xs))) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (filter (\<lambda>s. \<not> t s) (x # xs))) = foldl (\<^bold>*) \<^bold>1 (map P (x # xs))
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma foldl_map_add:
+  "foldl f z (map (\<lambda>x. f (P x) (Q x)) xs) = f (foldl f z (map P xs)) (foldl f z (map Q xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) xs) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) []) = foldl (\<^bold>*) \<^bold>1 (map P []) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q [])
+ 2. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) xs) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) (a # xs)) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q (a # xs))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) xs) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q xs) \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) (a # xs)) = foldl (\<^bold>*) \<^bold>1 (map P (a # xs)) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q (a # xs))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. foldl (\<^bold>*) \<^bold>1 (map (\<lambda>x. P x \<^bold>* Q x) xs) = foldl (\<^bold>*) \<^bold>1 (map P xs) \<^bold>* foldl (\<^bold>*) \<^bold>1 (map Q xs) \<Longrightarrow> foldl (\<^bold>*) (P a \<^bold>* Q a) (map (\<lambda>x. P x \<^bold>* Q x) xs) = foldl (\<^bold>*) (P a) (map P xs) \<^bold>* foldl (\<^bold>*) (Q a) (map Q xs)<\STATESEP>by (metis (full_types) commute foldl_absorb1 foldl_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma foldl_map_remove1:
+  "x \<in> set xs \<Longrightarrow> foldl f z (map P xs) = f (P x) (foldl f z (map P (remove1 x xs)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> set xs \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P xs) = P x \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (remove1 x xs))<\STATESEP>apply (induction xs, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>x \<in> set xs \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P xs) = P x \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (remove1 x xs)); x \<in> set (a # xs)\<rbrakk> \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P (a # xs)) = P x \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (remove1 x (a # xs)))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>x \<in> set xs \<Longrightarrow> foldl (\<^bold>*) \<^bold>1 (map P xs) = P x \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P (remove1 x xs)); x = a \<or> x \<in> set xs\<rbrakk> \<Longrightarrow> (x = a \<longrightarrow> foldl (\<^bold>*) (P a) (map P xs) = P a \<^bold>* foldl (\<^bold>*) \<^bold>1 (map P xs)) \<and> (x \<noteq> a \<longrightarrow> foldl (\<^bold>*) (P a) (map P xs) = P x \<^bold>* foldl (\<^bold>*) (P a) (map P (remove1 x xs)))<\STATESEP>by (metis foldl_absorb1 left_commute)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_list_conj_Cons [simp]: "\<And>* (x#xs) = (x ** \<And>* xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* x # xs = (x \<and>* \<And>* xs)<\STATESEP>by (simp add: sep_list_conj_def sep.foldl_absorb1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_append [simp]: "\<And>* (xs @ ys) = (\<And>* xs ** \<And>* ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* xs @ ys = (\<And>* xs \<and>* \<And>* ys)<\STATESEP>by (simp add: sep_list_conj_def sep.foldl_absorb1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_map_append:
+  "\<And>* map f (xs @ ys) = (\<And>* map f xs \<and>* \<And>* map f ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* map f (xs @ ys) = (\<And>* map f xs \<and>* \<And>* map f ys)<\STATESEP>by (metis map_append sep_list_conj_append)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_con_map_filter:
+  "(\<And>* map P (filter t xs) \<and>* \<And>* map P (filter (not t) xs))
+   = \<And>* map P xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>* map P (filter t xs) \<and>* \<And>* map P (filter (\<lambda>s. \<not> t s) xs)) = \<And>* map P xs<\STATESEP>apply (simp add: sep_list_conj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (foldl (\<and>*) \<box> (map P (filter t xs)) \<and>* foldl (\<and>*) \<box> (map P (filter (\<lambda>s. \<not> t s) xs))) = foldl (\<and>*) \<box> (map P xs)<\STATESEP>apply (rule sep.foldl_map_filter)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma union_filter:
+  "({x \<in> xs. P x} \<union> {x \<in> xs. \<not> P x}) = xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {x \<in> xs. P x} \<union> {x \<in> xs. \<not> P x} = xs<\STATESEP>by fast<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_restrict:
+  "finite xs \<Longrightarrow>
+    sep_map_set_conj P xs =
+   (sep_map_set_conj P {x \<in> xs. t x} \<and>*
+    sep_map_set_conj P {x \<in> xs. \<not> t x})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. finite xs \<Longrightarrow> sep_map_set_conj P xs = (sep_map_set_conj P {x \<in> xs. t x} \<and>* sep_map_set_conj P {x \<in> xs. \<not> t x})<\STATESEP>by (subst sep.prod.union_disjoint [symmetric], (fastforce simp: union_filter)+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_map_add:
+  "\<And>* map (\<lambda>x. f x \<and>* g x) xs = (\<And>* map f xs \<and>* \<And>* map g xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* map (\<lambda>x. f x \<and>* g x) xs = (\<And>* map f xs \<and>* \<And>* map g xs)<\STATESEP>apply (simp add: sep_list_conj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<and>*) \<box> (map (\<lambda>x. f x \<and>* g x) xs) = (foldl (\<and>*) \<box> (map f xs) \<and>* foldl (\<and>*) \<box> (map g xs))<\STATESEP>apply (rule sep.foldl_map_add)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma filter_empty:
+  "x \<notin> set xs \<Longrightarrow> filter ((=) x) xs = []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<notin> set xs \<Longrightarrow> filter ((=) x) xs = []<\STATESEP>by (induct xs, clarsimp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma filter_singleton:
+  "\<lbrakk>x \<in> set xs; distinct xs\<rbrakk> \<Longrightarrow> [x'\<leftarrow>xs . x = x'] = [x]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> set xs; distinct xs\<rbrakk> \<Longrightarrow> filter ((=) x) xs = [x]<\STATESEP>by (induct xs, auto simp: filter_empty)<\STATESEP>1<\TRANSEP><\STATESEP>lemma remove1_filter:
+  "distinct xs \<Longrightarrow> remove1 x xs = filter (\<lambda>y. x \<noteq> y) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct xs \<Longrightarrow> remove1 x xs = filter ((\<noteq>) x) xs<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. distinct [] \<Longrightarrow> remove1 x [] = filter ((\<noteq>) x) []
+ 2. \<And>a xs. \<lbrakk>distinct xs \<Longrightarrow> remove1 x xs = filter ((\<noteq>) x) xs; distinct (a # xs)\<rbrakk> \<Longrightarrow> remove1 x (a # xs) = filter ((\<noteq>) x) (a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>distinct xs \<Longrightarrow> remove1 x xs = filter ((\<noteq>) x) xs; distinct (a # xs)\<rbrakk> \<Longrightarrow> remove1 x (a # xs) = filter ((\<noteq>) x) (a # xs)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>remove1 x xs = filter ((\<noteq>) x) xs; x \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> xs = filter ((\<noteq>) x) xs<\STATESEP>apply (rule sym, rule filter_True)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>remove1 x xs = filter ((\<noteq>) x) xs; x \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> \<forall>xa\<in>set xs. x \<noteq> xa<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_map_remove1:
+  "x \<in> set xs \<Longrightarrow> \<And>* map P xs = (P x \<and>* \<And>* map P (remove1 x xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> set xs \<Longrightarrow> \<And>* map P xs = (P x \<and>* \<And>* map P (remove1 x xs))<\STATESEP>apply (simp add: sep_list_conj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> set xs \<Longrightarrow> foldl (\<and>*) \<box> (map P xs) = (P x \<and>* foldl (\<and>*) \<box> (map P (remove1 x xs)))<\STATESEP>apply (erule sep.foldl_map_remove1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_take_Suc:
+  "i < length xs \<Longrightarrow>
+  \<And>* map P (take (Suc i) xs) = (\<And>* map P (take i xs) \<and>* P (xs ! i))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < length xs \<Longrightarrow> \<And>* map P (take (Suc i) xs) = (\<And>* map P (take i xs) \<and>* P (xs ! i))<\STATESEP>by (subst take_Suc_conv_app_nth, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_map_split:
+  "(\<And>* map f xs \<and>* f a \<and>* \<And>* map f ys)
+  = (\<And>* map f (xs @ a # ys))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>* map f xs \<and>* f a \<and>* \<And>* map f ys) = \<And>* map f (xs @ a # ys)<\STATESEP>by (metis list.map(2) map_append sep_list_conj_Cons sep_list_conj_append)<\STATESEP>1<\TRANSEP><\STATESEP>section "Separation predicates on sets"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_map_set_conj_cong:
+  "\<lbrakk>P = Q; xs = ys\<rbrakk> \<Longrightarrow> sep_map_set_conj P xs = sep_map_set_conj Q ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P = Q; xs = ys\<rbrakk> \<Longrightarrow> sep_map_set_conj P xs = sep_map_set_conj Q ys<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_set_conj_empty [simp]:
+  "sep_set_conj {} = \<box>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* {} = \<box><\STATESEP>by (simp add: sep_set_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_reindex_cong:
+   "\<lbrakk>inj_on f A; B = f ` A; \<And>a. a \<in> A \<Longrightarrow> g a = h (f a)\<rbrakk>
+    \<Longrightarrow> sep_map_set_conj h B = sep_map_set_conj g A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>inj_on f A; B = f ` A; \<And>a. a \<in> A \<Longrightarrow> g a = h (f a)\<rbrakk> \<Longrightarrow> sep_map_set_conj h B = sep_map_set_conj g A<\STATESEP>by (simp add: sep.prod.reindex)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_sep_map_set_conj:
+  "distinct xs
+  \<Longrightarrow> \<And>* (map P xs) = (\<And>* x \<in> set xs. P x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct xs \<Longrightarrow> \<And>* map P xs = sep_map_set_conj P (set xs)<\STATESEP>by (induct xs, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_sep_set_conj:
+  "\<lbrakk>distinct xs; inj_on P (set xs)\<rbrakk>
+  \<Longrightarrow> \<And>* (map P xs) = \<And>* (P ` set xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; inj_on P (set xs)\<rbrakk> \<Longrightarrow> \<And>* map P xs = \<And>* P ` set xs<\STATESEP>apply (subst sep_list_conj_sep_map_set_conj, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; inj_on P (set xs)\<rbrakk> \<Longrightarrow> sep_map_set_conj P (set xs) = \<And>* P ` set xs<\STATESEP>apply (clarsimp simp: sep_set_conj_def sep.prod.reindex)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_sep_list_conj:
+  "finite A \<Longrightarrow>
+   \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. finite A \<Longrightarrow> \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs<\STATESEP>apply (frule finite_distinct_list)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite A; \<exists>xs. set xs = A \<and> distinct xs\<rbrakk> \<Longrightarrow> \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs<\STATESEP>apply (erule exE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>finite A; set xs = A \<and> distinct xs\<rbrakk> \<Longrightarrow> \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs<\STATESEP>apply (rule_tac x=xs in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>finite A; set xs = A \<and> distinct xs\<rbrakk> \<Longrightarrow> set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>distinct xs; A = set xs\<rbrakk> \<Longrightarrow> sep_map_set_conj P (set xs) = \<And>* map P xs<\STATESEP>apply (erule sep_list_conj_sep_map_set_conj [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_eq:
+  "\<lbrakk>distinct xs; distinct ys; set xs = set ys\<rbrakk> \<Longrightarrow>
+  \<And>* (map P xs) = \<And>* (map P ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; distinct ys; set xs = set ys\<rbrakk> \<Longrightarrow> \<And>* map P xs = \<And>* map P ys<\STATESEP>apply (drule sep_list_conj_sep_map_set_conj [where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct ys; set xs = set ys; \<And>* map P xs = sep_map_set_conj P (set xs)\<rbrakk> \<Longrightarrow> \<And>* map P xs = \<And>* map P ys<\STATESEP>apply (drule sep_list_conj_sep_map_set_conj [where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>set xs = set ys; \<And>* map P xs = sep_map_set_conj P (set xs); \<And>* map P ys = sep_map_set_conj P (set ys)\<rbrakk> \<Longrightarrow> \<And>* map P xs = \<And>* map P ys<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_impl:
+  "\<lbrakk> list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) xs ys; (\<And>* xs) s \<rbrakk> \<Longrightarrow> (\<And>* ys) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) xs ys; (\<And>* xs) s\<rbrakk> \<Longrightarrow> (\<And>* ys) s<\STATESEP>apply (induct arbitrary: s rule: list_all2_induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (\<And>* []) s \<Longrightarrow> (\<And>* []) s
+ 2. \<And>x xs y ys s. \<lbrakk>\<forall>s. x s \<longrightarrow> y s; list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) xs ys; \<And>s. (\<And>* xs) s \<Longrightarrow> (\<And>* ys) s; (\<And>* x # xs) s\<rbrakk> \<Longrightarrow> (\<And>* y # ys) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs y ys s. \<lbrakk>\<forall>s. x s \<longrightarrow> y s; list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) xs ys; \<And>s. (\<And>* xs) s \<Longrightarrow> (\<And>* ys) s; (\<And>* x # xs) s\<rbrakk> \<Longrightarrow> (\<And>* y # ys) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs y ys s. \<lbrakk>\<forall>s. x s \<longrightarrow> y s; list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) xs ys; \<And>s. (\<And>* xs) s \<Longrightarrow> (\<And>* ys) s; (x \<and>* \<And>* xs) s\<rbrakk> \<Longrightarrow> (y \<and>* \<And>* ys) s<\STATESEP>apply (erule sep_conj_impl, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_exists:
+  "(\<exists>x. (\<And>* map (\<lambda>y s. P x y s) ys) s) \<Longrightarrow> ((\<And>* map (\<lambda>y s. \<exists>x. P x y s) ys) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>x. (\<And>* map (P x) ys) s \<Longrightarrow> (\<And>* map (\<lambda>y s. \<exists>x. P x y s) ys) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (\<And>* map (P x) ys) s \<Longrightarrow> (\<And>* map (\<lambda>y s. \<exists>x. P x y s) ys) s<\STATESEP>apply (erule sep_list_conj_impl[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) (map (P x) ys) (map (\<lambda>y s. \<exists>x. P x y s) ys)<\STATESEP>apply (rule list_all2I, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<forall>x\<in>set (zip (map (P x) ys) (map (\<lambda>y s. \<exists>x. P x y s) ys)). case x of (x, y) \<Rightarrow> \<forall>s. x s \<longrightarrow> y s<\STATESEP>by (fastforce simp: in_set_zip)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_map_impl:
+  "\<lbrakk>\<And>s x. \<lbrakk>x \<in> set xs; P x s\<rbrakk> \<Longrightarrow> Q x s; (\<And>* map P xs) s\<rbrakk>
+  \<Longrightarrow> (\<And>* map Q xs) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s x. \<lbrakk>x \<in> set xs; P x s\<rbrakk> \<Longrightarrow> Q x s; (\<And>* map P xs) s\<rbrakk> \<Longrightarrow> (\<And>* map Q xs) s<\STATESEP>apply (erule sep_list_conj_impl[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s x. \<lbrakk>x \<in> set xs; P x s\<rbrakk> \<Longrightarrow> Q x s) \<Longrightarrow> list_all2 (\<lambda>x y. \<forall>s. x s \<longrightarrow> y s) (map P xs) (map Q xs)<\STATESEP>apply (rule list_all2I, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s x. \<lbrakk>x \<in> set xs; P x s\<rbrakk> \<Longrightarrow> Q x s) \<Longrightarrow> \<forall>x\<in>set (zip (map P xs) (map Q xs)). case x of (x, y) \<Rightarrow> \<forall>s. x s \<longrightarrow> y s<\STATESEP>by (fastforce simp: in_set_zip)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_impl:
+  "\<lbrakk>sep_map_set_conj P A s; \<And>s x. \<lbrakk>x \<in> A; P x s\<rbrakk> \<Longrightarrow> Q x s; finite A\<rbrakk>
+  \<Longrightarrow> sep_map_set_conj Q A s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_map_set_conj P A s; \<And>s x. \<lbrakk>x \<in> A; P x s\<rbrakk> \<Longrightarrow> Q x s; finite A\<rbrakk> \<Longrightarrow> sep_map_set_conj Q A s<\STATESEP>apply (frule sep_map_set_conj_sep_list_conj [where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_map_set_conj P A s; \<And>s x. \<lbrakk>x \<in> A; P x s\<rbrakk> \<Longrightarrow> Q x s; finite A; \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs\<rbrakk> \<Longrightarrow> sep_map_set_conj Q A s<\STATESEP>apply (drule sep_map_set_conj_sep_list_conj [where P=Q])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_map_set_conj P A s; \<And>s x. \<lbrakk>x \<in> A; P x s\<rbrakk> \<Longrightarrow> Q x s; \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj P A = \<And>* map P xs; \<exists>xs. set xs = A \<and> distinct xs \<and> sep_map_set_conj Q A = \<And>* map Q xs\<rbrakk> \<Longrightarrow> sep_map_set_conj Q A s<\STATESEP>by (metis sep_list_conj_map_impl sep_list_conj_sep_map_set_conj)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_sub_sub:
+  "\<lbrakk>zs \<subseteq> ys\<rbrakk> \<Longrightarrow> (xs - zs) - (ys - zs) = (xs - ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. zs \<subseteq> ys \<Longrightarrow> xs - zs - (ys - zs) = xs - ys<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_sub_sub_disjoint:
+  "\<lbrakk>finite xs; zs \<subseteq> ys; ys \<subseteq> xs\<rbrakk>
+  \<Longrightarrow> sep_map_set_conj P (xs - zs) = (sep_map_set_conj P (xs - ys) \<and>* sep_map_set_conj P (ys - zs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite xs; zs \<subseteq> ys; ys \<subseteq> xs\<rbrakk> \<Longrightarrow> sep_map_set_conj P (xs - zs) = (sep_map_set_conj P (xs - ys) \<and>* sep_map_set_conj P (ys - zs))<\STATESEP>apply (cut_tac sep.prod.subset_diff [where A="xs-zs" and B="ys-zs" and g=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>finite xs; zs \<subseteq> ys; ys \<subseteq> xs; sep_map_set_conj P (xs - zs) = (sep_map_set_conj P (xs - zs - (ys - zs)) \<and>* sep_map_set_conj P (ys - zs))\<rbrakk> \<Longrightarrow> sep_map_set_conj P (xs - zs) = (sep_map_set_conj P (xs - ys) \<and>* sep_map_set_conj P (ys - zs))
+ 2. \<lbrakk>finite xs; zs \<subseteq> ys; ys \<subseteq> xs\<rbrakk> \<Longrightarrow> ys - zs \<subseteq> xs - zs
+ 3. \<lbrakk>finite xs; zs \<subseteq> ys; ys \<subseteq> xs\<rbrakk> \<Longrightarrow> finite (xs - zs)<\STATESEP>apply (subst (asm) set_sub_sub, fast+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma foldl_use_filter_map:
+  "foldl (\<and>*) Q (map (\<lambda>x. if T x then P x else \<box>) xs) =
+   foldl (\<and>*) Q (map P (filter T xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<and>*) Q (map (\<lambda>x. if T x then P x else \<box>) xs) = foldl (\<and>*) Q (map P (filter T xs))<\STATESEP>by (induct xs arbitrary: Q, simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_filter_map:
+  "\<And>* (map (\<lambda>x. if T x then P x else \<box>) xs) =
+   \<And>* (map P (filter T xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>* map (\<lambda>x. if T x then P x else \<box>) xs = \<And>* map P (filter T xs)<\STATESEP>by (clarsimp simp: sep_list_conj_def foldl_use_filter_map)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_restrict_predicate:
+  "finite A \<Longrightarrow> (\<And>* x\<in>A. if T x then P x else \<box>) = (\<And>* x\<in>(Set.filter T A). P x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. finite A \<Longrightarrow> (SETSEPCONJ x:A. if T x then P x else \<box>) = sep_map_set_conj P (Set.filter T A)<\STATESEP>by (simp add: Set.filter_def sep.prod.inter_filter)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_filters:
+  "\<lbrakk>distinct xs; \<And>x. (f x \<and> g x) = False\<rbrakk> \<Longrightarrow>
+  set [x\<leftarrow>xs . f x \<or> g x] = set [x\<leftarrow>xs . f x] \<union> set [x\<leftarrow>xs . g x]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; \<And>x. (f x \<and> g x) = False\<rbrakk> \<Longrightarrow> set (filter (\<lambda>x. f x \<or> g x) xs) = set (filter f xs) \<union> set (filter g xs)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_list_conj_distinct_filters:
+  "\<lbrakk>distinct xs; \<And>x. (f x \<and> g x) = False\<rbrakk> \<Longrightarrow>
+  \<And>* map P [x\<leftarrow>xs . f x \<or> g x] = (\<And>* map P [x\<leftarrow>xs . f x] \<and>* \<And>* map P [x\<leftarrow>xs . g x])"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; \<And>x. (f x \<and> g x) = False\<rbrakk> \<Longrightarrow> \<And>* map P (filter (\<lambda>x. f x \<or> g x) xs) = (\<And>* map P (filter f xs) \<and>* \<And>* map P (filter g xs))<\STATESEP>apply (subst sep_list_conj_sep_map_set_conj, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; \<And>x. (f x \<and> g x) = False\<rbrakk> \<Longrightarrow> sep_map_set_conj P (set (filter (\<lambda>x. f x \<or> g x) xs)) = (sep_map_set_conj P (set (filter f xs)) \<and>* sep_map_set_conj P (set (filter g xs)))<\STATESEP>apply (subst distinct_filters, simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; \<And>x. f x \<longrightarrow> \<not> g x\<rbrakk> \<Longrightarrow> sep_map_set_conj P ({x \<in> set xs. f x} \<union> {x \<in> set xs. g x}) = ((SETSEPCONJ x | x \<in> set xs \<and> f x. P x) \<and>* (SETSEPCONJ x | x \<in> set xs \<and> g x. P x))<\STATESEP>apply (subst sep.prod.union_disjoint, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_set_conj_set_disjoint:
+  "\<lbrakk>finite {x. P x}; finite {x. Q x}; \<And>x. (P x \<and> Q x) = False\<rbrakk>
+ \<Longrightarrow> sep_map_set_conj g {x. P x \<or> Q x} =
+  (sep_map_set_conj g {x. P x} \<and>* sep_map_set_conj g {x. Q x})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite {x. P x}; finite {x. Q x}; \<And>x. (P x \<and> Q x) = False\<rbrakk> \<Longrightarrow> sep_map_set_conj g {x. P x \<or> Q x} = (sep_map_set_conj g {x. P x} \<and>* sep_map_set_conj g {x. Q x})<\STATESEP>apply (subst sep.prod.union_disjoint [symmetric], simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>finite {x. P x}; finite {x. Q x}; \<And>x. P x \<longrightarrow> \<not> Q x\<rbrakk> \<Longrightarrow> Collect P \<inter> Collect Q = {}
+ 2. \<lbrakk>finite {x. P x}; finite {x. Q x}; \<And>x. (P x \<and> Q x) = False\<rbrakk> \<Longrightarrow> sep_map_set_conj g {x. P x \<or> Q x} = sep_map_set_conj g (Collect P \<union> Collect Q)<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite {x. P x}; finite {x. Q x}; \<And>x. (P x \<and> Q x) = False\<rbrakk> \<Longrightarrow> sep_map_set_conj g {x. P x \<or> Q x} = sep_map_set_conj g (Collect P \<union> Collect Q)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite {x. P x}; finite {x. Q x}; \<And>x. P x \<longrightarrow> \<not> Q x\<rbrakk> \<Longrightarrow> (SETSEPCONJ x | P x \<or> Q x. g x) = sep_map_set_conj g (Collect P \<union> Collect Q)<\STATESEP>by (metis Collect_disj_eq)<\STATESEP>1<\TRANSEP><\STATESEP>class positive_sep_algebra = stronger_sep_algebra +
+  assumes sep_disj_positive : "a ## a \<Longrightarrow> a + a = b \<Longrightarrow> a = b"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Separation Algebra with a Cancellative Monoid\<close><\STATESEP>0<\TRANSEP><\STATESEP>class cancellative_sep_algebra = positive_sep_algebra +
+  assumes sep_add_cancelD: "\<lbrakk> x + z = y + z ; x ## z ; y ## z \<rbrakk> \<Longrightarrow> x = y"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  (* In any heap, there exists at most one subheap for which P holds *)
+  precise :: "('a \<Rightarrow> bool) \<Rightarrow> bool" where
+  "precise P = (\<forall>h hp hp'. hp \<preceq> h \<and> P hp \<and> hp' \<preceq> h \<and> P hp' \<longrightarrow> hp = hp')"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "precise ((=) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. precise ((=) s)<\STATESEP>by (metis (full_types) precise_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_add_cancel:
+  "x ## z \<Longrightarrow> y ## z \<Longrightarrow> (x + z = y + z) = (x = y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x ## z; y ## z\<rbrakk> \<Longrightarrow> (x + z = y + z) = (x = y)<\STATESEP>by (metis sep_add_cancelD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma precise_distribute:
+  "precise P = (\<forall>Q R. ((Q and R) \<and>* P) = ((Q \<and>* P) and (R \<and>* P)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. precise P = (\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s))<\STATESEP>proof (rule iffI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>assume pp: "precise P"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+precise P
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+precise P
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>fix Q R<\STATESEP>4<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>fix h hp hp' s<\STATESEP>4<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>{<\STATESEP>4<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>assume a: "((Q and R) \<and>* P) s"<\STATESEP>6<\TRANSEP>proof (state)
+this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>hence "((Q \<and>* P) and (R \<and>* P)) s"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s
+
+goal (1 subgoal):
+ 1. (Q \<and>* P) s \<and> (R \<and>* P) s<\STATESEP>by (fastforce dest!: sep_conjD elim: sep_conjI)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+(Q \<and>* P) s \<and> (R \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>}<\STATESEP>6<\TRANSEP>proof (state)
+this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s \<Longrightarrow> (Q \<and>* P) s \<and> (R \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>moreover<\STATESEP>4<\TRANSEP>proof (state)
+this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s \<Longrightarrow> (Q \<and>* P) s \<and> (R \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>{<\STATESEP>4<\TRANSEP>proof (state)
+this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s \<Longrightarrow> (Q \<and>* P) s \<and> (R \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>assume qs: "(Q \<and>* P) s" and qr: "(R \<and>* P) s"<\STATESEP>6<\TRANSEP>proof (state)
+this:
+(Q \<and>* P) s
+(R \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>from qs<\STATESEP>6<\TRANSEP>proof (chain)
+picking this:
+(Q \<and>* P) s<\STATESEP>obtain x y where sxy: "s = x + y" and xy: "x ## y"
+                           and x: "Q x" and y: "P y"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+(Q \<and>* P) s
+
+goal (1 subgoal):
+ 1. (\<And>x y. \<lbrakk>s = x + y; x ## y; Q x; P y\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (fastforce dest!: sep_conjD)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+s = x + y
+x ## y
+Q x
+P y
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>from qr<\STATESEP>6<\TRANSEP>proof (chain)
+picking this:
+(R \<and>* P) s<\STATESEP>obtain x' y' where sxy': "s = x' + y'" and xy': "x' ## y'"
+                           and x': "R x'" and y': "P y'"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+(R \<and>* P) s
+
+goal (1 subgoal):
+ 1. (\<And>x' y'. \<lbrakk>s = x' + y'; x' ## y'; R x'; P y'\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (fastforce dest!: sep_conjD)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+s = x' + y'
+x' ## y'
+R x'
+P y'
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>from sxy<\STATESEP>6<\TRANSEP>proof (chain)
+picking this:
+s = x + y<\STATESEP>have ys: "y \<preceq> x + y"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+s = x + y
+
+goal (1 subgoal):
+ 1. y \<preceq> x + y<\STATESEP>using xy<\STATESEP>7<\TRANSEP>proof (prove)
+using this:
+s = x + y
+x ## y
+
+goal (1 subgoal):
+ 1. y \<preceq> x + y<\STATESEP>by (fastforce simp: sep_substate_disj_add' sep_disj_commute)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+y \<preceq> x + y
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>from sxy'<\STATESEP>6<\TRANSEP>proof (chain)
+picking this:
+s = x' + y'<\STATESEP>have ys': "y' \<preceq> x' + y'"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+s = x' + y'
+
+goal (1 subgoal):
+ 1. y' \<preceq> x' + y'<\STATESEP>using xy'<\STATESEP>7<\TRANSEP>proof (prove)
+using this:
+s = x' + y'
+x' ## y'
+
+goal (1 subgoal):
+ 1. y' \<preceq> x' + y'<\STATESEP>by (fastforce simp: sep_substate_disj_add' sep_disj_commute)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+y' \<preceq> x' + y'
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>from pp<\STATESEP>6<\TRANSEP>proof (chain)
+picking this:
+precise P<\STATESEP>have yy: "y = y'"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+precise P
+
+goal (1 subgoal):
+ 1. y = y'<\STATESEP>using sxy sxy' xy xy' y y' ys ys'<\STATESEP>7<\TRANSEP>proof (prove)
+using this:
+precise P
+s = x + y
+s = x' + y'
+x ## y
+x' ## y'
+P y
+P y'
+y \<preceq> x + y
+y' \<preceq> x' + y'
+
+goal (1 subgoal):
+ 1. y = y'<\STATESEP>by (fastforce simp: precise_def)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+y = y'
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>hence "x = x'"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+y = y'
+
+goal (1 subgoal):
+ 1. x = x'<\STATESEP>using sxy sxy' xy xy'<\STATESEP>7<\TRANSEP>proof (prove)
+using this:
+y = y'
+s = x + y
+s = x' + y'
+x ## y
+x' ## y'
+
+goal (1 subgoal):
+ 1. x = x'<\STATESEP>by (fastforce dest!: sep_add_cancelD)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+x = x'
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>hence "((Q and R) \<and>* P) s"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+x = x'
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. Q s \<and> R s) \<and>* P) s<\STATESEP>using sxy x x' yy y' xy'<\STATESEP>7<\TRANSEP>proof (prove)
+using this:
+x = x'
+s = x + y
+Q x
+R x'
+y = y'
+P y'
+x' ## y'
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. Q s \<and> R s) \<and>* P) s<\STATESEP>by (fastforce intro: sep_conjI)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>}<\STATESEP>6<\TRANSEP>proof (state)
+this:
+\<lbrakk>(Q \<and>* P) s; (R \<and>* P) s\<rbrakk> \<Longrightarrow> ((\<lambda>s. Q s \<and> R s) \<and>* P) s
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>ultimately<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s \<Longrightarrow> (Q \<and>* P) s \<and> (R \<and>* P) s
+\<lbrakk>(Q \<and>* P) s; (R \<and>* P) s\<rbrakk> \<Longrightarrow> ((\<lambda>s. Q s \<and> R s) \<and>* P) s<\STATESEP>have "((Q and R) \<and>* P) s = ((Q \<and>* P) and (R \<and>* P)) s"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s \<Longrightarrow> (Q \<and>* P) s \<and> (R \<and>* P) s
+\<lbrakk>(Q \<and>* P) s; (R \<and>* P) s\<rbrakk> \<Longrightarrow> ((\<lambda>s. Q s \<and> R s) \<and>* P) s
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. Q s \<and> R s) \<and>* P) s = ((Q \<and>* P) s \<and> (R \<and>* P) s)<\STATESEP>using pp<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s \<Longrightarrow> (Q \<and>* P) s \<and> (R \<and>* P) s
+\<lbrakk>(Q \<and>* P) s; (R \<and>* P) s\<rbrakk> \<Longrightarrow> ((\<lambda>s. Q s \<and> R s) \<and>* P) s
+precise P
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. Q s \<and> R s) \<and>* P) s = ((Q \<and>* P) s \<and> (R \<and>* P) s)<\STATESEP>by blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+((\<lambda>s. Q s \<and> R s) \<and>* P) s = ((Q \<and>* P) s \<and> (R \<and>* P) s)
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+((\<lambda>s. ?Q2 s \<and> ?R2 s) \<and>* P) ?s2 = ((?Q2 \<and>* P) ?s2 \<and> (?R2 \<and>* P) ?s2)
+
+goal (2 subgoals):
+ 1. precise P \<Longrightarrow> \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+ 2. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>thus "\<forall>Q R. ((Q and R) \<and>* P) = ((Q \<and>* P) and (R \<and>* P))"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. ?Q2 s \<and> ?R2 s) \<and>* P) ?s2 = ((?Q2 \<and>* P) ?s2 \<and> (?R2 \<and>* P) ?s2)
+
+goal (1 subgoal):
+ 1. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+
+goal (1 subgoal):
+ 1. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>assume a: "\<forall>Q R. ((Q and R) \<and>* P) = ((Q \<and>* P) and (R \<and>* P))"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+
+goal (1 subgoal):
+ 1. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s) \<Longrightarrow> precise P<\STATESEP>thus "precise P"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+
+goal (1 subgoal):
+ 1. precise P<\STATESEP>proof (clarsimp simp: precise_def)<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>fix h hp hp' Q R<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>assume hp: "hp \<preceq> h" and hp': "hp' \<preceq> h" and php: "P hp" and php': "P hp'"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+hp \<preceq> h
+hp' \<preceq> h
+P hp
+P hp'
+
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>obtain z where hhp: "h = hp + z" and hpz: "hp ## z"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>z. \<lbrakk>h = hp + z; hp ## z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>using hp<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+hp \<preceq> h
+
+goal (1 subgoal):
+ 1. (\<And>z. \<lbrakk>h = hp + z; hp ## z\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_substate_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+h = hp + z
+hp ## z
+
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>obtain z' where hhp': "h = hp' + z'" and hpz': "hp' ## z'"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>z'. \<lbrakk>h = hp' + z'; hp' ## z'\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>using hp'<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+hp' \<preceq> h
+
+goal (1 subgoal):
+ 1. (\<And>z'. \<lbrakk>h = hp' + z'; hp' ## z'\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (clarsimp simp: sep_substate_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+h = hp' + z'
+hp' ## z'
+
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>have h_eq: "z' + hp' = z + hp"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. z' + hp' = z + hp<\STATESEP>using hhp hhp' hpz hpz'<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+h = hp + z
+h = hp' + z'
+hp ## z
+hp' ## z'
+
+goal (1 subgoal):
+ 1. z' + hp' = z + hp<\STATESEP>by (fastforce simp: sep_add_ac)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+z' + hp' = z + hp
+
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>from hhp hhp' a hpz hpz' h_eq<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+h = hp + z
+h = hp' + z'
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+hp ## z
+hp' ## z'
+z' + hp' = z + hp<\STATESEP>have "\<forall>Q R. ((Q and R) \<and>* P) (z + hp) = ((Q \<and>* P) and (R \<and>* P)) (z' + hp')"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+h = hp + z
+h = hp' + z'
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s)
+hp ## z
+hp' ## z'
+z' + hp' = z + hp
+
+goal (1 subgoal):
+ 1. \<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) (z + hp) = ((Q \<and>* P) (z' + hp') \<and> (R \<and>* P) (z' + hp'))<\STATESEP>by (fastforce simp: h_eq sep_add_ac sep_conj_commute)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) (z + hp) = ((Q \<and>* P) (z' + hp') \<and> (R \<and>* P) (z' + hp'))
+
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>hence "(((=) z and (=) z') \<and>* P) (z + hp) =
+           (((=) z \<and>* P) and ((=) z' \<and>* P)) (z' + hp')"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) (z + hp) = ((Q \<and>* P) (z' + hp') \<and> (R \<and>* P) (z' + hp'))
+
+goal (1 subgoal):
+ 1. ((\<lambda>s. z = s \<and> z' = s) \<and>* P) (z + hp) = (((=) z \<and>* P) (z' + hp') \<and> ((=) z' \<and>* P) (z' + hp'))<\STATESEP>by blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+((\<lambda>s. z = s \<and> z' = s) \<and>* P) (z + hp) = (((=) z \<and>* P) (z' + hp') \<and> ((=) z' \<and>* P) (z' + hp'))
+
+goal (1 subgoal):
+ 1. \<And>h hp hp'. \<lbrakk>\<forall>Q R. ((\<lambda>s. Q s \<and> R s) \<and>* P) = (\<lambda>s. (Q \<and>* P) s \<and> (R \<and>* P) s); hp \<preceq> h; P hp; hp' \<preceq> h; P hp'\<rbrakk> \<Longrightarrow> hp = hp'<\STATESEP>thus  "hp = hp'"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. z = s \<and> z' = s) \<and>* P) (z + hp) = (((=) z \<and>* P) (z' + hp') \<and> ((=) z' \<and>* P) (z' + hp'))
+
+goal (1 subgoal):
+ 1. hp = hp'<\STATESEP>using php php' hpz hpz' h_eq<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+((\<lambda>s. z = s \<and> z' = s) \<and>* P) (z + hp) = (((=) z \<and>* P) (z' + hp') \<and> ((=) z' \<and>* P) (z' + hp'))
+P hp
+P hp'
+hp ## z
+hp' ## z'
+z' + hp' = z + hp
+
+goal (1 subgoal):
+ 1. hp = hp'<\STATESEP>by (fastforce dest!: iffD2 cong: conj_cong
+                    simp: sep_add_ac sep_add_cancel sep_conj_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+hp = hp'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+precise P
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma strictly_precise: "strictly_exact P \<Longrightarrow> precise P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. strictly_exact P \<Longrightarrow> precise P<\STATESEP>by (metis precise_def strictly_exactD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_disj_positive_zero[simp]: "x ## y \<Longrightarrow> x + y = 0 \<Longrightarrow> x = 0 \<and> y = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x ## y; x + y = (0::'a)\<rbrakk> \<Longrightarrow> x = (0::'a) \<and> y = (0::'a)<\STATESEP>by (metis (full_types) disjoint_zero_sym sep_add_cancelD sep_add_disjD
+                         sep_add_zero_sym sep_disj_positive)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

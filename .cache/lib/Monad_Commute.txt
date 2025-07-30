@@ -1,0 +1,523 @@
+<\STATESEP>theory Monad_Commute
+  imports
+    Monads.Nondet_Monad_Equations
+    Monad_Lists (* for mapM_x *)
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition monad_commute where
+  "monad_commute P a b \<equiv>
+   \<forall>s. (P s \<longrightarrow> ((do x\<leftarrow>a;y\<leftarrow>b; return (x, y) od) s) = ((do y\<leftarrow>b;x\<leftarrow>a; return (x, y) od) s))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma monad_eq:
+  "a s = b s \<Longrightarrow> (a >>= g) s = (b >>= g) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a s = b s \<Longrightarrow> (a >>= g) s = (b >>= g) s<\STATESEP>by (auto simp: bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monad_commute_simple:
+  "\<lbrakk> monad_commute P a b; P s \<rbrakk> \<Longrightarrow> (do x\<leftarrow>a;y\<leftarrow>b; g x y od) s = (do y\<leftarrow>b;x\<leftarrow>a; g x y od) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monad_commute P a b; P s\<rbrakk> \<Longrightarrow> (do x <- a;
+b >>= g x
+od) s = (do y <- b;
+x <- a;
+g x y
+od) s<\STATESEP>apply (clarsimp simp: monad_commute_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (do x <- a;
+y <- b;
+return (x, y)
+od) s = (do y <- b;
+x <- a;
+return (x, y)
+od) s; P s\<rbrakk> \<Longrightarrow> (do x <- a;
+b >>= g x
+od) s = (do y <- b;
+x <- a;
+g x y
+od) s<\STATESEP>apply (drule spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; P ?s \<longrightarrow> (do x <- a;
+y <- b;
+return (x, y)
+od) ?s = (do y <- b;
+x <- a;
+return (x, y)
+od) ?s\<rbrakk> \<Longrightarrow> (do x <- a;
+b >>= g x
+od) s = (do y <- b;
+x <- a;
+g x y
+od) s<\STATESEP>apply (erule(1) impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; (do x <- a;
+y <- b;
+return (x, y)
+od) s = (do y <- b;
+x <- a;
+return (x, y)
+od) s\<rbrakk> \<Longrightarrow> (do x <- a;
+b >>= g x
+od) s = (do y <- b;
+x <- a;
+g x y
+od) s<\STATESEP>apply (drule_tac g = "(\<lambda>t. g (fst t) (snd t))" in monad_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; (do t <- do x <- a;
+y <- b;
+return (x, y)
+od;
+g (fst t) (snd t)
+od) s = (do t <- do y <- b;
+x <- a;
+return (x, y)
+od;
+g (fst t) (snd t)
+od) s\<rbrakk> \<Longrightarrow> (do x <- a;
+b >>= g x
+od) s = (do y <- b;
+x <- a;
+g x y
+od) s<\STATESEP>apply (simp add: bind_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monad_commute_simple':
+  "monad_commute \<top> a b \<Longrightarrow> (do x \<leftarrow> a; y \<leftarrow> b; g x y od) = (do y \<leftarrow> b; x \<leftarrow> a; g x y od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) a b \<Longrightarrow> do x <- a;
+b >>= g x
+od = do y <- b;
+x <- a;
+g x y
+od<\STATESEP>apply (clarsimp simp: monad_commute_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. (do x <- a;
+y <- b;
+return (x, y)
+od) s = (do y <- b;
+x <- a;
+return (x, y)
+od) s \<Longrightarrow> do x <- a;
+b >>= g x
+od = do y <- b;
+x <- a;
+g x y
+od<\STATESEP>apply (fastforce simp: bind_def' return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma commute_commute:
+  "monad_commute P f h \<Longrightarrow> monad_commute P h f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute P f h \<Longrightarrow> monad_commute P h f<\STATESEP>apply (simp (no_asm) add: monad_commute_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute P f h \<Longrightarrow> \<forall>s. P s \<longrightarrow> (do x <- h;
+y <- f;
+return (x, y)
+od) s = (do y <- f;
+x <- h;
+return (x, y)
+od) s<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>monad_commute P f h; P s\<rbrakk> \<Longrightarrow> (do x <- h;
+y <- f;
+return (x, y)
+od) s = (do y <- f;
+x <- h;
+return (x, y)
+od) s<\STATESEP>apply (erule monad_commute_simple[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> P s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_commute: "monad_commute (K G) (assert G) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (K G) (assert G) f<\STATESEP>by (clarsimp simp: assert_def monad_commute_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cond_fail_commute: "monad_commute (K (\<not>G)) (when G fail) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (K (\<not> G)) (when G fail) f<\STATESEP>by (clarsimp simp: when_def fail_def monad_commute_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_commute: "monad_commute \<top> (return a) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) (return a) f<\STATESEP>by (clarsimp simp: return_def bind_def monad_commute_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monad_commute_guard_imp:
+  "\<lbrakk>monad_commute P f h; \<And>s. Q s \<Longrightarrow> P s \<rbrakk> \<Longrightarrow> monad_commute Q f h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monad_commute P f h; \<And>s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> monad_commute Q f h<\STATESEP>by (clarsimp simp: monad_commute_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma monad_commute_split:
+  "\<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>\<lambda>r. Q r\<rbrace>\<rbrakk>
+   \<Longrightarrow> monad_commute (P and P') f (h>>=g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> monad_commute (P and P') f (h >>= g)<\STATESEP>apply (simp (no_asm) add: monad_commute_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<forall>s. P s \<and> P' s \<longrightarrow> (do x <- f;
+y <- h >>= g;
+return (x, y)
+od) s = (do y <- h >>= g;
+x <- f;
+return (x, y)
+od) s<\STATESEP>apply (clarsimp simp: bind_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> (do x <- f;
+xa <- h;
+y <- g xa;
+return (x, y)
+od) s = (do x <- h;
+y <- g x;
+x <- f;
+return (x, y)
+od) s<\STATESEP>apply (subst monad_commute_simple)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> monad_commute (?P6 s) f h
+ 2. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> ?P6 s s
+ 3. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> (do y <- h;
+x <- f;
+y <- g y;
+return (x, y)
+od) s = (do x <- h;
+y <- g x;
+x <- f;
+return (x, y)
+od) s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> (do y <- h;
+x <- f;
+y <- g y;
+return (x, y)
+od) s = (do x <- h;
+y <- g x;
+x <- f;
+return (x, y)
+od) s<\STATESEP>apply (rule_tac Q = "(\<lambda>x. Q x)" in monad_eq_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s r sa. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s; Q r sa\<rbrakk> \<Longrightarrow> (do x <- f;
+y <- g r;
+return (x, y)
+od) sa = (do y <- g r;
+x <- f;
+return (x, y)
+od) sa
+ 2. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> \<lbrace>?P7 s\<rbrace> h \<lbrace>Q\<rbrace>
+ 3. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> ?P7 s s<\STATESEP>apply (subst monad_commute_simple[where a = f])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s r sa. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s; Q r sa\<rbrakk> \<Longrightarrow> monad_commute (?P9 s r sa) f (g r)
+ 2. \<And>s r sa. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s; Q r sa\<rbrakk> \<Longrightarrow> ?P9 s r sa sa
+ 3. \<And>s r sa. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s; Q r sa\<rbrakk> \<Longrightarrow> (do y <- g r;
+x <- f;
+return (x, y)
+od) sa = (do y <- g r;
+x <- f;
+return (x, y)
+od) sa
+ 4. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> \<lbrace>?P7 s\<rbrace> h \<lbrace>Q\<rbrace>
+ 5. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> ?P7 s s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s r sa. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s; Q r sa\<rbrakk> \<Longrightarrow> Q r sa
+ 2. \<And>s r sa. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s; Q r sa\<rbrakk> \<Longrightarrow> (do y <- g r;
+x <- f;
+return (x, y)
+od) sa = (do y <- g r;
+x <- f;
+return (x, y)
+od) sa
+ 3. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> \<lbrace>?P7 s\<rbrace> h \<lbrace>Q\<rbrace>
+ 4. \<And>s. \<lbrakk>\<And>r. monad_commute (Q r) f (g r); monad_commute P f h; \<lbrace>P'\<rbrace> h \<lbrace>Q\<rbrace>; P s; P' s\<rbrakk> \<Longrightarrow> ?P7 s s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monad_commute_get:
+  assumes hf: "\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r. P\<rbrace>"
+    and hg: "\<And>P. \<lbrace>P\<rbrace> g \<lbrace>\<lambda>r. P\<rbrace>"
+    and eptyf: "empty_fail f" "empty_fail g"
+  shows "monad_commute \<top> f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>have fsame: "\<And>a b s. (a,b) \<in> fst (f s) \<Longrightarrow> b = s"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s. (a, b) \<in> fst (f s) \<Longrightarrow> b = s<\STATESEP>by (drule use_valid[OF _ hf],auto)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(?a, ?b) \<in> fst (f ?s) \<Longrightarrow> ?b = ?s
+
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>have gsame: "\<And>a b s. (a,b) \<in> fst (g s) \<Longrightarrow> b = s"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s. (a, b) \<in> fst (g s) \<Longrightarrow> b = s<\STATESEP>by (drule use_valid[OF _ hg],auto)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(?a, ?b) \<in> fst (g ?s) \<Longrightarrow> ?b = ?s
+
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>note ef = empty_fail_not_snd[OF _ eptyf(1)]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<not> snd (f ?s) \<Longrightarrow> \<exists>v. v \<in> fst (f ?s)
+
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>note eg = empty_fail_not_snd[OF _ eptyf(2)]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<not> snd (g ?s) \<Longrightarrow> \<exists>v. v \<in> fst (g ?s)
+
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>_. True) f g<\STATESEP>apply (simp add: monad_commute_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. (do x <- f;
+y <- g;
+return (x, y)
+od) s = (do y <- g;
+x <- f;
+return (x, y)
+od) s<\STATESEP>apply (clarsimp simp: bind_def split_def return_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<and> ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (intro conjI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule set_eqI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. (x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})) = (x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}))
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule iffI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s x. x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})
+ 2. \<And>s x. x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})
+ 3. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (clarsimp simp:Union_eq)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>(aa, bb) \<in> fst (f s); (ab, bc) \<in> fst (g bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). \<exists>xa\<in>fst (f (snd x)). aa = fst xa \<and> ab = fst x \<and> bc = snd xa
+ 2. \<And>s x. x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})
+ 3. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (frule fsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>(aa, bb) \<in> fst (f s); (ab, bc) \<in> fst (g bb); bb = s\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). \<exists>xa\<in>fst (f (snd x)). aa = fst xa \<and> ab = fst x \<and> bc = snd xa
+ 2. \<And>s x. x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})
+ 3. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa ab bc. \<lbrakk>(aa, s) \<in> fst (f s); (ab, bc) \<in> fst (g s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). \<exists>xa\<in>fst (f (snd x)). aa = fst xa \<and> ab = fst x \<and> bc = snd xa
+ 2. \<And>s x. x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})
+ 3. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (frule gsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa ab bc. \<lbrakk>(aa, s) \<in> fst (f s); (ab, bc) \<in> fst (g s); bc = s\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). \<exists>xa\<in>fst (f (snd x)). aa = fst xa \<and> ab = fst x \<and> bc = snd xa
+ 2. \<And>s x. x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})
+ 3. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (metis fst_conv snd_conv)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<Longrightarrow> x \<in> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)})
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (clarsimp simp:Union_eq)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>(aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). ab = fst x \<and> (\<exists>x\<in>fst (g (snd x)). aa = fst x \<and> bc = snd x)
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (frule gsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>(aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb); bb = s\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). ab = fst x \<and> (\<exists>x\<in>fst (g (snd x)). aa = fst x \<and> bc = snd x)
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa ab bc. \<lbrakk>(aa, s) \<in> fst (g s); (ab, bc) \<in> fst (f s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). ab = fst x \<and> (\<exists>x\<in>fst (g (snd x)). aa = fst x \<and> bc = snd x)
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (frule fsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa ab bc. \<lbrakk>(aa, s) \<in> fst (g s); (ab, bc) \<in> fst (f s); bc = s\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). ab = fst x \<and> (\<exists>x\<in>fst (g (snd x)). aa = fst x \<and> bc = snd x)
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa ab. \<lbrakk>(aa, s) \<in> fst (g s); (ab, s) \<in> fst (f s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). ab = fst x \<and> (\<exists>x\<in>fst (g (snd x)). aa = fst x \<and> s = snd x)
+ 2. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (metis fst_conv snd_conv)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule iffI)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s) \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (erule disjE)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<exists>x\<in>fst (f s). snd (g (snd x)) \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)
+ 2. \<And>s. snd (f s) \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)
+ 3. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); snd (g b); \<not> snd (g s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). snd (f (snd x))
+ 2. \<And>s. snd (f s) \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)
+ 3. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (metis fsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. snd (f s) \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>snd (f s); \<not> snd (g s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). snd (f (snd x))
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (drule eg)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>snd (f s); \<exists>v. v \<in> fst (g s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). snd (f (snd x))
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>snd (f s); (a, b) \<in> fst (g s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). snd (f (snd x))
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (rule bexI [rotated], assumption)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>snd (f s); (a, b) \<in> fst (g s)\<rbrakk> \<Longrightarrow> snd (f (snd (a, b)))
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (frule gsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>snd (f s); (a, b) \<in> fst (g s); b = s\<rbrakk> \<Longrightarrow> snd (f (snd (a, b)))
+ 2. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (erule disjE)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<exists>x\<in>fst (g s). snd (f (snd x)) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)
+ 2. \<And>s. snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (clarsimp simp: image_def dest!: gsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. snd (g s) \<Longrightarrow> (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>snd (g s); \<not> snd (f s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply (drule ef)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>snd (g s); \<exists>v. v \<in> fst (f s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply clarsimp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>snd (g s); (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply (frule fsame)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>snd (g s); (a, b) \<in> fst (f s); b = s\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply (erule bexI[rotated])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>snd (g s); b = s\<rbrakk> \<Longrightarrow> snd (g (snd (a, b)))<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+monad_commute (\<lambda>_. True) f g
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma mapM_x_commute:
+  assumes commute: "\<And>r. monad_commute (P r) a (b r)"
+     and   single: "\<And>r x. \<lbrace>P r and K (f r \<noteq> f x) and P x\<rbrace> b x \<lbrace>\<lambda>v. P r \<rbrace>"
+  shows "monad_commute (\<lambda>s. (distinct (map f list)) \<and> (\<forall>r\<in> set list. P r s)) a (mapM_x b list)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list)<\STATESEP>apply (induct list)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monad_commute (\<lambda>s. distinct (map f []) \<and> (\<forall>r\<in>set []. P r s)) a (mapM_x b [])
+ 2. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (\<lambda>s. distinct (map f (aa # list)) \<and> (\<forall>r\<in>set (aa # list). P r s)) a (mapM_x b (aa # list))<\STATESEP>apply (clarsimp simp: mapM_x_Nil return_def bind_def monad_commute_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (\<lambda>s. distinct (map f (aa # list)) \<and> (\<forall>r\<in>set (aa # list). P r s)) a (mapM_x b (aa # list))<\STATESEP>apply (clarsimp simp: mapM_x_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (\<lambda>s. f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)) a (do y <- b aa;
+mapM_x b list
+od)<\STATESEP>apply (rule monad_commute_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (?P18 aa list) a (do y <- b aa;
+mapM_x b list
+od)
+ 2. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> ?P18 aa list s<\STATESEP>apply (rule monad_commute_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>aa list r. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (?Q21 aa list r) a (mapM_x b list)
+ 2. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (?P21 aa list) a (b aa)
+ 3. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> \<lbrace>?P'21 aa list\<rbrace> b aa \<lbrace>?Q21 aa list\<rbrace>
+ 4. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> (?P21 aa list and ?P'21 aa list) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> monad_commute (?P21 aa list) a (b aa)
+ 2. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> \<lbrace>?P'21 aa list\<rbrace> b aa \<lbrace>\<lambda>r s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)\<rbrace>
+ 3. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> (?P21 aa list and ?P'21 aa list) s<\STATESEP>apply (rule monad_commute_guard_imp[OF commute])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); ?P21 aa list s\<rbrakk> \<Longrightarrow> P aa s
+ 2. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> \<lbrace>?P'21 aa list\<rbrace> b aa \<lbrace>\<lambda>r s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)\<rbrace>
+ 3. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> (?P21 aa list and ?P'21 aa list) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>aa list. monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list) \<Longrightarrow> \<lbrace>?P'21 aa list\<rbrace> b aa \<lbrace>\<lambda>r s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)\<rbrace>
+ 2. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> (P aa and ?P'21 aa list) s<\STATESEP>apply (wp hoare_vcg_const_Ball_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>aa list r. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); r \<in> set list\<rbrakk> \<Longrightarrow> \<lbrace>?P32 aa list r\<rbrace> b aa \<lbrace>\<lambda>rv. P r\<rbrace>
+ 2. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> (P aa and (\<lambda>s. distinct (map f list) \<and> (\<forall>x\<in>set list. ?P32 aa list x s))) s<\STATESEP>apply (rule single)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>aa list s. \<lbrakk>monad_commute (\<lambda>s. distinct (map f list) \<and> (\<forall>r\<in>set list. P r s)) a (mapM_x b list); f aa \<notin> f ` set list \<and> distinct (map f list) \<and> P aa s \<and> (\<forall>r\<in>set list. P r s)\<rbrakk> \<Longrightarrow> (P aa and (\<lambda>s. distinct (map f list) \<and> (\<forall>x\<in>set list. (P x and K (f x \<noteq> f aa) and P aa) s))) s<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>aa list s x. \<lbrakk>monad_commute (\<lambda>s. \<forall>r\<in>set list. P r s) a (mapM_x b list); x \<in> set list; \<forall>x\<in>set list. f aa \<noteq> f x; distinct (map f list); P aa s; \<forall>r\<in>set list. P r s; f x = f aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma commute_name_pre_state:
+  assumes "\<And>s. P s \<Longrightarrow> monad_commute ((=) s) f g"
+  shows "monad_commute P f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute P f g<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+P ?s \<Longrightarrow> monad_commute ((=) ?s) f g
+
+goal (1 subgoal):
+ 1. monad_commute P f g<\STATESEP>by (clarsimp simp: monad_commute_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma commute_rewrite:
+  assumes rewrite: "\<And>s. Q s \<Longrightarrow> f s = t s"
+  assumes hold: "\<lbrace>P\<rbrace> g \<lbrace>\<lambda>x. Q\<rbrace>"
+  shows  "monad_commute R t g \<Longrightarrow> monad_commute (P and Q and R) f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monad_commute R t g \<Longrightarrow> monad_commute (P and Q and R) f g<\STATESEP>apply (clarsimp simp: monad_commute_def bind_def split_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. R s \<longrightarrow> (\<Union>x\<in>fst (t s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}) \<and> ((\<exists>x\<in>fst (t s). snd (g (snd x))) \<or> snd (t s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); P s; Q s; R s\<rbrakk> \<Longrightarrow> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<and> ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (drule_tac x = s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>P s; Q s; R s; R s \<longrightarrow> (\<Union>x\<in>fst (t s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}) \<and> ((\<exists>x\<in>fst (t s). snd (g (snd x))) \<or> snd (t s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<and> ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (clarsimp simp: rewrite[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}) \<and> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule set_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> (x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})) = (x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)}))
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})
+ 2. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 3. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). \<exists>xa\<in>fst (f (snd x)). ab = fst xa \<and> aa = fst x \<and> bc = snd xa
+ 2. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 3. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule bexI[rotated],assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f (snd (aa, bb))). ab = fst x \<and> aa = fst (aa, bb) \<and> bc = snd x
+ 2. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 3. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (subst rewrite)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> Q (snd (aa, bb))
+ 2. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (t (snd (aa, bb))). ab = fst x \<and> aa = fst (aa, bb) \<and> bc = snd x
+ 3. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 4. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule use_valid[OF _ hold])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> (?r57 s aa bb ab bc, snd (aa, bb)) \<in> fst (g (?s57 s aa bb ab bc))
+ 2. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> P (?s57 s aa bb ab bc)
+ 3. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (t (snd (aa, bb))). ab = fst x \<and> aa = fst (aa, bb) \<and> bc = snd x
+ 4. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 5. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (t bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (t bb). ab = fst x \<and> bc = snd x
+ 2. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 3. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (erule bexI[rotated],simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (f (snd x)). {((fst xa, fst x), snd xa)})\<rbrakk> \<Longrightarrow> x \<in> (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)})
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). \<exists>xa\<in>fst (t (snd x)). ab = fst xa \<and> aa = fst x \<and> bc = snd xa
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule bexI[rotated],assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (t (snd (aa, bb))). ab = fst x \<and> aa = fst (aa, bb) \<and> bc = snd x
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (subst rewrite[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> Q (snd (aa, bb))
+ 2. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f (snd (aa, bb))). ab = fst x \<and> aa = fst (aa, bb) \<and> bc = snd x
+ 3. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (rule use_valid[OF _ hold])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> (?r80 s aa bb ab bc, snd (aa, bb)) \<in> fst (g (?s80 s aa bb ab bc))
+ 2. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> P (?s80 s aa bb ab bc)
+ 3. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f (snd (aa, bb))). ab = fst x \<and> aa = fst (aa, bb) \<and> bc = snd x
+ 4. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s aa bb ab bc. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (aa, bb) \<in> fst (g s); (ab, bc) \<in> fst (f bb)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f bb). ab = fst x \<and> bc = snd x
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (erule bexI[rotated],simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s))\<rbrakk> \<Longrightarrow> ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)) = ((\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s))<\STATESEP>apply (intro iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s); \<not> snd (g s); (a, b) \<in> fst (g s); snd (t b)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (g s). snd (f (snd x))
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply (rule bexI[rotated],assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s); \<not> snd (g s); (a, b) \<in> fst (g s); snd (t b)\<rbrakk> \<Longrightarrow> snd (f (snd (a, b)))
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s); \<not> snd (g s); (a, b) \<in> fst (g s); snd (t b)\<rbrakk> \<Longrightarrow> snd (f b)
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply (subst rewrite)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s); \<not> snd (g s); (a, b) \<in> fst (g s); snd (t b)\<rbrakk> \<Longrightarrow> Q b
+ 2. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s); \<not> snd (g s); (a, b) \<in> fst (g s); snd (t b)\<rbrakk> \<Longrightarrow> snd (t b)
+ 3. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply (erule(1) use_valid[OF _ hold])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); (\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s); \<not> snd (g s); (a, b) \<in> fst (g s); snd (t b)\<rbrakk> \<Longrightarrow> snd (t b)
+ 2. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); ((\<exists>x\<in>fst (f s). snd (g (snd x))) \<or> snd (f s)) = ((\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)); (\<exists>x\<in>fst (g s). snd (f (snd x))) \<or> snd (g s)\<rbrakk> \<Longrightarrow> (\<exists>x\<in>fst (g s). snd (t (snd x))) \<or> snd (g s)<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); \<not> snd (g s); (a, b) \<in> fst (g s); snd (f b); \<forall>x\<in>fst (g s). \<not> snd (t (snd x)); \<not> snd (f s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply (drule bspec,assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); \<not> snd (g s); (a, b) \<in> fst (g s); snd (f b); \<not> snd (f s); \<not> snd (t (snd (a, b)))\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; Q s; R s; (\<Union>x\<in>fst (f s). \<Union>xa\<in>fst (g (snd x)). {((fst x, fst xa), snd xa)}) = (\<Union>x\<in>fst (g s). \<Union>xa\<in>fst (t (snd x)). {((fst xa, fst x), snd xa)}); \<not> snd (g s); (a, b) \<in> fst (g s); snd (f b); \<not> snd (f s); \<not> snd (t b)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f s). snd (g (snd x))<\STATESEP>apply (metis rewrite use_valid[OF _ hold])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma commute_grab_asm:
+  "(F \<Longrightarrow> monad_commute P f g) \<Longrightarrow> (monad_commute (P and (K F)) f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (F \<Longrightarrow> monad_commute P f g) \<Longrightarrow> monad_commute (P and K F) f g<\STATESEP>by (clarsimp simp: monad_commute_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_modify_comm:
+  "(do b \<leftarrow> select S; _ \<leftarrow> modify f; use b od) =
+   (do _ \<leftarrow> modify f; b \<leftarrow> select S; use b od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do b <- select S;
+_ <- modify f;
+use b
+od = do _ <- modify f;
+select S >>= use
+od<\STATESEP>by (simp add: bind_def split_def select_def simpler_modify_def image_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_f_modify_comm:
+  "(do b \<leftarrow> select_f S; _ \<leftarrow> modify f; use b od) =
+   (do _ \<leftarrow> modify f; b \<leftarrow> select_f S; use b od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do b <- select_f S;
+_ <- modify f;
+use b
+od = do _ <- modify f;
+select_f S >>= use
+od<\STATESEP>by (simp add: bind_def split_def select_f_def simpler_modify_def image_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

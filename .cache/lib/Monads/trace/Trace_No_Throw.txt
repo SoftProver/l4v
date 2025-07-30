@@ -1,0 +1,101 @@
+<\STATESEP>theory Trace_No_Throw
+  imports
+    Trace_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section "Basic exception reasoning"<\STATESEP>0<\TRANSEP><\STATESEP>definition no_throw :: "('s \<Rightarrow> bool) \<Rightarrow> ('s, 'e + 'a) tmonad \<Rightarrow> bool" where
+  "no_throw P A \<equiv> \<lbrace> P \<rbrace> A \<lbrace> \<lambda>_ _. True \<rbrace>,\<lbrace> \<lambda>_ _. False \<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>definition no_return :: "('a \<Rightarrow> bool) \<Rightarrow> ('a, 'b + 'c) tmonad \<Rightarrow> bool" where
+  "no_return P A \<equiv> \<lbrace> P \<rbrace> A \<lbrace>\<lambda>_ _. False\<rbrace>,\<lbrace>\<lambda>_ _. True \<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma no_throw_def':
+  "no_throw P A = (\<forall>s. P s \<longrightarrow> (\<forall>(r, t) \<in> mres (A s). (\<exists>x. r = Inr x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw P A = (\<forall>s. P s \<longrightarrow> (\<forall>(r, t)\<in>mres (A s). \<exists>x. r = Inr x))<\STATESEP>by (clarsimp simp: no_throw_def validE_def2 split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>@{const no_throw} rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma no_throw_returnOk[simp]:
+  "no_throw P (returnOk a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw P (returnOk a)<\STATESEP>unfolding no_throw_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> returnOk a \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>by wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_liftE[simp]:
+  "no_throw P (liftE x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw P (liftE x)<\STATESEP>by (wpsimp simp: liftE_def no_throw_def validE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_bindE:
+  "\<lbrakk> no_throw A X; \<And>a. no_throw B (Y a); \<lbrace> A \<rbrace> X \<lbrace> \<lambda>_. B \<rbrace>,\<lbrace> \<lambda>_ _. True \<rbrace> \<rbrakk>
+   \<Longrightarrow> no_throw A (X >>=E Y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_throw A X; \<And>a. no_throw B (Y a); \<lbrace>A\<rbrace> X \<lbrace>\<lambda>_. B\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> no_throw A (X >>=E Y)<\STATESEP>unfolding no_throw_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>A\<rbrace> X \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace>; \<And>a. \<lbrace>B\<rbrace> Y a \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace>; \<lbrace>A\<rbrace> X \<lbrace>\<lambda>_. B\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> X >>=E Y \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>using hoare_validE_cases bindE_wp_fwd<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>\<lbrace>?P\<rbrace> ?f \<lbrace>?Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>?P\<rbrace> ?f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>?P\<rbrace> ?f \<lbrace>?Q\<rbrace>, \<lbrace>?R\<rbrace>
+\<lbrakk>\<lbrace>?P\<rbrace> ?f \<lbrace>?Q'\<rbrace>, \<lbrace>?E\<rbrace>; \<And>r. \<lbrace>?Q' r\<rbrace> ?g r \<lbrace>?Q\<rbrace>, \<lbrace>?E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>?P\<rbrace> ?f >>=E ?g \<lbrace>?Q\<rbrace>, \<lbrace>?E\<rbrace>
+
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>A\<rbrace> X \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace>; \<And>a. \<lbrace>B\<rbrace> Y a \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace>; \<lbrace>A\<rbrace> X \<lbrace>\<lambda>_. B\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> X >>=E Y \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_bindE_simple:
+  "\<lbrakk> no_throw \<top> L; \<And>x. no_throw \<top> (R x) \<rbrakk> \<Longrightarrow> no_throw \<top> (L >>=E R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_throw (\<lambda>_. True) L; \<And>x. no_throw (\<lambda>_. True) (R x)\<rbrakk> \<Longrightarrow> no_throw (\<lambda>_. True) (L >>=E R)<\STATESEP>using hoareE_TrueI no_throw_bindE<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>?P\<rbrace> ?f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>
+\<lbrakk>no_throw ?A ?X; \<And>a. no_throw ?B (?Y a); \<lbrace>?A\<rbrace> ?X \<lbrace>\<lambda>_. ?B\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> no_throw ?A (?X >>=E ?Y)
+
+goal (1 subgoal):
+ 1. \<lbrakk>no_throw (\<lambda>_. True) L; \<And>x. no_throw (\<lambda>_. True) (R x)\<rbrakk> \<Longrightarrow> no_throw (\<lambda>_. True) (L >>=E R)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_handleE_simple:
+  "\<lbrakk> \<And>x. no_throw \<top> L \<or> no_throw \<top> (R x) \<rbrakk> \<Longrightarrow> no_throw \<top> (L <handle> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. no_throw (\<lambda>_. True) L \<or> no_throw (\<lambda>_. True) (R x)) \<Longrightarrow> no_throw (\<lambda>_. True) (L <handle> R)<\STATESEP>by (fastforce simp: no_throw_def' handleE_def handleE'_def validE_def valid_def bind_def return_def
+                      mres_def image_def
+                split: sum.splits tmres.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_handle2:
+  "\<lbrakk> \<And>a. no_throw Y (B a); \<lbrace> X \<rbrace> A \<lbrace> \<lambda>_ _. True \<rbrace>,\<lbrace> \<lambda>_. Y \<rbrace> \<rbrakk> \<Longrightarrow> no_throw X (A <handle2> B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. no_throw Y (B a); \<lbrace>X\<rbrace> A \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_. Y\<rbrace>\<rbrakk> \<Longrightarrow> no_throw X (A <handle2> B)<\STATESEP>by (fastforce simp: no_throw_def' handleE'_def validE_def valid_def bind_def return_def mres_def
+                      image_def
+                split: sum.splits tmres.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_handle:
+  "\<lbrakk> \<And>a. no_throw Y (B a); \<lbrace> X \<rbrace> A \<lbrace> \<lambda>_ _. True \<rbrace>,\<lbrace> \<lambda>_. Y \<rbrace> \<rbrakk> \<Longrightarrow> no_throw X (A <handle> B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. no_throw Y (B a); \<lbrace>X\<rbrace> A \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_. Y\<rbrace>\<rbrakk> \<Longrightarrow> no_throw X (A <handle> B)<\STATESEP>unfolding handleE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>a. no_throw Y (B a); \<lbrace>X\<rbrace> A \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_. Y\<rbrace>\<rbrakk> \<Longrightarrow> no_throw X (A <handle2> B)<\STATESEP>by (rule no_throw_handle2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_fail[simp]:
+  "no_throw P fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw P fail<\STATESEP>by (clarsimp simp: no_throw_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handleE'_nothrow_lhs:
+  "no_throw \<top> L \<Longrightarrow> no_throw \<top> (L <handle2> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw (\<lambda>_. True) L \<Longrightarrow> no_throw (\<lambda>_. True) (L <handle2> R)<\STATESEP>unfolding no_throw_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> L \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> L <handle2> R \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>using handleE'_wp[rotated]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>\<lbrace>?P\<rbrace> ?f \<lbrace>?Q\<rbrace>, \<lbrace>?F\<rbrace>; \<And>x. \<lbrace>?F x\<rbrace> ?handler x \<lbrace>?Q\<rbrace>, \<lbrace>?E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>?P\<rbrace> ?f <handle2> ?handler \<lbrace>?Q\<rbrace>, \<lbrace>?E\<rbrace>
+
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> L \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> L <handle2> R \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma handleE'_nothrow_rhs:
+  "\<lbrakk> \<And>x. no_throw \<top> (R x) \<rbrakk> \<Longrightarrow> no_throw \<top> (L <handle2> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. no_throw (\<lambda>_. True) (R x)) \<Longrightarrow> no_throw (\<lambda>_. True) (L <handle2> R)<\STATESEP>unfolding no_throw_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>\<lambda>_. True\<rbrace> R x \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> L <handle2> R \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>by (metis hoareE_TrueI no_throw_def no_throw_handle2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handleE_nothrow_lhs:
+  "no_throw \<top> L \<Longrightarrow> no_throw \<top> (L <handle> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw (\<lambda>_. True) L \<Longrightarrow> no_throw (\<lambda>_. True) (L <handle> R)<\STATESEP>by (metis handleE'_nothrow_lhs handleE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handleE_nothrow_rhs:
+  "\<lbrakk> \<And>x. no_throw \<top> (R x) \<rbrakk> \<Longrightarrow> no_throw \<top> (L <handle> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. no_throw (\<lambda>_. True) (R x)) \<Longrightarrow> no_throw (\<lambda>_. True) (L <handle> R)<\STATESEP>by (metis no_throw_handleE_simple)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_nothrow:
+  "\<lbrakk> no_throw \<top> L; no_throw \<top> R \<rbrakk> \<Longrightarrow> no_throw \<top> (condition C L R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_throw (\<lambda>_. True) L; no_throw (\<lambda>_. True) R\<rbrakk> \<Longrightarrow> no_throw (\<lambda>_. True) condition C
+  L
+  R<\STATESEP>by (clarsimp simp: condition_def no_throw_def validE_def2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_Inr:
+  "\<lbrakk> x \<in> mres (A s); no_throw P A; P s \<rbrakk> \<Longrightarrow> \<exists>y. fst x = Inr y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> mres (A s); no_throw P A; P s\<rbrakk> \<Longrightarrow> \<exists>y. fst x = Inr y<\STATESEP>by (fastforce simp: no_throw_def' split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mres_parallel:
+  "x \<in> mres (parallel f g s) \<Longrightarrow> x \<in> mres (f s) \<and> x \<in> mres (g s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> mres (parallel f g s) \<Longrightarrow> x \<in> mres (f s) \<and> x \<in> mres (g s)<\STATESEP>unfolding parallel_def2 mres_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> Result -` snd ` {(xs, rv). \<exists>ys zs. (ys, rv) \<in> f s \<and> (zs, rv) \<in> g s \<and> list_all2 (\<lambda>y z. (fst y = Env \<or> fst z = Env) \<and> snd y = snd z) ys zs \<and> xs = map2 (\<lambda>(idn, s) (idn', uu_). (if idn = Env then idn' else idn, s)) ys zs} \<Longrightarrow> x \<in> Result -` snd ` f s \<and> x \<in> Result -` snd ` g s<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ys zs. \<lbrakk>(ys, Result x) \<in> f s; (zs, Result x) \<in> g s; list_all2 (\<lambda>y z. (fst y = Env \<or> fst z = Env) \<and> snd y = snd z) ys zs\<rbrakk> \<Longrightarrow> (\<exists>xa\<in>f s. Result x = snd xa) \<and> (\<exists>xa\<in>g s. Result x = snd xa)<\STATESEP>apply (auto intro!: bexI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_throw_parallel:
+  "\<lbrakk> no_throw P f \<or> no_throw Q g \<rbrakk> \<Longrightarrow> no_throw (P and Q) (parallel f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_throw P f \<or> no_throw Q g \<Longrightarrow> no_throw (P and Q) (parallel f g)<\STATESEP>unfolding no_throw_def'<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>s. P s \<longrightarrow> (\<forall>(r, t)\<in>mres (f s). \<exists>x. r = Inr x)) \<or> (\<forall>s. Q s \<longrightarrow> (\<forall>(r, t)\<in>mres (g s). \<exists>x. r = Inr x)) \<Longrightarrow> \<forall>s. (P and Q) s \<longrightarrow> (\<forall>(r, t)\<in>mres (parallel f g s). \<exists>x. r = Inr x)<\STATESEP>apply (auto dest!: mres_parallel)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

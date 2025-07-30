@@ -1,0 +1,221 @@
+<\STATESEP>theory Trace_Schematic_Insts_Test
+imports
+  Eisbach_Tools.Trace_Schematic_Insts
+begin<\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Examples\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<lbrakk> \<forall>x. P x \<rbrakk> \<Longrightarrow> P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. P x \<Longrightarrow> P x<\STATESEP>apply (drule spec) \<comment> \<open>introduces schematic var "?x"\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ?x \<Longrightarrow> P x<\STATESEP>apply (trace_schematic_insts \<open>assumption\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition foo :: "'a \<Rightarrow> bool"
+  where "foo x = True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma fooI1:
+  "foo 0 \<Longrightarrow> foo x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo (0::'a) \<Longrightarrow> foo x<\STATESEP>by (simp add: foo_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fooI2:
+  "foo x \<Longrightarrow> foo 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo x \<Longrightarrow> foo (0::'b)<\STATESEP>by (simp add: foo_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fooI2':
+  "foo x \<Longrightarrow> foo (0 :: nat)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo x \<Longrightarrow> foo 0<\STATESEP>by (erule fooI2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "foo x \<Longrightarrow> foo y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo x \<Longrightarrow> foo y<\STATESEP>apply (rule fooI1) \<comment> \<open>introduces schematic type "0 :: ?'a"\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo x \<Longrightarrow> foo (0::?'a)<\STATESEP>apply (trace_schematic_insts \<open>erule fooI2'\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<lbrakk> \<forall>x. Q x \<longrightarrow> R x; \<forall>x. P x \<longrightarrow> Q x; P x; P y \<longrightarrow> R x \<rbrakk> \<Longrightarrow> R x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>x. Q x \<longrightarrow> R x; \<forall>x. P x \<longrightarrow> Q x; P x; P y \<longrightarrow> R x\<rbrakk> \<Longrightarrow> R x<\STATESEP>apply (drule spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>x. P x \<longrightarrow> Q x; P x; P y \<longrightarrow> R x; Q ?x \<longrightarrow> R ?x\<rbrakk> \<Longrightarrow> R x<\STATESEP>apply (drule spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; P y \<longrightarrow> R x; Q ?x \<longrightarrow> R ?x; P ?x2 \<longrightarrow> Q ?x2\<rbrakk> \<Longrightarrow> R x<\STATESEP>apply (trace_schematic_insts impE1 \<open>erule impE\<close>,
+         trace_schematic_insts impE2 \<open>erule impE\<close>,
+         (trace_schematic_insts "try assumption" \<open>assumption\<close>)+; fail)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+  fun trace_resolve_tac ctxt =
+      Trace_Schematic_Insts.trace_schematic_insts_tac ctxt
+        (Trace_Schematic_Insts.default_rule_report ctxt "demo title")
+        (fn t => resolve_tac ctxt [t])
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  assumes Pf: "\<And>f (x :: nat). Q f \<Longrightarrow> P x \<Longrightarrow> P (f x)"
+  assumes Q: "Q ((*) 2)"
+  assumes P: "P a"
+  shows "\<exists>x. P (x + a + a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>x. P (x + a + a)<\STATESEP>apply (tactic \<open>trace_resolve_tac @{context} @{thm exI} 1\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (?x + a + a)<\STATESEP>apply (trace_schematic_insts \<open>subst add_0\<close>)
+
+  \<comment>\<open>
+    This picks *some* instantiation of `f` in @{thm Pf}. The first one is
+    @{term "\<lambda>a. a"}, which isn't what we want.
+  \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (a + a)<\STATESEP>apply (tactic \<open>trace_resolve_tac @{context} @{thm Pf} 1\<close>)
+   \<comment>\<open>
+     This picks the *next* instantiation of `f`, in this case @{term "\<lambda>a. a + a"}
+     Notice that the reporting callback gets called with the new instantiations!
+   \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Q (\<lambda>a. a)
+ 2. P (a + a)<\STATESEP>back<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Q (\<lambda>a. a + a)
+ 2. P a<\STATESEP>apply (tactic \<open>
+     Trace_Schematic_Insts.trace_schematic_insts_tac
+       @{context}
+       (Trace_Schematic_Insts.default_rule_report @{context} "demo title")
+       (fn t => EqSubst.eqsubst_tac @{context} [0] [t])
+       @{thm mult_2[symmetric]} 1
+   \<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Q ((*) 2)
+ 2. P a<\STATESEP>apply (tactic \<open>trace_resolve_tac @{context} @{thm Q} 1\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P a<\STATESEP>apply (tactic \<open>trace_resolve_tac @{context} @{thm P} 1\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Tests\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun trace_schematic_assert ctxt test_name tac expected_vars expected_tvars =
+  let
+    fun skip_dummy_state tac = fn st =>
+        case Thm.prop_of st of
+            Const (@{const_name Pure.prop}, _) $
+              (Const (@{const_name Pure.term}, _) $ Const (@{const_name Pure.dummy_pattern}, _)) =>
+              Seq.succeed st
+          | _ => tac st
+
+    fun check insts =
+      if expected_vars = #terms insts andalso expected_tvars = #typs insts then () else
+        error ("Trace_Schematic_Insts failed test: " ^ test_name)
+
+  in NO_CONTEXT_TACTIC ctxt
+        (Trace_Schematic_Insts.trace_schematic_insts (SIMPLE_METHOD tac) check [])
+     |> skip_dummy_state
+  end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<lbrakk> \<forall>x. P x \<rbrakk> \<Longrightarrow> P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. P x \<Longrightarrow> P x<\STATESEP>apply (drule spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ?x \<Longrightarrow> P x<\STATESEP>apply (tactic \<open>let
+      val alpha = TFree ("'a", @{sort type})
+      val expected_vars = [(Var (("x", 0), alpha), Free ("x", alpha))]
+      val expected_tvars = []
+      in trace_schematic_assert @{context}
+            "basic Var test" (assume_tac @{context} 1)
+            expected_vars expected_tvars
+      end\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "foo x \<Longrightarrow> foo y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo x \<Longrightarrow> foo y<\STATESEP>apply (rule fooI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo x \<Longrightarrow> foo (0::?'a)<\STATESEP>apply (tactic \<open>let
+      val expected_vars = []
+      val expected_tvars = [(TVar (("'a", 0), @{sort zero}), @{typ nat})]
+      in trace_schematic_assert
+            @{context}
+            "basic TVar test"
+            (eresolve_tac @{context} @{thms fooI2'} 1)
+            expected_vars expected_tvars
+      end\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+fun trace_schematic_resolve_tac_assert ctxt test_name thm expected_rule_insts expected_proof_insts =
+  let
+    fun check rule_insts proof_insts =
+        if expected_rule_insts = rule_insts andalso expected_proof_insts = proof_insts
+        then ()
+        else
+          let
+            val _ = tracing (@{make_string} (rule_insts, proof_insts))
+          in error ("Trace_Schematic_Insts failed test: " ^ test_name) end
+    fun tactic thm = resolve_tac ctxt [thm]
+  in HEADGOAL (Trace_Schematic_Insts.trace_schematic_insts_tac ctxt check tactic thm)
+  end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<exists>a. foo (a :: nat)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>a. foo a<\STATESEP>apply (rule exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo ?a<\STATESEP>apply (tactic \<open>
+    let
+      val a' = TVar (("'a", 0), @{sort type})
+      val b' = TVar (("'b", 0), @{sort zero})
+      val a'' = TVar (("'a", 2), @{sort type})
+      val expected_rule_vars = [
+        (Var (("x", 0), a'), Var(("x", 2), a''))
+      ]
+      val expected_rule_tvars = [
+        (a', a''),
+        (b', @{typ nat})
+      ]
+      val expected_goal_vars = [
+        (Var (("a", 0), @{typ nat}), @{term "0 :: nat"})
+      ]
+    in
+      trace_schematic_resolve_tac_assert
+        @{context}
+        "basic rule tracing"
+        @{thm fooI2}
+        {bounds = [], terms = expected_rule_vars, typs = expected_rule_tvars}
+        {bounds = [], terms = expected_goal_vars, typs = []}
+    end
+  \<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foo ?x2<\STATESEP>by (simp add: foo_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<And>X. X \<and> Y \<Longrightarrow> Y \<and> X"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>X. X \<and> Y \<Longrightarrow> Y \<and> X<\STATESEP>apply (tactic \<open>
+    let
+      val expected_rule_bounds = [("X", @{typ bool})]
+      val expected_rule_vars = [
+        (Var (("P", 0), @{typ bool}), @{term "\<lambda>X :: bool. Y :: bool"}),
+        (Var (("Q", 0), @{typ bool}), @{term "\<lambda>X :: bool. X :: bool"})
+      ]
+    in
+      trace_schematic_resolve_tac_assert
+        @{context}
+        "rule tracing with bound variables"
+        @{thm conjI}
+        {bounds = expected_rule_bounds, terms = expected_rule_vars, typs = []}
+        {bounds = [], terms = [], typs = []}
+    end
+  \<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>X. X \<and> Y \<Longrightarrow> Y
+ 2. \<And>X. X \<and> Y \<Longrightarrow> X<\STATESEP>by simp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<exists>f. \<forall>x. f x = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>f. \<forall>x. f x = x<\STATESEP>apply (intro exI allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. ?f x = x<\STATESEP>apply (rule fun_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. ?f2 x = (\<lambda>a. a)<\STATESEP>apply (tactic \<open>
+    let
+      val a' = TVar (("'a", 0), @{sort type})
+      \<comment>\<open>
+        New lambda abstraction gets an anonymous variable name. Usually rendered as
+        @{term "\<lambda>x a. a"}.
+      \<close>
+      val lambda = Abs ("x", @{typ 'a}, Abs ("", @{typ 'a}, Bound 0))
+
+      val expected_rule_bounds = [("x", @{typ 'a})]
+      val expected_rule_vars = [
+        (Var (("t", 0), a'), lambda)
+      ]
+      val expected_rule_typs = [
+        (a', @{typ "'a \<Rightarrow> 'a"})
+      ]
+      val expected_goal_vars = [
+        (Var (("f", 2), @{typ "'a \<Rightarrow> 'a \<Rightarrow> 'a"}), lambda)
+      ]
+    in
+      trace_schematic_resolve_tac_assert
+        @{context}
+        "rule tracing with function term instantiations"
+        @{thm refl}
+        {bounds = expected_rule_bounds, terms = expected_rule_vars, typs = expected_rule_typs}
+        {bounds = [], terms = expected_goal_vars, typs = []}
+    end
+  \<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

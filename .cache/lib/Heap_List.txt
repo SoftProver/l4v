@@ -1,0 +1,735 @@
+<\STATESEP>theory Heap_List
+imports Main "HOL-Library.Prefix_Order" ListLibLemmas
+begin<\STATESEP>0<\TRANSEP><\STATESEP>primrec heap_path :: "('a \<rightharpoonup> 'a) \<Rightarrow> 'a option \<Rightarrow> 'a list \<Rightarrow> 'a option \<Rightarrow> bool" where
+  "heap_path hp x [] y     = (x = y)"
+| "heap_path hp x (a#as) y = (x = Some a \<and> heap_path hp (hp a) as y)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation heap_ls :: "('a \<rightharpoonup> 'a) \<Rightarrow> 'a option \<Rightarrow> 'a list \<Rightarrow> bool" where
+  "heap_ls hp x xs \<equiv> heap_path hp x xs None"<\STATESEP>0<\TRANSEP><\STATESEP>function heap_walk :: "('a::finite \<rightharpoonup> 'a) \<Rightarrow> 'a option \<Rightarrow> 'a list \<Rightarrow> 'a list" where
+  "heap_walk hp None xs = xs"
+| "heap_walk hp (Some x) xs = (if x \<in> set xs then xs else heap_walk hp (hp x) (xs@[x]))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>P x. \<lbrakk>\<And>hp xs. x = (hp, None, xs) \<Longrightarrow> P; \<And>hp xa xs. x = (hp, Some xa, xs) \<Longrightarrow> P\<rbrakk> \<Longrightarrow> P
+ 2. \<And>hp xs hpa xsa. (hp, None, xs) = (hpa, None, xsa) \<Longrightarrow> xs = xsa
+ 3. \<And>hp xs hpa x xsa. (hp, None, xs) = (hpa, Some x, xsa) \<Longrightarrow> xs = (if x \<in> set xsa then xsa else heap_walk_sumC (hpa, hpa x, xsa @ [x]))
+ 4. \<And>hp x xs hpa xa xsa. (hp, Some x, xs) = (hpa, Some xa, xsa) \<Longrightarrow> (if x \<in> set xs then xs else heap_walk_sumC (hp, hp x, xs @ [x])) = (if xa \<in> set xsa then xsa else heap_walk_sumC (hpa, hpa xa, xsa @ [xa]))<\STATESEP>by pat_completeness auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma card_set_UNIV:
+  fixes xs :: "'a::finite list"
+  assumes "x \<notin> set xs"
+  shows "card (set xs) < card(UNIV::'a set)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. card (set xs) < CARD('a)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. card (set xs) < CARD('a)<\STATESEP>have "finite (UNIV::'a set)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. finite UNIV<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+finite UNIV
+
+goal (1 subgoal):
+ 1. card (set xs) < CARD('a)<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+finite UNIV
+
+goal (1 subgoal):
+ 1. card (set xs) < CARD('a)<\STATESEP>from assms<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+x \<notin> set xs<\STATESEP>have "set xs \<subset> UNIV"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+x \<notin> set xs
+
+goal (1 subgoal):
+ 1. set xs \<subset> UNIV<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+set xs \<subset> UNIV
+
+goal (1 subgoal):
+ 1. card (set xs) < CARD('a)<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+finite UNIV
+set xs \<subset> UNIV<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+finite UNIV
+set xs \<subset> UNIV
+
+goal (1 subgoal):
+ 1. card (set xs) < CARD('a)<\STATESEP>by (rule psubset_card_mono)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+card (set xs) < CARD('a)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>termination heap_walk<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. All heap_walk_dom<\STATESEP>by (relation "measure (\<lambda>(_, _, xs). card(UNIV :: 'a set) - card (set xs))";
+      simp add: card_set_UNIV diff_less_mono2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_append[simp]:
+  "heap_path hp start (xs @ ys) end = (\<exists>x. heap_path hp start xs x \<and> heap_path hp x ys end)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_path hp start (xs @ ys) end = (\<exists>x. heap_path hp start xs x \<and> heap_path hp x ys end)<\STATESEP>by (induct xs arbitrary: start; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_None[simp]:
+  "heap_path hp None xs end = (xs = [] \<and> end = None)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_path hp None xs end = (xs = [] \<and> end = None)<\STATESEP>by (cases xs, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_unique:
+  "\<lbrakk> heap_ls hp x xs; heap_ls hp x ys \<rbrakk> \<Longrightarrow> xs = ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp x xs; heap_ls hp x ys\<rbrakk> \<Longrightarrow> xs = ys<\STATESEP>by (induct xs arbitrary: ys x; simp) (case_tac ys; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_hd_not_in_tl:
+  "heap_ls hp (hp x) xs \<Longrightarrow> x \<notin> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_ls hp (hp x) xs \<Longrightarrow> x \<notin> set xs<\STATESEP>proof<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>assume "x \<in> set xs"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+x \<in> set xs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+x \<in> set xs<\STATESEP>obtain ys zs where xs: "xs = ys @ x # zs"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+x \<in> set xs
+
+goal (1 subgoal):
+ 1. (\<And>ys zs. xs = ys @ x # zs \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (auto simp: in_set_conv_decomp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+xs = ys @ x # zs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+xs = ys @ x # zs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>assume "heap_ls hp (hp x) xs"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+heap_ls hp (hp x) xs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+heap_ls hp (hp x) xs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>from this xs<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+heap_ls hp (hp x) xs
+xs = ys @ x # zs<\STATESEP>have "heap_ls hp (hp x) zs"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+heap_ls hp (hp x) xs
+xs = ys @ x # zs
+
+goal (1 subgoal):
+ 1. heap_ls hp (hp x) zs<\STATESEP>by clarsimp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+heap_ls hp (hp x) zs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp (hp x) xs; x \<in> set xs\<rbrakk> \<Longrightarrow> False<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+xs = ys @ x # zs
+heap_ls hp (hp x) xs
+heap_ls hp (hp x) zs<\STATESEP>show False<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+xs = ys @ x # zs
+heap_ls hp (hp x) xs
+heap_ls hp (hp x) zs
+
+goal (1 subgoal):
+ 1. False<\STATESEP>by (fastforce dest: heap_ls_unique)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+False
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma heap_ls_distinct:
+  "heap_ls hp x xs \<Longrightarrow> distinct xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_ls hp x xs \<Longrightarrow> distinct xs<\STATESEP>by (induct xs arbitrary: x; clarsimp simp: heap_ls_hd_not_in_tl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_is_walk':
+  "\<lbrakk> heap_ls hp x xs; set xs \<inter> set ys = {} \<rbrakk> \<Longrightarrow> heap_walk hp x ys = ys @ xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp x xs; set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_walk hp x ys = ys @ xs<\STATESEP>by (frule heap_ls_distinct) (induct xs arbitrary: x ys; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_is_walk:
+  "heap_ls hp x xs \<Longrightarrow> heap_walk hp x [] = xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_ls hp x xs \<Longrightarrow> heap_walk hp x [] = xs<\STATESEP>using heap_ls_is_walk'<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>heap_ls ?hp ?x ?xs; set ?xs \<inter> set ?ys = {}\<rbrakk> \<Longrightarrow> heap_walk ?hp ?x ?ys = ?ys @ ?xs
+
+goal (1 subgoal):
+ 1. heap_ls hp x xs \<Longrightarrow> heap_walk hp x [] = xs<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_end_unique:
+  "heap_path hp x xs y \<Longrightarrow> heap_path hp x xs y' \<Longrightarrow> y = y'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp x xs y; heap_path hp x xs y'\<rbrakk> \<Longrightarrow> y = y'<\STATESEP>by (induct xs arbitrary: x; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_head':
+  "heap_path hp st xs y \<Longrightarrow> xs \<noteq> [] \<longrightarrow> st = Some (hd xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_path hp st xs y \<Longrightarrow> xs \<noteq> [] \<longrightarrow> st = Some (hd xs)<\STATESEP>by (induct xs arbitrary: st; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas heap_path_head = heap_path_head'[rule_format]<\STATESEP>0<\TRANSEP><\STATESEP>lemma heap_path_non_nil_lookup_next:
+  "heap_path hp x (xs@z#ys) y \<Longrightarrow> hp z = (case ys of [] \<Rightarrow> y | _ \<Rightarrow> Some (hd ys))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_path hp x (xs @ z # ys) y \<Longrightarrow> hp z = (case ys of [] \<Rightarrow> y | a # list \<Rightarrow> Some (hd ys))<\STATESEP>by (cases ys; fastforce)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_next_of_hd:
+  "\<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls\<rbrakk> \<Longrightarrow> hp a = Some (hd (tl ls))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls\<rbrakk> \<Longrightarrow> hp a = Some (hd (tl ls))<\STATESEP>apply (cut_tac hp=hp and xs="[]" and z=a and ys="tl ls" in heap_path_non_nil_lookup_next)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls\<rbrakk> \<Longrightarrow> heap_path hp ?x ([] @ a # tl ls) ?y
+ 2. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls; hp a = (case tl ls of [] \<Rightarrow> ?y | a # list \<Rightarrow> Some (hd (tl ls)))\<rbrakk> \<Longrightarrow> hp a = Some (hd (tl ls))<\STATESEP>apply (prop_tac "ls \<noteq> []", fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls; ls \<noteq> []\<rbrakk> \<Longrightarrow> heap_path hp ?x ([] @ a # tl ls) ?y
+ 2. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls; hp a = (case tl ls of [] \<Rightarrow> ?y | a # list \<Rightarrow> Some (hd (tl ls)))\<rbrakk> \<Longrightarrow> hp a = Some (hd (tl ls))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls; hp a = (case tl ls of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd (tl ls)))\<rbrakk> \<Longrightarrow> hp a = Some (hd (tl ls))<\STATESEP>apply (cases "tl ls"; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a = hd ls; heap_ls hp st ls; Suc 0 < length ls; hp (hd ls) = None; tl ls = []\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (cases ls; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_prefix:
+  "heap_path hp st ls ed \<Longrightarrow> \<forall>xs\<le>ls. heap_path hp st xs (if xs = [] then st else hp (last xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_path hp st ls ed \<Longrightarrow> \<forall>xs\<le>ls. heap_path hp st xs (if xs = [] then st else hp (last xs))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>heap_path hp st ls ed; xs \<noteq> []; xs \<le> ls\<rbrakk> \<Longrightarrow> heap_path hp st xs (hp (last xs))<\STATESEP>apply (erule Prefix_Order.prefixE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs zs. \<lbrakk>heap_path hp st ls ed; xs \<noteq> []; ls = xs @ zs\<rbrakk> \<Longrightarrow> heap_path hp st xs (hp (last xs))<\STATESEP>by (metis append_butlast_last_id heap_path_append heap_path_non_nil_lookup_next list.case(1))<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_butlast:
+  "heap_path hp st ls ed \<Longrightarrow> ls \<noteq> [] \<Longrightarrow> heap_path hp st (butlast ls) (Some (last ls))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st ls ed; ls \<noteq> []\<rbrakk> \<Longrightarrow> heap_path hp st (butlast ls) (Some (last ls))<\STATESEP>by (induct ls rule: rev_induct; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_list_decompose_takeWhile:
+  "x \<in> set xs \<Longrightarrow>
+   xs = (takeWhile ((\<noteq>) x) xs) @ x # (drop (length (takeWhile ((\<noteq>) x) xs) + 1) xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> set xs \<Longrightarrow> xs = takeWhile ((\<noteq>) x) xs @ x # drop (length (takeWhile ((\<noteq>) x) xs) + 1) xs<\STATESEP>by (induct xs arbitrary: x; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma takeWhile_neq_hd_eq_Nil[simp]:
+  "takeWhile ((\<noteq>) (hd xs)) xs = Nil"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. takeWhile ((\<noteq>) (hd xs)) xs = []<\STATESEP>by (metis (full_types) hd_Cons_tl takeWhile.simps(1) takeWhile.simps(2))<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_not_in_dom[simp]:
+  "ptr \<notin> dom hp \<Longrightarrow> hp(ptr := None) = hp"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ptr \<notin> dom hp \<Longrightarrow> hp(ptr := None) = hp<\STATESEP>by (auto simp: dom_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_takeWhile_lookup_next:
+  "\<lbrakk> heap_path hp st rs ed; r \<in> set rs \<rbrakk>
+   \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) r) rs) (Some r)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st rs ed; r \<in> set rs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) r) rs) (Some r)<\STATESEP>apply (drule heap_path_prefix)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>r \<in> set rs; \<forall>xs\<le>rs. heap_path hp st xs (if xs = [] then st else hp (last xs))\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) r) rs) (Some r)<\STATESEP>apply (subgoal_tac "takeWhile ((\<noteq>) r) rs @ [r] \<le> rs", fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>r \<in> set rs; \<forall>xs\<le>rs. heap_path hp st xs (if xs = [] then st else hp (last xs))\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) r) rs @ [r] \<le> rs<\STATESEP>by (fastforce dest!: in_list_decompose_takeWhile intro: Prefix_Order.prefixI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_heap_upd_not_in:
+  "\<lbrakk>heap_path hp st rs ed; r \<notin> set rs\<rbrakk> \<Longrightarrow> heap_path (hp(r:= x)) st rs ed"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st rs ed; r \<notin> set rs\<rbrakk> \<Longrightarrow> heap_path (hp(r := x)) st rs ed<\STATESEP>by (induct rs arbitrary: st; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_last_update:
+  "\<lbrakk>heap_path hp st xs end; xs \<noteq> []; distinct xs\<rbrakk> \<Longrightarrow> heap_path (hp(last xs := new)) st xs new"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs end; xs \<noteq> []; distinct xs\<rbrakk> \<Longrightarrow> heap_path (hp(last xs := new)) st xs new<\STATESEP>by (induct xs arbitrary: st rule: rev_induct; simp add: heap_path_heap_upd_not_in)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_walk_lb:
+  "heap_walk hp x xs \<ge> xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xs \<le> heap_walk hp x xs<\STATESEP>apply (induct xs rule: heap_walk.induct; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>hp x xs. \<lbrakk>xs @ [x] \<le> heap_walk hp (hp x) (xs @ [x]); x \<notin> set xs\<rbrakk> \<Longrightarrow> xs \<le> heap_walk hp (hp x) (xs @ [x])<\STATESEP>by (metis Prefix_Order.prefixE Prefix_Order.prefixI append_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heal_walk_Some_nonempty':
+  "heap_walk hp (Some x) [] > []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. [] < heap_walk hp (Some x) []<\STATESEP>by (fastforce intro: heap_walk_lb less_le_trans[where y="[x]"])<\STATESEP>1<\TRANSEP><\STATESEP>lemma heal_walk_Some_nonempty:
+  "heap_walk hp (Some x) [] \<noteq> []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_walk hp (Some x) [] \<noteq> []<\STATESEP>by (metis less_list_def heal_walk_Some_nonempty')<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_walk_Nil_None:
+  "heap_walk hp st [] = [] \<Longrightarrow> st = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_walk hp st [] = [] \<Longrightarrow> st = None<\STATESEP>by (case_tac st; simp only: heal_walk_Some_nonempty)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_last_end:
+  "heap_path hp st xs end \<Longrightarrow> xs \<noteq> [] \<Longrightarrow> hp (last xs) = end"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs end; xs \<noteq> []\<rbrakk> \<Longrightarrow> hp (last xs) = end<\STATESEP>by (induct xs rule: rev_induct; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas heap_ls_last_None = heap_path_last_end[where ?end=None]<\STATESEP>0<\TRANSEP><\STATESEP>definition sym_heap where
+  "sym_heap hp hp' \<equiv> \<forall>p p'. hp p = Some p' \<longleftrightarrow> hp' p' = Some p"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sym_heapD1:
+  "sym_heap hp hp' \<Longrightarrow> hp p = Some p' \<Longrightarrow> hp' p' = Some p"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp p = Some p'\<rbrakk> \<Longrightarrow> hp' p' = Some p<\STATESEP>by (clarsimp simp: sym_heap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heapD2:
+  "sym_heap hp hp' \<Longrightarrow> hp' p' = Some p \<Longrightarrow> hp p = Some p'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp' p' = Some p\<rbrakk> \<Longrightarrow> hp p = Some p'<\STATESEP>by (clarsimp simp: sym_heap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_symmetric:
+  "sym_heap hp hp' \<longleftrightarrow> sym_heap hp' hp"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sym_heap hp hp' = sym_heap hp' hp<\STATESEP>unfolding sym_heap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>p p'. (hp p = Some p') = (hp' p' = Some p)) = (\<forall>p p'. (hp' p = Some p') = (hp p' = Some p))<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_None:
+  "\<lbrakk>sym_heap hp hp'; hp p = None\<rbrakk> \<Longrightarrow> \<forall>p'. hp' p' \<noteq> Some p"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp p = None\<rbrakk> \<Longrightarrow> \<forall>p'. hp' p' \<noteq> Some p<\STATESEP>unfolding sym_heap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>p p'. (hp p = Some p') = (hp' p' = Some p); hp p = None\<rbrakk> \<Longrightarrow> \<forall>p'. hp' p' \<noteq> Some p<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_remove_only:
+  "\<lbrakk>sym_heap hp hp'; hp' y = Some x\<rbrakk> \<Longrightarrow> sym_heap (hp(x := None)) (hp'(y := None))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp' y = Some x\<rbrakk> \<Longrightarrow> sym_heap (hp(x := None)) (hp'(y := None))<\STATESEP>apply (clarsimp simp: sym_heap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p'. \<lbrakk>\<forall>p p'. (hp p = Some p') = (hp' p' = Some p); hp' y = Some x; p' \<noteq> y; hp' p' = Some x\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (metis option.inject)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_remove_only':
+  "\<lbrakk>sym_heap hp hp'; hp y = Some x\<rbrakk> \<Longrightarrow> sym_heap (hp(y := None)) (hp'(x := None))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp y = Some x\<rbrakk> \<Longrightarrow> sym_heap (hp(y := None)) (hp'(x := None))<\STATESEP>apply (clarsimp simp: sym_heap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p'. \<lbrakk>\<forall>p p'. (hp p = Some p') = (hp' p' = Some p); hp' x = Some y; p' \<noteq> x; hp' p' = Some y\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (metis option.inject)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_remove_middle_from_chain:
+  "\<lbrakk>sym_heap hp hp'; before \<noteq> middle; middle \<noteq> after;
+    hp before = Some middle; hp middle = Some after\<rbrakk>
+   \<Longrightarrow> sym_heap (hp(before := Some after, middle := None))
+                (hp'(after := Some before, middle := None))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; before \<noteq> middle; middle \<noteq> after; hp before = Some middle; hp middle = Some after\<rbrakk> \<Longrightarrow> sym_heap (hp(before \<mapsto> after, middle := None)) (hp'(after \<mapsto> before, middle := None))<\STATESEP>apply (clarsimp simp: sym_heap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. \<lbrakk>\<forall>p p'. (hp p = Some p') = (hp' p' = Some p); before \<noteq> middle; middle \<noteq> after; hp' middle = Some before; hp' after = Some middle\<rbrakk> \<Longrightarrow> (p = before \<longrightarrow> (\<forall>p'. p' \<noteq> after \<longrightarrow> p' \<noteq> middle \<longrightarrow> hp' p' \<noteq> Some before)) \<and> (p \<noteq> before \<longrightarrow> p = middle \<longrightarrow> (\<forall>p'. p' \<noteq> after \<longrightarrow> p' \<noteq> middle \<longrightarrow> hp' p' \<noteq> Some middle))<\STATESEP>apply (metis option.simps(1))<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_connect:
+  "\<lbrakk>sym_heap hp hp'; hp a = None; hp' b = None \<rbrakk> \<Longrightarrow> sym_heap (hp(a \<mapsto> b)) (hp'(b \<mapsto> a))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp a = None; hp' b = None\<rbrakk> \<Longrightarrow> sym_heap (hp(a \<mapsto> b)) (hp'(b \<mapsto> a))<\STATESEP>by (force simp: sym_heap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_insert_into_middle_of_chain:
+  "\<lbrakk>sym_heap hp hp'; hp before = Some after; hp middle = None; hp' middle = None\<rbrakk>
+   \<Longrightarrow> sym_heap (hp(before \<mapsto> middle, middle \<mapsto> after)) (hp'(after \<mapsto> middle, middle \<mapsto> before))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; hp before = Some after; hp middle = None; hp' middle = None\<rbrakk> \<Longrightarrow> sym_heap (hp(before \<mapsto> middle, middle \<mapsto> after)) (hp'(after \<mapsto> middle, middle \<mapsto> before))<\STATESEP>apply (clarsimp simp: sym_heap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>p. \<lbrakk>\<forall>p p'. (hp p = Some p') = (hp' p' = Some p); hp' after = Some before; hp middle = None; hp' middle = None\<rbrakk> \<Longrightarrow> (p = before \<longrightarrow> (before = middle \<longrightarrow> (\<forall>p'. p' \<noteq> after \<longrightarrow> (p' = middle \<longrightarrow> after = middle) \<and> (p' \<noteq> middle \<longrightarrow> hp' p' \<noteq> Some middle))) \<and> (before \<noteq> middle \<longrightarrow> (\<forall>p'. p' \<noteq> after \<longrightarrow> p' \<noteq> middle \<longrightarrow> hp' p' \<noteq> Some before))) \<and> (p \<noteq> before \<longrightarrow> p = middle \<longrightarrow> (\<forall>p'. (p' = after \<longrightarrow> after = middle \<longrightarrow> before = middle) \<and> (p' \<noteq> after \<longrightarrow> (p' = middle \<longrightarrow> (after = middle) = (before = middle)) \<and> (p' \<noteq> middle \<longrightarrow> hp' p' \<noteq> Some middle))))<\STATESEP>apply (metis option.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_path_reverse:
+  "sym_heap hp hp' \<Longrightarrow>
+      heap_path hp (Some p) (p#ps) (Some p')
+          \<longleftrightarrow> heap_path hp' (Some p') (p'#(rev ps)) (Some p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sym_heap hp hp' \<Longrightarrow> heap_path hp (Some p) (p # ps) (Some p') = heap_path hp' (Some p') (p' # rev ps) (Some p)<\STATESEP>unfolding sym_heap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>p p'. (hp p = Some p') = (hp' p' = Some p) \<Longrightarrow> heap_path hp (Some p) (p # ps) (Some p') = heap_path hp' (Some p') (p' # rev ps) (Some p)<\STATESEP>by (induct ps arbitrary: p p' rule: rev_induct; force)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_ls_rev_Cons:
+  "\<lbrakk>sym_heap hp hp'; heap_ls hp (Some p) (p#ps)\<rbrakk>
+  \<Longrightarrow> heap_path hp' (Some (last (p#ps))) (rev ps) (Some p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; heap_ls hp (Some p) (p # ps)\<rbrakk> \<Longrightarrow> heap_path hp' (Some (last (p # ps))) (rev ps) (Some p)<\STATESEP>supply rev.simps[simp del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; heap_ls hp (Some p) (p # ps)\<rbrakk> \<Longrightarrow> heap_path hp' (Some (last (p # ps))) (rev ps) (Some p)<\STATESEP>apply (induct ps arbitrary: p rule: rev_induct; simp add: rev.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs p. \<lbrakk>\<And>p. heap_ls hp (hp p) xs \<Longrightarrow> heap_path hp' (Some (if xs = [] then p else last xs)) (rev xs) (Some p); sym_heap hp hp'; heap_path hp (hp p) xs (Some x) \<and> hp x = None\<rbrakk> \<Longrightarrow> heap_path hp' (hp' x) (rev xs) (Some p)<\STATESEP>by (auto dest!: sym_heap_path_reverse[THEN iffD1])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_ls_rev:
+  "\<lbrakk>sym_heap hp hp'; heap_ls hp (Some p) ps\<rbrakk>
+  \<Longrightarrow> heap_path hp' (Some (last ps)) (butlast (rev ps)) (Some p)
+      \<and> hp (last ps) = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_heap hp hp'; heap_ls hp (Some p) ps\<rbrakk> \<Longrightarrow> heap_path hp' (Some (last ps)) (butlast (rev ps)) (Some p) \<and> hp (last ps) = None<\STATESEP>apply (induct ps arbitrary: p rule: rev_induct, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs p. \<lbrakk>\<And>p. \<lbrakk>sym_heap hp hp'; heap_ls hp (Some p) xs\<rbrakk> \<Longrightarrow> heap_path hp' (Some (last xs)) (butlast (rev xs)) (Some p) \<and> hp (last xs) = None; sym_heap hp hp'; heap_ls hp (Some p) (xs @ [x])\<rbrakk> \<Longrightarrow> heap_path hp' (Some (last (xs @ [x]))) (butlast (rev (xs @ [x]))) (Some p) \<and> hp (last (xs @ [x])) = None<\STATESEP>apply (frule heap_path_head; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xs. \<lbrakk>\<And>p. heap_ls hp (Some p) xs \<Longrightarrow> heap_path hp' (Some (last xs)) (rev (tl xs)) (Some p) \<and> hp (last xs) = None; sym_heap hp hp'; heap_path hp (Some (hd xs)) xs (Some x); hp x = None; xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_path hp' (hp' x) (rev (tl xs)) (Some (hd xs))<\STATESEP>by (auto dest!: sym_heap_path_reverse[THEN iffD1])<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_sym_heap_non_nil_lookup_prev:
+  "\<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []\<rbrakk> \<Longrightarrow> hp' z = (Some (last xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []\<rbrakk> \<Longrightarrow> hp' z = Some (last xs)<\STATESEP>supply heap_path_append[simp del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []\<rbrakk> \<Longrightarrow> hp' z = Some (last xs)<\STATESEP>apply (cut_tac xs="butlast xs" and z="last xs" and ys="z # ys"
+              in heap_path_non_nil_lookup_next[where hp=hp and x=x and y=None])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls hp x (butlast xs @ last xs # z # ys)
+ 2. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []; hp (last xs) = (case z # ys of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd (z # ys)))\<rbrakk> \<Longrightarrow> hp' z = Some (last xs)<\STATESEP>apply (frule append_butlast_last_id)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []; butlast xs @ [last xs] = xs\<rbrakk> \<Longrightarrow> heap_ls hp x (butlast xs @ last xs # z # ys)
+ 2. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []; hp (last xs) = (case z # ys of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd (z # ys)))\<rbrakk> \<Longrightarrow> hp' z = Some (last xs)<\STATESEP>apply (metis append_eq_Cons_conv append_eq_append_conv2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp x (xs @ z # ys); sym_heap hp hp'; xs \<noteq> []; hp (last xs) = (case z # ys of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd (z # ys)))\<rbrakk> \<Longrightarrow> hp' z = Some (last xs)<\STATESEP>apply (fastforce dest: sym_heapD1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_prev_of_last:
+  "\<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk>
+   \<Longrightarrow> hp' t = Some (last (butlast ls))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' t = Some (last (butlast ls))<\STATESEP>apply (cut_tac hp=hp and xs="butlast ls" and z=t and ys="[]"
+              in heap_path_sym_heap_non_nil_lookup_prev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> heap_ls hp ?x (butlast ls @ [t])
+ 2. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> sym_heap hp ?hp'
+ 3. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> butlast ls \<noteq> []
+ 4. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'; ?hp' t = Some (last (butlast ls))\<rbrakk> \<Longrightarrow> hp' t = Some (last (butlast ls))<\STATESEP>apply (prop_tac "ls \<noteq> []", fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'; ls \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls hp ?x (butlast ls @ [t])
+ 2. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> sym_heap hp ?hp'
+ 3. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> butlast ls \<noteq> []
+ 4. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'; ?hp' t = Some (last (butlast ls))\<rbrakk> \<Longrightarrow> hp' t = Some (last (butlast ls))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> sym_heap hp ?hp'
+ 2. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> butlast ls \<noteq> []
+ 3. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'; ?hp' t = Some (last (butlast ls))\<rbrakk> \<Longrightarrow> hp' t = Some (last (butlast ls))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'\<rbrakk> \<Longrightarrow> butlast ls \<noteq> []
+ 2. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'; hp' t = Some (last (butlast ls))\<rbrakk> \<Longrightarrow> hp' t = Some (last (butlast ls))<\STATESEP>apply (fastforce intro!: length_gt_1_imp_butlast_nonempty)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = last ls; Suc 0 < length ls; heap_ls hp st ls; sym_heap hp hp'; hp' t = Some (last (butlast ls))\<rbrakk> \<Longrightarrow> hp' t = Some (last (butlast ls))<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ptr_in_middle_prev_next:
+  "\<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'\<rbrakk>
+   \<Longrightarrow> hp' ptr = Some (last xs) \<and> hp ptr = Some (hd ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' ptr = Some (last xs) \<and> hp ptr = Some (hd ys)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' ptr = Some (last xs)
+ 2. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp ptr = Some (hd ys)<\STATESEP>apply (fastforce dest: heap_path_sym_heap_non_nil_lookup_prev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp ptr = Some (hd ys)<\STATESEP>apply (cut_tac hp=hp in heap_path_non_nil_lookup_next)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'\<rbrakk> \<Longrightarrow> heap_path hp ?x6 (?xs6 @ ?z6 # ?ys6) ?y6
+ 2. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'; hp ?z6 = (case ?ys6 of [] \<Rightarrow> ?y6 | a # list \<Rightarrow> Some (hd ?ys6))\<rbrakk> \<Longrightarrow> hp ptr = Some (hd ys)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ ptr # ys); xs \<noteq> []; ys \<noteq> []; sym_heap hp hp'; hp ptr = (case ys of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd ys))\<rbrakk> \<Longrightarrow> hp ptr = Some (hd ys)<\STATESEP>apply (cases ys; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_no_loops:
+  "\<lbrakk>heap_ls hp st xs; p \<in> set xs\<rbrakk> \<Longrightarrow> hp p \<noteq> Some p"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs\<rbrakk> \<Longrightarrow> hp p \<noteq> Some p<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; distinct xs\<rbrakk> \<Longrightarrow> hp p \<noteq> Some p<\STATESEP>apply (fastforce dest: split_list heap_path_non_nil_lookup_next split: list.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_prev_no_loops:
+  "\<lbrakk>heap_ls hp st xs; p \<in> set xs; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' p \<noteq> Some p"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' p \<noteq> Some p<\STATESEP>by (fastforce dest: heap_ls_no_loops sym_heapD2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_extend:
+  "heap_path hp st (ls @ [p]) (hp p) \<longleftrightarrow> heap_path hp st ls (Some p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_path hp st (ls @ [p]) (hp p) = heap_path hp st ls (Some p)<\STATESEP>by (induct ls rule: rev_induct; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_prefix_heap_ls:
+  "\<lbrakk>heap_ls hp st xs; heap_path hp st ys ed\<rbrakk> \<Longrightarrow> ys \<le> xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st ys ed\<rbrakk> \<Longrightarrow> ys \<le> xs<\STATESEP>apply (induct xs arbitrary: ys st, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys st. \<lbrakk>\<And>ys st. \<lbrakk>heap_ls hp st xs; heap_path hp st ys ed\<rbrakk> \<Longrightarrow> ys \<le> xs; heap_ls hp st (a # xs); heap_path hp st ys ed\<rbrakk> \<Longrightarrow> ys \<le> a # xs<\STATESEP>apply (case_tac ys; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_decompose2:
+  "\<lbrakk>distinct xs; xs = ys @ x # y # zs\<rbrakk>
+   \<Longrightarrow> x \<noteq> y \<and> x \<notin> set ys \<and> y \<notin> set ys \<and> x \<notin> set zs \<and> y \<notin> set zs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; xs = ys @ x # y # zs\<rbrakk> \<Longrightarrow> x \<noteq> y \<and> x \<notin> set ys \<and> y \<notin> set ys \<and> x \<notin> set zs \<and> y \<notin> set zs<\STATESEP>by (simp add: in_set_conv_decomp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_distinct_next_cases: (* the other direction needs sym_heap *)
+  "\<lbrakk>heap_path hp st xs ed; distinct xs; p \<in> set xs; hp p = Some np\<rbrakk>
+  \<Longrightarrow> ed = Some p \<or> ed = Some np \<or> np \<in> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs ed; distinct xs; p \<in> set xs; hp p = Some np\<rbrakk> \<Longrightarrow> ed = Some p \<or> ed = Some np \<or> np \<in> set xs<\STATESEP>apply (cases ed; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (frule in_list_decompose_takeWhile)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (subgoal_tac "heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)
+ 3. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (drule heap_path_non_nil_lookup_next)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; hp p = (case drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd (drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)))\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)
+ 3. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (case_tac "drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs"; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; a = np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)
+ 3. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (metis in_set_dropD list.set_intros(1))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; distinct xs; p \<in> set xs; hp p = Some np; ed = None; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (frule in_list_decompose_takeWhile)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs<\STATESEP>apply (subgoal_tac "heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed<\STATESEP>apply (frule heap_path_non_nil_lookup_next)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed; hp p = (case drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs of [] \<Rightarrow> ed | a # list \<Rightarrow> Some (hd (drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)))\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed<\STATESEP>apply (case_tac "drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs", simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa list. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed; hp p = (case drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs of [] \<Rightarrow> ed | a # list \<Rightarrow> Some (hd (drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs))); drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs = aa # list\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed<\STATESEP>apply (simp split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa list. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; aa = np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed<\STATESEP>apply (drule (1) distinct_decompose2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a aa list. \<lbrakk>heap_path hp st xs (Some a); p \<in> set xs; aa = np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; p \<noteq> np \<and> p \<notin> set (takeWhile ((\<noteq>) p) xs) \<and> np \<notin> set (takeWhile ((\<noteq>) p) xs) \<and> p \<notin> set list \<and> np \<notin> set list\<rbrakk> \<Longrightarrow> a = p \<or> a = np \<or> np \<in> set xs
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_path hp st xs (Some a); p \<in> set xs; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; p \<noteq> np; p \<notin> set (takeWhile ((\<noteq>) p) xs); np \<notin> set (takeWhile ((\<noteq>) p) xs); p \<notin> set list; np \<notin> set list; a \<noteq> p; np \<notin> set xs\<rbrakk> \<Longrightarrow> a = np
+ 2. \<And>a. \<lbrakk>heap_path hp st xs (Some a); distinct xs; p \<in> set xs; hp p = Some np; ed = Some a; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs) ed<\STATESEP>by (metis in_set_dropD list.set_intros(1)) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_next_in_list:
+  "\<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np\<rbrakk>
+  \<Longrightarrow> np \<in> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np\<rbrakk> \<Longrightarrow> np \<in> set xs<\STATESEP>apply (subgoal_tac "distinct xs")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np\<rbrakk> \<Longrightarrow> distinct xs<\STATESEP>by (fastforce dest!: heap_path_distinct_next_cases) (erule heap_ls_distinct)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_distinct_sym_prev_cases:
+  "\<lbrakk>heap_path hp st xs ed; distinct xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'\<rbrakk>
+  \<Longrightarrow> st = Some np \<or> p \<in> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs ed; distinct xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'\<rbrakk> \<Longrightarrow> st = Some np \<or> p \<in> set xs<\STATESEP>apply (cases st; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>heap_path hp (Some a) xs ed; distinct xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'; st = Some a\<rbrakk> \<Longrightarrow> a = np \<or> p \<in> set xs<\STATESEP>apply (rename_tac stp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp. \<lbrakk>heap_path hp (Some stp) xs ed; distinct xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'; st = Some stp\<rbrakk> \<Longrightarrow> stp = np \<or> p \<in> set xs<\STATESEP>apply (case_tac "stp = np"; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp. \<lbrakk>heap_path hp (Some stp) xs ed; distinct xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np\<rbrakk> \<Longrightarrow> p \<in> set xs<\STATESEP>apply (cases xs; simp del: heap_path.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list. \<lbrakk>heap_path hp (Some stp) (a # list) ed; a \<notin> set list \<and> distinct list; np = a \<or> np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np; xs = a # list\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (frule heap_path_head, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list. \<lbrakk>heap_path hp (Some stp) (a # list) ed; a \<notin> set list \<and> distinct list; np = a \<or> np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np; xs = a # list; Some stp = Some (hd (a # list))\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (cases ed, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp (hp a) list; np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some a; a \<noteq> np; xs = a # list; ed = None; a \<notin> set list; distinct list; p \<notin> set list\<rbrakk> \<Longrightarrow> p = a
+ 2. \<And>stp a list aa. \<lbrakk>heap_path hp (Some stp) (a # list) ed; a \<notin> set list \<and> distinct list; np = a \<or> np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np; xs = a # list; Some stp = Some (hd (a # list)); ed = Some aa\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (frule sym_heap_ls_rev_Cons, fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp (hp a) list; np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some a; a \<noteq> np; xs = a # list; ed = None; a \<notin> set list; distinct list; p \<notin> set list; heap_path hp' (Some (last (a # list))) (rev list) (Some a)\<rbrakk> \<Longrightarrow> p = a
+ 2. \<And>stp a list aa. \<lbrakk>heap_path hp (Some stp) (a # list) ed; a \<notin> set list \<and> distinct list; np = a \<or> np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np; xs = a # list; Some stp = Some (hd (a # list)); ed = Some aa\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (drule heap_path_distinct_next_cases[where hp=hp']; simp add: sym_heap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp (hp a) list; np \<in> set list; hp' np = Some p; \<forall>p p'. (hp p = Some p') = (hp' p' = Some p); st = Some a; a \<noteq> np; xs = a # list; ed = None; a \<notin> set list; distinct list; p \<notin> set list; a = np \<or> a = p \<or> p \<in> set list\<rbrakk> \<Longrightarrow> p = a
+ 2. \<And>stp a list aa. \<lbrakk>heap_path hp (Some stp) (a # list) ed; a \<notin> set list \<and> distinct list; np = a \<or> np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np; xs = a # list; Some stp = Some (hd (a # list)); ed = Some aa\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list aa. \<lbrakk>heap_path hp (Some stp) (a # list) ed; a \<notin> set list \<and> distinct list; np = a \<or> np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some stp; stp \<noteq> np; xs = a # list; Some stp = Some (hd (a # list)); ed = Some aa\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (simp del: heap_path.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list aa. \<lbrakk>heap_path hp (Some a) (a # list) (Some aa); a \<notin> set list \<and> distinct list; np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some a; a \<noteq> np; xs = a # list; stp = a; ed = Some aa\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (frule (1) sym_heap_path_reverse[where hp'=hp', THEN iffD1])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list aa. \<lbrakk>heap_path hp (Some a) (a # list) (Some aa); a \<notin> set list \<and> distinct list; np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some a; a \<noteq> np; xs = a # list; stp = a; ed = Some aa; heap_path hp' (Some aa) (aa # rev list) (Some a)\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list aa. \<lbrakk>heap_path hp (hp a) list (Some aa); a \<notin> set list \<and> distinct list; np \<in> set list; hp p = Some np; sym_heap hp hp'; st = Some a; a \<noteq> np; xs = a # list; stp = a; ed = Some aa; heap_path hp' (hp' aa) (rev list) (Some a)\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply (frule heap_path_distinct_next_cases[where hp=hp']; simp add: sym_heap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>stp a list aa. \<lbrakk>heap_path hp (hp a) list (Some aa); a \<notin> set list \<and> distinct list; np \<in> set list; hp' np = Some p; \<forall>p p'. (hp p = Some p') = (hp' p' = Some p); st = Some a; a \<noteq> np; xs = a # list; stp = a; ed = Some aa; heap_path hp' (hp' aa) (rev list) (Some a); a = np \<or> a = p \<or> p \<in> set list\<rbrakk> \<Longrightarrow> p = a \<or> p \<in> set list<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_prev_cases:
+  "\<lbrakk>heap_ls hp st xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'\<rbrakk>
+  \<Longrightarrow> st = Some np \<or> p \<in> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'\<rbrakk> \<Longrightarrow> st = Some np \<or> p \<in> set xs<\STATESEP>apply (subgoal_tac "distinct xs")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'; distinct xs\<rbrakk> \<Longrightarrow> st = Some np \<or> p \<in> set xs
+ 2. \<lbrakk>heap_ls hp st xs; np \<in> set xs; hp p = Some np; sym_heap hp hp'\<rbrakk> \<Longrightarrow> distinct xs<\STATESEP>by (fastforce dest!: heap_path_distinct_sym_prev_cases) (erule heap_ls_distinct)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_prev_not_in:
+  "\<lbrakk>heap_ls hp st xs; np \<notin> set xs; hp p = Some np\<rbrakk>
+  \<Longrightarrow> p \<notin> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; np \<notin> set xs; hp p = Some np\<rbrakk> \<Longrightarrow> p \<notin> set xs<\STATESEP>by (meson heap_ls_next_in_list)<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_distinct_prev_not_in:
+  "\<lbrakk>heap_path hp st xs ed; distinct xs; np \<notin> set xs; hp p = Some np; ed \<noteq> Some np; ed \<noteq> Some p\<rbrakk>
+  \<Longrightarrow> p \<notin> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs ed; distinct xs; np \<notin> set xs; hp p = Some np; ed \<noteq> Some np; ed \<noteq> Some p\<rbrakk> \<Longrightarrow> p \<notin> set xs<\STATESEP>using heap_path_distinct_next_cases<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>heap_path ?hp ?st ?xs ?ed; distinct ?xs; ?p \<in> set ?xs; ?hp ?p = Some ?np\<rbrakk> \<Longrightarrow> ?ed = Some ?p \<or> ?ed = Some ?np \<or> ?np \<in> set ?xs
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs ed; distinct xs; np \<notin> set xs; hp p = Some np; ed \<noteq> Some np; ed \<noteq> Some p\<rbrakk> \<Longrightarrow> p \<notin> set xs<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_distinct_next_not_in:
+  "\<lbrakk>heap_path hp st xs ed; distinct xs; p \<notin> set xs; hp p = Some np;
+    sym_heap hp hp'; st \<noteq> Some np\<rbrakk>
+  \<Longrightarrow> np \<notin> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs ed; distinct xs; p \<notin> set xs; hp p = Some np; sym_heap hp hp'; st \<noteq> Some np\<rbrakk> \<Longrightarrow> np \<notin> set xs<\STATESEP>by (fastforce dest!: heap_path_distinct_sym_prev_cases[simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_next_not_in:
+  "\<lbrakk>heap_ls hp st xs; p \<notin> set xs; hp p = Some np; sym_heap hp hp'; st \<noteq> Some np\<rbrakk>
+  \<Longrightarrow> np \<notin> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<notin> set xs; hp p = Some np; sym_heap hp hp'; st \<noteq> Some np\<rbrakk> \<Longrightarrow> np \<notin> set xs<\STATESEP>by (fastforce dest!: heap_ls_prev_cases[simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_heap_prev_None_is_start:
+  "\<lbrakk>heap_ls hp st xs; sym_heap hp hp'; p \<in> set xs; hp' p = None\<rbrakk>
+   \<Longrightarrow> Some p = st"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; sym_heap hp hp'; p \<in> set xs; hp' p = None\<rbrakk> \<Longrightarrow> Some p = st<\STATESEP>using split_list_last heap_path_sym_heap_non_nil_lookup_prev<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set ?xs \<Longrightarrow> \<exists>ys zs. ?xs = ys @ ?x # zs \<and> ?x \<notin> set zs
+\<lbrakk>heap_ls ?hp ?x (?xs @ ?z # ?ys); sym_heap ?hp ?hp'; ?xs \<noteq> []\<rbrakk> \<Longrightarrow> ?hp' ?z = Some (last ?xs)
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; sym_heap hp hp'; p \<in> set xs; hp' p = None\<rbrakk> \<Longrightarrow> Some p = st<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma not_last_next_not_None:
+  "\<lbrakk>heap_ls hp st xs; p \<in> set xs; p \<noteq> last xs\<rbrakk> \<Longrightarrow> hp p \<noteq> None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; p \<noteq> last xs\<rbrakk> \<Longrightarrow> hp p \<noteq> None<\STATESEP>by (fastforce intro: heap_path_head dest: split_list)<\STATESEP>1<\TRANSEP><\STATESEP>lemma not_head_prev_not_None:
+  "\<lbrakk>heap_ls hp st xs; p \<in> set xs; p \<noteq> hd xs; sym_heap hp hp'\<rbrakk>
+   \<Longrightarrow> hp' p \<noteq> None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; p \<noteq> hd xs; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' p \<noteq> None<\STATESEP>using sym_heap_prev_None_is_start heap_path_head<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>heap_ls ?hp ?st ?xs; sym_heap ?hp ?hp'; ?p \<in> set ?xs; ?hp' ?p = None\<rbrakk> \<Longrightarrow> Some ?p = ?st
+\<lbrakk>heap_path ?hp ?st ?xs ?y; ?xs \<noteq> []\<rbrakk> \<Longrightarrow> ?st = Some (hd ?xs)
+
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; p \<noteq> hd xs; sym_heap hp hp'\<rbrakk> \<Longrightarrow> hp' p \<noteq> None<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_neighbour_in_set:
+  "\<lbrakk>heap_ls hp st xs; sym_heap hp hp'; st \<noteq> None \<longrightarrow> hp' (the st) = None; p \<in> set xs\<rbrakk>
+   \<Longrightarrow> \<forall>nbr. (hp p = Some nbr \<longrightarrow> nbr \<in> set xs) \<and> (hp' p = Some nbr \<longrightarrow> nbr \<in> set xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; sym_heap hp hp'; st \<noteq> None \<longrightarrow> hp' (the st) = None; p \<in> set xs\<rbrakk> \<Longrightarrow> \<forall>nbr. (hp p = Some nbr \<longrightarrow> nbr \<in> set xs) \<and> (hp' p = Some nbr \<longrightarrow> nbr \<in> set xs)<\STATESEP>apply (intro conjI impI allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>nbr. \<lbrakk>heap_ls hp st xs; sym_heap hp hp'; st \<noteq> None \<longrightarrow> hp' (the st) = None; p \<in> set xs; hp p = Some nbr\<rbrakk> \<Longrightarrow> nbr \<in> set xs
+ 2. \<And>nbr. \<lbrakk>heap_ls hp st xs; sym_heap hp hp'; st \<noteq> None \<longrightarrow> hp' (the st) = None; p \<in> set xs; hp' p = Some nbr\<rbrakk> \<Longrightarrow> nbr \<in> set xs<\STATESEP>apply (erule (2) heap_ls_next_in_list)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>nbr. \<lbrakk>heap_ls hp st xs; sym_heap hp hp'; st \<noteq> None \<longrightarrow> hp' (the st) = None; p \<in> set xs; hp' p = Some nbr\<rbrakk> \<Longrightarrow> nbr \<in> set xs<\STATESEP>apply (fastforce dest: heap_ls_prev_cases[where np=p] sym_heapD2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_next_takeWhile_append:
+  "\<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np\<rbrakk>
+  \<Longrightarrow> takeWhile ((\<noteq>) np) xs = (takeWhile ((\<noteq>) p) xs) @ [p]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (frule in_list_decompose_takeWhile)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (subgoal_tac "heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]
+ 2. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs\<rbrakk> \<Longrightarrow> heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)
+ 2. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; heap_ls hp st (takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (drule heap_path_non_nil_lookup_next)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; p \<in> set xs; hp p = Some np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs; hp p = (case drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs of [] \<Rightarrow> None | a # list \<Rightarrow> Some (hd (drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs)))\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (case_tac "drop (length (takeWhile ((\<noteq>) p) xs) + 1) xs"; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (subgoal_tac "np \<in> set xs")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; np \<in> set xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]
+ 2. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list\<rbrakk> \<Longrightarrow> np \<in> set xs<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list\<rbrakk> \<Longrightarrow> np \<in> set xs
+ 2. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; np \<in> set xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (erule (2) heap_ls_next_in_list)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; np \<in> set xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (frule in_list_decompose_takeWhile[where x=np])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; distinct xs; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; np \<in> set xs; xs = takeWhile ((\<noteq>) np) xs @ np # drop (length (takeWhile ((\<noteq>) np) xs) + 1) xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (drule (1) distinct_inj_middle[where x=np and xa="takeWhile ((\<noteq>) np) xs" and ya="takeWhile ((\<noteq>) p) xs @ [p]"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; np \<in> set xs; xs = takeWhile ((\<noteq>) np) xs @ np # drop (length (takeWhile ((\<noteq>) np) xs) + 1) xs\<rbrakk> \<Longrightarrow> xs = (takeWhile ((\<noteq>) p) xs @ [p]) @ np # ?yb20 a list
+ 2. \<And>a list. \<lbrakk>heap_ls hp st xs; p \<in> set xs; a = np; xs = takeWhile ((\<noteq>) p) xs @ p # np # list; hp p = Some np; drop (Suc (length (takeWhile ((\<noteq>) p) xs))) xs = np # list; np \<in> set xs; xs = takeWhile ((\<noteq>) np) xs @ np # drop (length (takeWhile ((\<noteq>) np) xs) + 1) xs; takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p] \<and> drop (length (takeWhile ((\<noteq>) np) xs) + 1) xs = ?yb20 a list\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma takeWhile_neq_notin_same:
+  "x \<notin> set xs \<Longrightarrow> takeWhile ((\<noteq>) x) xs = xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<notin> set xs \<Longrightarrow> takeWhile ((\<noteq>) x) xs = xs<\STATESEP>using takeWhile_eq_all_conv<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+(takeWhile ?P ?xs = ?xs) = (\<forall>x\<in>set ?xs. ?P x)
+
+goal (1 subgoal):
+ 1. x \<notin> set xs \<Longrightarrow> takeWhile ((\<noteq>) x) xs = xs<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_extend_takeWhile:
+  "\<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p); hp p = Some np\<rbrakk>
+  \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p); hp p = Some np\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np)<\STATESEP>apply (case_tac "p \<in> set xs")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p); hp p = Some np; p \<in> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np)
+ 2. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p); hp p = Some np; p \<notin> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np)<\STATESEP>apply (subst heap_ls_next_takeWhile_append[where p=p and np=np and hp=hp]; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p); hp p = Some np; p \<notin> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np)<\STATESEP>apply (drule takeWhile_neq_notin_same, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st xs (Some p); hp p = Some np; \<forall>x\<in>set xs. p \<noteq> x\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np)<\STATESEP>apply (drule (1) heap_path_end_unique, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_next_takeWhile_append_sym:
+  "\<lbrakk>heap_ls hp st xs; np \<in> set xs; st \<noteq> Some np; hp p = Some np; sym_heap hp hp'\<rbrakk>
+  \<Longrightarrow>takeWhile ((\<noteq>) np) xs = (takeWhile ((\<noteq>) p) xs) @ [p]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; np \<in> set xs; st \<noteq> Some np; hp p = Some np; sym_heap hp hp'\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (frule (3) heap_ls_prev_cases, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; np \<in> set xs; st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; p \<in> set xs\<rbrakk> \<Longrightarrow> takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]<\STATESEP>apply (fastforce elim!: heap_ls_next_takeWhile_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_path_curtail_takeWhile:
+  "\<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np);
+    st \<noteq> Some np; hp p = Some np; sym_heap hp hp'\<rbrakk>
+  \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)<\STATESEP>apply (case_tac "np \<in> set xs")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; np \<in> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)
+ 2. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; np \<notin> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)<\STATESEP>apply (drule (4) heap_ls_next_takeWhile_append_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; np \<in> set xs; takeWhile ((\<noteq>) np) xs = takeWhile ((\<noteq>) p) xs @ [p]\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)
+ 2. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; np \<notin> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st (takeWhile ((\<noteq>) np) xs) (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; np \<notin> set xs\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)<\STATESEP>apply (drule takeWhile_neq_notin_same, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; heap_path hp st xs (Some np); st \<noteq> Some np; hp p = Some np; sym_heap hp hp'; \<forall>x\<in>set xs. np \<noteq> x\<rbrakk> \<Longrightarrow> heap_path hp st (takeWhile ((\<noteq>) p) xs) (Some p)<\STATESEP>apply (drule (1) heap_path_end_unique, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done
+
+(* more on heap_path : end *)
+
+
+\<comment> \<open>Lemmas relating an update to the list to an update to the heap\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_prepend:
+  "\<lbrakk>heap_ls hp st xs; new \<notin> set xs; xs \<noteq> []\<rbrakk>
+   \<Longrightarrow> heap_ls (hp(new := Some (hd xs))) (Some new) (new # xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; new \<notin> set xs; xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls (hp(new \<mapsto> hd xs)) (Some new) (new # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; new \<notin> set xs; xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls (hp(new \<mapsto> hd xs)) (Some (hd xs)) xs<\STATESEP>apply (erule heap_path_heap_upd_not_in[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls hp (Some (hd xs)) xs<\STATESEP>apply (frule (1) heap_path_head)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; st = Some (hd xs)\<rbrakk> \<Longrightarrow> heap_ls hp (Some (hd xs)) xs<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_append:
+  "\<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs\<rbrakk>
+   \<Longrightarrow> heap_ls (hp(last xs := Some new, new := None)) st (xs @ [new])"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new := None)) st (xs @ [new])<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new := None)) st (xs @ [new])<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> heap_path (hp(last xs \<mapsto> new, new := None)) st xs (Some new)<\STATESEP>apply (rule heap_path_heap_upd_not_in)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> heap_path (hp(last xs \<mapsto> new)) st xs (Some new)
+ 2. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> new \<notin> set xs<\STATESEP>apply (fastforce simp: heap_path_last_update)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; xs \<noteq> []; new \<notin> set xs; distinct xs\<rbrakk> \<Longrightarrow> new \<notin> set xs<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_list_insert_before:
+  "\<lbrakk>heap_ls hp st (xs @ ys); new \<notin> set (xs @ ys); xs \<noteq> []; ys \<noteq> []\<rbrakk>
+   \<Longrightarrow> heap_ls (hp(last xs := Some new, new := Some (hd ys))) st
+               (list_insert_before (xs @ ys) (hd ys) new)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ ys); new \<notin> set (xs @ ys); xs \<noteq> []; ys \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) st (list_insert_before (xs @ ys) (hd ys) new)<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ ys); new \<notin> set (xs @ ys); xs \<noteq> []; ys \<noteq> []; distinct (xs @ ys)\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) st (list_insert_before (xs @ ys) (hd ys) new)<\STATESEP>apply (subst list_insert_before_distinct; fastforce?)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ ys); new \<notin> set (xs @ ys); xs \<noteq> []; ys \<noteq> []; distinct (xs @ ys)\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) st (xs @ new # ys)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<exists>x. heap_path hp st xs x \<and> heap_ls hp x ys; new \<notin> set xs \<and> new \<notin> set ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> distinct ys \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_path (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) st xs (Some new) \<and> heap_ls (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) (Some (hd ys)) ys<\STATESEP>apply (rule conjI)
+   \<comment> \<open>the path until new\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<exists>x. heap_path hp st xs x \<and> heap_ls hp x ys; new \<notin> set xs \<and> new \<notin> set ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> distinct ys \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_path (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) st xs (Some new)
+ 2. \<lbrakk>\<exists>x. heap_path hp st xs x \<and> heap_ls hp x ys; new \<notin> set xs \<and> new \<notin> set ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> distinct ys \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) (Some (hd ys)) ys<\STATESEP>apply (fastforce intro: heap_path_heap_upd_not_in heap_path_last_update)
+  \<comment> \<open>the path from hd ys\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<exists>x. heap_path hp st xs x \<and> heap_ls hp x ys; new \<notin> set xs \<and> new \<notin> set ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> distinct ys \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> new, new \<mapsto> hd ys)) (Some (hd ys)) ys<\STATESEP>apply (metis disjoint_iff_not_equal heap_path_head heap_path_heap_upd_not_in last_in_set)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_remove_singleton:
+  "heap_ls hp st [x] \<Longrightarrow> heap_ls (hp(x := None)) None []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. heap_ls hp st [x] \<Longrightarrow> heap_ls (hp(x := None)) None []<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_remove_head_not_singleton:
+  "\<lbrakk>heap_ls hp st xs; tl xs \<noteq> []\<rbrakk>
+   \<Longrightarrow> heap_ls (hp(hd xs := None)) (Some (hd (tl xs))) (tl xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; tl xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls (hp(hd xs := None)) (Some (hd (tl xs))) (tl xs)<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; tl xs \<noteq> []; distinct xs\<rbrakk> \<Longrightarrow> heap_ls (hp(hd xs := None)) (Some (hd (tl xs))) (tl xs)<\STATESEP>apply (cases xs; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<lbrakk>st = Some a \<and> heap_ls hp (hp a) list; list \<noteq> []; a \<notin> set list \<and> distinct list; xs = a # list\<rbrakk> \<Longrightarrow> heap_ls (hp(a := None)) (Some (hd list)) list<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<lbrakk>list \<noteq> []; xs = a # list; st = Some a; heap_ls hp (hp a) list; a \<notin> set list; distinct list\<rbrakk> \<Longrightarrow> heap_ls (hp(a := None)) (Some (hd list)) list<\STATESEP>apply (frule heap_path_head)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a list. \<lbrakk>list \<noteq> []; xs = a # list; st = Some a; heap_ls hp (hp a) list; a \<notin> set list; distinct list\<rbrakk> \<Longrightarrow> list \<noteq> []
+ 2. \<And>a list. \<lbrakk>list \<noteq> []; xs = a # list; st = Some a; heap_ls hp (hp a) list; a \<notin> set list; distinct list; hp a = Some (hd list)\<rbrakk> \<Longrightarrow> heap_ls (hp(a := None)) (Some (hd list)) list<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<lbrakk>list \<noteq> []; xs = a # list; st = Some a; heap_ls hp (hp a) list; a \<notin> set list; distinct list; hp a = Some (hd list)\<rbrakk> \<Longrightarrow> heap_ls (hp(a := None)) (Some (hd list)) list<\STATESEP>apply (fastforce elim!: heap_path_heap_upd_not_in)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_remove_last_not_singleton:
+  "\<lbrakk>heap_ls hp st xs; butlast xs \<noteq> []\<rbrakk>
+   \<Longrightarrow> heap_ls (hp((last (butlast xs)) := None)) st (butlast xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; butlast xs \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls (hp(last (butlast xs) := None)) st (butlast xs)<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; butlast xs \<noteq> []; distinct xs\<rbrakk> \<Longrightarrow> heap_ls (hp(last (butlast xs) := None)) st (butlast xs)<\STATESEP>apply (frule distinct_butlast)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st xs; butlast xs \<noteq> []; distinct xs; distinct (butlast xs)\<rbrakk> \<Longrightarrow> heap_ls (hp(last (butlast xs) := None)) st (butlast xs)<\STATESEP>apply (fastforce dest: heap_path_last_update heap_path_butlast)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma heap_ls_remove_middle:
+  "\<lbrakk>heap_ls hp st (xs @ a # ys); xs \<noteq> []; ys \<noteq> []\<rbrakk>
+   \<Longrightarrow> heap_ls (hp(last xs := Some (hd ys), a := None)) st (xs @ ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ a # ys); xs \<noteq> []; ys \<noteq> []\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> hd ys, a := None)) st (xs @ ys)<\STATESEP>apply (frule heap_ls_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_ls hp st (xs @ a # ys); xs \<noteq> []; ys \<noteq> []; distinct (xs @ a # ys)\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> hd ys, a := None)) st (xs @ ys)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> \<exists>x. heap_path (hp(last xs \<mapsto> hd ys, a := None)) st xs x \<and> heap_ls (hp(last xs \<mapsto> hd ys, a := None)) x ys<\STATESEP>apply (rule_tac x="Some (hd ys)" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_path (hp(last xs \<mapsto> hd ys, a := None)) st xs (Some (hd ys)) \<and> heap_ls (hp(last xs \<mapsto> hd ys, a := None)) (Some (hd ys)) ys<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_path (hp(last xs \<mapsto> hd ys, a := None)) st xs (Some (hd ys))
+ 2. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> hd ys, a := None)) (Some (hd ys)) ys<\STATESEP>apply (fastforce intro: heap_path_heap_upd_not_in heap_path_last_update)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> hd ys, a := None)) (Some (hd ys)) ys<\STATESEP>apply (rule heap_path_heap_upd_not_in)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls (hp(last xs \<mapsto> hd ys)) (Some (hd ys)) ys
+ 2. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> a \<notin> set ys<\STATESEP>apply (rule heap_path_heap_upd_not_in)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls hp (Some (hd ys)) ys
+ 2. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> last xs \<notin> set ys
+ 3. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> a \<notin> set ys<\STATESEP>using heap_path_head<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>heap_path ?hp ?st ?xs ?y; ?xs \<noteq> []\<rbrakk> \<Longrightarrow> ?st = Some (hd ?xs)
+
+goal (3 subgoals):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> heap_ls hp (Some (hd ys)) ys
+ 2. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> last xs \<notin> set ys
+ 3. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> a \<notin> set ys<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> last xs \<notin> set ys
+ 2. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> a \<notin> set ys<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>heap_path hp st xs (Some a) \<and> heap_ls hp (hp a) ys; xs \<noteq> []; ys \<noteq> []; distinct xs \<and> a \<notin> set ys \<and> distinct ys \<and> a \<notin> set xs \<and> set xs \<inter> set ys = {}\<rbrakk> \<Longrightarrow> a \<notin> set ys<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

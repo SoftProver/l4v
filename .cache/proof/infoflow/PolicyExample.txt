@@ -1,0 +1,926 @@
+<\STATESEP>theory PolicyExample
+imports ArchNoninterference
+begin<\STATESEP>0<\TRANSEP><\STATESEP>datatype auth_graph_label = T | NTFN1 | NTFN2 | CTR | C | EP | RM<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation partition_label where
+  "partition_label x \<equiv> OrdinaryLabel x"<\STATESEP>0<\TRANSEP><\STATESEP>definition example_auth_graph :: "(auth_graph_label subject_label \<times> auth \<times> auth_graph_label subject_label) set" where
+  "example_auth_graph \<equiv>
+   { (partition_label T,Notify,partition_label NTFN1),
+     (partition_label CTR,Receive,partition_label NTFN1),
+     (partition_label C,Read,partition_label CTR),
+     (partition_label C,Write,partition_label CTR),
+     (partition_label CTR,Read,partition_label C),
+     (partition_label CTR,Write,partition_label C),
+     (partition_label CTR,SyncSend,partition_label EP),
+     (partition_label T,Notify,partition_label NTFN2),
+     (partition_label RM,Receive,partition_label NTFN2),
+     (partition_label RM,Receive,partition_label EP)
+   } \<union> {(a,b,c). a = c}"<\STATESEP>0<\TRANSEP><\STATESEP>declare example_auth_graph_def [simp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_T:
+  "subjectReads example_auth_graph (partition_label T) = {partition_label T}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label T) = {partition_label T}<\STATESEP>apply(auto elim: subjectReads.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectReads_NTFN1:
+  "partition_label CTR \<in> subjectReads example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>apply(rule read_sync_ep_read_receivers[where ep="partition_label NTFN1"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectReads_NTFN1:
+  "partition_label EP \<in> subjectReads example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>apply(rule reads_read_queued_thread_read_ep[where t="partition_label CTR" and a="partition_label EP"], auto intro: CTR_in_subjectReads_NTFN1[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectReads_NTFN1:
+  "partition_label C \<in> subjectReads example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>apply(rule reads_read_thread_read_pages)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. ?t \<in> subjectReads example_auth_graph (partition_label NTFN1)
+ 2. (?t, Read, partition_label C) \<in> example_auth_graph<\STATESEP>apply (rule CTR_in_subjectReads_NTFN1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label CTR, Read, partition_label C) \<in> example_auth_graph<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectReads_NTFN1:
+  "partition_label RM \<in> subjectReads example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>by (rule read_sync_ep_read_receivers; fastforce intro: EP_in_subjectReads_NTFN1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectReads_NTFN1:
+  "partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>apply (rule reads_read_queued_thread_read_ep[where t="partition_label RM" and a="partition_label NTFN2"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label NTFN2, ?auth', partition_label NTFN2) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label RM, ?auth, partition_label NTFN2) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}
+ 5. partition_label RM \<in> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>by (auto intro: RM_in_subjectReads_NTFN1[simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_NTFN1' = reads_lrefl[of "partition_label NTFN1"]
+                            CTR_in_subjectReads_NTFN1
+                            EP_in_subjectReads_NTFN1
+                            RM_in_subjectReads_NTFN1
+                            C_in_subjectReads_NTFN1
+                            NTFN2_in_subjectReads_NTFN1<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_NTFN1:
+  "subjectReads example_auth_graph (partition_label NTFN1) = {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label NTFN1) = {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph (partition_label NTFN1) \<subseteq> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 2. {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>apply (rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph (partition_label NTFN1) \<Longrightarrow> x \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 2. {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads example_auth_graph (partition_label NTFN1)<\STATESEP>apply (erule subjectReads.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (14 subgoals):
+ 1. \<And>x l'. (partition_label NTFN1, Read, l') \<in> example_auth_graph \<Longrightarrow> l' \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 2. \<And>x. partition_label NTFN1 \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 3. \<And>x auth ep. \<lbrakk>(partition_label NTFN1, auth, ep) \<in> example_auth_graph; auth \<in> {SyncSend, Receive}\<rbrakk> \<Longrightarrow> ep \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 4. \<And>x a auth' ep t auth. \<lbrakk>(a, auth', ep) \<in> example_auth_graph; auth' \<in> {Notify, SyncSend, Reset}; (t, auth, ep) \<in> example_auth_graph; auth \<in> {SyncSend, Receive}; t \<in> subjectReads example_auth_graph (partition_label NTFN1); t \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}\<rbrakk> \<Longrightarrow> ep \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 5. \<And>x b t. \<lbrakk>b \<in> subjectReads example_auth_graph (partition_label NTFN1); b \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}; (t, Write, b) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> t \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 6. \<And>x t p. \<lbrakk>t \<in> subjectReads example_auth_graph (partition_label NTFN1); t \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}; (t, Read, p) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> p \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 7. \<And>x ep b. \<lbrakk>ep \<in> subjectReads example_auth_graph (partition_label NTFN1); ep \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}; (b, SyncSend, ep) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> b \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 8. \<And>x ep b. \<lbrakk>ep \<in> subjectReads example_auth_graph (partition_label NTFN1); ep \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}; (b, Call, ep) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> b \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 9. \<And>x ep b. \<lbrakk>ep \<in> subjectReads example_auth_graph (partition_label NTFN1); ep \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}; (b, Receive, ep) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> b \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+ 10. \<And>x t' t. \<lbrakk>t' \<in> subjectReads example_auth_graph (partition_label NTFN1); t' \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}; (t, Reply, t') \<in> example_auth_graph\<rbrakk> \<Longrightarrow> t \<in> {partition_label NTFN1, partition_label CTR, partition_label EP, partition_label C, partition_label RM, partition_label NTFN2}
+A total of 14 subgoals...<\STATESEP>apply (fastforce simp: subjectReads_NTFN1'[simplified])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectReads_NTFN2:
+  "partition_label RM \<in> subjectReads example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule read_sync_ep_read_receivers[where ep="partition_label NTFN2"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectReads_NTFN2:
+  "partition_label EP \<in> subjectReads example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule reads_read_queued_thread_read_ep[where t="partition_label RM" and a="partition_label EP"], auto intro: RM_in_subjectReads_NTFN2[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectReads_NTFN2:
+  "partition_label CTR \<in> subjectReads example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule read_sync_ep_read_senders[where ep="partition_label EP"], auto intro: EP_in_subjectReads_NTFN2[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectReads_NTFN2:
+  "partition_label C \<in> subjectReads example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule reads_read_thread_read_pages)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. ?t \<in> subjectReads example_auth_graph (partition_label NTFN2)
+ 2. (?t, Read, partition_label C) \<in> example_auth_graph<\STATESEP>apply (rule CTR_in_subjectReads_NTFN2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label CTR, Read, partition_label C) \<in> example_auth_graph<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectReads_NTFN2:
+  "partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule reads_read_queued_thread_read_ep[where t="partition_label CTR" and a="partition_label NTFN1"], auto intro: CTR_in_subjectReads_NTFN2[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_NTFN2' = reads_lrefl[of "partition_label NTFN2"]
+                            CTR_in_subjectReads_NTFN2
+                            EP_in_subjectReads_NTFN2
+                            RM_in_subjectReads_NTFN2
+                            C_in_subjectReads_NTFN2
+                            NTFN1_in_subjectReads_NTFN2<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_NTFN2:
+  "subjectReads example_auth_graph (partition_label NTFN2) = {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label NTFN2) = {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph (partition_label NTFN2) \<subseteq> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 2. {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP} \<subseteq> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply (rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph (partition_label NTFN2) \<Longrightarrow> x \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 2. {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP} \<subseteq> subjectReads example_auth_graph (partition_label NTFN2)<\STATESEP>apply (erule subjectReads.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (14 subgoals):
+ 1. \<And>x l'. (partition_label NTFN2, Read, l') \<in> example_auth_graph \<Longrightarrow> l' \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 2. \<And>x. partition_label NTFN2 \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 3. \<And>x auth ep. \<lbrakk>(partition_label NTFN2, auth, ep) \<in> example_auth_graph; auth \<in> {SyncSend, Receive}\<rbrakk> \<Longrightarrow> ep \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 4. \<And>x a auth' ep t auth. \<lbrakk>(a, auth', ep) \<in> example_auth_graph; auth' \<in> {Notify, SyncSend, Reset}; (t, auth, ep) \<in> example_auth_graph; auth \<in> {SyncSend, Receive}; t \<in> subjectReads example_auth_graph (partition_label NTFN2); t \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}\<rbrakk> \<Longrightarrow> ep \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 5. \<And>x b t. \<lbrakk>b \<in> subjectReads example_auth_graph (partition_label NTFN2); b \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}; (t, Write, b) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> t \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 6. \<And>x t p. \<lbrakk>t \<in> subjectReads example_auth_graph (partition_label NTFN2); t \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}; (t, Read, p) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> p \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 7. \<And>x ep b. \<lbrakk>ep \<in> subjectReads example_auth_graph (partition_label NTFN2); ep \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}; (b, SyncSend, ep) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> b \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 8. \<And>x ep b. \<lbrakk>ep \<in> subjectReads example_auth_graph (partition_label NTFN2); ep \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}; (b, Call, ep) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> b \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 9. \<And>x ep b. \<lbrakk>ep \<in> subjectReads example_auth_graph (partition_label NTFN2); ep \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}; (b, Receive, ep) \<in> example_auth_graph\<rbrakk> \<Longrightarrow> b \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 10. \<And>x t' t. \<lbrakk>t' \<in> subjectReads example_auth_graph (partition_label NTFN2); t' \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}; (t, Reply, t') \<in> example_auth_graph\<rbrakk> \<Longrightarrow> t \<in> {partition_label NTFN2, partition_label NTFN1, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+A total of 14 subgoals...<\STATESEP>apply (fastforce simp: subjectReads_NTFN2'[simplified])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectReads_CTR:
+  "partition_label EP \<in> subjectReads example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply(rule_tac a="partition_label CTR" and t="partition_label CTR" in reads_read_queued_thread_read_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label CTR, ?auth', partition_label EP) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label CTR, ?auth, partition_label EP) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}
+ 5. partition_label CTR \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectReads_CTR:
+  "partition_label RM \<in> subjectReads example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply(clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR)<\STATESEP>apply(rule_tac ep="partition_label EP" in read_sync_ep_read_receivers)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. partition_label EP \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR)
+ 2. (partition_label RM, Receive, partition_label EP) \<in> insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))<\STATESEP>apply(rule EP_in_subjectReads_CTR[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label RM, Receive, partition_label EP) \<in> insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectReads_CTR:
+  "partition_label C \<in> subjectReads example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply(rule reads_read, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectReads_CTR:
+  "partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply(rule_tac t="partition_label CTR" and auth="Receive" and a="partition_label T" and auth'="Notify" in reads_read_queued_thread_read_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label T, Notify, partition_label NTFN1) \<in> example_auth_graph
+ 2. Notify \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label CTR, Receive, partition_label NTFN1) \<in> example_auth_graph
+ 4. Receive \<in> {SyncSend, Receive}
+ 5. partition_label CTR \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply (auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectReads_CTR:
+  "partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply(rule_tac t="partition_label RM" and auth="Receive" and a="partition_label T" and auth'="Notify" in reads_read_queued_thread_read_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label T, Notify, partition_label NTFN2) \<in> example_auth_graph
+ 2. Notify \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label RM, Receive, partition_label NTFN2) \<in> example_auth_graph
+ 4. Receive \<in> {SyncSend, Receive}
+ 5. partition_label RM \<in> subjectReads example_auth_graph (partition_label CTR)<\STATESEP>apply (auto intro: RM_in_subjectReads_CTR[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_CTR' = reads_lrefl[of "partition_label CTR"]
+                           NTFN2_in_subjectReads_CTR NTFN1_in_subjectReads_CTR
+                           C_in_subjectReads_CTR RM_in_subjectReads_CTR EP_in_subjectReads_CTR<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_CTR:
+  "subjectReads example_auth_graph (partition_label CTR) = {partition_label CTR,partition_label C,partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label CTR) = {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2}<\STATESEP>apply(clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR) = {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR) \<subseteq> {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2}
+ 2. {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2} \<subseteq> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR) \<Longrightarrow> x \<in> {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2}
+ 2. {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2} \<subseteq> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR)<\STATESEP>apply(erule subjectReads.induct; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label CTR, partition_label C, partition_label EP, partition_label RM, partition_label NTFN1, partition_label NTFN2} \<subseteq> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label CTR)<\STATESEP>apply(auto simp: subjectReads_CTR'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectReads_C:
+  "partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply(rule_tac a="partition_label T" and ep="partition_label NTFN1" and t="partition_label CTR" in reads_read_queued_thread_read_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label T, ?auth', partition_label NTFN1) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label CTR, ?auth, partition_label NTFN1) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}
+ 5. partition_label CTR \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply (auto intro: reads_read)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectReads_C:
+  "partition_label EP \<in> subjectReads example_auth_graph (partition_label C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply(rule_tac a="partition_label CTR" and t="partition_label CTR" in reads_read_queued_thread_read_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label CTR, ?auth', partition_label EP) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label CTR, ?auth, partition_label EP) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}
+ 5. partition_label CTR \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply (auto intro: reads_read)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectReads_C:
+  "partition_label RM \<in> subjectReads example_auth_graph (partition_label C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply(clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C)<\STATESEP>apply(rule read_sync_ep_read_receivers[OF EP_in_subjectReads_C[simplified]])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label RM, Receive, partition_label EP) \<in> insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectReads_C:
+  "partition_label CTR \<in> subjectReads example_auth_graph (partition_label C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply(rule reads_read, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectReads_C:
+  "partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply(rule_tac a="partition_label T" and ep="partition_label NTFN2" and t="partition_label RM" in reads_read_queued_thread_read_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. (partition_label T, ?auth', partition_label NTFN2) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label RM, ?auth, partition_label NTFN2) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}
+ 5. partition_label RM \<in> subjectReads example_auth_graph (partition_label C)<\STATESEP>apply(fastforce simp: RM_in_subjectReads_C[simplified])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_C' = reads_lrefl[of "partition_label C"]
+                         NTFN2_in_subjectReads_C NTFN1_in_subjectReads_C
+                         RM_in_subjectReads_C EP_in_subjectReads_C CTR_in_subjectReads_C<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_C:
+  "subjectReads example_auth_graph (partition_label C) = {partition_label C,partition_label CTR,partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label C) = {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2}<\STATESEP>apply(clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C) = {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C) \<subseteq> {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2}
+ 2. {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C) \<Longrightarrow> x \<in> {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2}
+ 2. {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C)<\STATESEP>apply(erule subjectReads.induct; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label C, partition_label CTR, partition_label NTFN1, partition_label EP, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label C)<\STATESEP>apply(auto simp: subjectReads_C'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectReads_EP:
+  "partition_label CTR \<in> subjectReads example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label EP)<\STATESEP>apply(rule_tac ep="partition_label EP" in read_sync_ep_read_senders)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. partition_label EP \<in> subjectReads (insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))) (partition_label EP)
+ 2. (partition_label CTR, SyncSend, partition_label EP) \<in> insert (partition_label T, Notify, partition_label NTFN1) (insert (partition_label CTR, Receive, partition_label NTFN1) (insert (partition_label C, Read, partition_label CTR) (insert (partition_label C, Write, partition_label CTR) (insert (partition_label CTR, Read, partition_label C) (insert (partition_label CTR, Write, partition_label C) (insert (partition_label CTR, SyncSend, partition_label EP) (insert (partition_label T, Notify, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label NTFN2) (insert (partition_label RM, Receive, partition_label EP) {(a, b, y). a = y})))))))))<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectReads_EP:
+  "partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(rule reads_read_queued_thread_read_ep[where a="partition_label NTFN1", OF _ _ _ _ CTR_in_subjectReads_EP])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. (partition_label NTFN1, ?auth', partition_label NTFN1) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label CTR, ?auth, partition_label NTFN1) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectReads_EP:
+  "partition_label C \<in> subjectReads example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(rule reads_read_thread_read_pages[OF CTR_in_subjectReads_EP])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label CTR, Read, partition_label C) \<in> example_auth_graph<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectReads_EP:
+  "partition_label RM \<in> subjectReads example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(rule read_sync_ep_read_receivers[OF reads_lrefl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label RM, Receive, partition_label EP) \<in> example_auth_graph<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectReads_EP:
+  "partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(rule reads_read_queued_thread_read_ep[where a="partition_label NTFN2", OF _ _ _ _ RM_in_subjectReads_EP])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. (partition_label NTFN2, ?auth', partition_label NTFN2) \<in> example_auth_graph
+ 2. ?auth' \<in> {Notify, SyncSend, Reset}
+ 3. (partition_label RM, ?auth, partition_label NTFN2) \<in> example_auth_graph
+ 4. ?auth \<in> {SyncSend, Receive}<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_EP' = reads_lrefl[of "partition_label EP"]
+                         CTR_in_subjectReads_EP
+                         C_in_subjectReads_EP
+                         RM_in_subjectReads_EP
+                         NTFN2_in_subjectReads_EP
+                         NTFN1_in_subjectReads_EP<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_EP:
+  "subjectReads example_auth_graph (partition_label EP) = {partition_label EP,partition_label CTR,partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label EP) = {partition_label EP, partition_label CTR, partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph (partition_label EP) \<subseteq> {partition_label EP, partition_label CTR, partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2}
+ 2. {partition_label EP, partition_label CTR, partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph (partition_label EP) \<Longrightarrow> x \<in> {partition_label EP, partition_label CTR, partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2}
+ 2. {partition_label EP, partition_label CTR, partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(erule subjectReads.induct; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label EP, partition_label CTR, partition_label NTFN1, partition_label C, partition_label RM, partition_label NTFN2} \<subseteq> subjectReads example_auth_graph (partition_label EP)<\STATESEP>apply(auto simp: subjectReads_EP'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectReads_RM:
+   "partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(rule reads_ep, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectReads_RM:
+   "partition_label EP \<in> subjectReads example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(rule reads_ep, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectReads_RM:
+   "partition_label CTR \<in> subjectReads example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(rule read_sync_ep_read_senders[where ep="partition_label EP", OF EP_in_subjectReads_RM], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectReads_RM:
+   "partition_label C \<in> subjectReads example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(rule reads_read_thread_read_pages[where t="partition_label CTR", OF CTR_in_subjectReads_RM], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectReads_RM:
+   "partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(rule reads_read_queued_thread_read_ep[where a="partition_label T" and t="partition_label CTR", OF _ _ _ _ CTR_in_subjectReads_RM], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_RM' = reads_lrefl[of "partition_label RM"]
+                         CTR_in_subjectReads_RM
+                         C_in_subjectReads_RM
+                         EP_in_subjectReads_RM
+                         NTFN1_in_subjectReads_RM
+                         NTFN2_in_subjectReads_RM<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_RM:
+  "subjectReads example_auth_graph (partition_label RM) = {partition_label RM, partition_label NTFN2,partition_label EP,partition_label CTR, partition_label C, partition_label NTFN1}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph (partition_label RM) = {partition_label RM, partition_label NTFN2, partition_label EP, partition_label CTR, partition_label C, partition_label NTFN1}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph (partition_label RM) \<subseteq> {partition_label RM, partition_label NTFN2, partition_label EP, partition_label CTR, partition_label C, partition_label NTFN1}
+ 2. {partition_label RM, partition_label NTFN2, partition_label EP, partition_label CTR, partition_label C, partition_label NTFN1} \<subseteq> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph (partition_label RM) \<Longrightarrow> x \<in> {partition_label RM, partition_label NTFN2, partition_label EP, partition_label CTR, partition_label C, partition_label NTFN1}
+ 2. {partition_label RM, partition_label NTFN2, partition_label EP, partition_label CTR, partition_label C, partition_label NTFN1} \<subseteq> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(erule subjectReads.induct; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label RM, partition_label NTFN2, partition_label EP, partition_label CTR, partition_label C, partition_label NTFN1} \<subseteq> subjectReads example_auth_graph (partition_label RM)<\STATESEP>apply(auto simp: subjectReads_RM'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectAffects_T:
+  "partition_label NTFN1 \<in> subjectAffects example_auth_graph (partition_label T)
+"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(auto intro: affects_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectAffects_T:
+  "partition_label NTFN2 \<in> subjectAffects example_auth_graph (partition_label T)
+"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(auto intro: affects_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectAffects_T:
+  "partition_label C \<in> subjectAffects example_auth_graph (partition_label T)
+"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(rule affects_send[where auth="Notify" and ep="partition_label NTFN1"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectAffects_T:
+  "partition_label CTR \<in> subjectAffects example_auth_graph (partition_label T)
+"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(rule affects_send[where auth="Notify" and ep="partition_label NTFN1"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectAffects_T:
+  "partition_label RM \<in> subjectAffects example_auth_graph (partition_label T)
+"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(rule affects_send[where auth="Notify" and ep="partition_label NTFN2"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectAffects_T:
+  "partition_label EP \<in> subjectAffects example_auth_graph (partition_label T)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectAffects example_auth_graph (partition_label T)<\STATESEP>by (rule affects_ep_bound_trans, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_T' = affects_lrefl[of "partition_label T"]
+                           NTFN1_in_subjectAffects_T
+                           NTFN2_in_subjectAffects_T
+                           C_in_subjectAffects_T
+                           CTR_in_subjectAffects_T
+                           RM_in_subjectAffects_T
+                           EP_in_subjectAffects_T<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_T:
+  "subjectAffects example_auth_graph (partition_label T) = {partition_label NTFN1,partition_label NTFN2,partition_label T,partition_label C, partition_label CTR, partition_label RM, partition_label EP}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label T) = {partition_label NTFN1, partition_label NTFN2, partition_label T, partition_label C, partition_label CTR, partition_label RM, partition_label EP}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label T) \<subseteq> {partition_label NTFN1, partition_label NTFN2, partition_label T, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 2. {partition_label NTFN1, partition_label NTFN2, partition_label T, partition_label C, partition_label CTR, partition_label RM, partition_label EP} \<subseteq> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label T) \<Longrightarrow> x \<in> {partition_label NTFN1, partition_label NTFN2, partition_label T, partition_label C, partition_label CTR, partition_label RM, partition_label EP}
+ 2. {partition_label NTFN1, partition_label NTFN2, partition_label T, partition_label C, partition_label CTR, partition_label RM, partition_label EP} \<subseteq> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(erule subjectAffects.cases; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label NTFN1, partition_label NTFN2, partition_label T, partition_label C, partition_label CTR, partition_label RM, partition_label EP} \<subseteq> subjectAffects example_auth_graph (partition_label T)<\STATESEP>apply(auto simp: subjectAffects_T'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectAffects_NTFN1:
+  "partition_label CTR \<in> subjectAffects example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectAffects example_auth_graph (partition_label NTFN1)<\STATESEP>apply(rule affects_send[where ep="partition_label NTFN1"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectAffects_NTFN1:
+  "partition_label C \<in> subjectAffects example_auth_graph (partition_label NTFN1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectAffects example_auth_graph (partition_label NTFN1)<\STATESEP>apply(rule affects_send[where ep="partition_label NTFN1"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_NTFN1' = affects_lrefl[of "partition_label NTFN1"]
+                           C_in_subjectAffects_NTFN1
+                           CTR_in_subjectAffects_NTFN1<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_NTFN1:
+  "subjectAffects example_auth_graph (partition_label NTFN1) = {partition_label NTFN1,partition_label CTR,partition_label C}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label NTFN1) = {partition_label NTFN1, partition_label CTR, partition_label C}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label NTFN1) \<subseteq> {partition_label NTFN1, partition_label CTR, partition_label C}
+ 2. {partition_label NTFN1, partition_label CTR, partition_label C} \<subseteq> subjectAffects example_auth_graph (partition_label NTFN1)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label NTFN1) \<Longrightarrow> x \<in> {partition_label NTFN1, partition_label CTR, partition_label C}
+ 2. {partition_label NTFN1, partition_label CTR, partition_label C} \<subseteq> subjectAffects example_auth_graph (partition_label NTFN1)<\STATESEP>apply(erule subjectAffects.cases; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label NTFN1, partition_label CTR, partition_label C} \<subseteq> subjectAffects example_auth_graph (partition_label NTFN1)<\STATESEP>apply(auto simp: subjectAffects_NTFN1'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectAffects_NTFN2:
+  "partition_label RM \<in> subjectAffects example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectAffects example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule affects_send[where ep="partition_label NTFN2"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectAffects_NTFN2:
+  "partition_label EP \<in> subjectAffects example_auth_graph (partition_label NTFN2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectAffects example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule affects_ep_bound_trans, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_NTFN2' = affects_lrefl[of "partition_label NTFN2"]
+                           RM_in_subjectAffects_NTFN2
+                           EP_in_subjectAffects_NTFN2<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_NTFN2:
+  "subjectAffects example_auth_graph (partition_label NTFN2) = {partition_label NTFN2,partition_label RM, partition_label EP}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label NTFN2) = {partition_label NTFN2, partition_label RM, partition_label EP}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label NTFN2) \<subseteq> {partition_label NTFN2, partition_label RM, partition_label EP}
+ 2. {partition_label NTFN2, partition_label RM, partition_label EP} \<subseteq> subjectAffects example_auth_graph (partition_label NTFN2)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label NTFN2) \<Longrightarrow> x \<in> {partition_label NTFN2, partition_label RM, partition_label EP}
+ 2. {partition_label NTFN2, partition_label RM, partition_label EP} \<subseteq> subjectAffects example_auth_graph (partition_label NTFN2)<\STATESEP>apply(erule subjectAffects.cases; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label NTFN2, partition_label RM, partition_label EP} \<subseteq> subjectAffects example_auth_graph (partition_label NTFN2)<\STATESEP>apply(auto simp: subjectAffects_NTFN2'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectAffects_CTR:
+  "partition_label C \<in> subjectAffects example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(rule affects_write[where auth="Write"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectAffects_CTR:
+  "partition_label EP \<in> subjectAffects example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(rule affects_ep, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN1_in_subjectAffects_CTR:
+  "partition_label NTFN1 \<in> subjectAffects example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN1 \<in> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(rule affects_ep, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectAffects_CTR:
+  "partition_label RM \<in> subjectAffects example_auth_graph (partition_label CTR)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(rule affects_send, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_CTR' = affects_lrefl[of "partition_label CTR"]
+                           NTFN1_in_subjectAffects_CTR
+                           C_in_subjectAffects_CTR
+                           EP_in_subjectAffects_CTR
+                           RM_in_subjectAffects_CTR<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_CTR:
+  "subjectAffects example_auth_graph (partition_label CTR) = {partition_label CTR,partition_label C,partition_label EP,partition_label NTFN1, partition_label RM}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label CTR) = {partition_label CTR, partition_label C, partition_label EP, partition_label NTFN1, partition_label RM}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label CTR) \<subseteq> {partition_label CTR, partition_label C, partition_label EP, partition_label NTFN1, partition_label RM}
+ 2. {partition_label CTR, partition_label C, partition_label EP, partition_label NTFN1, partition_label RM} \<subseteq> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label CTR) \<Longrightarrow> x \<in> {partition_label CTR, partition_label C, partition_label EP, partition_label NTFN1, partition_label RM}
+ 2. {partition_label CTR, partition_label C, partition_label EP, partition_label NTFN1, partition_label RM} \<subseteq> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(erule subjectAffects.cases; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label CTR, partition_label C, partition_label EP, partition_label NTFN1, partition_label RM} \<subseteq> subjectAffects example_auth_graph (partition_label CTR)<\STATESEP>apply(auto simp: subjectAffects_CTR'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectAffects_C:
+  "partition_label CTR \<in> subjectAffects example_auth_graph (partition_label C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectAffects example_auth_graph (partition_label C)<\STATESEP>apply(rule affects_write[where auth=Write], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_C' = affects_lrefl[of "partition_label C"]
+                           CTR_in_subjectAffects_C<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_C:
+  "subjectAffects example_auth_graph (partition_label C) = {partition_label C,partition_label CTR}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label C) = {partition_label C, partition_label CTR}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label C) \<subseteq> {partition_label C, partition_label CTR}
+ 2. {partition_label C, partition_label CTR} \<subseteq> subjectAffects example_auth_graph (partition_label C)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label C) \<Longrightarrow> x \<in> {partition_label C, partition_label CTR}
+ 2. {partition_label C, partition_label CTR} \<subseteq> subjectAffects example_auth_graph (partition_label C)<\STATESEP>apply(erule subjectAffects.cases; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label C, partition_label CTR} \<subseteq> subjectAffects example_auth_graph (partition_label C)<\STATESEP>apply(auto simp: subjectAffects_C'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma RM_in_subjectAffects_EP:
+  "partition_label RM \<in> subjectAffects example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label RM \<in> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(rule affects_send, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectAffects_EP:
+  "partition_label CTR \<in> subjectAffects example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(rule affects_recv, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma C_in_subjectAffects_EP:
+  "partition_label C \<in> subjectAffects example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label C \<in> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(rule affects_reset[where ep="partition_label EP" and l'="partition_label CTR"], auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectAffects_EP:
+  "partition_label NTFN2 \<in> subjectAffects example_auth_graph (partition_label EP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(rule affects_ep_bound_trans, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_EP' = affects_lrefl[of "partition_label EP"]
+                           CTR_in_subjectAffects_EP
+                           C_in_subjectAffects_EP
+                           RM_in_subjectAffects_EP
+                           NTFN2_in_subjectAffects_EP<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_EP:
+  "subjectAffects example_auth_graph (partition_label EP) = {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label EP) = {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label EP) \<subseteq> {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2}
+ 2. {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2} \<subseteq> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label EP) \<Longrightarrow> x \<in> {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2}
+ 2. {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2} \<subseteq> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(erule subjectAffects.cases; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label EP, partition_label RM, partition_label CTR, partition_label C, partition_label NTFN2} \<subseteq> subjectAffects example_auth_graph (partition_label EP)<\STATESEP>apply(auto simp: subjectAffects_EP'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EP_in_subjectAffects_RM:
+  "partition_label EP \<in> subjectAffects example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label EP \<in> subjectAffects example_auth_graph (partition_label RM)<\STATESEP>apply(rule affects_ep, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma CTR_in_subjectAffects_RM:
+  "partition_label CTR \<in> subjectAffects example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label CTR \<in> subjectAffects example_auth_graph (partition_label RM)<\STATESEP>apply(rule affects_recv, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN2_in_subjectAffects_RM:
+  "partition_label NTFN2 \<in> subjectAffects example_auth_graph (partition_label RM)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN2 \<in> subjectAffects example_auth_graph (partition_label RM)<\STATESEP>apply(rule affects_ep, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectAffects_RM' = affects_lrefl[of "partition_label RM"]
+                            EP_in_subjectAffects_RM
+                            NTFN2_in_subjectAffects_RM
+                            CTR_in_subjectAffects_RM<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectAffects_RM:
+  "subjectAffects example_auth_graph (partition_label RM) = {partition_label RM,partition_label EP,partition_label CTR,partition_label NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph (partition_label RM) = {partition_label RM, partition_label EP, partition_label CTR, partition_label NTFN2}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph (partition_label RM) \<subseteq> {partition_label RM, partition_label EP, partition_label CTR, partition_label NTFN2}
+ 2. {partition_label RM, partition_label EP, partition_label CTR, partition_label NTFN2} \<subseteq> subjectAffects example_auth_graph (partition_label RM)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph (partition_label RM) \<Longrightarrow> x \<in> {partition_label RM, partition_label EP, partition_label CTR, partition_label NTFN2}
+ 2. {partition_label RM, partition_label EP, partition_label CTR, partition_label NTFN2} \<subseteq> subjectAffects example_auth_graph (partition_label RM)<\STATESEP>apply(erule subjectAffects.cases; auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label RM, partition_label EP, partition_label CTR, partition_label NTFN2} \<subseteq> subjectAffects example_auth_graph (partition_label RM)<\STATESEP>apply(auto simp: subjectAffects_RM'[simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads = subjectReads_T subjectReads_NTFN1 subjectReads_NTFN2 subjectReads_CTR
+                      subjectReads_EP subjectReads_RM subjectReads_C<\STATESEP>0<\TRANSEP><\STATESEP>declare example_auth_graph_def [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma partsSubjectAffects_T:
+  "partsSubjectAffects example_auth_graph T = {Partition T,Partition NTFN1, Partition NTFN2, Partition CTR, Partition C, Partition EP, Partition RM}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph T = {Partition T, Partition NTFN1, Partition NTFN2, Partition CTR, Partition C, Partition EP, Partition RM}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_T | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_NTFN1:
+  "partsSubjectAffects example_auth_graph NTFN1 = {Partition NTFN1, Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph NTFN1 = {Partition NTFN1, Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN2}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_NTFN1 | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_NTFN2:
+  "partsSubjectAffects example_auth_graph NTFN2 = {Partition NTFN2, Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN1}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph NTFN2 = {Partition NTFN2, Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN1}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_NTFN2 | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_CTR:
+  "partsSubjectAffects example_auth_graph CTR = {Partition NTFN1, Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph CTR = {Partition NTFN1, Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN2}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_CTR | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_C:
+  "partsSubjectAffects example_auth_graph C = {Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN1, Partition NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph C = {Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN1, Partition NTFN2}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_C | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_EP:
+  "partsSubjectAffects example_auth_graph EP = {Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN1, Partition NTFN2}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph EP = {Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN1, Partition NTFN2}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_EP | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_RM:
+  "partsSubjectAffects example_auth_graph RM = {Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN2, Partition NTFN1}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph RM = {Partition CTR, Partition C, Partition EP, Partition RM, Partition NTFN2, Partition NTFN1}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads subjectAffects_RM | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas partsSubjectAffects = partsSubjectAffects_T partsSubjectAffects_NTFN1
+                            partsSubjectAffects_NTFN2 partsSubjectAffects_CTR
+                            partsSubjectAffects_C partsSubjectAffects_RM partsSubjectAffects_EP<\STATESEP>0<\TRANSEP><\STATESEP>definition example_policy :: "(auth_graph_label partition \<times> auth_graph_label partition) set" where
+  "example_policy \<equiv> {(PSched,d)|d. True} \<union>
+                    {(Partition l,Partition k)|l k. (k = T \<longrightarrow> l = T)}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "example_policy = policyFlows example_auth_graph"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. example_policy = policyFlows example_auth_graph<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. example_policy \<subseteq> policyFlows example_auth_graph
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> example_policy \<Longrightarrow> x \<in> policyFlows example_auth_graph
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply(clarsimp simp: example_policy_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. a = PSched \<or> (\<exists>l. a = Partition l \<and> (\<exists>k. b = Partition k \<and> (k = T \<longrightarrow> l = T))) \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply(elim disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b. a = PSched \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph
+ 2. \<And>a b. \<exists>l. a = Partition l \<and> (\<exists>k. b = Partition k \<and> (k = T \<longrightarrow> l = T)) \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph
+ 3. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply(fastforce intro: policy_scheduler)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<exists>l. a = Partition l \<and> (\<exists>k. b = Partition k \<and> (k = T \<longrightarrow> l = T)) \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>l k. k = T \<longrightarrow> l = T \<Longrightarrow> (Partition l, Partition k) \<in> policyFlows example_auth_graph
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply (rule policy_affects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>l k. k = T \<longrightarrow> l = T \<Longrightarrow> Partition k \<in> partsSubjectAffects example_auth_graph l
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply (case_tac "k = T")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>l k. \<lbrakk>k = T \<longrightarrow> l = T; k = T\<rbrakk> \<Longrightarrow> Partition k \<in> partsSubjectAffects example_auth_graph l
+ 2. \<And>l k. \<lbrakk>k = T \<longrightarrow> l = T; k \<noteq> T\<rbrakk> \<Longrightarrow> Partition k \<in> partsSubjectAffects example_auth_graph l
+ 3. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply (clarsimp simp: partsSubjectAffects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>l k. \<lbrakk>k = T \<longrightarrow> l = T; k \<noteq> T\<rbrakk> \<Longrightarrow> Partition k \<in> partsSubjectAffects example_auth_graph l
+ 2. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply(case_tac l; (auto simp: partsSubjectAffects | case_tac k)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. policyFlows example_auth_graph \<subseteq> example_policy<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> policyFlows example_auth_graph \<Longrightarrow> x \<in> example_policy<\STATESEP>apply(clarsimp simp: example_policy_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> policyFlows example_auth_graph; \<forall>l. a = Partition l \<longrightarrow> (\<forall>k. b = Partition k \<longrightarrow> k = T \<and> l \<noteq> T)\<rbrakk> \<Longrightarrow> a = PSched<\STATESEP>apply(erule policyFlows.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b d l. \<lbrakk>\<forall>l. a = Partition l \<longrightarrow> (\<forall>k. b = Partition k \<longrightarrow> k = T \<and> l \<noteq> T); a = Partition l; b = d; d \<in> partsSubjectAffects example_auth_graph l\<rbrakk> \<Longrightarrow> a = PSched
+ 2. \<And>a b d. \<lbrakk>\<forall>l. a = Partition l \<longrightarrow> (\<forall>k. b = Partition k \<longrightarrow> k = T \<and> l \<noteq> T); a = PSched; b = d\<rbrakk> \<Longrightarrow> a = PSched<\STATESEP>apply(case_tac l, auto simp: partsSubjectAffects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>datatype auth_graph_label2 = High | Low | SharedPage | NTFN<\STATESEP>0<\TRANSEP><\STATESEP>definition example_auth_graph2 :: "(auth_graph_label2 subject_label \<times> auth \<times> auth_graph_label2 subject_label) set" where
+  "example_auth_graph2 \<equiv>
+   { (partition_label Low,Write,partition_label SharedPage),
+     (partition_label Low,Read,partition_label SharedPage),
+     (partition_label High,Read,partition_label SharedPage),
+     (partition_label Low,Notify,partition_label NTFN),
+     (partition_label High,Receive,partition_label NTFN)
+   } \<union> {(x,a,y). x = y}"<\STATESEP>0<\TRANSEP><\STATESEP>declare example_auth_graph2_def [simp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma subjectReads_Low: "subjectReads example_auth_graph2 (partition_label Low) = {partition_label Low,partition_label SharedPage}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph2 (partition_label Low) = {partition_label Low, partition_label SharedPage}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph2 (partition_label Low) \<subseteq> {partition_label Low, partition_label SharedPage}
+ 2. {partition_label Low, partition_label SharedPage} \<subseteq> subjectReads example_auth_graph2 (partition_label Low)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph2 (partition_label Low) \<Longrightarrow> x \<in> {partition_label Low, partition_label SharedPage}
+ 2. {partition_label Low, partition_label SharedPage} \<subseteq> subjectReads example_auth_graph2 (partition_label Low)<\STATESEP>apply(erule subjectReads.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label Low, partition_label SharedPage} \<subseteq> subjectReads example_auth_graph2 (partition_label Low)<\STATESEP>apply (auto intro: reads_read)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectReads_SharedPage: "subjectReads example_auth_graph2 (partition_label SharedPage) = {partition_label Low,partition_label SharedPage}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph2 (partition_label SharedPage) = {partition_label Low, partition_label SharedPage}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph2 (partition_label SharedPage) \<subseteq> {partition_label Low, partition_label SharedPage}
+ 2. {partition_label Low, partition_label SharedPage} \<subseteq> subjectReads example_auth_graph2 (partition_label SharedPage)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph2 (partition_label SharedPage) \<Longrightarrow> x \<in> {partition_label Low, partition_label SharedPage}
+ 2. {partition_label Low, partition_label SharedPage} \<subseteq> subjectReads example_auth_graph2 (partition_label SharedPage)<\STATESEP>apply(erule subjectReads.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label Low, partition_label SharedPage} \<subseteq> subjectReads example_auth_graph2 (partition_label SharedPage)<\STATESEP>apply (auto intro: reads_read_page_read_thread)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma High_in_subjectReads_NTFN:
+  "partition_label High \<in> subjectReads example_auth_graph2 (partition_label NTFN)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label High \<in> subjectReads example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(rule read_sync_ep_read_receivers)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. ?ep \<in> subjectReads example_auth_graph2 (partition_label NTFN)
+ 2. (partition_label High, Receive, ?ep) \<in> example_auth_graph2<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma SharedPage_in_subjectReads_NTFN:
+  "partition_label SharedPage \<in> subjectReads example_auth_graph2 (partition_label NTFN)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label SharedPage \<in> subjectReads example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(rule reads_read_thread_read_pages[OF High_in_subjectReads_NTFN])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label High, Read, partition_label SharedPage) \<in> example_auth_graph2<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Low_in_subjectReads_NTFN:
+  "partition_label Low \<in> subjectReads example_auth_graph2 (partition_label NTFN)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label Low \<in> subjectReads example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(rule reads_read_page_read_thread[OF SharedPage_in_subjectReads_NTFN])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (partition_label Low, Write, partition_label SharedPage) \<in> example_auth_graph2<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectReads_NTFN: "subjectReads example_auth_graph2 (partition_label NTFN) = {partition_label NTFN,partition_label High,partition_label SharedPage, partition_label Low}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph2 (partition_label NTFN) = {partition_label NTFN, partition_label High, partition_label SharedPage, partition_label Low}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph2 (partition_label NTFN) \<subseteq> {partition_label NTFN, partition_label High, partition_label SharedPage, partition_label Low}
+ 2. {partition_label NTFN, partition_label High, partition_label SharedPage, partition_label Low} \<subseteq> subjectReads example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph2 (partition_label NTFN) \<Longrightarrow> x \<in> {partition_label NTFN, partition_label High, partition_label SharedPage, partition_label Low}
+ 2. {partition_label NTFN, partition_label High, partition_label SharedPage, partition_label Low} \<subseteq> subjectReads example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(erule subjectReads.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label NTFN, partition_label High, partition_label SharedPage, partition_label Low} \<subseteq> subjectReads example_auth_graph2 (partition_label NTFN)<\STATESEP>apply (auto intro: High_in_subjectReads_NTFN Low_in_subjectReads_NTFN SharedPage_in_subjectReads_NTFN simp del: example_auth_graph2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN_in_subjectReads_High:
+  "partition_label NTFN \<in> subjectReads example_auth_graph2 (partition_label High)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN \<in> subjectReads example_auth_graph2 (partition_label High)<\STATESEP>apply(fastforce intro: reads_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma SharedPage_in_subjectReads_High:
+  "partition_label SharedPage \<in> subjectReads example_auth_graph2 (partition_label High)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label SharedPage \<in> subjectReads example_auth_graph2 (partition_label High)<\STATESEP>apply(fastforce intro: reads_read_thread_read_pages)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Low_in_subjectReads_High:
+  "partition_label Low \<in> subjectReads example_auth_graph2 (partition_label High)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label Low \<in> subjectReads example_auth_graph2 (partition_label High)<\STATESEP>apply(fastforce intro: reads_read_page_read_thread[OF SharedPage_in_subjectReads_High])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectReads_High: "subjectReads example_auth_graph2 (partition_label High) = {partition_label High,partition_label NTFN, partition_label SharedPage,partition_label Low}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectReads example_auth_graph2 (partition_label High) = {partition_label High, partition_label NTFN, partition_label SharedPage, partition_label Low}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectReads example_auth_graph2 (partition_label High) \<subseteq> {partition_label High, partition_label NTFN, partition_label SharedPage, partition_label Low}
+ 2. {partition_label High, partition_label NTFN, partition_label SharedPage, partition_label Low} \<subseteq> subjectReads example_auth_graph2 (partition_label High)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectReads example_auth_graph2 (partition_label High) \<Longrightarrow> x \<in> {partition_label High, partition_label NTFN, partition_label SharedPage, partition_label Low}
+ 2. {partition_label High, partition_label NTFN, partition_label SharedPage, partition_label Low} \<subseteq> subjectReads example_auth_graph2 (partition_label High)<\STATESEP>apply(erule subjectReads.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label High, partition_label NTFN, partition_label SharedPage, partition_label Low} \<subseteq> subjectReads example_auth_graph2 (partition_label High)<\STATESEP>apply(auto intro: NTFN_in_subjectReads_High SharedPage_in_subjectReads_High Low_in_subjectReads_High simp del: example_auth_graph2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma SharedPage_in_subjectAffects_Low:
+  "partition_label SharedPage \<in> subjectAffects example_auth_graph2 (partition_label Low)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label SharedPage \<in> subjectAffects example_auth_graph2 (partition_label Low)<\STATESEP>apply(fastforce intro: affects_write)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN_in_subjectAffects_Low:
+  "partition_label NTFN \<in> subjectAffects example_auth_graph2 (partition_label Low)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN \<in> subjectAffects example_auth_graph2 (partition_label Low)<\STATESEP>apply(fastforce intro: affects_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma High_in_subjectAffects_Low:
+  "partition_label High \<in> subjectAffects example_auth_graph2 (partition_label Low)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label High \<in> subjectAffects example_auth_graph2 (partition_label Low)<\STATESEP>apply(rule affects_send[where ep="partition_label NTFN"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. (partition_label Low, ?auth, partition_label NTFN) \<in> example_auth_graph2
+ 2. ?auth \<in> {SyncSend, Notify, Call}
+ 3. (?l', Receive, partition_label NTFN) \<in> example_auth_graph2
+ 4. (?l', Write, partition_label High) \<in> example_auth_graph2<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectAffects_Low: "subjectAffects example_auth_graph2 (partition_label Low) = {partition_label Low,partition_label NTFN,partition_label SharedPage, partition_label High}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph2 (partition_label Low) = {partition_label Low, partition_label NTFN, partition_label SharedPage, partition_label High}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph2 (partition_label Low) \<subseteq> {partition_label Low, partition_label NTFN, partition_label SharedPage, partition_label High}
+ 2. {partition_label Low, partition_label NTFN, partition_label SharedPage, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label Low)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph2 (partition_label Low) \<Longrightarrow> x \<in> {partition_label Low, partition_label NTFN, partition_label SharedPage, partition_label High}
+ 2. {partition_label Low, partition_label NTFN, partition_label SharedPage, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label Low)<\STATESEP>apply(erule subjectAffects.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label Low, partition_label NTFN, partition_label SharedPage, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label Low)<\STATESEP>apply(auto intro: affects_lrefl SharedPage_in_subjectAffects_Low NTFN_in_subjectAffects_Low High_in_subjectAffects_Low simp del: example_auth_graph2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectAffects_SharedPage: "subjectAffects example_auth_graph2 (partition_label SharedPage) = {partition_label SharedPage}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph2 (partition_label SharedPage) = {partition_label SharedPage}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph2 (partition_label SharedPage) \<subseteq> {partition_label SharedPage}
+ 2. {partition_label SharedPage} \<subseteq> subjectAffects example_auth_graph2 (partition_label SharedPage)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph2 (partition_label SharedPage) \<Longrightarrow> x \<in> {partition_label SharedPage}
+ 2. {partition_label SharedPage} \<subseteq> subjectAffects example_auth_graph2 (partition_label SharedPage)<\STATESEP>apply(erule subjectAffects.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label SharedPage} \<subseteq> subjectAffects example_auth_graph2 (partition_label SharedPage)<\STATESEP>apply(auto intro: affects_lrefl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma High_in_subjectAffects_NTFN:
+  "partition_label High \<in> subjectAffects example_auth_graph2 (partition_label NTFN)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label High \<in> subjectAffects example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(rule affects_send[where ep="partition_label NTFN"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. (partition_label NTFN, ?auth, partition_label NTFN) \<in> example_auth_graph2
+ 2. ?auth \<in> {SyncSend, Notify, Call}
+ 3. (?l', Receive, partition_label NTFN) \<in> example_auth_graph2
+ 4. (?l', Write, partition_label High) \<in> example_auth_graph2<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectAffects_NTFN: "subjectAffects example_auth_graph2 (partition_label NTFN) = {partition_label NTFN,partition_label High}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph2 (partition_label NTFN) = {partition_label NTFN, partition_label High}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph2 (partition_label NTFN) \<subseteq> {partition_label NTFN, partition_label High}
+ 2. {partition_label NTFN, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph2 (partition_label NTFN) \<Longrightarrow> x \<in> {partition_label NTFN, partition_label High}
+ 2. {partition_label NTFN, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(erule subjectAffects.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label NTFN, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label NTFN)<\STATESEP>apply(auto intro: affects_lrefl High_in_subjectAffects_NTFN simp del: example_auth_graph2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NTFN_in_subjectAffects_High:
+  "partition_label NTFN \<in> subjectAffects example_auth_graph2 (partition_label High)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partition_label NTFN \<in> subjectAffects example_auth_graph2 (partition_label High)<\STATESEP>apply(fastforce intro: affects_ep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma subjectAffects_High: "subjectAffects example_auth_graph2 (partition_label High) = {partition_label NTFN,partition_label High}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. subjectAffects example_auth_graph2 (partition_label High) = {partition_label NTFN, partition_label High}<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. subjectAffects example_auth_graph2 (partition_label High) \<subseteq> {partition_label NTFN, partition_label High}
+ 2. {partition_label NTFN, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label High)<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> subjectAffects example_auth_graph2 (partition_label High) \<Longrightarrow> x \<in> {partition_label NTFN, partition_label High}
+ 2. {partition_label NTFN, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label High)<\STATESEP>apply(erule subjectAffects.induct, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {partition_label NTFN, partition_label High} \<subseteq> subjectAffects example_auth_graph2 (partition_label High)<\STATESEP>apply(auto intro: affects_lrefl NTFN_in_subjectAffects_High simp del: example_auth_graph2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas subjectReads_2 = subjectReads_High subjectReads_Low subjectReads_NTFN subjectReads_SharedPage<\STATESEP>0<\TRANSEP><\STATESEP>declare example_auth_graph2_def [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma partsSubjectAffects_Low: "partsSubjectAffects example_auth_graph2 Low = {Partition Low, Partition High, Partition SharedPage, Partition NTFN}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph2 Low = {Partition Low, Partition High, Partition SharedPage, Partition NTFN}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads_2 subjectAffects_Low | case_tac xa, rename_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_SharedPage: "partsSubjectAffects example_auth_graph2 SharedPage = {Partition SharedPage, Partition High, Partition Low, Partition NTFN}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph2 SharedPage = {Partition SharedPage, Partition High, Partition Low, Partition NTFN}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads_2 subjectAffects_SharedPage | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_NTFN: "partsSubjectAffects example_auth_graph2 NTFN = {Partition NTFN, Partition High}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph2 NTFN = {Partition NTFN, Partition High}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads_2 subjectAffects_NTFN | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma partsSubjectAffects_High: "partsSubjectAffects example_auth_graph2 High = {Partition High, Partition NTFN}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. partsSubjectAffects example_auth_graph2 High = {Partition High, Partition NTFN}<\STATESEP>apply(auto simp: partsSubjectAffects_def image_def label_can_affect_partition_def subjectReads_2 subjectAffects_High | rename_tac xa, case_tac xa)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas partsSubjectAffects2 =
+   partsSubjectAffects_High partsSubjectAffects_Low partsSubjectAffects_NTFN
+   partsSubjectAffects_SharedPage<\STATESEP>0<\TRANSEP><\STATESEP>definition example_policy2 where
+  "example_policy2 \<equiv> {(PSched, d)|d. True} \<union>
+                     {(d,e). d = e} \<union>
+                     {(Partition Low, Partition NTFN), (Partition Low, Partition SharedPage),
+                      (Partition Low, Partition High)} \<union>
+                     {(Partition SharedPage,Partition High), (Partition SharedPage, Partition Low),
+                      (Partition SharedPage,Partition NTFN)} \<union>
+                     {(Partition NTFN, Partition High)} \<union>
+                     {(Partition High, Partition NTFN)}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "policyFlows example_auth_graph2 = example_policy2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. policyFlows example_auth_graph2 = example_policy2<\STATESEP>apply(rule equalityI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. policyFlows example_auth_graph2 \<subseteq> example_policy2
+ 2. example_policy2 \<subseteq> policyFlows example_auth_graph2<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> policyFlows example_auth_graph2 \<Longrightarrow> x \<in> example_policy2
+ 2. example_policy2 \<subseteq> policyFlows example_auth_graph2<\STATESEP>apply(clarsimp simp: example_policy2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> policyFlows example_auth_graph2; a = Partition High \<longrightarrow> b \<noteq> Partition NTFN; a = Partition NTFN \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition Low; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition SharedPage; a = Partition Low \<longrightarrow> b \<noteq> Partition High; a \<noteq> b\<rbrakk> \<Longrightarrow> a = PSched
+ 2. example_policy2 \<subseteq> policyFlows example_auth_graph2<\STATESEP>apply(erule policyFlows.cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b d l. \<lbrakk>a = Partition High \<longrightarrow> b \<noteq> Partition NTFN; a = Partition NTFN \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition Low; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition SharedPage; a = Partition Low \<longrightarrow> b \<noteq> Partition High; a \<noteq> b; a = Partition l; b = d; d \<in> partsSubjectAffects example_auth_graph2 l\<rbrakk> \<Longrightarrow> a = PSched
+ 2. \<And>a b d. \<lbrakk>a = Partition High \<longrightarrow> b \<noteq> Partition NTFN; a = Partition NTFN \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition Low; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition SharedPage; a = Partition Low \<longrightarrow> b \<noteq> Partition High; a \<noteq> b; a = PSched; b = d\<rbrakk> \<Longrightarrow> a = PSched
+ 3. example_policy2 \<subseteq> policyFlows example_auth_graph2<\STATESEP>apply(case_tac l; auto simp: partsSubjectAffects2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b d. \<lbrakk>a = Partition High \<longrightarrow> b \<noteq> Partition NTFN; a = Partition NTFN \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition High; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition Low; a = Partition SharedPage \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition NTFN; a = Partition Low \<longrightarrow> b \<noteq> Partition SharedPage; a = Partition Low \<longrightarrow> b \<noteq> Partition High; a \<noteq> b; a = PSched; b = d\<rbrakk> \<Longrightarrow> a = PSched
+ 2. example_policy2 \<subseteq> policyFlows example_auth_graph2<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. example_policy2 \<subseteq> policyFlows example_auth_graph2<\STATESEP>apply(rule subsetI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> example_policy2 \<Longrightarrow> x \<in> policyFlows example_auth_graph2<\STATESEP>apply(clarsimp simp: example_policy2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. a = Partition High \<and> b = Partition NTFN \<or> a = Partition NTFN \<and> b = Partition High \<or> a = Partition SharedPage \<and> b = Partition High \<or> a = Partition SharedPage \<and> b = Partition Low \<or> a = Partition SharedPage \<and> b = Partition NTFN \<or> a = Partition Low \<and> b = Partition NTFN \<or> a = Partition Low \<and> b = Partition SharedPage \<or> a = Partition Low \<and> b = Partition High \<or> a = PSched \<or> a = b \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2<\STATESEP>apply(elim disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>a b. a = Partition High \<and> b = Partition NTFN \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 2. \<And>a b. a = Partition NTFN \<and> b = Partition High \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 3. \<And>a b. a = Partition SharedPage \<and> b = Partition High \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 4. \<And>a b. a = Partition SharedPage \<and> b = Partition Low \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 5. \<And>a b. a = Partition SharedPage \<and> b = Partition NTFN \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 6. \<And>a b. a = Partition Low \<and> b = Partition NTFN \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 7. \<And>a b. a = Partition Low \<and> b = Partition SharedPage \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 8. \<And>a b. a = Partition Low \<and> b = Partition High \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 9. \<And>a b. a = PSched \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 10. \<And>a b. a = b \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2<\STATESEP>apply(fastforce simp: partsSubjectAffects2 intro: policy_affects)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. a = PSched \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2
+ 2. \<And>a b. a = b \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2<\STATESEP>apply(fastforce intro: policy_scheduler)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. a = b \<Longrightarrow> (a, b) \<in> policyFlows example_auth_graph2<\STATESEP>apply(fastforce intro: policyFlows_refl refl_onD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

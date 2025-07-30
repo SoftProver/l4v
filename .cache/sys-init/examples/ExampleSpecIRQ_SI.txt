@@ -1,0 +1,961 @@
+<\STATESEP>theory ExampleSpecIRQ_SI
+imports SysInit.WellFormed_SI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>definition small_section_size :: nat
+where
+  "small_section_size = 20"<\STATESEP>0<\TRANSEP><\STATESEP>definition "guard = 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition "guard_size = 1"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_a1_size = 7"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_a2_size = 7"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_b_size = 8"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_extra_size = 2"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas constants [simp] = guard_def guard_size_def cnode_a1_size_def cnode_a2_size_def
+                          cnode_b_size_def cnode_extra_size_def<\STATESEP>0<\TRANSEP><\STATESEP>definition "tcb_a_id = 9"<\STATESEP>0<\TRANSEP><\STATESEP>definition "tcb_b_id = 10"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_a1_id = 6"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_a2_id = 7"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_b_id = 5"<\STATESEP>0<\TRANSEP><\STATESEP>definition "cnode_extra_id = 11"<\STATESEP>0<\TRANSEP><\STATESEP>definition "ep_id = 12"<\STATESEP>0<\TRANSEP><\STATESEP>definition "ntfn_id = 13"<\STATESEP>0<\TRANSEP><\STATESEP>definition "pd_a_id = 1"<\STATESEP>0<\TRANSEP><\STATESEP>definition "pt_a_id = 8"<\STATESEP>0<\TRANSEP><\STATESEP>definition "pd_b_id = 2"<\STATESEP>0<\TRANSEP><\STATESEP>definition "frame_a1_id = 3"<\STATESEP>0<\TRANSEP><\STATESEP>definition "frame_a2_id = 4"<\STATESEP>0<\TRANSEP><\STATESEP>definition "frame_b_id = 0"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas ids [simp] = tcb_a_id_def tcb_b_id_def cnode_a1_id_def
+                    cnode_a2_id_def cnode_b_id_def cnode_extra_id_def
+                    ep_id_def ntfn_id_def pd_a_id_def pt_a_id_def pd_b_id_def
+                    frame_a1_id_def frame_a2_id_def frame_b_id_def<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "tcb_a =
+  \<lparr>cdl_tcb_caps = [tcb_cspace_slot \<mapsto> CNodeCap cnode_a1_id guard guard_size cnode_a1_size,
+                   tcb_vspace_slot \<mapsto> PageDirectoryCap pd_a_id Real None,
+                   tcb_replycap_slot \<mapsto> NullCap,
+                   tcb_caller_slot \<mapsto> NullCap,
+                   tcb_ipcbuffer_slot \<mapsto> FrameCap False frame_a1_id {AllowRead, AllowWrite} small_frame_size Real None,
+                   tcb_pending_op_slot \<mapsto> NullCap,
+                   tcb_boundntfn_slot \<mapsto> NullCap],
+   cdl_tcb_fault_endpoint = 0,
+   cdl_tcb_intent = \<lparr>cdl_intent_op = None, cdl_intent_error = False, cdl_intent_cap = 0,
+                     cdl_intent_extras = [], cdl_intent_recv_slot = None\<rparr>,
+   cdl_tcb_has_fault = False,
+   cdl_tcb_domain = minBound\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "tcb_b =
+  \<lparr>cdl_tcb_caps = [tcb_cspace_slot \<mapsto> CNodeCap cnode_b_id guard guard_size cnode_b_size,
+                   tcb_vspace_slot \<mapsto> PageDirectoryCap pd_b_id Real None,
+                   tcb_replycap_slot \<mapsto> NullCap,
+                   tcb_caller_slot \<mapsto> NullCap,
+                   tcb_ipcbuffer_slot \<mapsto> FrameCap False frame_b_id {AllowRead, AllowWrite} small_section_size Real None,
+                   tcb_pending_op_slot \<mapsto> NullCap,
+                   tcb_boundntfn_slot \<mapsto> NullCap],
+   cdl_tcb_fault_endpoint = 0,
+   cdl_tcb_intent = \<lparr>cdl_intent_op = None, cdl_intent_error = False, cdl_intent_cap = 0,
+                     cdl_intent_extras = [], cdl_intent_recv_slot = None\<rparr>,
+   cdl_tcb_has_fault = False,
+   cdl_tcb_domain = minBound\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "new_cap_map sz caps \<equiv> empty_cap_map sz ++ caps"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "new_cnode sz caps \<equiv> \<lparr>cdl_cnode_caps = new_cap_map sz caps,
+                        cdl_cnode_size_bits = sz\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "cnode_a1 \<equiv>
+   new_cnode cnode_a1_size
+             [0 \<mapsto> TcbCap tcb_a_id,
+              1 \<mapsto> CNodeCap cnode_a2_id guard guard_size cnode_a2_size]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "cnode_a2 \<equiv>
+   new_cnode cnode_a2_size
+             [0 \<mapsto> EndpointCap ep_id 0 {Write},
+              2 \<mapsto> CNodeCap cnode_a1_id guard guard_size cnode_a1_size,
+              3 \<mapsto> PageDirectoryCap pd_a_id Real None,
+              4 \<mapsto> PageTableCap pt_a_id Real None,
+              8 \<mapsto> FrameCap False frame_a1_id {AllowRead, AllowWrite} small_frame_size Real None,
+              10 \<mapsto> NotificationCap ntfn_id 0 {Read},
+              11 \<mapsto> FrameCap False frame_a2_id {AllowRead, AllowWrite} small_frame_size Real None,
+              12 \<mapsto> IrqHandlerCap 4]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "cnode_b \<equiv>
+   new_cnode cnode_b_size
+             [0 \<mapsto> TcbCap tcb_b_id,
+              2 \<mapsto> CNodeCap cnode_b_id guard guard_size cnode_b_size,
+              4 \<mapsto> EndpointCap ep_id 0 {Read},
+              7 \<mapsto> PageDirectoryCap pd_b_id Real None,
+              8 \<mapsto> FrameCap False frame_b_id {AllowRead, AllowWrite} small_section_size Real None,
+              254 \<mapsto> IrqHandlerCap 254]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "cnode_extra \<equiv>
+   new_cnode cnode_extra_size
+             [0 \<mapsto> CNodeCap cnode_extra_id guard guard_size cnode_extra_size,
+              1 \<mapsto> EndpointCap ep_id 0 UNIV,
+              2 \<mapsto> NotificationCap ntfn_id 0 {Read, Write}]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "pd_a \<equiv> \<lparr>cdl_page_directory_caps = new_cap_map pd_size [0 \<mapsto> PageTableCap pt_a_id Fake None]\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "pd_b \<equiv> \<lparr>cdl_page_directory_caps = new_cap_map pd_size
+           [2 \<mapsto> FrameCap False frame_b_id {AllowRead, AllowWrite} small_section_size Fake None]\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "pt_a \<equiv> \<lparr>cdl_page_table_caps = new_cap_map pt_size
+           [0 \<mapsto> FrameCap False frame_a1_id {AllowRead, AllowWrite} small_frame_size Fake None,
+            255 \<mapsto> FrameCap False frame_a2_id {AllowRead, AllowWrite} small_frame_size Fake None]\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "empty_frame \<equiv> \<lparr>cdl_frame_size_bits = small_frame_size\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "empty_section \<equiv> \<lparr>cdl_frame_size_bits = small_section_size\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  example_irq_node :: "cdl_irq \<Rightarrow> cdl_object_id"
+where
+  "example_irq_node = (\<lambda>irq. ucast irq + 0x100)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "new_irq_node obj_id \<equiv>
+    \<lparr> cdl_irq_node_caps = (\<lambda>slot. if slot = 0
+                                    then Some (NotificationCap obj_id 0 {Read, Write})
+                                    else None)\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  irq_objects :: cdl_heap
+where
+  "irq_objects \<equiv>
+  \<lambda>obj_id. if obj_id = 0x104 then Some (IRQNode (new_irq_node ntfn_id))
+           else if 0x100 \<le> obj_id \<and> obj_id < 0x200 then (Some (IRQNode empty_irq_node))
+           else None"<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  "irq_objects =
+  (\<lambda>obj_id. if 0x100 \<le> obj_id \<and> obj_id < 0x200
+            then (Some (IRQNode empty_irq_node))
+            else None) ++
+  (\<lambda>obj_id. if obj_id = 0x104 then Some (IRQNode (new_irq_node ntfn_id))
+           else None)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_objects = (\<lambda>obj_id. if 0x100 \<le> obj_id \<and> obj_id < 0x200 then Some (IRQNode empty_irq_node) else None) ++ (\<lambda>obj_id. if obj_id = 0x104 then Some (IRQNode (new_irq_node ntfn_id)) else None)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. irq_objects x = ((\<lambda>obj_id. if 0x100 \<le> obj_id \<and> obj_id < 0x200 then Some (IRQNode empty_irq_node) else None) ++ (\<lambda>obj_id. if obj_id = 0x104 then Some (IRQNode (new_irq_node ntfn_id)) else None)) x<\STATESEP>apply (clarsimp simp: irq_objects_def map_add_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "example_spec =
+  \<lparr>cdl_arch = ARM11,
+   cdl_objects = [tcb_a_id    \<mapsto> Tcb tcb_a,
+                  tcb_b_id    \<mapsto> Tcb tcb_b,
+                  pd_a_id     \<mapsto> PageDirectory pd_a,
+                  pt_a_id     \<mapsto> PageTable pt_a,
+                  pd_b_id     \<mapsto> PageDirectory pd_b,
+                  cnode_a1_id \<mapsto> CNode cnode_a1,
+                  cnode_a2_id \<mapsto> CNode cnode_a2,
+                  cnode_b_id  \<mapsto> CNode cnode_b,
+                  cnode_extra_id \<mapsto> CNode cnode_extra,
+                  frame_a1_id \<mapsto> Frame empty_frame,
+                  frame_a2_id \<mapsto> Frame empty_frame,
+                  frame_b_id  \<mapsto> Frame empty_section,
+                  ep_id       \<mapsto> Endpoint,
+                  ntfn_id      \<mapsto> Notification,
+                  0x104       \<mapsto> IRQNode (new_irq_node ntfn_id),
+                  0x1FE       \<mapsto> IRQNode empty_irq_node],
+   cdl_cdt = [(cnode_a2_id, 0)  \<mapsto> (cnode_extra_id, 1),
+              (cnode_b_id,  4)  \<mapsto> (cnode_extra_id, 1),
+              (cnode_a2_id, 10) \<mapsto> (cnode_extra_id, 2)], \<comment> \<open>All caps are orig caps,
+                                                            except endpoints and notifications.\<close>
+   cdl_current_thread = undefined,
+   cdl_irq_node = example_irq_node,
+   cdl_asid_table = undefined,
+   cdl_current_domain = minBound\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cnode_defs = cnode_a1_def cnode_a2_def cnode_b_def cnode_extra_def<\STATESEP>0<\TRANSEP><\STATESEP>lemmas obj_defs   = cnode_defs tcb_a_def tcb_b_def pd_a_def pd_b_def pt_a_def<\STATESEP>0<\TRANSEP><\STATESEP>lemmas example_spec_def_expanded = example_spec_def
+  [unfolded obj_defs tcb_slot_defs tcb_pending_op_slot_def
+             new_cnode_def new_cap_map_def empty_cap_map_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_has_object_IrqHandlerCap [simp]:
+  "\<not>cap_has_object (IrqHandlerCap irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> cap_has_object (IrqHandlerCap irq)<\STATESEP>by (clarsimp simp: cap_has_object_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma badge_bits_2p [simp]:
+  "(0::word32) < 2 ^ badge_bits"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < 2 ^ badge_bits<\STATESEP>by (clarsimp simp: p2_gt_0 badge_bits_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_cnode_size_bits_new_cnode [simp]:
+  "cdl_cnode_size_bits (new_cnode sz caps) = sz"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_cnode_size_bits (new_cnode sz caps) = sz<\STATESEP>by (clarsimp simp: new_cnode_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cnode_cap_size_simps [simp]:
+  "cnode_cap_size (CNodeCap a b c sz) = sz"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cnode_cap_size (CNodeCap a b c sz) = sz<\STATESEP>by (clarsimp simp: cnode_cap_size_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_size_bits_new_cnode [simp]:
+  "object_size_bits (CNode (new_cnode sz caps)) = sz"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_size_bits (CNode (new_cnode sz caps)) = sz<\STATESEP>by (clarsimp simp: object_size_bits_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_Endpoint [simp]:
+  "object_slots Endpoint = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots Endpoint = (\<lambda>x. None)<\STATESEP>by (simp add: object_slots_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_frame_size_bits_empty_frame [simp]:
+  "cdl_frame_size_bits empty_frame = small_frame_size"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_frame_size_bits empty_frame = small_frame_size<\STATESEP>by (simp add: empty_frame_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_frame_size_bits_empty_section [simp]:
+  "cdl_frame_size_bits empty_section = small_section_size"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_frame_size_bits empty_section = small_section_size<\STATESEP>by (simp add: empty_section_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_empty_objects [simp]:
+  "object_slots (Frame f) slot = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots (Frame f) slot = None<\STATESEP>by (clarsimp simp: object_slots_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_fake_pt_cap_simps:
+  "\<not> is_fake_pt_cap (PageTableCap obj_id Real asid)"
+  "is_fake_pt_cap (PageTableCap obj_id Fake asid)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> is_fake_pt_cap (PageTableCap obj_id Real asid) &&& is_fake_pt_cap (PageTableCap obj_id Fake asid)<\STATESEP>by (clarsimp simp: is_fake_pt_cap_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma frame_cap_not_cnode:
+  "\<not>is_cnode_cap (FrameCap dev a b c d e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type (FrameCap dev a b c d e) \<noteq> Some CNodeType<\STATESEP>by (clarsimp simp: cap_type_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_cap_map_NullCap [simp]:
+  "empty_cap_map sz slot = Some cap \<Longrightarrow> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_cap_map sz slot = Some cap \<Longrightarrow> cap = NullCap<\STATESEP>by (clarsimp simp: empty_cap_map_def split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma new_cap_map_empty_NullCap [simp]:
+  "new_cap_map sz Map.empty slot = Some cap \<Longrightarrow> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. new_cap_map sz (\<lambda>x. None) slot = Some cap \<Longrightarrow> cap = NullCap<\STATESEP>by (clarsimp simp: new_cap_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma new_cap_map_slot:
+  "\<lbrakk>new_cap_map sz caps slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> caps slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>new_cap_map sz caps slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> caps slot = Some cap<\STATESEP>by (clarsimp simp: new_cap_map_def empty_cap_map_def split: option.splits if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_cnode_caps_new_cnode:
+  "\<lbrakk>cdl_cnode_caps (new_cnode sz caps) slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> caps slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_cnode_caps (new_cnode sz caps) slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> caps slot = Some cap<\STATESEP>by (clarsimp simp: new_cnode_def, erule (1) new_cap_map_slot)<\STATESEP>1<\TRANSEP><\STATESEP>lemma new_cap_map_caps_D:
+  "new_cap_map sz caps slot = Some cap \<Longrightarrow> caps slot = Some cap \<or> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. new_cap_map sz caps slot = Some cap \<Longrightarrow> caps slot = Some cap \<or> cap = NullCap<\STATESEP>by (clarsimp simp: new_cap_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_cnode_caps_new_cnode_D:
+  "\<lbrakk>cdl_cnode_caps (new_cnode sz caps) slot = Some cap\<rbrakk>
+  \<Longrightarrow> caps slot = Some cap \<or> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_cnode_caps (new_cnode sz caps) slot = Some cap \<Longrightarrow> caps slot = Some cap \<or> cap = NullCap<\STATESEP>by (clarsimp simp: new_cnode_def, erule (1) new_cap_map_slot)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_irq_node_caps_empty_irq_node_D:
+  "\<lbrakk>cdl_irq_node_caps (empty_irq_node) slot = Some cap\<rbrakk>
+  \<Longrightarrow> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_irq_node_caps empty_irq_node slot = Some cap \<Longrightarrow> cap = NullCap<\STATESEP>by (clarsimp simp: empty_irq_node_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_new_cnode_D:
+  "object_slots (CNode (new_cnode sz caps)) slot = Some cap
+  \<Longrightarrow> caps slot = Some cap \<or> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots (CNode (new_cnode sz caps)) slot = Some cap \<Longrightarrow> caps slot = Some cap \<or> cap = NullCap<\STATESEP>by (clarsimp simp: object_slots_def dest!: cdl_cnode_caps_new_cnode_D)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_new_cnode_cap_has_object [dest!]:
+  "\<lbrakk>object_slots (CNode (new_cnode sz caps)) slot = Some cap; cap_has_object cap\<rbrakk>
+  \<Longrightarrow> caps slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>object_slots (CNode (new_cnode sz caps)) slot = Some cap; cap_has_object cap\<rbrakk> \<Longrightarrow> caps slot = Some cap<\STATESEP>by (clarsimp simp: object_slots_def dest!: cdl_cnode_caps_new_cnode_D)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_cnode_caps_empty_cnode [dest!]:
+  "cdl_cnode_caps (empty_cnode sz) slot = Some cap \<Longrightarrow> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_cnode_caps (empty_cnode sz) slot = Some cap \<Longrightarrow> cap = NullCap<\STATESEP>by (clarsimp simp: empty_cnode_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_cnode_caps_new_cnode_cnode_cap:
+  "\<lbrakk>cdl_cnode_caps (new_cnode sz caps) slot = Some cap; is_cnode_cap cap\<rbrakk>
+  \<Longrightarrow> caps slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_cnode_caps (new_cnode sz caps) slot = Some cap; is_cnode_cap cap\<rbrakk> \<Longrightarrow> caps slot = Some cap<\STATESEP>by (erule cdl_cnode_caps_new_cnode, clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_new_cnode_cnode_cap:
+  "\<lbrakk>object_slots (CNode (new_cnode sz caps)) slot = Some cap; is_cnode_cap cap\<rbrakk>
+  \<Longrightarrow> caps slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>object_slots (CNode (new_cnode sz caps)) slot = Some cap; is_cnode_cap cap\<rbrakk> \<Longrightarrow> caps slot = Some cap<\STATESEP>by (clarsimp simp: object_slots_def, erule cdl_cnode_caps_new_cnode, clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_empty_irq_node [simp, dest!]:
+  "object_slots (IRQNode empty_irq_node) slot = Some cap \<Longrightarrow> cap = NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots (IRQNode empty_irq_node) slot = Some cap \<Longrightarrow> cap = NullCap<\STATESEP>by (clarsimp simp: object_slots_def empty_irq_node_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_domain_simp [simp]:
+  "tcb_domain (Tcb \<lparr>cdl_tcb_caps = caps,
+                    cdl_tcb_fault_endpoint = 0,
+                    cdl_tcb_intent = intent,
+                    cdl_tcb_has_fault = fault,
+                    cdl_tcb_domain = domain\<rparr>) = domain"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_domain (Tcb \<lparr>cdl_tcb_caps = caps, cdl_tcb_fault_endpoint = 0, cdl_tcb_intent = intent, cdl_tcb_has_fault = fault, cdl_tcb_domain = domain\<rparr>) = domain<\STATESEP>by (simp add: tcb_domain_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_irq_node_example_spec [simp]:
+  "cdl_irq_node example_spec = example_irq_node"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_irq_node example_spec = example_irq_node<\STATESEP>by (clarsimp simp: example_spec_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_example_irq_node_helper:
+  "range example_irq_node = (\<lambda>irq. irq + 0x100) ` range (ucast :: 10 word \<Rightarrow> 32 word)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. range example_irq_node = (\<lambda>irq. irq + 0x100) ` range UCAST(10 \<rightarrow> 32)<\STATESEP>by (auto simp: example_irq_node_def image_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_example_irq_node:
+  "range example_irq_node =  {x. 0x100 \<le> x \<and> x < 0x500}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. range example_irq_node = {x. 0x100 \<le> x \<and> x < 0x500}<\STATESEP>apply (clarsimp simp: range_example_irq_node_helper ucast_range_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>x. x + 0x100) ` {x. x < 0x400} = {x. 0x100 \<le> x \<and> x < 0x500}<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {y. \<exists>x<0x400. y = x + 0x100} = {x. 0x100 \<le> x \<and> x < 0x500}<\STATESEP>apply rule<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. {y. \<exists>x<0x400. y = x + 0x100} \<subseteq> {x. 0x100 \<le> x \<and> x < 0x500}
+ 2. {x. 0x100 \<le> x \<and> x < 0x500} \<subseteq> {y. \<exists>x<0x400. y = x + 0x100}<\STATESEP>apply (clarsimp simp:  word_le_nat_alt  word_less_nat_alt unat_plus_if')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {x. 0x100 \<le> x \<and> x < 0x500} \<subseteq> {y. \<exists>x<0x400. y = x + 0x100}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>0x100 \<le> x; x < 0x500\<rbrakk> \<Longrightarrow> \<exists>xa<0x400. x = xa + 0x100<\STATESEP>apply (rule_tac x="x - 0x100" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>0x100 \<le> x; x < 0x500\<rbrakk> \<Longrightarrow> x - 0x100 < 0x400 \<and> x = x - 0x100 + 0x100<\STATESEP>apply unat_arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma irq_nodes_example_spec:
+  "irq_nodes example_spec = {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_nodes example_spec = {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE}<\STATESEP>by (auto simp: irq_nodes_def example_spec_def object_at_def is_irq_node_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma onehundred_not_le_one:
+  "\<not>(0x100 \<le> (1::32 word))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> 0x100 \<le> 1<\STATESEP>by unat_arith<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_simps [simp]:
+  "object_type (Tcb t) = TcbType"
+  "object_type (CNode c) = CNodeType"
+  "object_type (Endpoint) = EndpointType"
+  "object_type (Notification) = NotificationType"
+  "object_type (PageDirectory pd) = PageDirectoryType"
+  "object_type (PageTable pt) = PageTableType"
+  "object_type (Frame f) = FrameType (cdl_frame_size_bits f)"
+  "object_type (IRQNode empty_irq_node) = IRQNodeType"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((object_type (Tcb t) = TcbType &&& object_type (CNode c) = CNodeType) &&& object_type Endpoint = EndpointType &&& object_type Notification = NotificationType) &&& (object_type (PageDirectory pd) = PageDirectoryType &&& object_type (PageTable pt) = PageTableType) &&& object_type (Frame f) = FrameType (cdl_frame_size_bits f) &&& object_type (IRQNode empty_irq_node) = IRQNodeType<\STATESEP>by (clarsimp simp: object_type_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_irq_simp [simp]:
+  "cap_irq (IrqHandlerCap irq) = irq"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_irq (IrqHandlerCap irq) = irq<\STATESEP>by (simp add: cap_irq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_irq_node_simps [simp]:
+  "example_irq_node 4 = 0x104"
+  "example_irq_node 0xFE = 0x1FE"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. example_irq_node 4 = 0x104 &&& example_irq_node 0xFE = 0x1FE<\STATESEP>by (simp add: example_irq_node_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma irq_objects_simps [simp]:
+  "irq_objects 0 = None"
+  "irq_objects 1 = None"
+  "irq_objects 2 = None"
+  "irq_objects 3 = None"
+  "irq_objects 4 = None"
+  "irq_objects 5 = None"
+  "irq_objects 6 = None"
+  "irq_objects 7 = None"
+  "irq_objects 8 = None"
+  "irq_objects 9 = None"
+  "irq_objects 0xA = None"
+  "irq_objects 0xB = None"
+  "irq_objects 0xC = None"
+  "irq_objects 0xD = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((irq_objects 0 = None &&& irq_objects 1 = None &&& irq_objects 2 = None) &&& (irq_objects 3 = None &&& irq_objects 4 = None) &&& irq_objects 5 = None &&& irq_objects 6 = None) &&& (irq_objects 7 = None &&& irq_objects 8 = None &&& irq_objects 9 = None) &&& (irq_objects 0xA = None &&& irq_objects 0xB = None) &&& irq_objects 0xC = None &&& irq_objects 0xD = None<\STATESEP>by (clarsimp simp: irq_objects_def onehundred_not_le_one)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_example_spec [simp]:
+  "opt_cap (4, slot) example_spec = object_slots (Frame empty_frame) slot"
+  "opt_cap (5, slot) example_spec = object_slots (CNode cnode_b) slot"
+  "opt_cap (6, slot) example_spec = object_slots (CNode cnode_a1) slot"
+  "opt_cap (7, slot) example_spec = object_slots (CNode cnode_a2) slot"
+  "opt_cap (0xB, slot) example_spec = object_slots (CNode cnode_extra) slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (opt_cap (4, slot) example_spec = object_slots (Frame empty_frame) slot &&& opt_cap (5, slot) example_spec = object_slots (CNode cnode_b) slot) &&& opt_cap (6, slot) example_spec = object_slots (CNode cnode_a1) slot &&& opt_cap (7, slot) example_spec = object_slots (CNode cnode_a2) slot &&& opt_cap (0xB, slot) example_spec = object_slots (CNode cnode_extra) slot<\STATESEP>by (auto simp: example_spec_def opt_cap_def slots_of_def
+                 map_add_def  irq_objects_def
+          split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma irq_objects_some_object:
+  "irq_objects obj_id = Some obj \<Longrightarrow>
+  (obj_id = 0x104 \<and> obj = IRQNode (new_irq_node ntfn_id)) \<or> obj = IRQNode empty_irq_node"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_objects obj_id = Some obj \<Longrightarrow> obj_id = 0x104 \<and> obj = IRQNode (new_irq_node ntfn_id) \<or> obj = IRQNode empty_irq_node<\STATESEP>by (clarsimp simp: irq_objects_def split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cnode_at_example_spec:
+  "cnode_at obj_id example_spec =
+  (obj_id = cnode_a1_id \<or> obj_id = cnode_a2_id \<or> obj_id = cnode_b_id \<or> obj_id = cnode_extra_id)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cnode_at obj_id example_spec = (obj_id = cnode_a1_id \<or> obj_id = cnode_a2_id \<or> obj_id = cnode_b_id \<or> obj_id = cnode_extra_id)<\STATESEP>apply (clarsimp simp: object_at_def is_cnode_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<exists>object. cdl_objects example_spec obj_id = Some object \<and> (case object of CNode x \<Rightarrow> True | _ \<Rightarrow> False)) = (obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB)<\STATESEP>apply (auto simp: example_spec_def irq_objects_def map_add_def
+             split: if_split_asm cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma pt_at_example_spec:
+  "pt_at obj_id example_spec = (obj_id = pt_a_id)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pt_at obj_id example_spec = (obj_id = pt_a_id)<\STATESEP>apply (clarsimp simp: object_at_def is_cnode_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<exists>object. cdl_objects example_spec obj_id = Some object \<and> is_pt object) = (obj_id = 8)<\STATESEP>apply (auto simp: example_spec_def object_at_def is_pt_def irq_objects_def
+                    new_irq_node_def empty_irq_node_def
+             split: if_split_asm cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma pd_at_example_spec:
+  "pd_at obj_id example_spec = (obj_id = pd_a_id \<or> obj_id = pd_b_id)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pd_at obj_id example_spec = (obj_id = pd_a_id \<or> obj_id = pd_b_id)<\STATESEP>apply (clarsimp simp: object_at_def is_cnode_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<exists>object. cdl_objects example_spec obj_id = Some object \<and> is_pd object) = (obj_id = 1 \<or> obj_id = 2)<\STATESEP>apply (auto simp: example_spec_def object_at_def is_pd_def irq_objects_def
+                    new_irq_node_def empty_irq_node_def
+             split: if_split_asm cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma slots_of_example_spec_obj_ids:
+  "\<lbrakk>slots_of obj_id example_spec 0 = Some cap; cap \<noteq> NullCap\<rbrakk>\<Longrightarrow>
+  ((obj_id = tcb_a_id) \<or>
+  (obj_id = tcb_b_id) \<or>
+  (obj_id = cnode_a1_id) \<or>
+  (obj_id = cnode_a2_id) \<or>
+  (obj_id = cnode_b_id) \<or>
+  (obj_id = cnode_extra_id) \<or>
+  (obj_id = pd_a_id) \<or>
+  (obj_id = pt_a_id) \<or>
+  (obj_id = pd_b_id) \<or>
+  (obj_id = 0x104))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots_of obj_id example_spec 0 = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> obj_id = tcb_a_id \<or> obj_id = tcb_b_id \<or> obj_id = cnode_a1_id \<or> obj_id = cnode_a2_id \<or> obj_id = cnode_b_id \<or> obj_id = cnode_extra_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = pd_b_id \<or> obj_id = 0x104<\STATESEP>by (clarsimp simp: example_spec_def slots_of_def object_slots_def
+              split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma irq_handler_cap_example_spec:
+  "\<lbrakk>is_irqhandler_cap cap; opt_cap (obj_id, slot) example_spec = Some cap\<rbrakk>
+  \<Longrightarrow> (obj_id = cnode_a2_id \<and> slot = 12) \<or>
+      (obj_id = cnode_b_id \<and> slot = 254)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_irqhandler_cap cap; opt_cap (obj_id, slot) example_spec = Some cap\<rbrakk> \<Longrightarrow> obj_id = cnode_a2_id \<and> slot = 12 \<or> obj_id = cnode_b_id \<and> slot = 254<\STATESEP>by (clarsimp simp: example_spec_def opt_cap_def slots_of_def
+                     object_slots_def empty_irq_node_def new_irq_node_def new_cnode_def
+                     obj_defs new_cap_map_def empty_cap_map_def
+              split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma irqhandler_cap_at_example_spec:
+  "irqhandler_cap_at (obj_id, slot) example_spec
+  = ((obj_id = cnode_a2_id \<and> slot = 12) \<or>
+     (obj_id = cnode_b_id \<and> slot = 254))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irqhandler_cap_at (obj_id, slot) example_spec = (obj_id = cnode_a2_id \<and> slot = 12 \<or> obj_id = cnode_b_id \<and> slot = 254)<\STATESEP>apply (clarsimp simp: cap_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap) = (obj_id = 7 \<and> slot = 12 \<or> obj_id = 5 \<and> slot = 254)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap \<Longrightarrow> obj_id = 7 \<and> slot = 12 \<or> obj_id = 5 \<and> slot = 254
+ 2. obj_id = 7 \<and> slot = 12 \<or> obj_id = 5 \<and> slot = 254 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>cap. \<lbrakk>opt_cap (obj_id, slot) example_spec = Some cap; is_irqhandler_cap cap; obj_id = 5 \<longrightarrow> slot \<noteq> 254\<rbrakk> \<Longrightarrow> obj_id = 7 \<and> slot = 12
+ 2. obj_id = 7 \<and> slot = 12 \<or> obj_id = 5 \<and> slot = 254 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap<\STATESEP>apply (drule (1) irq_handler_cap_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>cap. \<lbrakk>opt_cap (obj_id, slot) example_spec = Some cap; obj_id = 5 \<longrightarrow> slot \<noteq> 254; obj_id = cnode_a2_id \<and> slot = 12 \<or> obj_id = cnode_b_id \<and> slot = 254\<rbrakk> \<Longrightarrow> obj_id = 7 \<and> slot = 12
+ 2. obj_id = 7 \<and> slot = 12 \<or> obj_id = 5 \<and> slot = 254 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. obj_id = 7 \<and> slot = 12 \<or> obj_id = 5 \<and> slot = 254 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. obj_id = 7 \<and> slot = 12 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap
+ 2. obj_id = 5 \<and> slot = 254 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap<\STATESEP>apply (clarsimp simp: cnode_a2_def object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. obj_id = 5 \<and> slot = 254 \<Longrightarrow> \<exists>cap. opt_cap (obj_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap<\STATESEP>apply (clarsimp simp: cnode_b_def object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_at_has_no_parents_in_cdt_example_spec:
+  "cap_at_has_no_parents_in_cdt (obj_id, slot) example_spec
+  = ((obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 0) \<and>
+     (obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 10) \<and>
+     (obj_id \<noteq> cnode_b_id \<or> slot \<noteq> 4))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_at_has_no_parents_in_cdt (obj_id, slot) example_spec = ((obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 0) \<and> (obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 10) \<and> (obj_id \<noteq> cnode_b_id \<or> slot \<noteq> 4))<\STATESEP>by (auto simp: cap_at_has_no_parents_in_cdt_def opt_parent_def example_spec_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_orig_cap_example_spec:
+  "original_cap_at (obj_id, slot) example_spec
+  = ((obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 0) \<and>
+     (obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 10) \<and>
+     (obj_id \<noteq> cnode_b_id \<or> slot \<noteq> 4))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. original_cap_at (obj_id, slot) example_spec = ((obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 0) \<and> (obj_id \<noteq> cnode_a2_id \<or> slot \<noteq> 10) \<and> (obj_id \<noteq> cnode_b_id \<or> slot \<noteq> 4))<\STATESEP>by (fastforce simp: original_cap_at_def cap_at_has_no_parents_in_cdt_example_spec irqhandler_cap_at_example_spec)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_tcb_a:
+  "well_formed_tcb example_spec obj_id (Tcb tcb_a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_tcb example_spec obj_id (Tcb tcb_a)<\STATESEP>by (auto simp: well_formed_tcb_def object_slots_def tcb_a_def tcb_slot_defs tcb_has_fault_def
+                 is_default_cap_def default_cap_def cap_type_def irq_nodes_example_spec)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_tcb_b:
+  "well_formed_tcb example_spec obj_id (Tcb tcb_b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_tcb example_spec obj_id (Tcb tcb_b)<\STATESEP>by (auto simp: well_formed_tcb_def object_slots_def tcb_b_def tcb_slot_defs tcb_has_fault_def
+                 is_default_cap_def default_cap_def cap_type_def irq_nodes_example_spec)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_orig_caps_unique_example:
+  "well_formed_orig_caps_unique example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_orig_caps_unique example_spec<\STATESEP>apply (clarsimp simp: well_formed_orig_caps_unique_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>obj_id obj_id' slot slot' cap cap'. \<lbrakk>cnode_at obj_id example_spec; cnode_at obj_id' example_spec; cap_has_object cap; cap_has_object cap'; opt_cap (obj_id, slot) example_spec = Some cap; opt_cap (obj_id', slot') example_spec = Some cap'; original_cap_at (obj_id, slot) example_spec; original_cap_at (obj_id', slot') example_spec; cap_object cap = cap_object cap'\<rbrakk> \<Longrightarrow> obj_id = obj_id' \<and> slot = slot'<\STATESEP>apply (clarsimp simp: cnode_at_example_spec is_orig_cap_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>obj_id obj_id' slot slot' cap cap'. \<lbrakk>obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; obj_id' = 6 \<or> obj_id' = 7 \<or> obj_id' = 5 \<or> obj_id' = 0xB; cap_has_object cap; cap_has_object cap'; opt_cap (obj_id, slot) example_spec = Some cap; opt_cap (obj_id', slot') example_spec = Some cap'; cap_object cap = cap_object cap'; obj_id = 7 \<longrightarrow> 0 < slot; obj_id' = 7 \<longrightarrow> 0 < slot'; obj_id = 7 \<longrightarrow> slot \<noteq> 10; obj_id = 5 \<longrightarrow> slot \<noteq> 4; obj_id' = 7 \<longrightarrow> slot' \<noteq> 10; obj_id' = 5 \<longrightarrow> slot' \<noteq> 4\<rbrakk> \<Longrightarrow> obj_id = obj_id' \<and> slot = slot'<\STATESEP>by (elim disjE, (clarsimp simp: cnode_defs split: if_split_asm)+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_fake_pt_caps_unique_example:
+  "well_formed_fake_pt_caps_unique example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_fake_pt_caps_unique example_spec<\STATESEP>apply (clarsimp simp: well_formed_fake_pt_caps_unique_def
+                         pd_at_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>obj_id obj_id' slot slot' cap cap'. (obj_id = 1 \<longrightarrow> (obj_id' = 1 \<longrightarrow> opt_cap (1, slot) example_spec = Some cap \<longrightarrow> opt_cap (1, slot') example_spec = Some cap' \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap \<longrightarrow> cap' \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap' \<longrightarrow> cap_object cap = cap_object cap' \<longrightarrow> slot = slot') \<and> (obj_id' = 2 \<longrightarrow> opt_cap (1, slot) example_spec = Some cap \<longrightarrow> opt_cap (2, slot') example_spec = Some cap' \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap \<longrightarrow> cap' \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap' \<longrightarrow> cap_object cap \<noteq> cap_object cap')) \<and> (obj_id = 2 \<longrightarrow> (obj_id' = 1 \<longrightarrow> opt_cap (2, slot) example_spec = Some cap \<longrightarrow> opt_cap (1, slot') example_spec = Some cap' \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap \<longrightarrow> cap' \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap' \<longrightarrow> cap_object cap \<noteq> cap_object cap') \<and> (obj_id' = 2 \<longrightarrow> opt_cap (2, slot) example_spec = Some cap \<longrightarrow> opt_cap (2, slot') example_spec = Some cap' \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap \<longrightarrow> cap' \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap' \<longrightarrow> cap_object cap = cap_object cap' \<longrightarrow> slot = slot'))<\STATESEP>apply (fastforce simp: example_spec_def opt_cap_def slots_of_def
+                          object_slots_def is_fake_pt_cap_simps
+                          pd_a_def pd_b_def new_cap_map_def irq_objects_def
+                   split: if_split_asm option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_orig_cap_tcb [simp]:
+  "well_formed_orig_cap (TcbCap obj_id)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_orig_cap (TcbCap obj_id)<\STATESEP>by (clarsimp simp: well_formed_orig_cap_def default_cap_def cap_type_def
+                     cap_rights_def ep_related_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_cap_ex [simp]:
+  "well_formed_cap (CNodeCap a 0 0 2)"
+  "well_formed_cap (TcbCap 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_cap (CNodeCap a 0 0 2) &&& well_formed_cap (TcbCap 0)<\STATESEP>by (clarsimp simp: well_formed_cap_def guard_bits_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_cap_example [simp]:
+  "\<lbrakk>cdl_objects example_spec obj_id = Some obj;
+    object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk>
+  \<Longrightarrow> well_formed_cap cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap cap<\STATESEP>apply (clarsimp simp: well_formed_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> case cap of EndpointCap x b xa \<Rightarrow> b < 2 ^ badge_bits | NotificationCap x b r \<Rightarrow> b < 2 ^ badge_bits \<and> r \<subseteq> {AllowRead, AllowWrite} | CNodeCap x g gs sz \<Rightarrow> gs < guard_bits \<and> g < 2 ^ gs \<and> sz + gs \<le> 32 | TcbCap x \<Rightarrow> True | IrqHandlerCap x \<Rightarrow> True | FrameCap x xa r xb xc ad \<Rightarrow> r \<in> {vm_read_write, vm_read_only} \<and> ad = None | PageTableCap x xa ad \<Rightarrow> ad = None | PageDirectoryCap x xa ad \<Rightarrow> ad = None | _ \<Rightarrow> False<\STATESEP>by (clarsimp simp: well_formed_cap_def example_spec_def
+                     obj_defs new_cap_map_def new_irq_node_def new_cnode_def
+                     object_slots_def empty_cap_map_def guard_bits_def
+                     tcb_slot_defs vm_read_write_def
+              split: cdl_cap.splits if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_cdt_example [simp]:
+  "\<lbrakk>cdl_objects example_spec obj_id = Some obj;
+    object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk>
+  \<Longrightarrow> well_formed_cdt example_spec (obj_id, slot) cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cdt example_spec (obj_id, slot) cap<\STATESEP>apply (clarsimp simp: well_formed_cdt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cnode_at obj_id example_spec; cap_has_object cap\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. cnode_at orig_obj_id example_spec \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (clarsimp simp: cnode_at_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (case_tac "(obj_id = cnode_a2_id \<and> slot = 0) \<or>
+                   (obj_id = cnode_b_id \<and> slot = 4)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (rule_tac x=cnode_extra_id in exI, clarsimp, rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<and> slot = 0 \<or> obj_id = 5 \<and> slot = 4\<rbrakk> \<Longrightarrow> \<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<and> slot = 0 \<or> obj_id = 5 \<and> slot = 4\<rbrakk> \<Longrightarrow> \<exists>orig_slot. original_cap_at (0xB, orig_slot) example_spec \<and> (\<exists>orig_cap. object_slots (CNode cnode_extra) orig_slot = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)
+ 3. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<and> slot = 0 \<or> obj_id = 5 \<and> slot = 4\<rbrakk> \<Longrightarrow> \<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj<\STATESEP>by (fastforce simp: example_spec_def cnode_defs
+                    split: if_split_asm)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<and> slot = 0 \<or> obj_id = 5 \<and> slot = 4\<rbrakk> \<Longrightarrow> \<exists>orig_slot. original_cap_at (0xB, orig_slot) example_spec \<and> (\<exists>orig_cap. object_slots (CNode cnode_extra) orig_slot = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (rule_tac x=1 in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<and> slot = 0 \<or> obj_id = 5 \<and> slot = 4\<rbrakk> \<Longrightarrow> original_cap_at (0xB, 1) example_spec \<and> (\<exists>orig_cap. object_slots (CNode cnode_extra) 1 = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (clarsimp simp: is_orig_cap_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<and> slot = 0 \<or> obj_id = 5 \<and> slot = 4\<rbrakk> \<Longrightarrow> \<exists>orig_cap. object_slots (CNode cnode_extra) (Suc 0) = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (clarsimp simp: example_spec_def opt_cap_def slots_of_def
+                         cnode_defs object_slots_def new_cnode_def new_cap_map_def
+                         irq_objects_def map_add_def empty_irq_node_def
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (case_tac "(obj_id = cnode_a2_id \<and> slot = 10)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); obj_id = cnode_a2_id \<and> slot = 10\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); \<not> (obj_id = cnode_a2_id \<and> slot = 10)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (rule_tac x=cnode_extra_id in exI, clarsimp, rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec 7 = Some obj; object_slots obj 10 = Some cap; cap_has_object cap; obj_id = 7; slot = 10\<rbrakk> \<Longrightarrow> \<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj
+ 2. \<lbrakk>cdl_objects example_spec 7 = Some obj; object_slots obj 10 = Some cap; cap_has_object cap; obj_id = 7; slot = 10\<rbrakk> \<Longrightarrow> \<exists>orig_slot. original_cap_at (0xB, orig_slot) example_spec \<and> (\<exists>orig_cap. object_slots (CNode cnode_extra) orig_slot = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)
+ 3. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); \<not> (obj_id = cnode_a2_id \<and> slot = 10)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (fastforce simp: example_spec_def cnode_defs
+                    split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec 7 = Some obj; object_slots obj 10 = Some cap; cap_has_object cap; obj_id = 7; slot = 10\<rbrakk> \<Longrightarrow> \<exists>orig_slot. original_cap_at (0xB, orig_slot) example_spec \<and> (\<exists>orig_cap. object_slots (CNode cnode_extra) orig_slot = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); \<not> (obj_id = cnode_a2_id \<and> slot = 10)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (rule_tac x=2 in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec 7 = Some obj; object_slots obj 10 = Some cap; cap_has_object cap; obj_id = 7; slot = 10\<rbrakk> \<Longrightarrow> original_cap_at (0xB, 2) example_spec \<and> (\<exists>orig_cap. object_slots (CNode cnode_extra) 2 = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); \<not> (obj_id = cnode_a2_id \<and> slot = 10)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (clarsimp simp: is_orig_cap_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec 7 = Some obj; object_slots obj 10 = Some cap; cap_has_object cap; obj_id = 7; slot = 10\<rbrakk> \<Longrightarrow> \<exists>orig_cap. object_slots (CNode cnode_extra) 2 = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); \<not> (obj_id = cnode_a2_id \<and> slot = 10)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (clarsimp simp: example_spec_def opt_cap_def slots_of_def
+                         cnode_defs object_slots_def new_cnode_def new_cap_map_def
+                         irq_objects_def map_add_def empty_irq_node_def
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; \<not> (obj_id = cnode_a2_id \<and> slot = 0 \<or> obj_id = cnode_b_id \<and> slot = 4); \<not> (obj_id = cnode_a2_id \<and> slot = 10)\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<longrightarrow> slot \<noteq> 10; obj_id = 7 \<longrightarrow> 0 < slot; obj_id = 5 \<longrightarrow> slot \<noteq> 4\<rbrakk> \<Longrightarrow> \<exists>orig_obj_id. (orig_obj_id = 6 \<or> orig_obj_id = 7 \<or> orig_obj_id = 5 \<or> orig_obj_id = 0xB) \<and> (\<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj) \<and> (\<exists>orig_slot. original_cap_at (orig_obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (orig_obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap))<\STATESEP>apply (rule_tac x=obj_id in exI, clarsimp, rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<longrightarrow> slot \<noteq> 10; obj_id = 7 \<longrightarrow> 0 < slot; obj_id = 5 \<longrightarrow> slot \<noteq> 4\<rbrakk> \<Longrightarrow> \<exists>obj. cdl_objects example_spec (cap_object cap) = Some obj
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<longrightarrow> slot \<noteq> 10; obj_id = 7 \<longrightarrow> 0 < slot; obj_id = 5 \<longrightarrow> slot \<noteq> 4\<rbrakk> \<Longrightarrow> \<exists>orig_slot. original_cap_at (obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)<\STATESEP>apply (clarsimp simp: example_spec_def cnode_defs
+                  dest!: object_slots_new_cnode_D
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB; cap_has_object cap; obj_id = 7 \<longrightarrow> slot \<noteq> 10; obj_id = 7 \<longrightarrow> 0 < slot; obj_id = 5 \<longrightarrow> slot \<noteq> 4\<rbrakk> \<Longrightarrow> \<exists>orig_slot. original_cap_at (obj_id, orig_slot) example_spec \<and> (\<exists>orig_cap. opt_cap (obj_id, orig_slot) example_spec = Some orig_cap \<and> cap_has_object orig_cap \<and> cap_object orig_cap = cap_object cap)<\STATESEP>apply (fastforce simp: is_orig_cap_example_spec opt_cap_def slots_of_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_orig_cap_example [simp]:
+  "\<lbrakk>cdl_objects example_spec obj_id = Some obj;
+    object_slots obj slot = Some cap; cap \<noteq> NullCap;
+    original_cap_at (obj_id, slot) example_spec \<rbrakk>
+   \<Longrightarrow> well_formed_orig_cap cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap; original_cap_at (obj_id, slot) example_spec\<rbrakk> \<Longrightarrow> well_formed_orig_cap cap<\STATESEP>apply (clarsimp simp: is_orig_cap_example_spec well_formed_orig_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap; obj_id = 7 \<longrightarrow> 0 < slot; obj_id = 7 \<longrightarrow> slot \<noteq> 10; obj_id = 5 \<longrightarrow> slot \<noteq> 4\<rbrakk> \<Longrightarrow> (cap_has_type cap \<longrightarrow> cap_rights (default_cap (the (cap_type cap)) undefined undefined undefined) = cap_rights cap) \<and> (ep_related_cap cap \<longrightarrow> cap_badge cap = 0)<\STATESEP>by (clarsimp simp: example_spec_def object_slots_def obj_defs new_cnode_def new_cap_map_def
+                        new_irq_node_def ep_related_cap_def cap_type_def default_cap_def cap_rights_def
+                split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_caps_example:
+  "cdl_objects example_spec obj_id = Some obj \<Longrightarrow>
+   well_formed_caps example_spec obj_id obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_caps example_spec obj_id obj<\STATESEP>apply (clarsimp simp: well_formed_caps_def, rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<not> original_cap_at (obj_id, slot) example_spec \<longrightarrow> is_copyable_cap cap
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_to_real_object example_spec cap \<and> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: is_orig_cap_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (obj_id = 7 \<and> slot = 0 \<longrightarrow> is_copyable_cap cap) \<and> (obj_id = 7 \<and> slot = 10 \<longrightarrow> is_copyable_cap cap) \<and> (obj_id = 5 \<and> slot = 4 \<longrightarrow> is_copyable_cap cap)
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_to_real_object example_spec cap \<and> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: example_spec_def obj_defs object_type_def cap_type_def object_slots_def
+                         is_copyable_cap_def
+                  dest!: cdl_cnode_caps_new_cnode_D new_cap_map_caps_D
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_to_real_object example_spec cap \<and> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_to_real_object example_spec cap
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: well_formed_cap_to_real_object_def real_object_at_def irq_nodes_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap_has_object cap\<rbrakk> \<Longrightarrow> cap_object cap \<in> dom (cdl_objects example_spec) \<and> cap_object cap \<noteq> 0x104 \<and> cap_object cap \<noteq> 0x1FE
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: example_spec_def obj_defs object_slots_def onehundred_not_le_one
+                   dest!: cdl_cnode_caps_new_cnode_D new_cap_map_caps_D
+                          irq_objects_some_object cdl_irq_node_caps_empty_irq_node_D
+                   split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_irq_node_caps (new_irq_node 0xD) slot = Some cap; cap_has_object cap; obj_id = 0x104; obj = IRQNode (new_irq_node 0xD)\<rbrakk> \<Longrightarrow> (cap_object cap = 0x1FE \<or> cap_object cap = 0x104 \<or> cap_object cap = 0xD \<or> cap_object cap = 0xC \<or> cap_object cap = 0 \<or> cap_object cap = 4 \<or> cap_object cap = 3 \<or> cap_object cap = 0xB \<or> cap_object cap = 5 \<or> cap_object cap = 7 \<or> cap_object cap = 6 \<or> cap_object cap = 2 \<or> cap_object cap = 8 \<or> cap_object cap = 1 \<or> cap_object cap = 0xA \<or> cap_object cap = 9) \<and> cap_object cap \<noteq> 0x104 \<and> cap_object cap \<noteq> 0x1FE
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (fastforce simp: new_irq_node_def empty_irq_node_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_types_match example_spec cap \<and> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> well_formed_cap_types_match example_spec cap
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: well_formed_cap_types_match_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (cap_has_object cap \<longrightarrow> (\<exists>cap_obj. cdl_objects example_spec (cap_object cap) = Some cap_obj \<and> cap_type cap = Some (object_type cap_obj))) \<and> (is_irqhandler_cap cap \<longrightarrow> (\<exists>cap_obj. cdl_objects example_spec (example_irq_node (cap_irq cap)) = Some cap_obj \<and> IRQNodeType = object_type cap_obj))
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> cap_has_object cap \<longrightarrow> (\<exists>cap_obj. cdl_objects example_spec (cap_object cap) = Some cap_obj \<and> cap_type cap = Some (object_type cap_obj))
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> is_irqhandler_cap cap \<longrightarrow> (\<exists>cap_obj. cdl_objects example_spec (example_irq_node (cap_irq cap)) = Some cap_obj \<and> IRQNodeType = object_type cap_obj)
+ 3. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: example_spec_def object_slots_def obj_defs
+                           irq_objects_def map_add_def new_irq_node_def
+                           onehundred_not_le_one
+                    dest!: cdl_cnode_caps_new_cnode_D new_cap_map_caps_D
+                           cdl_irq_node_caps_empty_irq_node_D
+                    split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> is_irqhandler_cap cap \<longrightarrow> (\<exists>cap_obj. cdl_objects example_spec (example_irq_node (cap_irq cap)) = Some cap_obj \<and> IRQNodeType = object_type cap_obj)
+ 2. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>apply (clarsimp simp: example_spec_def object_slots_def obj_defs
+                         irq_objects_def map_add_def new_irq_node_def
+                         onehundred_not_le_one object_type_def
+                  dest!: cdl_cnode_caps_new_cnode_D new_cap_map_caps_D cdl_irq_node_caps_empty_irq_node_D
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot cap. \<lbrakk>cdl_objects example_spec obj_id = Some obj; object_slots obj slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> (is_cnode obj \<longrightarrow> \<not> is_fake_vm_cap cap) \<and> (is_tcb obj \<longrightarrow> \<not> is_fake_vm_cap cap)<\STATESEP>by (clarsimp simp: example_spec_def obj_defs is_cnode_def is_tcb_def is_fake_vm_cap_def
+                         object_slots_def object_type_def cap_type_def new_irq_node_def
+                         empty_irq_node_def empty_cnode_def
+                  dest!: cdl_cnode_caps_new_cnode_D irq_objects_some_object cdl_irq_node_caps_empty_irq_node_D
+                  split: if_split_asm cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma real_object_at_example_spec:
+  "real_object_at obj_id example_spec =
+  ((obj_id = tcb_a_id) \<or>
+  (obj_id = tcb_b_id) \<or>
+  (obj_id = cnode_a1_id) \<or>
+  (obj_id = cnode_a2_id) \<or>
+  (obj_id = cnode_b_id) \<or>
+  (obj_id = cnode_extra_id) \<or>
+  (obj_id = ep_id) \<or>
+  (obj_id = ntfn_id) \<or>
+  (obj_id = pd_a_id) \<or>
+  (obj_id = pt_a_id) \<or>
+  (obj_id = pd_b_id) \<or>
+  (obj_id = frame_a1_id) \<or>
+  (obj_id = frame_a2_id) \<or>
+  (obj_id = frame_b_id))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. real_object_at obj_id example_spec = (obj_id = tcb_a_id \<or> obj_id = tcb_b_id \<or> obj_id = cnode_a1_id \<or> obj_id = cnode_a2_id \<or> obj_id = cnode_b_id \<or> obj_id = cnode_extra_id \<or> obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = pd_b_id \<or> obj_id = frame_a1_id \<or> obj_id = frame_a2_id \<or> obj_id = frame_b_id)<\STATESEP>apply (clarsimp simp: real_object_at_def irq_nodes_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (obj_id \<in> dom (cdl_objects example_spec) \<and> obj_id \<noteq> 0x104 \<and> obj_id \<noteq> 0x1FE) = (obj_id = 9 \<or> obj_id = 0xA \<or> obj_id = 6 \<or> obj_id = 7 \<or> obj_id = 5 \<or> obj_id = 0xB \<or> obj_id = 0xC \<or> obj_id = 0xD \<or> obj_id = 1 \<or> obj_id = 8 \<or> obj_id = 2 \<or> obj_id = 3 \<or> obj_id = 4 \<or> obj_id = 0)<\STATESEP>apply (clarsimp simp: example_spec_def irq_objects_def dom_def onehundred_not_le_one
+                 split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma real_object_at_example_spec_simp [simp]:
+  "real_object_at 0 example_spec"
+  "real_object_at 1 example_spec = True"
+  "real_object_at 2 example_spec"
+  "real_object_at 3 example_spec"
+  "real_object_at 4 example_spec"
+  "real_object_at 5 example_spec"
+  "real_object_at 6 example_spec"
+  "real_object_at 7 example_spec"
+  "real_object_at 8 example_spec"
+  "real_object_at 9 example_spec"
+  "real_object_at 0xA example_spec"
+  "real_object_at 0xB example_spec"
+  "real_object_at 0xC example_spec"
+  "real_object_at 0xD example_spec"
+  "\<not>real_object_at 0x104 example_spec"
+  "\<not>real_object_at 0x1FE example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (((real_object_at 0 example_spec &&& real_object_at 1 example_spec = True) &&& real_object_at 2 example_spec &&& real_object_at 3 example_spec) &&& (real_object_at 4 example_spec &&& real_object_at 5 example_spec) &&& real_object_at 6 example_spec &&& real_object_at 7 example_spec) &&& ((real_object_at 8 example_spec &&& real_object_at 9 example_spec) &&& real_object_at 0xA example_spec &&& real_object_at 0xB example_spec) &&& (real_object_at 0xC example_spec &&& real_object_at 0xD example_spec) &&& \<not> real_object_at 0x104 example_spec &&& \<not> real_object_at 0x1FE example_spec<\STATESEP>by (clarsimp simp: real_object_at_example_spec)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma cdl_objects_example_spec_simps [simp]:
+  "cdl_objects example_spec 4 = Some (Frame empty_frame)"
+  "cdl_objects example_spec 0xD = Some Notification"
+  "cdl_objects example_spec 0x1FE = Some (IRQNode empty_irq_node)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec 4 = Some (Frame empty_frame) &&& cdl_objects example_spec 0xD = Some Notification &&& cdl_objects example_spec 0x1FE = Some (IRQNode empty_irq_node)<\STATESEP>by (clarsimp simp: example_spec_def map_add_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_cap_to_object_example:
+  "cdl_objects example_spec obj_id = Some obj
+   \<Longrightarrow> well_formed_cap_to_object example_spec obj_id obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_cap_to_object example_spec obj_id obj<\STATESEP>apply (clarsimp simp: well_formed_cap_to_object_def is_orig_cap_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> (\<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)) \<and> (\<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap)<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = ep_id \<or>
+                    obj_id = ntfn_id \<or>
+                    obj_id = cnode_extra_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_extra_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_extra_id, slot) example_spec = Some cap \<and> (cnode_extra_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_extra_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_extra_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_extra_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_extra_def
+                           object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = tcb_b_id \<or>
+                    obj_id = cnode_b_id \<or>
+                    obj_id = pd_b_id \<or>
+                    obj_id = frame_b_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_b_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_b_id, slot) example_spec = Some cap \<and> (cnode_b_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_b_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_b_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_b_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_b_def
+                          object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = tcb_a_id \<or>
+                    obj_id = cnode_a2_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); obj_id = tcb_a_id \<or> obj_id = cnode_a2_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_a1_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); obj_id = tcb_a_id \<or> obj_id = cnode_a2_id\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_a1_id, slot) example_spec = Some cap \<and> (cnode_a1_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_a1_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_a1_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_a1_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_a1_def
+                          object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = cnode_a1_id \<or>
+                    obj_id = pd_a_id \<or>
+                    obj_id = pt_a_id \<or>
+                    obj_id = frame_a1_id \<or>
+                    obj_id = ep_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_a2_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_a2_id, slot) example_spec = Some cap \<and> (cnode_a2_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_a2_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_a2_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_a2_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_a2_def
+                           object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id)\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = frame_a2_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id = frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_a2_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id = frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_a2_id, slot) example_spec = Some cap \<and> (cnode_a2_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_a2_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_a2_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_a2_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=11 in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id = frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>cap. opt_cap (cnode_a2_id, 11) example_spec = Some cap \<and> (cnode_a2_id = 7 \<longrightarrow> 0 < 11) \<and> (cnode_a2_id = 7 \<longrightarrow> 11 \<noteq> 10) \<and> (cnode_a2_id = 5 \<longrightarrow> 11 \<noteq> 4) \<and> cnode_at cnode_a2_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_a2_def
+                           object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = 0x104")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id = 0x104\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_a2_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id = 0x104\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_a2_id, slot) example_spec = Some cap \<and> (cnode_a2_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_a2_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_a2_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_a2_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=12 in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id = 0x104\<rbrakk> \<Longrightarrow> \<exists>cap. opt_cap (cnode_a2_id, 12) example_spec = Some cap \<and> (cnode_a2_id = 7 \<longrightarrow> 0 < 12) \<and> (cnode_a2_id = 7 \<longrightarrow> 12 \<noteq> 10) \<and> (cnode_a2_id = 5 \<longrightarrow> 12 \<noteq> 4) \<and> cnode_at cnode_a2_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_a2_def
+                           object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (case_tac "obj_id = 0x1FE")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104; obj_id = 0x1FE\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104; obj_id \<noteq> 0x1FE\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (rule_tac x=cnode_b_id in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104; obj_id = 0x1FE\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (cnode_b_id, slot) example_spec = Some cap \<and> (cnode_b_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_b_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_b_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_b_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104; obj_id \<noteq> 0x1FE\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 3. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (fastforce simp: cnode_at_example_spec cnode_b_def
+                           object_slots_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; \<not> (obj_id = ep_id \<or> obj_id = ntfn_id \<or> obj_id = cnode_extra_id); \<not> (obj_id = tcb_b_id \<or> obj_id = cnode_b_id \<or> obj_id = pd_b_id \<or> obj_id = frame_b_id); \<not> (obj_id = tcb_a_id \<or> obj_id = cnode_a2_id); \<not> (obj_id = cnode_a1_id \<or> obj_id = pd_a_id \<or> obj_id = pt_a_id \<or> obj_id = frame_a1_id \<or> obj_id = ep_id); obj_id \<noteq> frame_a2_id; obj_id \<noteq> 0x104; obj_id \<noteq> 0x1FE\<rbrakk> \<Longrightarrow> \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> (cnode_id = 7 \<longrightarrow> 0 < slot) \<and> (cnode_id = 7 \<longrightarrow> slot \<noteq> 10) \<and> (cnode_id = 5 \<longrightarrow> slot \<noteq> 4) \<and> cnode_at cnode_id example_spec \<and> (real_object_at obj_id example_spec \<longrightarrow> cap_object cap = obj_id \<and> cap_has_object cap) \<and> (\<not> real_object_at obj_id example_spec \<longrightarrow> is_irqhandler_cap cap \<and> example_irq_node (cap_irq cap) = obj_id)
+ 2. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (clarsimp simp: example_spec_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> \<forall>a b cap. opt_cap (a, b) example_spec = Some cap \<and> is_cnode_cap cap \<and> cap_object cap = obj_id \<longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b cap. \<lbrakk>cdl_objects example_spec (cap_object cap) = Some obj; opt_cap (a, b) example_spec = Some cap; is_cnode_cap cap; obj_id = cap_object cap\<rbrakk> \<Longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>apply (clarsimp simp: example_spec_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b cap. \<lbrakk>(if cap_object cap = 0x1FE then Some (IRQNode empty_irq_node) else [9 \<mapsto> Tcb tcb_a, 0xA \<mapsto> Tcb tcb_b, 1 \<mapsto> PageDirectory pd_a, 8 \<mapsto> PageTable pt_a, 2 \<mapsto> PageDirectory pd_b, 6 \<mapsto> CNode cnode_a1, 7 \<mapsto> CNode cnode_a2, 5 \<mapsto> CNode cnode_b, 0xB \<mapsto> CNode cnode_extra, 3 \<mapsto> Frame empty_frame, 4 \<mapsto> Frame empty_frame, 0 \<mapsto> Frame empty_section, 0xC \<mapsto> Endpoint, 0xD \<mapsto> Notification, 0x104 \<mapsto> IRQNode (new_irq_node 0xD)] (cap_object cap)) = Some obj; opt_cap (a, b) \<lparr>cdl_arch = ARM11, cdl_objects = [9 \<mapsto> Tcb tcb_a, 0xA \<mapsto> Tcb tcb_b, 1 \<mapsto> PageDirectory pd_a, 8 \<mapsto> PageTable pt_a, 2 \<mapsto> PageDirectory pd_b, 6 \<mapsto> CNode cnode_a1, 7 \<mapsto> CNode cnode_a2, 5 \<mapsto> CNode cnode_b, 0xB \<mapsto> CNode cnode_extra, 3 \<mapsto> Frame empty_frame, 4 \<mapsto> Frame empty_frame, 0 \<mapsto> Frame empty_section, 0xC \<mapsto> Endpoint, 0xD \<mapsto> Notification, 0x104 \<mapsto> IRQNode (new_irq_node 0xD), 0x1FE \<mapsto> IRQNode empty_irq_node], cdl_cdt = [(7, 0) \<mapsto> (0xB, Suc 0), (5, 4) \<mapsto> (0xB, Suc 0), (7, 10) \<mapsto> (0xB, 2)], cdl_current_thread = undefined, cdl_irq_node = example_irq_node, cdl_asid_table = undefined, cdl_current_domain = minBound\<rparr> = Some cap; is_cnode_cap cap; obj_id = cap_object cap\<rbrakk> \<Longrightarrow> object_size_bits obj = cnode_cap_size cap<\STATESEP>by (clarsimp simp: opt_cap_def slots_of_def obj_defs
+                        object_slots_def object_size_bits_def
+                        new_cap_map_def empty_cap_map_def frame_cap_not_cnode
+                        empty_irq_node_def new_irq_node_def
+                 split: if_split_asm
+       | drule (1) cdl_cnode_caps_new_cnode_cnode_cap)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_cap_to_non_empty_pt_example:
+  "cdl_objects example_spec obj_id = Some obj \<Longrightarrow>
+    well_formed_cap_to_non_empty_pt example_spec obj_id obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_cap_to_non_empty_pt example_spec obj_id obj<\STATESEP>apply (clarsimp simp: well_formed_cap_to_non_empty_pt_def pt_at_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec 8 = Some obj; obj_id = 8; object_default_state obj \<noteq> obj\<rbrakk> \<Longrightarrow> \<exists>pd_id slot cap. opt_cap (pd_id, slot) example_spec = Some cap \<and> pd_at pd_id example_spec \<and> cap_object cap = 8 \<and> cap_has_object cap<\STATESEP>apply (rule exI [where x=pd_a_id])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec 8 = Some obj; obj_id = 8; object_default_state obj \<noteq> obj\<rbrakk> \<Longrightarrow> \<exists>slot cap. opt_cap (pd_a_id, slot) example_spec = Some cap \<and> pd_at pd_a_id example_spec \<and> cap_object cap = 8 \<and> cap_has_object cap<\STATESEP>apply (clarsimp simp: well_formed_cap_to_non_empty_pt_def example_spec_def is_pt_def
+                        object_at_def opt_cap_def slots_of_def object_slots_def
+                        obj_defs new_cap_map_def is_pd_def empty_cap_map_def
+              split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_vspace_example:
+  "cdl_objects example_spec obj_id = Some obj
+  \<Longrightarrow> well_formed_vspace example_spec obj_id obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_vspace example_spec obj_id obj<\STATESEP>apply (clarsimp simp: well_formed_vspace_def well_formed_cap_to_non_empty_pt_example)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot cap. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> (is_pt obj \<longrightarrow> object_slots obj slot = Some cap \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> (\<exists>sz. cap_type cap = Some (FrameType sz) \<and> (sz = 12 \<or> sz = 16) \<and> is_fake_vm_cap cap)) \<and> (is_pd obj \<longrightarrow> object_slots obj slot = Some cap \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_fake_pt_cap cap \<or> (\<exists>sz. cap_type cap = Some (FrameType sz) \<and> (sz = 20 \<or> sz = 24) \<and> is_fake_vm_cap cap))<\STATESEP>apply (clarsimp simp: example_spec_def is_pt_def is_pd_def object_slots_def empty_cap_map_def
+                        new_irq_node_def
+                 split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>slot cap. \<lbrakk>obj_id = 2; obj = PageDirectory pd_b; cdl_page_directory_caps pd_b slot = Some cap; cap \<noteq> NullCap; \<forall>sz. cap_type cap = Some (FrameType sz) \<longrightarrow> sz \<noteq> 20 \<and> sz \<noteq> 24 \<or> \<not> is_fake_vm_cap cap\<rbrakk> \<Longrightarrow> is_fake_pt_cap cap
+ 2. \<And>slot cap. \<lbrakk>obj_id = 8; obj = PageTable pt_a; cdl_page_table_caps pt_a slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<exists>sz. cap_type cap = Some (FrameType sz) \<and> (sz = 12 \<or> sz = 16) \<and> is_fake_vm_cap cap
+ 3. \<And>slot cap. \<lbrakk>obj_id = 1; obj = PageDirectory pd_a; cdl_page_directory_caps pd_a slot = Some cap; cap \<noteq> NullCap; \<forall>sz. cap_type cap = Some (FrameType sz) \<longrightarrow> sz \<noteq> 20 \<and> sz \<noteq> 24 \<or> \<not> is_fake_vm_cap cap\<rbrakk> \<Longrightarrow> is_fake_pt_cap cap<\STATESEP>apply (fastforce simp: cap_type_def is_fake_vm_cap_def obj_defs new_cap_map_def small_section_size_def
+                    split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>slot cap. \<lbrakk>obj_id = 8; obj = PageTable pt_a; cdl_page_table_caps pt_a slot = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<exists>sz. cap_type cap = Some (FrameType sz) \<and> (sz = 12 \<or> sz = 16) \<and> is_fake_vm_cap cap
+ 2. \<And>slot cap. \<lbrakk>obj_id = 1; obj = PageDirectory pd_a; cdl_page_directory_caps pd_a slot = Some cap; cap \<noteq> NullCap; \<forall>sz. cap_type cap = Some (FrameType sz) \<longrightarrow> sz \<noteq> 20 \<and> sz \<noteq> 24 \<or> \<not> is_fake_vm_cap cap\<rbrakk> \<Longrightarrow> is_fake_pt_cap cap<\STATESEP>apply (clarsimp simp: obj_defs new_cap_map_def cap_type_def small_frame_size_def
+                         is_fake_vm_cap_def is_fake_pt_cap_simps small_section_size_def
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot cap. \<lbrakk>obj_id = 1; obj = PageDirectory pd_a; cdl_page_directory_caps pd_a slot = Some cap; cap \<noteq> NullCap; \<forall>sz. cap_type cap = Some (FrameType sz) \<longrightarrow> sz \<noteq> 20 \<and> sz \<noteq> 24 \<or> \<not> is_fake_vm_cap cap\<rbrakk> \<Longrightarrow> is_fake_pt_cap cap<\STATESEP>apply (clarsimp simp: obj_defs new_cap_map_def cap_type_def small_frame_size_def
+                        is_fake_vm_cap_def is_fake_pt_cap_simps small_section_size_def
+                 split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_irqhandler_caps_unique_example_spec:
+  "well_formed_irqhandler_caps_unique example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_irqhandler_caps_unique example_spec<\STATESEP>apply (clarsimp simp: well_formed_irqhandler_caps_unique_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>obj_id obj_id' slot slot' cap cap'. \<lbrakk>opt_cap (obj_id, slot) example_spec = Some cap; opt_cap (obj_id', slot') example_spec = Some cap'; is_irqhandler_cap cap; is_irqhandler_cap cap'; cap_irq cap = cap_irq cap'\<rbrakk> \<Longrightarrow> obj_id = obj_id' \<and> slot = slot'<\STATESEP>apply (drule (1) irq_handler_cap_example_spec)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>obj_id obj_id' slot slot' cap cap'. \<lbrakk>opt_cap (obj_id, slot) example_spec = Some cap; opt_cap (obj_id', slot') example_spec = Some cap'; cap_irq cap = cap_irq cap'; obj_id = cnode_a2_id \<and> slot = 12 \<or> obj_id = cnode_b_id \<and> slot = 254; obj_id' = cnode_a2_id \<and> slot' = 12 \<or> obj_id' = cnode_b_id \<and> slot' = 254\<rbrakk> \<Longrightarrow> obj_id = obj_id' \<and> slot = slot'<\STATESEP>by (clarsimp simp: example_spec_def opt_cap_def slots_of_def
+                        object_slots_def obj_defs
+                        new_cnode_def new_cap_map_def
+                 split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ucast_0xFE:
+  "(ucast :: 8 word \<Rightarrow> 32 word) irq = 0xFE \<Longrightarrow> irq = 0xFE"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. UCAST(8 \<rightarrow> 32) irq = 0xFE \<Longrightarrow> irq = 0xFE<\STATESEP>by (rule ucast_up_inj, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ucast_4:
+  "(ucast :: 10 word \<Rightarrow> 32 word) irq = 4 \<Longrightarrow> irq = 4"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. UCAST(10 \<rightarrow> 32) irq = 4 \<Longrightarrow> irq = 4<\STATESEP>by (rule ucast_up_inj, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma rangeD:
+  "\<lbrakk>range f = A; f x = y\<rbrakk> \<Longrightarrow> y \<in> A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>range f = A; f x = y\<rbrakk> \<Longrightarrow> y \<in> A<\STATESEP>by (fastforce simp: image_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma slots_of_example_irq_node:
+  "\<lbrakk>slots_of (example_irq_node irq) example_spec 0 = Some cap;
+    cap \<noteq> NullCap\<rbrakk>
+  \<Longrightarrow> (irq = 4)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots_of (example_irq_node irq) example_spec 0 = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> irq = 4<\STATESEP>apply (frule (1) slots_of_example_spec_obj_ids)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots_of (example_irq_node irq) example_spec 0 = Some cap; cap \<noteq> NullCap; example_irq_node irq = tcb_a_id \<or> example_irq_node irq = tcb_b_id \<or> example_irq_node irq = cnode_a1_id \<or> example_irq_node irq = cnode_a2_id \<or> example_irq_node irq = cnode_b_id \<or> example_irq_node irq = cnode_extra_id \<or> example_irq_node irq = pd_a_id \<or> example_irq_node irq = pt_a_id \<or> example_irq_node irq = pd_b_id \<or> example_irq_node irq = 0x104\<rbrakk> \<Longrightarrow> irq = 4<\STATESEP>apply (insert range_example_irq_node)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots_of (example_irq_node irq) example_spec 0 = Some cap; cap \<noteq> NullCap; example_irq_node irq = tcb_a_id \<or> example_irq_node irq = tcb_b_id \<or> example_irq_node irq = cnode_a1_id \<or> example_irq_node irq = cnode_a2_id \<or> example_irq_node irq = cnode_b_id \<or> example_irq_node irq = cnode_extra_id \<or> example_irq_node irq = pd_a_id \<or> example_irq_node irq = pt_a_id \<or> example_irq_node irq = pd_b_id \<or> example_irq_node irq = 0x104; range example_irq_node = {x. 0x100 \<le> x \<and> x < 0x500}\<rbrakk> \<Longrightarrow> irq = 4<\STATESEP>apply (erule disjE, drule (1) rangeD, simp add: onehundred_not_le_one)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots_of (example_irq_node irq) example_spec 0 = Some cap; cap \<noteq> NullCap; range example_irq_node = {x. 0x100 \<le> x \<and> x < 0x500}; example_irq_node irq = 0x104\<rbrakk> \<Longrightarrow> irq = 4<\STATESEP>apply (clarsimp simp: example_irq_node_def ucast_4)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bound_irqs_example_spec [simp]:
+  "bound_irqs example_spec = {4}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bound_irqs example_spec = {4}<\STATESEP>apply (clarsimp simp: bound_irqs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {irq. \<exists>cap. slots_of (example_irq_node irq) example_spec 0 = Some cap \<and> cap \<noteq> NullCap} = {4}<\STATESEP>apply rule<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. {irq. \<exists>cap. slots_of (example_irq_node irq) example_spec 0 = Some cap \<and> cap \<noteq> NullCap} \<subseteq> {4}
+ 2. {4} \<subseteq> {irq. \<exists>cap. slots_of (example_irq_node irq) example_spec 0 = Some cap \<and> cap \<noteq> NullCap}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x cap. \<lbrakk>slots_of (example_irq_node x) example_spec 0 = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> x = 4
+ 2. {4} \<subseteq> {irq. \<exists>cap. slots_of (example_irq_node irq) example_spec 0 = Some cap \<and> cap \<noteq> NullCap}<\STATESEP>apply (erule (1) slots_of_example_irq_node)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {4} \<subseteq> {irq. \<exists>cap. slots_of (example_irq_node irq) example_spec 0 = Some cap \<and> cap \<noteq> NullCap}<\STATESEP>apply (clarsimp simp: example_spec_def slots_of_def
+                        object_slots_def new_irq_node_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_irqhandler_caps_example_spec:
+  "well_formed_irqhandler_caps example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_irqhandler_caps example_spec<\STATESEP>apply (clarsimp simp: well_formed_irqhandler_caps_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>cnode_id slot cap. opt_cap (cnode_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap \<and> cap_irq cap = 4<\STATESEP>apply (rule exI [where x=cnode_a2_id])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>slot cap. opt_cap (cnode_a2_id, slot) example_spec = Some cap \<and> is_irqhandler_cap cap \<and> cap_irq cap = 4<\STATESEP>apply (rule exI [where x=12])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>cap. opt_cap (cnode_a2_id, 12) example_spec = Some cap \<and> is_irqhandler_cap cap \<and> cap_irq cap = 4<\STATESEP>apply (rule exI [where x="IrqHandlerCap 4"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. opt_cap (cnode_a2_id, 12) example_spec = Some (IrqHandlerCap 4) \<and> is_irqhandler_cap (IrqHandlerCap 4) \<and> cap_irq (IrqHandlerCap 4) = 4<\STATESEP>apply (clarsimp simp: object_slots_def cnode_a2_def new_cnode_def new_cap_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma rangeI:
+  "f x = a \<Longrightarrow> a \<in> range f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f x = a \<Longrightarrow> a \<in> range f<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_irq_table_example_spec:
+  "well_formed_irq_table example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_irq_table example_spec<\STATESEP>apply (clarsimp simp: well_formed_irq_table_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj example_irq_node \<and> irq_nodes example_spec = {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)}<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. inj example_irq_node
+ 2. irq_nodes example_spec = {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)}<\STATESEP>apply (clarsimp simp: example_irq_node_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. inj (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq + 0x100)
+ 2. irq_nodes example_spec = {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)}<\STATESEP>apply (clarsimp simp: inj_on_def ucast_up_inj)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_nodes example_spec = {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)}<\STATESEP>apply (clarsimp simp: irq_nodes_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE} = {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)}<\STATESEP>apply (rule subset_antisym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE} \<subseteq> {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)}
+ 2. {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)} \<subseteq> {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE}<\STATESEP>apply (clarsimp simp: example_spec_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x = 0x104 \<or> x = 0x1FE \<Longrightarrow> (\<exists>irq. example_irq_node irq = x) \<and> (x = 0x1FE \<or> x = 0x104 \<or> x = 0xD \<or> x = 0xC \<or> x = 0 \<or> x = 4 \<or> x = 3 \<or> x = 0xB \<or> x = 5 \<or> x = 7 \<or> x = 6 \<or> x = 2 \<or> x = 8 \<or> x = 1 \<or> x = 0xA \<or> x = 9)
+ 2. {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)} \<subseteq> {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE}<\STATESEP>apply (metis example_irq_node_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {obj_id. (\<exists>irq. example_irq_node irq = obj_id) \<and> obj_id \<in> dom (cdl_objects example_spec)} \<subseteq> {obj_id. obj_id = 0x104 \<or> obj_id = 0x1FE}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>irq y. \<lbrakk>cdl_objects example_spec (example_irq_node irq) = Some y; example_irq_node irq \<noteq> 0x1FE\<rbrakk> \<Longrightarrow> example_irq_node irq = 0x104<\STATESEP>apply (clarsimp simp: example_spec_def split: if_split_asm,
+         (drule rangeI [where f=example_irq_node],
+          simp add: range_example_irq_node onehundred_not_le_one)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_tcb_example_spec:
+  "cdl_objects example_spec obj_id = Some obj \<Longrightarrow>
+   well_formed_tcb example_spec obj_id obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>apply (case_tac "obj_id = tcb_a_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id = tcb_a_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>apply (cut_tac obj_id = tcb_a_id in well_formed_tcb_a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id = tcb_a_id; well_formed_tcb example_spec tcb_a_id (Tcb tcb_a)\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>apply (clarsimp simp: example_spec_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>apply (case_tac "obj_id = tcb_b_id")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id; obj_id = tcb_b_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id; obj_id \<noteq> tcb_b_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>apply (cut_tac obj_id = tcb_b_id in well_formed_tcb_b)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id; obj_id = tcb_b_id; well_formed_tcb example_spec tcb_b_id (Tcb tcb_b)\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj
+ 2. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id; obj_id \<noteq> tcb_b_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>apply (clarsimp simp: example_spec_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects example_spec obj_id = Some obj; obj_id \<noteq> tcb_a_id; obj_id \<noteq> tcb_b_id\<rbrakk> \<Longrightarrow> well_formed_tcb example_spec obj_id obj<\STATESEP>by (clarsimp simp: example_spec_def well_formed_tcb_def is_tcb_def
+                         empty_irq_node_def new_irq_node_def
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_irq_node_example_spec:
+  "cdl_objects example_spec obj_id = Some obj \<Longrightarrow>
+   well_formed_irq_node example_spec obj_id obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_irq_node example_spec obj_id obj<\STATESEP>apply (clarsimp simp: well_formed_irq_node_def irq_nodes_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot cap. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> (obj_id = 0x104 \<longrightarrow> dom (object_slots obj) = {0} \<and> (object_slots obj slot = Some cap \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_ntfn_cap cap \<and> is_default_cap cap)) \<and> (obj_id = 0x1FE \<longrightarrow> dom (object_slots obj) = {0} \<and> (object_slots obj slot = Some cap \<longrightarrow> cap \<noteq> NullCap \<longrightarrow> is_ntfn_cap cap \<and> is_default_cap cap))<\STATESEP>apply (clarsimp simp: example_spec_def object_slots_def empty_irq_node_def new_irq_node_def
+                        empty_cnode_def empty_cap_map_def dom_def
+                        is_default_cap_def default_cap_def onehundred_not_le_one
+                        split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_example:
+  "well_formed example_spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed example_spec<\STATESEP>apply (clarsimp simp: well_formed_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_orig_caps_unique example_spec \<and> well_formed_irqhandler_caps_unique example_spec \<and> well_formed_fake_pt_caps_unique example_spec \<and> well_formed_irqhandler_caps example_spec \<and> well_formed_irq_table example_spec \<and> (\<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)) \<and> (\<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec)<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. well_formed_orig_caps_unique example_spec
+ 2. well_formed_irqhandler_caps_unique example_spec
+ 3. well_formed_fake_pt_caps_unique example_spec
+ 4. well_formed_irqhandler_caps example_spec
+ 5. well_formed_irq_table example_spec
+ 6. \<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 7. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule well_formed_orig_caps_unique_example)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. well_formed_irqhandler_caps_unique example_spec
+ 2. well_formed_fake_pt_caps_unique example_spec
+ 3. well_formed_irqhandler_caps example_spec
+ 4. well_formed_irq_table example_spec
+ 5. \<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 6. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule well_formed_irqhandler_caps_unique_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. well_formed_fake_pt_caps_unique example_spec
+ 2. well_formed_irqhandler_caps example_spec
+ 3. well_formed_irq_table example_spec
+ 4. \<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 5. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule well_formed_fake_pt_caps_unique_example)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. well_formed_irqhandler_caps example_spec
+ 2. well_formed_irq_table example_spec
+ 3. \<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 4. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule well_formed_irqhandler_caps_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. well_formed_irq_table example_spec
+ 2. \<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 3. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule well_formed_irq_table_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>obj_id. case cdl_objects example_spec obj_id of None \<Rightarrow> True | Some obj \<Rightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (clarsimp split: option.splits, rename_tac obj)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_caps example_spec obj_id obj \<and> well_formed_cap_to_object example_spec obj_id obj \<and> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (clarsimp simp: well_formed_caps_example well_formed_cap_to_object_example
+                        well_formed_orig_caps_unique_example)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_tcb example_spec obj_id obj \<and> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_tcb example_spec obj_id obj
+ 2. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 3. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (fact well_formed_tcb_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_vspace example_spec obj_id obj \<and> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_vspace example_spec obj_id obj
+ 2. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 3. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (fact well_formed_vspace_example)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_irq_node example_spec obj_id obj \<and> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> well_formed_irq_node example_spec obj_id obj
+ 2. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 3. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (fact well_formed_irq_node_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (cnode_at obj_id example_spec \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>apply (clarsimp simp: cnode_at_example_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj_id obj. cdl_objects example_spec obj_id = Some obj \<Longrightarrow> object_size_bits obj < word_bits \<and> object_size_bits (object_default_state obj) = object_size_bits obj \<and> dom (object_slots (object_default_state obj)) = dom (object_slots obj) \<and> (obj_id = 6 \<longrightarrow> 0 < object_size_bits obj) \<and> (obj_id = 7 \<longrightarrow> 0 < object_size_bits obj) \<and> (obj_id = 5 \<longrightarrow> 0 < object_size_bits obj) \<and> (obj_id = 0xB \<longrightarrow> 0 < object_size_bits obj)
+ 2. \<forall>a b. \<not> cap_at is_device_cap (a, b) example_spec<\STATESEP>by (auto simp: example_spec_def object_size_bits_def object_default_state_def2
+                    pd_size_def word_bits_def empty_cnode_def is_cnode_def
+                    object_slots_def empty_cap_map_def tcb_slot_defs slots_of_def
+                    default_tcb_def obj_defs cap_at_def opt_cap_def
+                    small_frame_size_def small_section_size_def pt_size_def
+                    new_cnode_def new_cap_map_def empty_irq_node_def
+                    new_irq_node_def
+             split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,489 @@
+<\STATESEP>theory EquivValidTutorial
+imports Lib.EquivValid
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open> Preliminaries \<close><\STATESEP>0<\TRANSEP><\STATESEP>term "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>thm valid_def<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  equiv_valid_sugar ::
+  "('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s,'b) nondet_monad \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+  ("\<lbrace>|_|, _\<rbrace>/ _ /\<lbrace>|_|\<rbrace>")
+where
+  "\<lbrace>|A|, P\<rbrace> f \<lbrace>|B|\<rbrace> \<equiv> equiv_valid \<top>\<top> A B P f"<\STATESEP>0<\TRANSEP><\STATESEP>term "\<lbrace>|A|, P\<rbrace> f \<lbrace>|B|\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>term "equiv_valid \<top>\<top> A B P f"<\STATESEP>0<\TRANSEP><\STATESEP>thm equiv_valid_def2[simplified equiv_valid_2_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemma "equiv_valid I \<top>\<top> \<top>\<top> P f = equiv_valid \<top>\<top> I I P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I (\<lambda>_ _. True) P f = equiv_valid_inv (\<lambda>_ _. True) I P f<\STATESEP>unfolding equiv_valid_def2 equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>s t. P s \<and> P t \<and> I s t \<and> True \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). rva = rvb \<and> I s' t' \<and> True)) = (\<forall>s t. P s \<and> P t \<and> True \<and> I s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). rva = rvb \<and> True \<and> I s' t'))<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>thm equiv_valid_def
+    equiv_valid_def[simplified spec_equiv_valid_def equiv_valid_2_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemma "equiv_valid_inv I A P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P f<\STATESEP>unfolding equiv_valid_def2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A (=) P f<\STATESEP>oops
+\<comment> \<open>Generalised to allow specifying equivalence R on return values.\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma "equiv_valid_rv_inv I A R P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P f<\STATESEP>unfolding equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). R rva rvb \<and> I s' t' \<and> A s' t')<\STATESEP>oops
+\<comment> \<open>Generalised further.\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma "equiv_valid_rv I A B R P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A B R P f<\STATESEP>unfolding equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). R rva rvb \<and> I s' t' \<and> B s' t')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "equiv_valid_2 I A B R P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' f f'<\STATESEP>unfolding equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P' t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f' t). R rva rvb \<and> I s' t' \<and> B s' t')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>section \<open> Example setting: a room with a view \<close><\STATESEP>0<\TRANSEP><\STATESEP>record 'val Room =
+  desk :: 'val
+  window :: 'val
+  outbox :: 'val
+  inbox :: 'val
+  job :: "'val \<Rightarrow> 'val"<\STATESEP>0<\TRANSEP><\STATESEP>definition desk_equivalence :: "'val Room \<Rightarrow> 'val Room \<Rightarrow> bool"
+where
+  "desk_equivalence r1 r2 \<equiv> desk r1 = desk r2"<\STATESEP>0<\TRANSEP><\STATESEP>definition window_equivalence :: "'val Room \<Rightarrow> 'val Room \<Rightarrow> bool"
+where
+  "window_equivalence r1 r2 \<equiv> window r1 = window r2"<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  "(desk_equivalence and window_equivalence) r1 r2 =
+   (desk r1 = desk r2 \<and> window r1 = window r2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (desk_equivalence and window_equivalence) r1 r2 = (desk r1 = desk r2 \<and> window r1 = window r2)<\STATESEP>unfolding desk_equivalence_def window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) r1 r2 = (desk r1 = desk r2 \<and> window r1 = window r2)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma "gets desk = do document \<leftarrow> gets desk; return document od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets desk = gets desk >>= return<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>definition reveal_desk_to_window :: "('val Room, unit) nondet_monad"
+where
+  "reveal_desk_to_window \<equiv> modify (\<lambda>s. s\<lparr>window := desk s\<rparr>)"<\STATESEP>0<\TRANSEP><\STATESEP>definition sanitise_desk :: "('val::zero Room, unit) nondet_monad"
+where
+  "sanitise_desk \<equiv> modify (\<lambda>s. s\<lparr>desk := 0\<rparr>)"<\STATESEP>0<\TRANSEP><\STATESEP>definition work_at_desk :: "('val Room, unit) nondet_monad"
+where
+  "work_at_desk \<equiv>
+     do modify (\<lambda>s. s\<lparr>desk := inbox s\<rparr>);
+        modify (\<lambda>s. s\<lparr>desk := (job s) (desk s)\<rparr>);
+        modify (\<lambda>s. s\<lparr>outbox := desk s\<rparr>)
+     od"<\STATESEP>0<\TRANSEP><\STATESEP>definition work_sanitise_reveal :: "('val::zero Room, unit) nondet_monad"
+where
+  "work_sanitise_reveal \<equiv>
+     do work_at_desk;
+        sanitise_desk;
+        reveal_desk_to_window
+     od"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open> Attacker models expressible using EquivValid statements \<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open> An attacker with access to return values \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma gets_desk_return_leak:
+  \<comment> \<open> No restrictions on pre-equivalence, precondition, or post-equivalence. \<close>
+  "\<lbrace>|\<top>\<top>|, \<top>\<rbrace> gets desk \<lbrace>|\<top>\<top>|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_. True) (gets desk)<\STATESEP>find_theorems intro
+  \<comment> \<open> There happens to be an applicable \<open>gets\<close> rule for \<open>equiv_valid_inv\<close>. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_. True) (gets desk)<\STATESEP>thm gets_ev''<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_. True) (gets desk)<\STATESEP>apply(rule gets_ev'')
+  \<comment> \<open> \<open>equiv_valid\<close> requires the return value to be the same in both runs.
+     As expected, we are stuck, as we don't know that the contents of \<open>desk\<close>
+     were initially the same for both runs. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. True \<and> True \<and> True \<and> True \<longrightarrow> desk s = desk t<\STATESEP>nitpick<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. True \<and> True \<and> True \<and> True \<longrightarrow> desk s = desk t<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_desk_equiv_return:
+  \<comment> \<open> Pre-equivalence (and post-equivalence):
+      The value of \<open>desk\<close> is equal initially (and finally) for both runs. \<close>
+  "\<lbrace>|desk_equivalence|, \<top>\<rbrace>
+     gets desk
+   \<lbrace>|desk_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) desk_equivalence (\<lambda>_. True) (gets desk)<\STATESEP>find_theorems intro<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) desk_equivalence (\<lambda>_. True) (gets desk)<\STATESEP>apply(rule gets_ev'')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. True \<and> desk_equivalence s t \<and> True \<and> True \<longrightarrow> desk s = desk t<\STATESEP>unfolding desk_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. True \<and> desk s = desk t \<and> True \<and> True \<longrightarrow> desk s = desk t<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<lbrace>|\<top>\<top>|, \<top>\<rbrace> f \<lbrace>|\<top>\<top>|\<rbrace> = equiv_valid_rv \<top>\<top> \<top>\<top> \<top>\<top> (=) \<top> f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_. True) f = equiv_valid_rv_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>_. True) f<\STATESEP>by (simp add:equiv_valid_def2) \<comment> \<open> Try replacing the \<open>(=)\<close> here. \<close><\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open> An attacker with a window into the system state \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma reveal_desk_window_leak:
+  \<comment> \<open> Pre-equivalence and post-equivalence:
+      The value of \<open>window\<close> is equal initially and finally for both runs. \<close>
+  "\<lbrace>|window_equivalence|, \<top>\<rbrace>
+     reveal_desk_to_window
+   \<lbrace>|window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>_. True) reveal_desk_to_window<\STATESEP>unfolding reveal_desk_to_window_def
+  \<comment> \<open> We find an applicable \<open>modify\<close> rule for \<open>equiv_valid_inv\<close>. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>find_theorems intro<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(rule modify_ev'')
+  \<comment> \<open> Applying it, we see that it demands that \<open>window_equivalence\<close> holds
+      between the final states of both runs. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; window_equivalence s t; True; True\<rbrakk> \<Longrightarrow> True \<and> window_equivalence (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>unfolding window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; window s = window t; True; True\<rbrakk> \<Longrightarrow> True \<and> window (s\<lparr>window := desk s\<rparr>) = window (t\<lparr>window := desk t\<rparr>)<\STATESEP>apply clarsimp
+  \<comment> \<open> We should not expect to be able to prove this, because we have
+      said nothing about the initial value of desk in these runs. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. window s = window t \<Longrightarrow> desk s = desk t<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma reveal_desk_equiv_window_equiv:
+  "\<lbrace>|desk_equivalence and window_equivalence|, \<top>\<rbrace>
+     reveal_desk_to_window
+   \<lbrace>|desk_equivalence and window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (\<lambda>_. True) reveal_desk_to_window<\STATESEP>unfolding reveal_desk_to_window_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(rule modify_ev'')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; (desk_equivalence and window_equivalence) s t; True; True\<rbrakk> \<Longrightarrow> True \<and> (desk_equivalence and window_equivalence) (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>unfolding desk_equivalence_def window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) s t; True; True\<rbrakk> \<Longrightarrow> True \<and> ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>section \<open> The typical toolkit \<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open> Using and customising the \<open>wp\<close> tool's rule set \<close><\STATESEP>0<\TRANSEP><\STATESEP>thm gets_desk_equiv_return<\STATESEP>0<\TRANSEP><\STATESEP>thm wp_ev<\STATESEP>0<\TRANSEP><\STATESEP>thm pre_ev
+\<comment> \<open> Note: \<open>pre_ev\<close> is just the standard \<open>hoare_pre\<close> + \<open>equiv_valid_guard_imp\<close> \<close><\STATESEP>0<\TRANSEP><\STATESEP>thm hoare_pre<\STATESEP>0<\TRANSEP><\STATESEP>thm equiv_valid_guard_imp<\STATESEP>0<\TRANSEP><\STATESEP>thm gets_ev<\STATESEP>0<\TRANSEP><\STATESEP>lemma gets_desk_equiv_return_using_wp:
+  "\<lbrace>|desk_equivalence|, \<top>\<rbrace>
+     gets desk
+   \<lbrace>|desk_equivalence|\<rbrace>"
+  \<comment> \<open> Use \<open>pre_ev\<close> to weaken the precondition of the \<open>equiv_valid\<close> statement
+       and make the \<open>wp\<close> method applicable. \<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) desk_equivalence (\<lambda>_. True) (gets desk)<\STATESEP>apply(rule pre_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. equiv_valid_inv (\<lambda>_ _. True) desk_equivalence ?Q (gets desk)
+ 2. \<And>s. True \<Longrightarrow> ?Q s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> \<forall>s t. True \<and> desk_equivalence s t \<longrightarrow> desk s = desk t<\STATESEP>unfolding desk_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> \<forall>s t. True \<and> desk s = desk t \<longrightarrow> desk s = desk t<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>thm reveal_desk_equiv_window_equiv
+  modify_ev<\STATESEP>0<\TRANSEP><\STATESEP>lemma reveal_desk_equiv_window_equiv_using_wp:
+  "\<lbrace>|desk_equivalence and window_equivalence|, \<top>\<rbrace>
+     reveal_desk_to_window
+   \<lbrace>|desk_equivalence and window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (\<lambda>_. True) reveal_desk_to_window<\STATESEP>unfolding reveal_desk_to_window_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(rule pre_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) ?Q (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))
+ 2. \<And>s. True \<Longrightarrow> ?Q s<\STATESEP>apply(wp add:modify_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> \<forall>s t. True \<and> (desk_equivalence and window_equivalence) s t \<longrightarrow> True \<and> (desk_equivalence and window_equivalence) (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>unfolding desk_equivalence_def window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> \<forall>s t. True \<and> ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) s t \<longrightarrow> True \<and> ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>thm gets_ev''<\STATESEP>0<\TRANSEP><\STATESEP>lemma example_precond_desk_return:
+  \<comment> \<open> Precondition: The value of desk is some fixed value \<open>c\<close>.
+      \<open>equiv_valid\<close> then assumes that this precondition applies to both runs. \<close>
+  "\<lbrace>|\<top>\<top>|, (\<lambda>s. desk s = c)\<rbrace>
+     gets desk
+   \<lbrace>|\<top>\<top>|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>s. desk s = c) (gets desk)<\STATESEP>apply(wp del:gets_ev add:gets_ev'')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. True \<and> True \<and> desk s = c \<and> desk t = c \<longrightarrow> desk s = desk t<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>thm modify_ev''<\STATESEP>0<\TRANSEP><\STATESEP>lemma reveal_const_desk_preserves_window_equiv:
+  \<comment> \<open> Precondition: Desk initially has a fixed constant \<open>c\<close>.
+      \<open>equiv_valid\<close> then assumes that this precondition applies to both runs. \<close>
+  "\<lbrace>|window_equivalence|, (\<lambda>s. desk s = c)\<rbrace>
+     reveal_desk_to_window
+   \<lbrace>|window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>s. desk s = c) reveal_desk_to_window<\STATESEP>unfolding reveal_desk_to_window_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>s. desk s = c) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(wp add:modify_ev'')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; window_equivalence s t; desk s = c; desk t = c\<rbrakk> \<Longrightarrow> window_equivalence (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>unfolding window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; window s = window t; desk s = c; desk t = c\<rbrakk> \<Longrightarrow> window (s\<lparr>window := desk s\<rparr>) = window (t\<lparr>window := desk t\<rparr>)<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>declare modify_ev[wp]<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open> Remainder of worked example using \<open>wp\<close> tool \<close><\STATESEP>0<\TRANSEP><\STATESEP>thm work_sanitise_reveal_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma work_at_desk_preserves_window_equiv:
+  "\<lbrace>|window_equivalence|, P\<rbrace>
+     work_at_desk
+   \<lbrace>|window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence P work_at_desk<\STATESEP>unfolding work_at_desk_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence P (do modify (\<lambda>s. s\<lparr>desk := inbox s\<rparr>);
+modify (\<lambda>s. s\<lparr>desk := job s (desk s)\<rparr>);
+modify (\<lambda>s. s\<lparr>outbox := desk s\<rparr>)
+od)<\STATESEP>apply wp \<comment> \<open> Instead of \<open>apply(wp add:modify_ev)\<close> \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> (\<forall>s t. True \<and> window_equivalence s t \<longrightarrow> True \<and> window_equivalence (s\<lparr>desk := inbox s\<rparr>) (t\<lparr>desk := inbox t\<rparr>)) \<and> (\<forall>s t. True \<and> window_equivalence s t \<longrightarrow> True \<and> window_equivalence (s\<lparr>desk := job s (desk s)\<rparr>) (t\<lparr>desk := job t (desk t)\<rparr>)) \<and> (\<forall>s t. True \<and> window_equivalence s t \<longrightarrow> True \<and> window_equivalence (s\<lparr>outbox := desk s\<rparr>) (t\<lparr>outbox := desk t\<rparr>))<\STATESEP>unfolding window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> (\<forall>s t. True \<and> window s = window t \<longrightarrow> True \<and> window (s\<lparr>desk := inbox s\<rparr>) = window (t\<lparr>desk := inbox t\<rparr>)) \<and> (\<forall>s t. True \<and> window s = window t \<longrightarrow> True \<and> window (s\<lparr>desk := job s (desk s)\<rparr>) = window (t\<lparr>desk := job t (desk t)\<rparr>)) \<and> (\<forall>s t. True \<and> window s = window t \<longrightarrow> True \<and> window (s\<lparr>outbox := desk s\<rparr>) = window (t\<lparr>outbox := desk t\<rparr>))<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma sanitise_desk_preserves_window_equiv:
+  "\<lbrace>|window_equivalence|, P\<rbrace>
+     sanitise_desk
+   \<lbrace>|window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence P sanitise_desk<\STATESEP>unfolding sanitise_desk_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence P (modify (desk_update (\<lambda>_. 0::'a)))<\STATESEP>apply(rule pre_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence ?Q (modify (desk_update (\<lambda>_. 0::'a)))
+ 2. \<And>s. P s \<Longrightarrow> ?Q s<\STATESEP>apply wp \<comment> \<open> Instead of \<open>apply(wp add:modify_ev)\<close> \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> \<forall>s t. True \<and> window_equivalence s t \<longrightarrow> True \<and> window_equivalence (s\<lparr>desk := 0::'a\<rparr>) (t\<lparr>desk := 0::'a\<rparr>)<\STATESEP>unfolding window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> \<forall>s t. True \<and> window s = window t \<longrightarrow> True \<and> window (s\<lparr>desk := 0::'a\<rparr>) = window (t\<lparr>desk := 0::'a\<rparr>)<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>thm reveal_const_desk_preserves_window_equiv<\STATESEP>0<\TRANSEP><\STATESEP>lemma sanitise_desk_sets_zero:
+  "\<lbrace>P\<rbrace> sanitise_desk \<lbrace>\<lambda>r s. desk s = 0\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> sanitise_desk \<lbrace>\<lambda>r s. desk s = (0::'a)\<rbrace><\STATESEP>unfolding sanitise_desk_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> modify (desk_update (\<lambda>_. 0::'a)) \<lbrace>\<lambda>r s. desk s = (0::'a)\<rbrace><\STATESEP>apply(rule pre_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> modify (desk_update (\<lambda>_. 0::'a)) \<lbrace>\<lambda>r s. desk s = (0::'a)\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> ?Q s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> desk (s\<lparr>desk := 0::'a\<rparr>) = (0::'a)<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma work_sanitise_reveal_preserves_window_equiv:
+  "\<lbrace>|window_equivalence|, \<top>\<rbrace>
+     work_sanitise_reveal
+   \<lbrace>|window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>_. True) work_sanitise_reveal<\STATESEP>unfolding work_sanitise_reveal_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) window_equivalence (\<lambda>_. True) (do work_at_desk;
+sanitise_desk;
+reveal_desk_to_window
+od)<\STATESEP>apply(wp add:reveal_const_desk_preserves_window_equiv[where c=0]
+               sanitise_desk_preserves_window_equiv
+               sanitise_desk_sets_zero
+               work_at_desk_preserves_window_equiv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> K ?P10 s \<and> K ?P11 s<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>section \<open> The advanced toolkit \<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open> More general forms of EquivValid statements \<close><\STATESEP>0<\TRANSEP><\STATESEP>thm return_ev
+  bind_ev
+  gets_ev gets_ev' gets_ev''
+  modify_ev modify_ev' modify_ev''<\STATESEP>0<\TRANSEP><\STATESEP>lemma "equiv_valid_rv_inv I A R P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P f<\STATESEP>unfolding equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). R rva rvb \<and> I s' t' \<and> A s' t')<\STATESEP>oops
+\<comment> \<open>Generalised further.\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma "equiv_valid_rv I A B R P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A B R P f<\STATESEP>unfolding equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). R rva rvb \<and> I s' t' \<and> B s' t')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma "equiv_valid_2 I A B R P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' f f'<\STATESEP>unfolding equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P' t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f' t). R rva rvb \<and> I s' t' \<and> B s' t')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>thm return_ev2
+  equiv_valid_2_bind equiv_valid_2_bind_pre equiv_valid_2_bind_general
+  modify_ev2<\STATESEP>0<\TRANSEP><\STATESEP>lemma reveal_desk_equiv_window_equiv_using_ev2:
+  "\<lbrace>|desk_equivalence and window_equivalence|, \<top>\<rbrace>
+     reveal_desk_to_window
+   \<lbrace>|desk_equivalence and window_equivalence|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (\<lambda>_. True) reveal_desk_to_window<\STATESEP>unfolding reveal_desk_to_window_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(clarsimp simp:equiv_valid_def2)
+  \<comment> \<open> After peeling back to \<open>equiv_valid_2\<close> form, we can use its \<open>modify\<close> rule. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (=) (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>find_theorems intro<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv (\<lambda>_ _. True) (desk_equivalence and window_equivalence) (=) (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(rule modify_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; (desk_equivalence and window_equivalence) s t; True; True\<rbrakk> \<Longrightarrow> () = () \<and> True \<and> (desk_equivalence and window_equivalence) (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>unfolding desk_equivalence_def window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) s t; True; True\<rbrakk> \<Longrightarrow> () = () \<and> True \<and> ((\<lambda>r1 r2. desk r1 = desk r2) and (\<lambda>r1 r2. window r1 = window r2)) (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>thm bind_ev_pre
+    equiv_valid_def2[simplified equiv_valid_2_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemma pitfall1_using_bind_ev:
+  "\<lbrace>|\<top>\<top>|, (\<lambda>s. desk s = c)\<rbrace>
+     do
+       s \<leftarrow> get;
+       return (desk s)
+     od
+   \<lbrace>|\<top>\<top>|\<rbrace>"
+  \<comment> \<open> Using the bind rule for \<open>equiv_valid\<close> splits the goal into
+      two \<open>equiv_valid\<close> statements, one for each of \<open>get\<close> and \<open>return\<close>.
+      It will ask us to prove them in reverse order. \<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>s. desk s = c) (do s <- get;
+return (desk s)
+od)<\STATESEP>apply(rule bind_ev_pre)
+     \<comment> \<open> The \<open>wp\<close> tool discharges the \<open>return (desk s)\<close> part trivially: \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>rv. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (?Q rv) (return (desk rv))
+ 2. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) ?P' get
+ 3. \<lbrace>?P''\<rbrace> get \<lbrace>?Q\<rbrace>
+ 4. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply wp
+    \<comment> \<open> But the return value of \<open>get\<close> is the entire state: \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) ?P' get
+ 2. \<lbrace>?P''\<rbrace> get \<lbrace>\<lambda>rv _. True\<rbrace>
+ 3. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply(clarsimp simp:equiv_valid_def2 equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s t a b aa ba. \<lbrakk>(a, b) \<in> fst (get s); (aa, ba) \<in> fst (get t); ?P' s; ?P' t\<rbrakk> \<Longrightarrow> a = aa
+ 2. \<lbrace>?P''\<rbrace> get \<lbrace>\<lambda>rv _. True\<rbrace>
+ 3. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply(clarsimp simp add:get_def)
+    \<comment> \<open> This causes us to get stuck, because we have no idea whether the state
+        is equivalent for parts of the room other than the desk. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s t. \<lbrakk>?P' s; ?P' t\<rbrakk> \<Longrightarrow> s = t
+ 2. \<lbrace>?P''\<rbrace> get \<lbrace>\<lambda>rv _. True\<rbrace>
+ 3. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>thm equiv_valid_2_bind_pre
+  equiv_valid_2_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma pitfall2_using_bind_ev2:
+  "\<lbrace>|\<top>\<top>|, (\<lambda>s. desk s = c)\<rbrace>
+     do
+       s \<leftarrow> get;
+       return (desk s)
+     od
+   \<lbrace>|\<top>\<top>|\<rbrace>"
+  \<comment> \<open> First we need to peel it back to \<open>equiv_valid_2\<close> form, so we can apply its bind rule. \<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>s. desk s = c) (do s <- get;
+return (desk s)
+od)<\STATESEP>apply(clarsimp simp:equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>s. desk s = c) (do s <- get;
+return (desk s)
+od)<\STATESEP>apply(rule equiv_valid_2_bind_pre)
+       \<comment> \<open> Here \<open>wp\<close> infers correctly that the equivalence between the
+          intermediate return values needs to be \<open>\<lambda>rv rv'. desk rv = desk rv'\<close>,
+          i.e. that \<open>desk\<close> has the same value in the state returned by \<open>get\<close> in both runs. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. ?R' rv rv' \<Longrightarrow> equiv_valid_2 (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (?Q rv) (?Q' rv') (return (desk rv)) (return (desk rv'))
+ 2. equiv_valid_2 (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_ _. True) ?R' ?P ?P' get get
+ 3. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 4. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 5. \<And>s. desk s = c \<Longrightarrow> ?P s \<and> ?S s
+ 6. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?S' s<\STATESEP>apply(wp add:return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. equiv_valid_2 (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>rv rv'. desk rv = desk rv') ?P ?P' get get
+ 2. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 3. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 4. \<And>s. desk s = c \<Longrightarrow> ?P s \<and> ?S s
+ 5. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?S' s<\STATESEP>apply(clarsimp simp:equiv_valid_def spec_equiv_valid_def equiv_valid_2_def)
+      \<comment> \<open> The \<open>force\<close> tactic just guesses \<open>False\<close> for the postcondition for both steps. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s t a b aa ba. \<lbrakk>(a, b) \<in> fst (get s); (aa, ba) \<in> fst (get t); ?P s; ?P' t\<rbrakk> \<Longrightarrow> desk a = desk aa
+ 2. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 3. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 4. \<And>s. desk s = c \<Longrightarrow> ?P s \<and> ?S s
+ 5. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?S' s<\STATESEP>apply(force simp add:get_def)
+     \<comment> \<open> As these next two goals are Hoare triples, we use the \<open>wp\<close> tool, as usual for
+         Hoare triples in the seL4 proof base. See Lib.WPTutorial for more information. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 2. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 3. \<And>s. desk s = c \<Longrightarrow> False \<and> ?S s
+ 4. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?S' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 2. \<And>s. desk s = c \<Longrightarrow> False \<and> K ?P26 s
+ 3. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> ?S' s<\STATESEP>apply wp
+   \<comment> \<open> Now we are stuck because \<open>force\<close> guessed \<open>False\<close> as a premise
+      to discharge the goal earlier, giving us an unsatisfiable goal here. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. desk s = c \<Longrightarrow> False \<and> K ?P26 s
+ 2. \<And>s. desk s = c \<Longrightarrow> ?P' s \<and> K ?P29 s<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma precond_get_return_desk:
+  "\<lbrace>|\<top>\<top>|, (\<lambda>s. desk s = c)\<rbrace>
+     do
+       s \<leftarrow> get;
+       return (desk s)
+     od
+   \<lbrace>|\<top>\<top>|\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>s. desk s = c) (do s <- get;
+return (desk s)
+od)<\STATESEP>apply(clarsimp simp:equiv_valid_def2)
+  \<comment> \<open> We want to use the fact that \<open>desk\<close> contains \<open>c\<close> initially for both runs.
+    So we give it here. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (\<lambda>s. desk s = c) (do s <- get;
+return (desk s)
+od)<\STATESEP>apply(rule_tac P="(\<lambda>s. desk s = c)" and P'="(\<lambda>s. desk s = c)" in equiv_valid_2_bind_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. ?R' rv rv' \<Longrightarrow> equiv_valid_2 (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>_ _. True) (=) (?Q rv) (?Q' rv') (return (desk rv)) (return (desk rv'))
+ 2. equiv_valid_rv_inv (\<lambda>_ _. True) (\<lambda>_ _. True) ?R' (\<lambda>s. desk s = c) get
+ 3. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 4. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 5. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S s
+ 6. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S' s<\STATESEP>apply(wp add:return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. equiv_valid_rv_inv (\<lambda>_ _. True) (\<lambda>_ _. True) (\<lambda>rv rv'. desk rv = desk rv') (\<lambda>s. desk s = c) get
+ 2. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 3. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 4. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S s
+ 5. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S' s<\STATESEP>apply(clarsimp simp:equiv_valid_def2 equiv_valid_2_def)
+      \<comment> \<open> No need to guess anything. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s t a b aa ba. \<lbrakk>(a, b) \<in> fst (get s); (aa, ba) \<in> fst (get t); desk t = desk s; c = desk s\<rbrakk> \<Longrightarrow> desk a = desk aa
+ 2. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 3. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 4. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S s
+ 5. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S' s<\STATESEP>apply(force simp add:get_def)
+     \<comment> \<open> Use \<open>wp\<close> tactic to discharge the two Hoare triples; see Lib.WPTutorial for more info. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?S\<rbrace> get \<lbrace>?Q\<rbrace>
+ 2. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 3. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S s
+ 4. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?S'\<rbrace> get \<lbrace>?Q'\<rbrace>
+ 2. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> K ?P27 s
+ 3. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> ?S' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> K ?P27 s
+ 2. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> K ?P30 s<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. desk s = c \<Longrightarrow> desk s = c \<and> K ?P30 s<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open> A note on what is currently available and why \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "equiv_valid_inv I A P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P f<\STATESEP>unfolding equiv_valid_def2 equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. P s \<and> P t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f t). rva = rvb \<and> I s' t' \<and> A s' t')<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open> Proving EquivValid with differing pre- and post-equivalences \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma reveal_desk_equiv_to_window_equiv:
+  "\<lbrace>|desk_equivalence|, \<top>\<rbrace>  \<comment> \<open> Pre-equivalence: The value of \<open>desk\<close> is
+                                 the same initially in both runs. \<close>
+     reveal_desk_to_window
+   \<lbrace>|window_equivalence|\<rbrace>" \<comment> \<open> Post-equivalence: The value of \<open>window\<close> is required to be
+                                the same at the end of both runs; no longer so for \<open>desk\<close>. \<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence window_equivalence (\<lambda>_. True) reveal_desk_to_window<\STATESEP>unfolding reveal_desk_to_window_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence window_equivalence (\<lambda>_. True) (modify (\<lambda>s. s\<lparr>window := desk s\<rparr>))<\STATESEP>apply(rule modify_ev'')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; desk_equivalence s t; True; True\<rbrakk> \<Longrightarrow> True \<and> window_equivalence (s\<lparr>window := desk s\<rparr>) (t\<lparr>window := desk t\<rparr>)<\STATESEP>unfolding window_equivalence_def desk_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; desk s = desk t; True; True\<rbrakk> \<Longrightarrow> True \<and> window (s\<lparr>window := desk s\<rparr>) = window (t\<lparr>window := desk t\<rparr>)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma desk_equiv_no_longer_needed:
+  "\<lbrace>|desk_equivalence|, \<top>\<rbrace>
+       do reveal_desk_to_window;
+          modify (\<lambda>r. r\<lparr>desk := inbox r\<rparr>)
+       od
+   \<lbrace>|window_equivalence|\<rbrace>"
+  \<comment> \<open> Use \<open>pre_ev\<close> to weaken the precondition of the \<open>equiv_valid\<close> statement. \<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence window_equivalence (\<lambda>_. True) (do reveal_desk_to_window;
+modify (\<lambda>r. r\<lparr>desk := inbox r\<rparr>)
+od)<\STATESEP>apply(rule pre_ev)
+   \<comment> \<open> Use \<open>bind_ev_general\<close> to split the goal into \<open>equiv_valid\<close> statements for
+       each of the two \<open>modify\<close> commands. It will ask us to prove them in reverse order. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence window_equivalence ?Q (do reveal_desk_to_window;
+modify (\<lambda>r. r\<lparr>desk := inbox r\<rparr>)
+od)
+ 2. \<And>s. True \<Longrightarrow> ?Q s<\STATESEP>apply(rule bind_ev_general)
+     \<comment> \<open> Prove \<open>equiv_valid\<close> for \<open>desk := inbox\<close> manually. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>rv. equiv_valid (\<lambda>_ _. True) ?B3 window_equivalence (?Q3 rv) (K_bind (modify (\<lambda>r. r\<lparr>desk := inbox r\<rparr>)) rv)
+ 2. equiv_valid (\<lambda>_ _. True) desk_equivalence ?B3 ?P'3 reveal_desk_to_window
+ 3. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. equiv_valid (\<lambda>_ _. True) ?B3 window_equivalence (?Q3 ()) (modify (\<lambda>r. r\<lparr>desk := inbox r\<rparr>))
+ 2. equiv_valid (\<lambda>_ _. True) desk_equivalence ?B3 ?P'3 reveal_desk_to_window
+ 3. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>apply(rule modify_ev'')
+     \<comment> \<open> The \<open>force\<close> tactic has enough information here to figure out that
+         the intermediate equivalence \<open>B\<close> needs to be \<open>window_equivalence\<close>. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s t. \<lbrakk>True; ?B3 s t; ?Q3 () s; ?Q3 () t\<rbrakk> \<Longrightarrow> True \<and> window_equivalence (s\<lparr>desk := inbox s\<rparr>) (t\<lparr>desk := inbox t\<rparr>)
+ 2. equiv_valid (\<lambda>_ _. True) desk_equivalence ?B3 ?P'3 reveal_desk_to_window
+ 3. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>apply(force simp:window_equivalence_def desk_equivalence_def)
+    \<comment> \<open> This happens to be the post-equivalence for the \<open>equiv_valid\<close> lemma
+        we just proved for \<open>window := desk\<close>, so we can reuse that lemma here. \<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence (\<lambda>s t. window s = window t) ?P'3 reveal_desk_to_window
+ 2. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>using reveal_desk_equiv_to_window_equiv<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid (\<lambda>_ _. True) desk_equivalence window_equivalence (\<lambda>_. True) reveal_desk_to_window
+
+goal (3 subgoals):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence (\<lambda>s t. window s = window t) ?P'3 reveal_desk_to_window
+ 2. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>unfolding window_equivalence_def<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid (\<lambda>_ _. True) desk_equivalence (\<lambda>r1 r2. window r1 = window r2) (\<lambda>_. True) reveal_desk_to_window
+
+goal (3 subgoals):
+ 1. equiv_valid (\<lambda>_ _. True) desk_equivalence (\<lambda>s t. window s = window t) ?P'3 reveal_desk_to_window
+ 2. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P''3\<rbrace> reveal_desk_to_window \<lbrace>?Q3\<rbrace>
+ 2. \<And>s. True \<Longrightarrow> True \<and> ?P''3 s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> True \<and> K ?P19 s<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

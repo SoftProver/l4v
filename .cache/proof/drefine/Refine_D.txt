@@ -1,0 +1,324 @@
+<\STATESEP>theory Refine_D
+imports Syscall_DR
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_etcbs_sched: "valid_sched s \<longrightarrow> valid_etcbs s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_sched s \<longrightarrow> valid_etcbs s<\STATESEP>by (fastforce simp: valid_sched_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handle_event_invs_and_valid_sched:
+  "\<lbrace>invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s)
+      and (\<lambda>s. scheduler_action s = resume_cur_thread)\<rbrace> Syscall_A.handle_event e
+  \<lbrace>\<lambda>rv. invs and valid_sched\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>rv. invs and valid_sched\<rbrace><\STATESEP>by ((wp he_invs handle_event_valid_sched), clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dcorres_call_kernel:
+  "dcorres dc \<top>
+          (invs and valid_sched and valid_pdpt_objs
+             and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s)
+             and  (\<lambda>s. scheduler_action s = resume_cur_thread))
+          (Syscall_D.call_kernel e) (Syscall_A.call_kernel e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dcorres dc (\<lambda>_. True) (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) (Syscall_D.call_kernel e) (Syscall_A.call_kernel e)<\STATESEP>apply (simp_all add: Syscall_D.call_kernel_def Syscall_A.call_kernel_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dcorres dc (\<lambda>_. True) (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) (do y <- Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts);
+y <- Schedule_D.schedule;
+gets cdl_current_thread >>= case_option (return ()) (\<lambda>thread. do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od)
+od) (do y <- Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od));
+y <- state_ext_sched_class.schedule;
+activate_thread
+od)<\STATESEP>apply (rule corres_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. dcorres dc ?Q ?Q' (do y <- Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts);
+y <- Schedule_D.schedule;
+gets cdl_current_thread >>= case_option (return ()) (\<lambda>thread. do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od)
+od) (do y <- Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od));
+y <- state_ext_sched_class.schedule;
+activate_thread
+od)
+ 2. \<And>s. True \<Longrightarrow> ?Q s
+ 3. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> ?Q' s<\STATESEP>apply (rule corres_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. dcorres ?r'4 ?P4 ?P'4 (Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts)) (Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)))
+ 2. \<And>y ya. ?r'4 y ya \<Longrightarrow> dcorres dc (?R4 y) (?R'4 ya) (do y <- Schedule_D.schedule;
+gets cdl_current_thread >>= case_option (return ()) (\<lambda>thread. do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od)
+od) (do y <- state_ext_sched_class.schedule;
+activate_thread
+od)
+ 3. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>?R4\<rbrace>
+ 4. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>?R'4\<rbrace>
+ 5. \<And>s. True \<Longrightarrow> (?P4 and ?Q4) s
+ 6. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (?P'4 and ?Q'4) s<\STATESEP>apply (rule corres_split_handle [OF handle_event_corres])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 2. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 3. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 4. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> dcorres dc (?R4 y) (?R'4 ya) (do y <- Schedule_D.schedule;
+gets cdl_current_thread >>= case_option (return ()) (\<lambda>thread. do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od)
+od) (do y <- state_ext_sched_class.schedule;
+activate_thread
+od)
+ 5. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>?R4\<rbrace>
+ 6. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>?R'4\<rbrace>
+ 7. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 8. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>prefer 4<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> dcorres dc (?R4 y) (?R'4 ya) (do y <- Schedule_D.schedule;
+gets cdl_current_thread >>= case_option (return ()) (\<lambda>thread. do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od)
+od) (do y <- state_ext_sched_class.schedule;
+activate_thread
+od)
+ 2. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 3. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 4. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 5. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>?R4\<rbrace>
+ 6. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>?R'4\<rbrace>
+ 7. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 8. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply (subst bind_return[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> dcorres dc (?R15 y ya (?y15 y ya)) (?R'15 y ya (?ya15 y ya)) (do y <- Schedule_D.schedule >>= return;
+gets cdl_current_thread >>= case_option (return ()) (\<lambda>thread. do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od)
+od) (do y <- state_ext_sched_class.schedule;
+activate_thread
+od)
+ 2. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 3. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 4. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 5. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>?R4\<rbrace>
+ 6. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>?R'4\<rbrace>
+ 7. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 8. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s
+flex-flex pairs:
+\<lambda>y ya. ?R'15 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?R'4
+\<lambda>y ya. ?R15 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?R4 y<\STATESEP>apply (rule corres_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> dcorres (?r'17 y ya) (?P29 y ya (?y15 y ya)) (?P'27 y ya (?ya15 y ya)) (Schedule_D.schedule >>= return) state_ext_sched_class.schedule
+ 2. \<And>y ya yb yc. \<lbrakk>(?f9 \<oplus> dc) y ya; ?r'17 y ya yb yc\<rbrakk> \<Longrightarrow> dcorres dc (?R17 y ya yb) (?R'17 y ya yc) (do a <- gets cdl_current_thread;
+case a of None \<Rightarrow> return () | Some thread \<Rightarrow> do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od
+od) activate_thread
+ 3. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q28 y ya (?y15 y ya)\<rbrace> Schedule_D.schedule >>= return \<lbrace>?R17 y ya\<rbrace>
+ 4. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q'26 y ya (?ya15 y ya)\<rbrace> state_ext_sched_class.schedule \<lbrace>?R'17 y ya\<rbrace>
+ 5. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 6. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 7. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 8. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a b. (?P25 a b and ?Q24 a b) b\<rbrace>
+ 9. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a b. (?P'21 a b and ?Q'20 a b) b\<rbrace>
+ 10. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+A total of 11 subgoals...
+flex-flex pairs:
+\<lambda>y ya a. ?P29 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?P25 y
+\<lambda>y ya a. ?Q28 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?Q24 y
+\<lambda>y ya a. ?P'27 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?P'21
+\<lambda>y ya a. ?Q'26 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?Q'20<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> dcorres (?r'17 y ya) (?P29 y ya (?y15 y ya)) (?P'27 y ya (?ya15 y ya)) Schedule_D.schedule state_ext_sched_class.schedule
+ 2. \<And>y ya yb yc. \<lbrakk>(?f9 \<oplus> dc) y ya; ?r'17 y ya yb yc\<rbrakk> \<Longrightarrow> dcorres dc (?R17 y ya yb) (?R'17 y ya yc) (do a <- gets cdl_current_thread;
+case a of None \<Rightarrow> return () | Some thread \<Rightarrow> do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od
+od) activate_thread
+ 3. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q28 y ya (?y15 y ya)\<rbrace> Schedule_D.schedule >>= return \<lbrace>?R17 y ya\<rbrace>
+ 4. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q'26 y ya (?ya15 y ya)\<rbrace> state_ext_sched_class.schedule \<lbrace>?R'17 y ya\<rbrace>
+ 5. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 6. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 7. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 8. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a b. (?P25 a b and ?Q24 a b) b\<rbrace>
+ 9. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a b. (?P'21 a b and ?Q'20 a b) b\<rbrace>
+ 10. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+A total of 11 subgoals...
+flex-flex pairs:
+\<lambda>y ya a. ?P29 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?P25 y
+\<lambda>y ya a. ?Q28 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?Q24 y
+\<lambda>y ya a. ?P'27 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?P'21
+\<lambda>y ya a. ?Q'26 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?Q'20<\STATESEP>apply (rule schedule_dcorres)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>y ya yb yc. \<lbrakk>(?f9 \<oplus> dc) y ya; dc yb yc\<rbrakk> \<Longrightarrow> dcorres dc (?R17 y ya yb) (?R'17 y ya yc) (do a <- gets cdl_current_thread;
+case a of None \<Rightarrow> return () | Some thread \<Rightarrow> do restart <- has_restart_cap thread;
+when restart (KHeap_D.set_cap (thread, tcb_pending_op_slot) RunningCap)
+od
+od) activate_thread
+ 2. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q28 y ya (?y15 y ya)\<rbrace> Schedule_D.schedule >>= return \<lbrace>?R17 y ya\<rbrace>
+ 3. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q'26 y ya (?ya15 y ya)\<rbrace> state_ext_sched_class.schedule \<lbrace>?R'17 y ya\<rbrace>
+ 4. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 5. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 6. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 7. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a b. ((\<lambda>a. True) and ?Q24 a b) b\<rbrace>
+ 8. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a b. (invs and valid_sched and valid_etcbs and ?Q'20 a b) b\<rbrace>
+ 9. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 10. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s
+flex-flex pairs:
+\<lambda>y ya a. ?Q28 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?Q24 y
+\<lambda>y ya a. ?Q'26 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?Q'20<\STATESEP>apply (rule activate_thread_corres[unfolded fun_app_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q28 y ya (?y15 y ya)\<rbrace> Schedule_D.schedule >>= return \<lbrace>\<lambda>a b. True\<rbrace>
+ 2. \<And>y ya. (?f9 \<oplus> dc) y ya \<Longrightarrow> \<lbrace>?Q'26 y ya (?ya15 y ya)\<rbrace> state_ext_sched_class.schedule \<lbrace>\<lambda>a. ct_in_state activatable and invs and valid_etcbs\<rbrace>
+ 3. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 4. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 5. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 6. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a b. ((\<lambda>a. True) and ?Q24 a b) b\<rbrace>
+ 7. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a b. (invs and valid_sched and valid_etcbs and ?Q'20 a b) b\<rbrace>
+ 8. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 9. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s
+flex-flex pairs:
+\<lambda>y ya a. ?Q28 y ya (?y15 y ya) \<equiv>\<^sup>? \<lambda>y ya. ?Q24 y
+\<lambda>y ya a. ?Q'26 y ya (?ya15 y ya) \<equiv>\<^sup>? \<lambda>y. ?Q'20<\STATESEP>apply (wp schedule_valid_sched | strengthen valid_etcbs_sched)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>uu_ uua_. dc uu_ uua_ \<Longrightarrow> dcorres (?f9 \<oplus> dc) (?E9 uu_) (?E'9 uua_) (liftE handle_pending_interrupts) (liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od))
+ 2. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 3. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 4. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 5. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 7. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply (simp add: handle_pending_interrupts_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>uu_. dcorres dc (?E9 uu_) (?E'9 ()) (get_active_irq >>= case_option (return ()) Interrupt_D.handle_interrupt) (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)
+ 2. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E9\<rbrace>
+ 3. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'9\<rbrace>
+ 4. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 5. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 6. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 7. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply (rule corres_split[OF get_active_irq_corres])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>uu_ rv irq. irq = rv \<Longrightarrow> dcorres dc (?R57 uu_ rv) (?R'57 uu_ irq) (case rv of None \<Rightarrow> return () | Some a \<Rightarrow> Interrupt_D.handle_interrupt a) (when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq)))
+ 2. \<And>uu_. \<lbrace>?Q57 uu_\<rbrace> get_active_irq \<lbrace>?R57 uu_\<rbrace>
+ 3. \<And>uu_. \<lbrace>?Q'60 ()\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>?R'57 uu_\<rbrace>
+ 4. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>uu_. (\<lambda>_. True) and ?Q57 uu_\<rbrace>
+ 5. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>a. (\<lambda>_. True) and ?Q'60 a\<rbrace>
+ 6. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 7. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 8. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 9. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply (clarsimp simp: when_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>uu_ x2. dcorres (\<lambda>a b. True) (?R57 uu_ (Some x2)) (?R'57 uu_ (Some x2)) (Interrupt_D.handle_interrupt x2) (Interrupt_A.handle_interrupt x2)
+ 2. \<And>uu_. \<lbrace>?Q57 uu_\<rbrace> get_active_irq \<lbrace>?R57 uu_\<rbrace>
+ 3. \<And>uu_. \<lbrace>?Q'60 ()\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>?R'57 uu_\<rbrace>
+ 4. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>uu_. (\<lambda>_. True) and ?Q57 uu_\<rbrace>
+ 5. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>a. (\<lambda>_. True) and ?Q'60 a\<rbrace>
+ 6. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 7. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 8. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 9. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply (rule handle_interrupt_corres[simplified dc_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>uu_. \<lbrace>?Q57 uu_\<rbrace> get_active_irq \<lbrace>\<lambda>a b. True\<rbrace>
+ 2. \<And>_. \<lbrace>?Q'60 ()\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>\<lambda>a. invs and valid_etcbs\<rbrace>
+ 3. \<lbrace>?Q9\<rbrace> Syscall_D.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>uu_. (\<lambda>_. True) and ?Q57 uu_\<rbrace>
+ 4. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>a. (\<lambda>_. True) and ?Q'60 a\<rbrace>
+ 5. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 6. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 7. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and ?Q9 and ?Q4) s
+ 8. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply ((wp | simp)+)[3]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<lbrace>?Q'9\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>a. (\<lambda>_. True) and (invs and valid_etcbs)\<rbrace>
+ 2. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 3. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 5. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and ?Q'9 and ?Q'4) s<\STATESEP>apply (rule hoare_post_imp_dc2E, rule handle_event_invs_and_valid_sched)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s. (invs and valid_sched) s \<Longrightarrow> ((\<lambda>_. True) and (invs and valid_etcbs)) s
+ 2. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 3. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 4. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 5. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and ?Q'4) s<\STATESEP>apply (clarsimp simp: invs_def valid_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?Q4\<rbrace> Syscall_D.handle_event e <handle> (\<lambda>_. liftE handle_pending_interrupts) \<lbrace>\<lambda>a. (\<lambda>a. True) and (\<lambda>a. True)\<rbrace>
+ 2. \<lbrace>?Q'4\<rbrace> Syscall_A.handle_event e <handle> (\<lambda>_. liftE (do irq <- do_machine_op (getActiveIRQ True);
+when (\<exists>y. irq = Some y) (Interrupt_A.handle_interrupt (the irq))
+od)) \<lbrace>\<lambda>a. invs and valid_sched and valid_etcbs and (\<lambda>a. invs a \<and> invs a \<and> (valid_sched and valid_idle) a)\<rbrace>
+ 3. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 4. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and ?Q'4) s<\STATESEP>apply (simp add: conj_comms if_apply_def2 non_kernel_IRQs_def
+             | wp | strengthen valid_etcbs_sched valid_idle_invs_strg)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P'170\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>r s. invs s \<and> valid_sched s\<rbrace>, \<lbrace>\<lambda>r. valid_sched\<rbrace>
+ 2. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 3. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and (\<lambda>s. (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> ?P'170 s)) s<\STATESEP>apply (rule valid_validE2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<lbrace>?P'170\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>r. ?Q'185\<rbrace>
+ 2. \<And>s. ?Q'185 s \<Longrightarrow> invs s \<and> valid_sched s
+ 3. \<And>s. ?Q'185 s \<Longrightarrow> valid_sched s
+ 4. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 5. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and (\<lambda>s. (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> ?P'170 s)) s<\STATESEP>apply (rule hoare_vcg_conj_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<lbrace>?P189\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>rv. ?Q190\<rbrace>
+ 2. \<lbrace>?P'189\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>rv. ?Q'191\<rbrace>
+ 3. \<And>s. ?Q190 s \<and> ?Q'191 s \<Longrightarrow> invs s \<and> valid_sched s
+ 4. \<And>s. ?Q190 s \<and> ?Q'191 s \<Longrightarrow> valid_sched s
+ 5. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 6. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and (\<lambda>s. (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> ?P189 s \<and> ?P'189 s)) s<\STATESEP>apply (rule he_invs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<lbrace>?P'189\<rbrace> Syscall_A.handle_event e \<lbrace>\<lambda>rv. ?Q'191\<rbrace>
+ 2. \<And>s. invs s \<and> ?Q'191 s \<Longrightarrow> invs s \<and> valid_sched s
+ 3. \<And>s. invs s \<and> ?Q'191 s \<Longrightarrow> valid_sched s
+ 4. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 5. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and (\<lambda>s. (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> ?P'189 s)) s<\STATESEP>apply (rule handle_event_valid_sched)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s. invs s \<and> valid_sched s \<Longrightarrow> invs s \<and> valid_sched s
+ 2. \<And>s. invs s \<and> valid_sched s \<Longrightarrow> valid_sched s
+ 3. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. True \<and> True \<and> True) and ?Q4) s
+ 4. \<And>s. (invs and valid_sched and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s \<Longrightarrow> (invs and (\<lambda>s. \<forall>x\<in>ran (kheap s). obj_valid_pdpt x) and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_running s) and valid_etcbs and (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) and (\<lambda>s. (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> (invs s \<and> (e \<noteq> Interrupt \<longrightarrow> ct_active s)) \<and> (invs and valid_sched and (\<lambda>s. e \<noteq> Interrupt \<longrightarrow> ct_active s) and (\<lambda>s. scheduler_action s = resume_cur_thread)) s)) s<\STATESEP>apply (fastforce intro: active_from_running simp: valid_sched_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

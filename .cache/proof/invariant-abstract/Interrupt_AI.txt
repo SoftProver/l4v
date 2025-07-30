@@ -1,0 +1,335 @@
+<\STATESEP>theory Interrupt_AI
+imports ArchIpc_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts
+  maxIRQ<\STATESEP>0<\TRANSEP><\STATESEP>requalify_facts
+  arch_post_cap_deletion_mdb_inv<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  interrupt_derived :: "cap \<Rightarrow> cap \<Rightarrow> bool"
+where
+ "interrupt_derived cap cap' \<equiv> \<not> is_untyped_cap cap \<longrightarrow> cap_master_cap cap = cap_master_cap cap'
+                                    \<and> (cap_badge cap', cap_badge cap) \<in> capBadge_ordering False"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  irq_handler_inv_valid :: "irq_handler_invocation \<Rightarrow> 'z::state_ext state \<Rightarrow> bool"
+where
+  "irq_handler_inv_valid (ACKIrq irq) = (\<lambda>s. interrupt_states s irq \<noteq> IRQInactive)"
+| "irq_handler_inv_valid (Invocations_A.ClearIRQHandler irq) = \<top>"
+| "irq_handler_inv_valid (Invocations_A.SetIRQHandler irq cap cte_ptr)
+     = (\<lambda>s. ex_cte_cap_wp_to (is_cnode_cap) cte_ptr s
+            \<and> (\<exists>ptr'. cte_wp_at ((=) (cap.IRQHandlerCap irq)) ptr' s)
+            \<and> cte_wp_at (interrupt_derived cap) cte_ptr s
+            \<and> s \<turnstile> cap \<and> is_ntfn_cap cap)"<\STATESEP>0<\TRANSEP><\STATESEP>consts
+  arch_irq_control_inv_valid :: "arch_irq_control_invocation \<Rightarrow> ('a :: state_ext) state \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  irq_control_inv_valid :: "irq_control_invocation \<Rightarrow> 'a::state_ext state \<Rightarrow> bool"
+where
+  "irq_control_inv_valid (Invocations_A.ArchIRQControl ivk) = (arch_irq_control_inv_valid ivk)"
+| "irq_control_inv_valid (Invocations_A.IRQControl irq ptr ptr') =
+       (cte_wp_at ((=) cap.NullCap) ptr and
+        cte_wp_at ((=) cap.IRQControlCap) ptr'
+        and ex_cte_cap_wp_to is_cnode_cap ptr and real_cte_at ptr
+        and K (irq \<le> maxIRQ))"<\STATESEP>0<\TRANSEP><\STATESEP>locale Interrupt_AI =
+  fixes state_ext_type1 :: "('a :: state_ext) itself"
+  assumes decode_irq_control_invocation_inv[wp]:
+    "\<And>(P  :: 'a state \<Rightarrow> bool) args slot label caps.
+      \<lbrace>P\<rbrace> decode_irq_control_invocation label args slot caps \<lbrace>\<lambda>rv. P\<rbrace>"
+  assumes decode_irq_control_valid[wp]:
+    "\<And>slot caps label args.
+    \<lbrace>\<lambda>s :: 'a state. invs s \<and> (\<forall>cap \<in> set caps. s \<turnstile> cap)
+          \<and> (\<forall>cap \<in> set caps. is_cnode_cap cap \<longrightarrow>
+                  (\<forall>r \<in> cte_refs cap (interrupt_irq_node s). ex_cte_cap_wp_to is_cnode_cap r s))
+          \<and> cte_wp_at ((=) cap.IRQControlCap) slot s\<rbrace>
+      decode_irq_control_invocation label args slot caps
+    \<lbrace>irq_control_inv_valid\<rbrace>,-"
+  assumes get_irq_slot_different:
+    "\<And> irq ptr.
+    \<lbrace>\<lambda>s :: 'a state. valid_global_refs s \<and> ex_cte_cap_wp_to is_cnode_cap ptr s\<rbrace>
+       get_irq_slot irq
+    \<lbrace>\<lambda>rv s. rv \<noteq> ptr\<rbrace>"
+  assumes is_derived_use_interrupt:
+    "\<And> cap cap' m p.
+    (is_ntfn_cap cap \<and> interrupt_derived cap cap') \<longrightarrow> (is_derived m p cap cap')"
+  assumes maskInterrupt_invs:
+    "\<And>b irq.
+    \<lbrace>invs and (\<lambda>s :: 'a state. \<not>b \<longrightarrow> interrupt_states s irq \<noteq> IRQInactive)\<rbrace>
+      do_machine_op (maskInterrupt b irq)
+    \<lbrace>\<lambda>rv. invs\<rbrace>"
+  assumes no_cap_to_obj_with_diff_IRQHandler[simp]:
+    "\<And> irq S. (no_cap_to_obj_with_diff_ref (IRQHandlerCap irq) S :: 'a state \<Rightarrow> bool)= \<top>"
+  assumes set_irq_state_valid_cap[wp]:
+    "\<And> cap irq.
+    \<lbrace>valid_cap cap :: 'a state \<Rightarrow> bool\<rbrace>
+      set_irq_state IRQSignal irq
+    \<lbrace>\<lambda>rv. valid_cap cap\<rbrace>"
+  assumes set_irq_state_valid_global_refs[wp]:
+    "\<And> a b.
+    \<lbrace>valid_global_refs :: 'a state \<Rightarrow> bool\<rbrace>
+      set_irq_state a b
+    \<lbrace>\<lambda>_. valid_global_refs\<rbrace>"
+  assumes invoke_irq_handler_invs':
+    "\<And> (ex_inv :: 'a state \<Rightarrow> bool) i.
+     \<lbrakk> \<And>f. \<lbrace>invs and ex_inv\<rbrace> do_machine_op f \<lbrace>\<lambda>rv::unit. ex_inv\<rbrace>;
+       \<And>cap src dest.
+       \<lbrace>ex_inv and invs and K (src \<noteq> dest)\<rbrace>
+         cap_insert cap src dest
+       \<lbrace>\<lambda>_.ex_inv\<rbrace>;
+       \<And>cap. \<lbrace>ex_inv and invs\<rbrace> cap_delete_one cap \<lbrace>\<lambda>_.ex_inv\<rbrace>
+     \<rbrakk> \<Longrightarrow>
+     \<lbrace>invs and ex_inv and irq_handler_inv_valid i\<rbrace> invoke_irq_handler i \<lbrace>\<lambda>rv s. invs s \<and> ex_inv s\<rbrace>"
+  assumes invoke_irq_control_invs[wp]:
+    "\<And> i. \<lbrace>invs and irq_control_inv_valid i\<rbrace> invoke_irq_control i \<lbrace>\<lambda>rv. invs :: 'a state \<Rightarrow> bool\<rbrace>"
+  assumes resetTimer_invs[wp]:
+    "\<lbrace>invs :: 'a state \<Rightarrow> bool\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. invs\<rbrace>"
+  assumes empty_fail_ackInterrupt[simp, intro!]:
+    "\<And> irq. empty_fail (ackInterrupt irq)"
+  assumes empty_fail_maskInterrupt[simp, intro!]:
+    "\<And> f irq. empty_fail (maskInterrupt f irq)"
+  assumes handle_interrupt_invs [wp]:
+    "\<And> irq. \<lbrace>invs :: 'a state \<Rightarrow> bool\<rbrace> handle_interrupt irq \<lbrace>\<lambda>_. invs\<rbrace>"
+  assumes sts_arch_irq_control_inv_valid [wp]:
+    "\<And>i t st.
+      \<lbrace>arch_irq_control_inv_valid i :: 'a state \<Rightarrow> bool\<rbrace>
+        set_thread_state t st
+      \<lbrace>\<lambda>rv. arch_irq_control_inv_valid i\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>crunch inv[wp]: decode_irq_handler_invocation "P"
+  (simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_irq_handlersD:
+  "\<lbrakk>cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s; valid_irq_handlers s\<rbrakk>  \<Longrightarrow>
+  interrupt_states s irq = IRQSignal"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s; valid_irq_handlers s\<rbrakk> \<Longrightarrow> interrupt_states s irq = IRQSignal<\STATESEP>apply(auto simp: valid_irq_handlers_def cte_wp_at_caps_of_state irq_issued_def cap_irqs_def cap_irq_opt_def split: cap.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma decode_irq_handler_valid[wp]:
+  "\<lbrace>\<lambda>s. invs s \<and> (\<forall>cap \<in> set caps. s \<turnstile> fst cap) \<and> (\<exists>ptr'. cte_wp_at ((=) (cap.IRQHandlerCap irq)) ptr' s)
+        \<and> (\<forall>cap \<in> set caps. \<forall>r \<in> cte_refs (fst cap) (interrupt_irq_node s). ex_cte_cap_to r s)
+        \<and> (\<forall>cap \<in> set caps. ex_cte_cap_wp_to is_cnode_cap (snd cap) s)
+        \<and> (\<forall>cap \<in> set caps. cte_wp_at (interrupt_derived (fst cap)) (snd cap) s)\<rbrace>
+     decode_irq_handler_invocation label irq caps
+   \<lbrace>irq_handler_inv_valid\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. invs s \<and> (\<forall>cap\<in>set caps. s \<turnstile> fst cap) \<and> (\<exists>ptr'. cte_wp_at ((=) (IRQHandlerCap irq)) ptr' s) \<and> (\<forall>cap\<in>set caps. \<forall>r\<in>cte_refs (fst cap) (interrupt_irq_node s). ex_cte_cap_wp_to (\<lambda>_. True) r s) \<and> (\<forall>cap\<in>set caps. ex_cte_cap_wp_to is_cnode_cap (snd cap) s) \<and> (\<forall>cap\<in>set caps. cte_wp_at (interrupt_derived (fst cap)) (snd cap) s)\<rbrace> decode_irq_handler_invocation label irq caps \<lbrace>irq_handler_inv_valid\<rbrace>, -<\STATESEP>apply (simp add: decode_irq_handler_invocation_def Let_def split_def
+                  split del: if_split cong: if_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. invs s \<and> (\<forall>cap\<in>set caps. s \<turnstile> fst cap) \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s) \<and> (\<forall>cap\<in>set caps. \<forall>r\<in>cte_refs (fst cap) (interrupt_irq_node s). ex_cte_cap_wp_to (\<lambda>_. True) r s) \<and> (\<forall>cap\<in>set caps. ex_cte_cap_wp_to is_cnode_cap (snd cap) s) \<and> (\<forall>cap\<in>set caps. cte_wp_at (interrupt_derived (fst cap)) (snd cap) s)\<rbrace> if gen_invocation_type label = IRQAckIRQ then returnOk (ACKIrq irq) else if gen_invocation_type label = IRQSetIRQHandler then if caps \<noteq> [] then if is_ntfn_cap (fst (hd caps)) \<and> AllowSend \<in> cap_rights (fst (hd caps)) then returnOk (SetIRQHandler irq (fst (hd caps)) (snd (hd caps))) else throwError (InvalidCapability 0) else throwError TruncatedMessage else if gen_invocation_type label = IRQClearIRQHandler then returnOk (ClearIRQHandler irq) else throwError IllegalOperation \<lbrace>irq_handler_inv_valid\<rbrace>, -<\STATESEP>apply (rule hoare_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. invs s \<and> (\<forall>cap\<in>set caps. s \<turnstile> fst cap) \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s) \<and> (\<forall>cap\<in>set caps. \<forall>r\<in>cte_refs (fst cap) (interrupt_irq_node s). ex_cte_cap_wp_to (\<lambda>_. True) r s) \<and> (\<forall>cap\<in>set caps. ex_cte_cap_wp_to is_cnode_cap (snd cap) s) \<and> (\<forall>cap\<in>set caps. cte_wp_at (interrupt_derived (fst cap)) (snd cap) s) \<Longrightarrow> (gen_invocation_type label = IRQAckIRQ \<longrightarrow> irq_handler_inv_valid (ACKIrq irq) s) \<and> (gen_invocation_type label \<noteq> IRQAckIRQ \<longrightarrow> (gen_invocation_type label = IRQSetIRQHandler \<longrightarrow> (caps \<noteq> [] \<longrightarrow> (is_ntfn_cap (fst (hd caps)) \<and> AllowSend \<in> cap_rights (fst (hd caps)) \<longrightarrow> irq_handler_inv_valid (SetIRQHandler irq (fst (hd caps)) (snd (hd caps))) s) \<and> (\<not> (is_ntfn_cap (fst (hd caps)) \<and> AllowSend \<in> cap_rights (fst (hd caps))) \<longrightarrow> True)) \<and> (\<not> caps \<noteq> [] \<longrightarrow> True)) \<and> (gen_invocation_type label \<noteq> IRQSetIRQHandler \<longrightarrow> (gen_invocation_type label = IRQClearIRQHandler \<longrightarrow> irq_handler_inv_valid (ClearIRQHandler irq) s) \<and> (gen_invocation_type label \<noteq> IRQClearIRQHandler \<longrightarrow> True)))<\STATESEP>apply (clarsimp simp: neq_Nil_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>invs s; \<forall>cap\<in>set caps. s \<turnstile> fst cap; cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s; \<forall>cap\<in>set caps. \<forall>r\<in>cte_refs (fst cap) (interrupt_irq_node s). ex_cte_cap_wp_to (\<lambda>_. True) r s; \<forall>cap\<in>set caps. ex_cte_cap_wp_to is_cnode_cap (snd cap) s; \<forall>cap\<in>set caps. cte_wp_at (interrupt_derived (fst cap)) (snd cap) s; gen_invocation_type label = IRQAckIRQ; interrupt_states s irq = IRQInactive\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (fastforce dest: valid_irq_handlersD simp: invs_def valid_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch inv[wp]: is_irq_active "P"<\STATESEP>0<\TRANSEP><\STATESEP>lemma mod_le:
+  "\<lbrakk>b < c;b dvd c\<rbrakk>  \<Longrightarrow> (a mod b \<le> a mod (c::nat))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b < c; b dvd c\<rbrakk> \<Longrightarrow> a mod b \<le> a mod c<\STATESEP>apply (subst mod_mod_cancel[symmetric],simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b < c; b dvd c\<rbrakk> \<Longrightarrow> a mod c mod b \<le> a mod c<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_up_8_32: "is_up (ucast :: word8 \<Rightarrow> word32)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_up UCAST(8 \<rightarrow> 32)<\STATESEP>by (simp add: is_up_def source_size_def target_size_def word_size)<\STATESEP>1<\TRANSEP><\STATESEP>crunches
+  cancel_all_ipc, cancel_all_signals, fast_finalise, set_cap, post_cap_deletion
+  for mdb_inv[wp]: "\<lambda>s. P (cdt s)"
+  (wp: crunch_wps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_delete_one_still_derived:
+  "\<lbrace>\<lambda>s. cte_wp_at (is_derived (cdt s) p' cap) p' s \<and> p \<noteq> p' \<and> valid_mdb s\<rbrace>
+     cap_delete_one p
+   \<lbrace>\<lambda>rv s. cte_wp_at (is_derived (cdt s) p' cap) p' s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. cte_wp_at (is_derived (cdt s) p' cap) p' s \<and> p \<noteq> p' \<and> valid_mdb s\<rbrace> cap_delete_one p \<lbrace>\<lambda>rv s. cte_wp_at (is_derived (cdt s) p' cap) p' s\<rbrace><\STATESEP>apply (simp add: cap_delete_one_def empty_slot_def unless_def
+                   cte_wp_at_caps_of_state set_cdt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> p \<noteq> p' \<and> valid_mdb s\<rbrace> do cap <- get_cap p;
+when (cap \<noteq> NullCap) (do final <- is_final_cap cap;
+y <- fast_finalise cap final;
+cap <- get_cap p;
+if cap = NullCap then return () else do slot_p <- gets (\<lambda>s. cdt s p);
+cdt <- gets cdt;
+y <- do s <- get;
+put (s\<lparr>cdt := (\<lambda>pa. if cdt pa = Some p then cdt p else cdt pa)(p := None)\<rparr>)
+od;
+y <- do_extended_op (empty_slot_ext p slot_p);
+y <- set_original p False;
+y <- set_cap NullCap p;
+post_cap_deletion NullCap
+od
+od)
+od \<lbrace>\<lambda>rv s. \<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa\<rbrace><\STATESEP>apply (wp hoare_vcg_ex_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>capa capaa final y capb slot_p cdta ya s f. \<lbrakk>capaa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> (((caps_of_state (trans_state f s\<lparr>is_original_cap := (is_original_cap (trans_state f s))(p := False)\<rparr>))(p \<mapsto> NullCap)) p' = Some capa \<and> is_derived (cdt (trans_state f s\<lparr>is_original_cap := (is_original_cap (trans_state f s))(p := False)\<rparr>)) p' cap capa) = (((caps_of_state (s\<lparr>is_original_cap := (is_original_cap s)(p := False)\<rparr>))(p \<mapsto> NullCap)) p' = Some capa \<and> is_derived (cdt (s\<lparr>is_original_cap := (is_original_cap s)(p := False)\<rparr>)) p' cap capa)
+ 2. \<And>capa capaa final y capb slot_p cdta. \<lbrakk>capaa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<lbrace>?Q'10 capa capaa final y capb slot_p cdta\<rbrace> do s <- get;
+put (s\<lparr>cdt := (\<lambda>pa. if cdta pa = Some p then cdta p else cdta pa)(p := None)\<rparr>)
+od \<lbrace>\<lambda>ya s. ((caps_of_state (s\<lparr>is_original_cap := (is_original_cap s)(p := False)\<rparr>))(p \<mapsto> NullCap)) p' = Some capa \<and> is_derived (cdt (s\<lparr>is_original_cap := (is_original_cap s)(p := False)\<rparr>)) p' cap capa\<rbrace>
+ 3. \<And>cap capa final y capb slot_p. \<lbrakk>capa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<lbrace>?Q'9 cap capa final y capb slot_p\<rbrace> gets cdt \<lbrace>?Q'10 cap capa final y capb slot_p\<rbrace>
+ 4. \<And>cap capa final y capb. \<lbrakk>capa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<lbrace>?R7 cap capa final y capb\<rbrace> gets (\<lambda>s. cdt s p) \<lbrace>?Q'9 cap capa final y capb\<rbrace>
+ 5. \<And>capa capaa final y. capaa \<noteq> NullCap \<Longrightarrow> \<lbrace>?Q'5 capa capaa final y\<rbrace> get_cap p \<lbrace>\<lambda>capb s. (capb = NullCap \<longrightarrow> caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> (capb \<noteq> NullCap \<longrightarrow> ?R7 capa capaa final y capb s)\<rbrace>
+ 6. \<And>cap capa final. capa \<noteq> NullCap \<Longrightarrow> \<lbrace>?Q'4 cap capa final\<rbrace> fast_finalise capa final \<lbrace>?Q'5 cap capa final\<rbrace>
+ 7. \<And>cap capa. capa \<noteq> NullCap \<Longrightarrow> \<lbrace>?Q3 cap capa\<rbrace> is_final_cap capa \<lbrace>?Q'4 cap capa\<rbrace>
+ 8. \<And>capa. \<lbrace>?P1 capa\<rbrace> get_cap p \<lbrace>\<lambda>capaa. if capaa \<noteq> NullCap then ?Q3 capa capaa else (\<lambda>s. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa)\<rbrace>
+ 9. \<And>s. (\<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> p \<noteq> p' \<and> valid_mdb s \<Longrightarrow> \<exists>x. ?P1 x s<\STATESEP>apply (simp split del:if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>capa capaa final y capb slot_p cdta. \<lbrakk>capaa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<lbrace>?Q'10 capa capaa final y capb slot_p cdta\<rbrace> do s <- get;
+put (s\<lparr>cdt := (\<lambda>pa. if cdta pa = Some p then cdta p else cdta pa)(p := None)\<rparr>)
+od \<lbrace>\<lambda>ya s. ((caps_of_state (s\<lparr>is_original_cap := (is_original_cap s)(p := False)\<rparr>))(p \<mapsto> NullCap)) p' = Some capa \<and> is_derived (cdt (s\<lparr>is_original_cap := (is_original_cap s)(p := False)\<rparr>)) p' cap capa\<rbrace>
+ 2. \<And>cap capa final y capb slot_p. \<lbrakk>capa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<lbrace>?Q'9 cap capa final y capb slot_p\<rbrace> gets cdt \<lbrace>?Q'10 cap capa final y capb slot_p\<rbrace>
+ 3. \<And>cap capa final y capb. \<lbrakk>capa \<noteq> NullCap; capb \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<lbrace>?R7 cap capa final y capb\<rbrace> gets (\<lambda>s. cdt s p) \<lbrace>?Q'9 cap capa final y capb\<rbrace>
+ 4. \<And>capa capaa final y. capaa \<noteq> NullCap \<Longrightarrow> \<lbrace>?Q'5 capa capaa final y\<rbrace> get_cap p \<lbrace>\<lambda>capb s. (capb = NullCap \<longrightarrow> caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> (capb \<noteq> NullCap \<longrightarrow> ?R7 capa capaa final y capb s)\<rbrace>
+ 5. \<And>cap capa final. capa \<noteq> NullCap \<Longrightarrow> \<lbrace>?Q'4 cap capa final\<rbrace> fast_finalise capa final \<lbrace>?Q'5 cap capa final\<rbrace>
+ 6. \<And>cap capa. capa \<noteq> NullCap \<Longrightarrow> \<lbrace>?Q3 cap capa\<rbrace> is_final_cap capa \<lbrace>?Q'4 cap capa\<rbrace>
+ 7. \<And>capa. \<lbrace>?P1 capa\<rbrace> get_cap p \<lbrace>\<lambda>capaa. if capaa \<noteq> NullCap then ?Q3 capa capaa else (\<lambda>s. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa)\<rbrace>
+ 8. \<And>s. (\<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> p \<noteq> p' \<and> valid_mdb s \<Longrightarrow> \<exists>x. ?P1 x s<\STATESEP>apply (wp hoare_vcg_ex_lift get_cap_wp hoare_vcg_all_lift
+            hoare_vcg_disj_lift
+               | simp only: cte_wp_at_caps_of_state imp_conv_disj
+                            cdt_update.caps_of_state_update
+                            revokable_update.caps_of_state_update
+               | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>cap capa x. capa \<noteq> NullCap \<Longrightarrow> \<lbrace>?P73 cap capa x\<rbrace> is_final_cap capa \<lbrace>\<lambda>rv s. caps_of_state s p \<noteq> Some x\<rbrace>
+ 2. \<And>capa capaa x. capaa \<noteq> NullCap \<Longrightarrow> \<lbrace>?P'73 capa capaa x\<rbrace> is_final_cap capaa \<lbrace>\<lambda>rv s. (x \<noteq> NullCap \<or> caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> (\<not> x \<noteq> NullCap \<or> ((caps_of_state s)(p \<mapsto> NullCap)) p' = Some capa \<and> is_derived ((\<lambda>pa. if cdt s pa = Some p then cdt s p else cdt s pa)(p := None)) p' cap capa)\<rbrace>
+ 3. \<And>capa. \<lbrace>?P1 capa\<rbrace> get_cap p \<lbrace>\<lambda>capaa. if capaa \<noteq> NullCap then \<lambda>s. \<forall>x. ?P73 capa capaa x s \<or> ?P'73 capa capaa x s else (\<lambda>s. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa)\<rbrace>
+ 4. \<And>s. (\<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> p \<noteq> p' \<and> valid_mdb s \<Longrightarrow> \<exists>x. ?P1 x s<\STATESEP>apply (simp add: is_final_cap_def | wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>capa. \<lbrace>?P1 capa\<rbrace> get_cap p \<lbrace>\<lambda>capaa. if capaa \<noteq> NullCap then \<lambda>s. \<forall>x. caps_of_state s p = Some x \<longrightarrow> (p' = p \<longrightarrow> (x = NullCap \<longrightarrow> NullCap = capa \<and> is_derived (cdt s) p cap capa) \<and> (x = NullCap \<or> NullCap = capa \<and> is_derived (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) p cap capa)) \<and> (p' \<noteq> p \<longrightarrow> (x = NullCap \<longrightarrow> caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> (x = NullCap \<or> caps_of_state s p' = Some capa \<and> is_derived (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) p' cap capa)) else (\<lambda>s. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa)\<rbrace>
+ 2. \<And>s. (\<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> p \<noteq> p' \<and> valid_mdb s \<Longrightarrow> \<exists>x. ?P1 x s<\STATESEP>apply (rule get_cap_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>capa. caps_of_state s p' = Some capa \<and> is_derived (cdt s) p' cap capa) \<and> p \<noteq> p' \<and> valid_mdb s \<Longrightarrow> \<exists>x. \<forall>capa. cte_wp_at ((=) capa) p s \<longrightarrow> (if capa \<noteq> NullCap then \<lambda>s. \<forall>xa. caps_of_state s p = Some xa \<longrightarrow> (p' = p \<longrightarrow> (xa = NullCap \<longrightarrow> NullCap = x \<and> is_derived (cdt s) p cap x) \<and> (xa = NullCap \<or> NullCap = x \<and> is_derived (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) p cap x)) \<and> (p' \<noteq> p \<longrightarrow> (xa = NullCap \<longrightarrow> caps_of_state s p' = Some x \<and> is_derived (cdt s) p' cap x) \<and> (xa = NullCap \<or> caps_of_state s p' = Some x \<and> is_derived (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) p' cap x)) else (\<lambda>s. caps_of_state s p' = Some x \<and> is_derived (cdt s) p' cap x)) s<\STATESEP>apply (clarsimp simp: cte_wp_at_caps_of_state if_apply_def2
+             split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s capa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_derived (cdt s) p' cap capa\<rbrakk> \<Longrightarrow> \<exists>x. \<forall>capb. caps_of_state s p = Some capb \<longrightarrow> (capb \<noteq> NullCap \<longrightarrow> capa = x \<and> is_derived (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) p' cap x) \<and> (capb = NullCap \<longrightarrow> capa = x \<and> is_derived (cdt s) p' cap x)<\STATESEP>apply (rule_tac x=capa in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s capa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_derived (cdt s) p' cap capa\<rbrakk> \<Longrightarrow> \<forall>capb. caps_of_state s p = Some capb \<longrightarrow> (capb \<noteq> NullCap \<longrightarrow> capa = capa \<and> is_derived (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) p' cap capa) \<and> (capb = NullCap \<longrightarrow> capa = capa \<and> is_derived (cdt s) p' cap capa)<\STATESEP>apply (clarsimp simp only: is_derived_def simp_thms
+                      split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if True then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False)) \<and> (capaa = NullCap \<longrightarrow> (if True then True else (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False))
+ 2. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {}
+ 2. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply (subst mdb_empty_abs.descendants[unfolded fun_upd_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> mdb_empty_abs s
+ 2. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> (if p' = p then {} else descendants_of p' (cdt s) - {p}) = {}
+ 3. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply (rule mdb_empty_abs.intro)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> vmdb_abs s
+ 2. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> (if p' = p then {} else descendants_of p' (cdt s) - {p}) = {}
+ 3. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply (rule vmdb_abs.intro)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> valid_mdb s
+ 2. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> (if p' = p then {} else descendants_of p' (cdt s) - {p}) = {}
+ 3. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; descendants_of p' (cdt s) = {}; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa; capaa \<noteq> NullCap\<rbrakk> \<Longrightarrow> (if p' = p then {} else descendants_of p' (cdt s) - {p}) = {}
+ 2. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s capa capaa. \<lbrakk>p \<noteq> p'; valid_mdb s; caps_of_state s p' = Some capa; \<not> is_untyped_cap capa; cap \<noteq> NullCap; \<not> is_zombie capa; cap \<noteq> IRQControlCap; cap_master_cap capa = cap_master_cap cap; (cap_badge capa, cap_badge cap) \<in> capBadge_ordering False; is_master_reply_cap capa = is_reply_cap cap; is_derived_arch cap capa; \<not> is_reply_cap capa; \<not> is_master_reply_cap cap; caps_of_state s p = Some capaa\<rbrakk> \<Longrightarrow> (capaa \<noteq> NullCap \<longrightarrow> (if False then descendants_of p' (\<lambda>a. if a = p then None else if cdt s a = Some p then cdt s p else cdt s a) = {} else True)) \<and> (capaa = NullCap \<longrightarrow> (if False then descendants_of p' (cdt s) = {} else True))<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_delete_one_cte_cap_to[wp]:
+  "\<lbrace>ex_cte_cap_wp_to P ptr\<rbrace> cap_delete_one ptr' \<lbrace>\<lambda>rv. ex_cte_cap_wp_to P ptr\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>ex_cte_cap_wp_to P ptr\<rbrace> cap_delete_one ptr' \<lbrace>\<lambda>rv. ex_cte_cap_wp_to P ptr\<rbrace><\STATESEP>apply (simp add: ex_cte_cap_wp_to_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<exists>a b. cte_wp_at (\<lambda>c. P c \<and> ptr \<in> cte_refs c (interrupt_irq_node s)) (a, b) s\<rbrace> cap_delete_one ptr' \<lbrace>\<lambda>rv s. \<exists>a b. cte_wp_at (\<lambda>c. P c \<and> ptr \<in> cte_refs c (interrupt_irq_node s)) (a, b) s\<rbrace><\STATESEP>apply (wp hoare_vcg_ex_lift
+            hoare_use_eq_irq_node [OF cap_delete_one_irq_node
+                                      cap_delete_one_cte_wp_at_preserved])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b f cap. P cap \<and> ptr \<in> cte_refs cap f \<Longrightarrow> \<not> can_fast_finalise cap
+ 2. \<And>s. \<exists>a b. cte_wp_at (\<lambda>c. P c \<and> ptr \<in> cte_refs c (interrupt_irq_node s)) (a, b) s \<Longrightarrow> \<exists>x xa. cte_wp_at (\<lambda>a. P a \<and> ptr \<in> cte_refs a (interrupt_irq_node s)) (x, xa) s<\STATESEP>apply (clarsimp simp: can_fast_finalise_def split: cap.split_asm)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_irq_slot_ex_cte:
+  "\<lbrace>\<lambda>s. \<exists>ptr. cte_wp_at ((=) (cap.IRQHandlerCap irq)) ptr s \<and> P (cap.IRQHandlerCap irq)\<rbrace>
+      get_irq_slot irq
+   \<lbrace>ex_cte_cap_wp_to P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<exists>ptr. cte_wp_at ((=) (IRQHandlerCap irq)) ptr s \<and> P (IRQHandlerCap irq)\<rbrace> get_irq_slot irq \<lbrace>ex_cte_cap_wp_to P\<rbrace><\STATESEP>apply (simp add: get_irq_slot_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s) \<and> P (IRQHandlerCap irq)\<rbrace> gets (\<lambda>st. (interrupt_irq_node st irq, [])) \<lbrace>ex_cte_cap_wp_to P\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s) \<and> P (IRQHandlerCap irq) \<Longrightarrow> ex_cte_cap_wp_to P (interrupt_irq_node s irq, []) s<\STATESEP>apply (simp add: ex_cte_cap_wp_to_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap irq)) (a, b) s) \<and> P (IRQHandlerCap irq) \<Longrightarrow> \<exists>a b. cte_wp_at (\<lambda>c. P c \<and> (interrupt_irq_node s irq, []) \<in> cte_refs c (interrupt_irq_node s)) (a, b) s<\STATESEP>apply (elim conjE exEI cte_wp_at_weakenE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x xa c. \<lbrakk>P (IRQHandlerCap irq); IRQHandlerCap irq = c\<rbrakk> \<Longrightarrow> P c \<and> (interrupt_irq_node s irq, []) \<in> cte_refs c (interrupt_irq_node s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch pspace_aligned[wp]: set_irq_state "pspace_aligned"<\STATESEP>0<\TRANSEP><\STATESEP>crunch pspace_distinct[wp]: set_irq_state "pspace_distinct"<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_mdb_interrupts[simp]:
+  "valid_mdb (interrupt_states_update f s) = valid_mdb s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_mdb (interrupt_states_update f s) = valid_mdb s<\STATESEP>by (simp add: valid_mdb_def mdb_cte_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>crunch valid_mdb[wp]: set_irq_state "valid_mdb"<\STATESEP>0<\TRANSEP><\STATESEP>crunch mdb_cte_wp_at[wp]: set_irq_state "\<lambda>s. cte_wp_at (P (cdt s)) p s"<\STATESEP>0<\TRANSEP><\STATESEP>crunch real_cte_at[wp]: set_irq_state "real_cte_at p"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas set_irq_state_cte_cap_to[wp]
+    = ex_cte_cap_to_pres [OF set_irq_state_mdb_cte_wp_at set_irq_state_irq_node]<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_irq_state_issued[wp]:
+  "\<lbrace>\<top>\<rbrace> set_irq_state irq_state.IRQSignal irq \<lbrace>\<lambda>rv. irq_issued irq\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> set_irq_state IRQSignal irq \<lbrace>\<lambda>rv. irq_issued irq\<rbrace><\STATESEP>apply (simp add: set_irq_state_def irq_issued_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do y <- modify (\<lambda>s. s\<lparr>interrupt_states := (interrupt_states s)(irq := IRQSignal)\<rparr>);
+do_machine_op (maskInterrupt False irq)
+od \<lbrace>\<lambda>rv s. interrupt_states s irq = IRQSignal\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> interrupt_states (s\<lparr>interrupt_states := (interrupt_states s)(irq := IRQSignal)\<rparr>) irq = IRQSignal<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma IRQHandler_valid:
+  "(s \<turnstile> cap.IRQHandlerCap irq) = (irq \<le> maxIRQ)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> IRQHandlerCap irq = (irq \<le> maxIRQ)<\STATESEP>by (simp add: valid_cap_def cap_aligned_def word_bits_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas (in Interrupt_AI)
+  invoke_irq_handler_invs[wp] = invoke_irq_handler_invs'[where ex_inv=\<top>
+                                                             , simplified hoare_TrueI
+                                                             , OF TrueI TrueI TrueI
+                                                             , simplified
+                                                        ]<\STATESEP>0<\TRANSEP><\STATESEP>crunch interrupt_states[wp]: update_waiting_ntfn, cancel_signal, blocked_cancel_ipc "\<lambda>s. P (interrupt_states s)" (wp: mapM_x_wp_inv)<\STATESEP>0<\TRANSEP><\STATESEP>lemma cancel_ipc_noreply_interrupt_states:
+  "\<lbrace>\<lambda>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s) \<rbrace> cancel_ipc t \<lbrace> \<lambda>_ s. P (interrupt_states s) \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s)\<rbrace> cancel_ipc t \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace><\STATESEP>apply (simp add: cancel_ipc_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s)\<rbrace> do state <- get_thread_state t;
+case state of BlockedOnReceive x y \<Rightarrow> blocked_cancel_ipc state t | BlockedOnSend x y \<Rightarrow> blocked_cancel_ipc state t | BlockedOnReply \<Rightarrow> reply_cancel_ipc t | BlockedOnNotification event \<Rightarrow> cancel_signal t event | _ \<Rightarrow> return ()
+od \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace><\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<lbrace>?R16 (ds_id BlockedOnReply)\<rbrace> reply_cancel_ipc t \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 2. \<And>state x7. state = BlockedOnNotification x7 \<Longrightarrow> \<lbrace>?R15 state x7\<rbrace> cancel_signal t x7 \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 3. \<And>state. idle state \<Longrightarrow> \<lbrace>?R13 state\<rbrace> return () \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 4. \<lbrace>?Q1\<rbrace> get_thread_state t \<lbrace>\<lambda>state s. (state = Running \<longrightarrow> P (interrupt_states s)) \<and> (inactive state \<longrightarrow> P (interrupt_states s)) \<and> (state = Restart \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. state = BlockedOnReceive x xa \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. state = BlockedOnSend x xa \<longrightarrow> P (interrupt_states s)) \<and> (awaiting_reply state \<longrightarrow> ?R16 state s) \<and> (\<forall>x. state = BlockedOnNotification x \<longrightarrow> ?R15 state x s) \<and> (idle state \<longrightarrow> ?R13 state s)\<rbrace>
+ 5. \<And>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s) \<Longrightarrow> ?Q1 s<\STATESEP>apply (rule hoare_pre_cont)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>state x7. state = BlockedOnNotification x7 \<Longrightarrow> \<lbrace>?R15 state x7\<rbrace> cancel_signal t x7 \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 2. \<And>state. idle state \<Longrightarrow> \<lbrace>?R13 state\<rbrace> return () \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 3. \<lbrace>?Q1\<rbrace> get_thread_state t \<lbrace>\<lambda>state s. (state = Running \<longrightarrow> P (interrupt_states s)) \<and> (inactive state \<longrightarrow> P (interrupt_states s)) \<and> (state = Restart \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. state = BlockedOnReceive x xa \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. state = BlockedOnSend x xa \<longrightarrow> P (interrupt_states s)) \<and> (awaiting_reply state \<longrightarrow> False) \<and> (\<forall>x. state = BlockedOnNotification x \<longrightarrow> ?R15 state x s) \<and> (idle state \<longrightarrow> ?R13 state s)\<rbrace>
+ 4. \<And>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s) \<Longrightarrow> ?Q1 s<\STATESEP>apply (wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>state. idle state \<Longrightarrow> \<lbrace>?R13 state\<rbrace> return () \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 2. \<lbrace>?Q1\<rbrace> get_thread_state t \<lbrace>\<lambda>state s. (state = Running \<longrightarrow> P (interrupt_states s)) \<and> (inactive state \<longrightarrow> P (interrupt_states s)) \<and> (state = Restart \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. state = BlockedOnReceive x xa \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. state = BlockedOnSend x xa \<longrightarrow> P (interrupt_states s)) \<and> (awaiting_reply state \<longrightarrow> False) \<and> (\<forall>x. state = BlockedOnNotification x \<longrightarrow> P (interrupt_states s)) \<and> (idle state \<longrightarrow> ?R13 state s)\<rbrace>
+ 3. \<And>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s) \<Longrightarrow> ?Q1 s<\STATESEP>apply (wp gts_wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) t s \<and> P (interrupt_states s) \<Longrightarrow> \<forall>st. st_tcb_at ((=) st) t s \<longrightarrow> (st = Running \<longrightarrow> P (interrupt_states s)) \<and> (inactive st \<longrightarrow> P (interrupt_states s)) \<and> (st = Restart \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. st = BlockedOnReceive x xa \<longrightarrow> P (interrupt_states s)) \<and> (\<forall>x xa. st = BlockedOnSend x xa \<longrightarrow> P (interrupt_states s)) \<and> (awaiting_reply st \<longrightarrow> False) \<and> (\<forall>x. st = BlockedOnNotification x \<longrightarrow> P (interrupt_states s)) \<and> (idle st \<longrightarrow> P (interrupt_states s))<\STATESEP>apply (auto simp: pred_tcb_at_def obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma send_signal_interrupt_states[wp_unsafe]:
+  "\<lbrace>\<lambda>s. P (interrupt_states s) \<and> valid_objs s\<rbrace> send_signal a b \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (interrupt_states s) \<and> valid_objs s\<rbrace> send_signal a b \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace><\STATESEP>apply (simp add: send_signal_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (interrupt_states s) \<and> valid_objs s\<rbrace> do ntfn <- get_notification a;
+case ntfn_obj ntfn of IdleNtfn \<Rightarrow> case ntfn_bound_tcb ntfn of None \<Rightarrow> set_notification a $ ntfn_set_obj ntfn (ActiveNtfn b) | Some tcb \<Rightarrow> do st <- get_thread_state tcb;
+if receive_blocked st then do cancel_ipc tcb;
+set_thread_state tcb Running;
+as_user tcb $ setRegister badge_register b;
+do_extended_op (possible_switch_to tcb)
+od else set_notification a $ ntfn_set_obj ntfn (ActiveNtfn b)
+od | WaitingNtfn queue \<Rightarrow> update_waiting_ntfn a queue (ntfn_bound_tcb ntfn) b | ActiveNtfn badge' \<Rightarrow> set_notification a $ ntfn_set_obj ntfn $ ActiveNtfn (combine_ntfn_badges b badge')
+od \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace><\STATESEP>apply (rule bind_wp [OF _ get_simple_ko_sp])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ntfn. \<lbrace>ko_at (Notification ntfn) a and (\<lambda>s. P (interrupt_states s) \<and> valid_objs s)\<rbrace> case ntfn_obj ntfn of IdleNtfn \<Rightarrow> case ntfn_bound_tcb ntfn of None \<Rightarrow> set_notification a $ ntfn_set_obj ntfn (ActiveNtfn b) | Some tcb \<Rightarrow> do st <- get_thread_state tcb;
+if receive_blocked st then do cancel_ipc tcb;
+set_thread_state tcb Running;
+as_user tcb $ setRegister badge_register b;
+do_extended_op (possible_switch_to tcb)
+od else set_notification a $ ntfn_set_obj ntfn (ActiveNtfn b)
+od | WaitingNtfn queue \<Rightarrow> update_waiting_ntfn a queue (ntfn_bound_tcb ntfn) b | ActiveNtfn badge' \<Rightarrow> set_notification a $ ntfn_set_obj ntfn $ ActiveNtfn (combine_ntfn_badges b badge') \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ntfn. \<lbrace>?Q4 ntfn\<rbrace> case ntfn_obj ntfn of IdleNtfn \<Rightarrow> case ntfn_bound_tcb ntfn of None \<Rightarrow> set_notification a $ ntfn_set_obj ntfn (ActiveNtfn b) | Some tcb \<Rightarrow> do st <- get_thread_state tcb;
+if receive_blocked st then do cancel_ipc tcb;
+set_thread_state tcb Running;
+as_user tcb $ setRegister badge_register b;
+do_extended_op (possible_switch_to tcb)
+od else set_notification a $ ntfn_set_obj ntfn (ActiveNtfn b)
+od | WaitingNtfn queue \<Rightarrow> update_waiting_ntfn a queue (ntfn_bound_tcb ntfn) b | ActiveNtfn badge' \<Rightarrow> set_notification a $ ntfn_set_obj ntfn $ ActiveNtfn (combine_ntfn_badges b badge') \<lbrace>\<lambda>_ s. P (interrupt_states s)\<rbrace>
+ 2. \<And>ntfn s. (ko_at (Notification ntfn) a and (\<lambda>s. P (interrupt_states s) \<and> valid_objs s)) s \<Longrightarrow> ?Q4 ntfn s<\STATESEP>apply (wp cancel_ipc_noreply_interrupt_states gts_wp hoare_vcg_all_lift thread_get_wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ntfn s. ko_at (Notification ntfn) a s \<and> P (interrupt_states s) \<and> valid_objs s \<Longrightarrow> ntfn_obj ntfn = IdleNtfn \<longrightarrow> (\<forall>x. ntfn_bound_tcb ntfn = Some x \<longrightarrow> (\<forall>st. st_tcb_at ((=) st) x s \<longrightarrow> receive_blocked st \<longrightarrow> st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) x s))<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ntfn s x st. \<lbrakk>ko_at (Notification ntfn) a s; P (interrupt_states s); valid_objs s; ntfn_obj ntfn = IdleNtfn; ntfn_bound_tcb ntfn = Some x; st_tcb_at ((=) st) x s; receive_blocked st\<rbrakk> \<Longrightarrow> st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) x s<\STATESEP>apply (erule (1) obj_at_valid_objsE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ntfn s x st ko. \<lbrakk>P (interrupt_states s); valid_objs s; ntfn_obj ntfn = IdleNtfn; ntfn_bound_tcb ntfn = Some x; st_tcb_at ((=) st) x s; receive_blocked st; kheap s a = Some ko; Notification ntfn = ko; valid_obj a ko s\<rbrakk> \<Longrightarrow> st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) x s<\STATESEP>apply (clarsimp simp: valid_obj_def valid_ntfn_def obj_at_def is_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ntfn s x st ko. \<lbrakk>P (interrupt_states s); valid_objs s; ntfn_obj ntfn = IdleNtfn; ntfn_bound_tcb ntfn = Some x; st_tcb_at ((=) st) x s; receive_blocked st; kheap s a = Some (Notification ntfn); kheap s x = Some ko; case ko of TCB t \<Rightarrow> True | _ \<Rightarrow> False\<rbrakk> \<Longrightarrow> st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) x s<\STATESEP>apply (case_tac ko, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ntfn s x st ko x2. \<lbrakk>P (interrupt_states s); valid_objs s; ntfn_obj ntfn = IdleNtfn; ntfn_bound_tcb ntfn = Some x; st_tcb_at ((=) st) x s; receive_blocked st; kheap s a = Some (Notification ntfn); kheap s x = Some (TCB x2); ko = TCB x2\<rbrakk> \<Longrightarrow> st_tcb_at (\<lambda>st. st \<noteq> BlockedOnReply) x s<\STATESEP>apply (auto simp: pred_tcb_at_def obj_at_def receive_blocked_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

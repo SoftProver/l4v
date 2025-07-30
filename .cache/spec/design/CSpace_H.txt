@@ -1,0 +1,117 @@
+<\STATESEP>chapter "CSpace"<\STATESEP>0<\TRANSEP><\STATESEP>theory CSpace_H
+imports CSpaceDecls_H Object_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupCap_def:
+"lookupCap thread cPtr \<equiv> liftME fst $ lookupCapAndSlot thread cPtr"<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupCapAndSlot_def:
+"lookupCapAndSlot thread cPtr\<equiv> (doE
+        slot \<leftarrow> lookupSlotForThread thread cPtr;
+        cap \<leftarrow> withoutFailure $ getSlotCap slot;
+        returnOk (cap, slot)
+odE)"<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupSlotForThread_def:
+"lookupSlotForThread thread capptr\<equiv> (doE
+        threadRootSlot \<leftarrow> withoutFailure $ getThreadCSpaceRoot thread;
+        threadRoot \<leftarrow> withoutFailure $ getSlotCap threadRootSlot;
+        bits \<leftarrow> returnOk ( finiteBitSize $ fromCPtr capptr);
+        (s, _) \<leftarrow> resolveAddressBits threadRoot capptr bits;
+        returnOk s
+odE)"<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupSlotForCNodeOp_def:
+"lookupSlotForCNodeOp isSource x1 capptr depth\<equiv> (let root = x1 in
+  if isCNodeCap root
+  then   (doE
+    rangeCheck depth 1 $ finiteBitSize capptr;
+    lookupErrorOnFailure isSource $ (doE
+        result \<leftarrow> resolveAddressBits root capptr depth;
+        (let (slot, bitsLeft) = result in
+            if bitsLeft = 0
+            then  returnOk slot
+            else  throw $ DepthMismatch_ \<lparr>
+                depthMismatchBitsLeft= bitsLeft,
+                depthMismatchBitsFound= 0 \<rparr>
+            )
+    odE)
+  odE)
+  else  
+    throw $ FailedLookup isSource InvalidRoot
+  )"<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupSourceSlot_def:
+"lookupSourceSlot \<equiv> lookupSlotForCNodeOp True"<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupTargetSlot_def:
+"lookupTargetSlot \<equiv> lookupSlotForCNodeOp False"<\STATESEP>0<\TRANSEP><\STATESEP>defs lookupPivotSlot_def:
+"lookupPivotSlot \<equiv> lookupSlotForCNodeOp True"<\STATESEP>0<\TRANSEP><\STATESEP>function
+  resolveAddressBits ::
+  "capability \<Rightarrow> cptr \<Rightarrow> nat \<Rightarrow>
+   (lookup_failure, (machine_word * nat)) kernel_f"
+where
+ "resolveAddressBits a b c =
+(\<lambda>x0 capptr bits.  (let nodeCap = x0 in
+  if isCNodeCap nodeCap
+  then   (doE
+        radixBits \<leftarrow> returnOk ( capCNodeBits nodeCap);
+        guardBits \<leftarrow> returnOk ( capCNodeGuardSize nodeCap);
+        levelBits \<leftarrow> returnOk ( radixBits + guardBits);
+        haskell_assertE (levelBits \<noteq> 0) [];
+        offset \<leftarrow> returnOk ( (fromCPtr capptr `~shiftR~` (bits-levelBits)) &&
+                   (mask radixBits));
+        slot \<leftarrow> withoutFailure $ locateSlotCap nodeCap offset;
+        guard \<leftarrow> returnOk ( (fromCPtr capptr `~shiftR~` (bits-guardBits)) &&
+                   (mask guardBits));
+        unlessE (guardBits \<le> bits \<and> guard = capCNodeGuard nodeCap)
+            $ throw $ GuardMismatch_ \<lparr>
+                guardMismatchBitsLeft= bits,
+                guardMismatchGuardFound= capCNodeGuard nodeCap,
+                guardMismatchGuardSize= guardBits \<rparr>;
+        whenE (levelBits > bits) $ throw $ DepthMismatch_ \<lparr>
+            depthMismatchBitsLeft= bits,
+            depthMismatchBitsFound= levelBits \<rparr>;
+        bitsLeft \<leftarrow> returnOk ( bits - levelBits);
+        if (bitsLeft = 0)
+          then returnOk (slot, 0)
+          else (doE
+            nextCap \<leftarrow> withoutFailure $ getSlotCap slot;
+            (case nextCap of
+                  CNodeCap _ _ _ _ \<Rightarrow>   (
+                    resolveAddressBits nextCap capptr bitsLeft
+                  )
+                | _ \<Rightarrow>   returnOk (slot, bitsLeft)
+                )
+          odE)
+  odE)
+  else   throw InvalidRoot
+  ))
+
+a b c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. (\<And>a b c. x = (a, b, c) \<Longrightarrow> P) \<Longrightarrow> P
+ 2. \<And>a b c aa ba ca. (a, b, c) = (aa, ba, ca) \<Longrightarrow> (let nodeCap = a in if isCNodeCap nodeCap then doE radixBits <- returnOk (capCNodeBits nodeCap);
+guardBits <- returnOk (capCNodeGuardSize nodeCap);
+levelBits <- returnOk (radixBits + guardBits);
+haskell_assertE (levelBits \<noteq> 0) [];
+offset <- returnOk (fromCPtr b `~shiftR~` (c - levelBits) && mask radixBits);
+slot <- withoutFailure $ locateSlotCap nodeCap offset;
+guard <- returnOk (fromCPtr b `~shiftR~` (c - guardBits) && mask guardBits);
+unlessE (guardBits \<le> c \<and> guard = capCNodeGuard nodeCap) $ throw $ GuardMismatch c (capCNodeGuard nodeCap) guardBits;
+whenE (c < levelBits) $ throw $ DepthMismatch c levelBits;
+bitsLeft <- returnOk (c - levelBits);
+if bitsLeft = 0 then returnOk (slot, 0) else doE nextCap <- withoutFailure $ getSlotCap slot;
+case nextCap of CNodeCap x xa xb xc \<Rightarrow> resolveAddressBits_sumC (nextCap, b, bitsLeft) | _ \<Rightarrow> returnOk (slot, bitsLeft)
+odE
+odE else throw InvalidRoot) = (let nodeCap = aa in if isCNodeCap nodeCap then doE radixBits <- returnOk (capCNodeBits nodeCap);
+guardBits <- returnOk (capCNodeGuardSize nodeCap);
+levelBits <- returnOk (radixBits + guardBits);
+haskell_assertE (levelBits \<noteq> 0) [];
+offset <- returnOk (fromCPtr ba `~shiftR~` (ca - levelBits) && mask radixBits);
+slot <- withoutFailure $ locateSlotCap nodeCap offset;
+guard <- returnOk (fromCPtr ba `~shiftR~` (ca - guardBits) && mask guardBits);
+unlessE (guardBits \<le> ca \<and> guard = capCNodeGuard nodeCap) $ throw $ GuardMismatch ca (capCNodeGuard nodeCap) guardBits;
+whenE (ca < levelBits) $ throw $ DepthMismatch ca levelBits;
+bitsLeft <- returnOk (ca - levelBits);
+if bitsLeft = 0 then returnOk (slot, 0) else doE nextCap <- withoutFailure $ getSlotCap slot;
+case nextCap of CNodeCap x xa xb xc \<Rightarrow> resolveAddressBits_sumC (nextCap, ba, bitsLeft) | _ \<Rightarrow> returnOk (slot, bitsLeft)
+odE
+odE else throw InvalidRoot)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>termination<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. All resolveAddressBits_dom<\STATESEP>apply (relation "measure (snd o snd)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. wf (measure (snd \<circ> snd))
+ 2. \<And>a b c x v s s' rv st rva sta rvb stb rvba stc rvbb std rvbc ste rvbd stf rvc stg rvd sth rve sti x111 x112 x113 x114. \<lbrakk>x = a; isCNodeCap x; (Inr v, s') \<in> fst (returnOk (capCNodeBits x) s); (Inr rv, st) \<in> fst (returnOk (capCNodeGuardSize x) s'); (Inr rva, sta) \<in> fst (returnOk (v + rv) st); (Inr rvb, stb) \<in> fst (haskell_assertE (rva \<noteq> 0) [] sta); (Inr rvba, stc) \<in> fst (returnOk (fromCPtr b `~shiftR~` (c - rva) && mask v) stb); (Inr rvbb, std) \<in> fst ((withoutFailure $ locateSlotCap x rvba) stc); (Inr rvbc, ste) \<in> fst (returnOk (fromCPtr b `~shiftR~` (c - rv) && mask rv) std); (Inr rvbd, stf) \<in> fst ((unlessE (rv \<le> c \<and> rvbc = capCNodeGuard x) $ throw $ GuardMismatch c (capCNodeGuard x) rv) ste); (Inr rvc, stg) \<in> fst ((whenE (c < rva) $ throw $ DepthMismatch c rva) stf); (Inr rvd, sth) \<in> fst (returnOk (c - rva) stg); rvd \<noteq> 0; (Inr rve, sti) \<in> fst ((withoutFailure $ getSlotCap rvbb) sth); rve = CNodeCap x111 x112 x113 x114\<rbrakk> \<Longrightarrow> ((rve, b, rvd), a, b, c) \<in> measure (snd \<circ> snd)<\STATESEP>apply (auto simp add: in_monad split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>defs
+  resolveAddressBits_decl_def:
+  "CSpaceDecls_H.resolveAddressBits \<equiv> resolveAddressBits"<\STATESEP>0<\TRANSEP><\STATESEP>declare resolveAddressBits_decl_def[simp]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

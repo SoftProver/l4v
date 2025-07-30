@@ -1,0 +1,211 @@
+<\STATESEP>theory ArchCNode_IF
+imports CNode_IF
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems CNode_IF_assms<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_object_globals_equiv:
+  "\<lbrace>globals_equiv s and (\<lambda>s. ptr \<noteq> arm_global_pd (arch_state s)) and
+    (\<lambda>t. ptr = idle_thread t
+         \<longrightarrow> (\<forall>tcb. kheap t (idle_thread t) = Some (TCB tcb)
+                    \<longrightarrow> (\<exists>tcb'. obj = (TCB tcb')
+                              \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and>
+             (\<forall>tcb'. obj = (TCB tcb') \<longrightarrow> tcb_at (idle_thread t) t))\<rbrace>
+   set_object ptr obj
+   \<lbrace>\<lambda>_. globals_equiv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and (\<lambda>s. ptr \<noteq> arm_global_pd (arch_state s)) and (\<lambda>t. ptr = idle_thread t \<longrightarrow> (\<forall>tcb. kheap t (idle_thread t) = Some (TCB tcb) \<longrightarrow> (\<exists>tcb'. obj = TCB tcb' \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> (\<forall>tcb'. obj = TCB tcb' \<longrightarrow> tcb_at (idle_thread t) t))\<rbrace> set_object ptr obj \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>apply (wpsimp wp: set_object_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. \<lbrakk>globals_equiv s sa; ptr \<noteq> arm_global_pd (arch_state sa); ptr = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<exists>tcb'. obj = TCB tcb' \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> ((\<exists>tcb'. obj = TCB tcb') \<longrightarrow> tcb_at (idle_thread sa) sa)\<rbrakk> \<Longrightarrow> globals_equiv s (sa\<lparr>kheap := (kheap sa)(ptr \<mapsto> obj)\<rparr>)<\STATESEP>apply (case_tac "ptr = idle_thread sa")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sa. \<lbrakk>globals_equiv s sa; ptr \<noteq> arm_global_pd (arch_state sa); ptr = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<exists>tcb'. obj = TCB tcb' \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> ((\<exists>tcb'. obj = TCB tcb') \<longrightarrow> tcb_at (idle_thread sa) sa); ptr = idle_thread sa\<rbrakk> \<Longrightarrow> globals_equiv s (sa\<lparr>kheap := (kheap sa)(ptr \<mapsto> obj)\<rparr>)
+ 2. \<And>sa. \<lbrakk>globals_equiv s sa; ptr \<noteq> arm_global_pd (arch_state sa); ptr = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<exists>tcb'. obj = TCB tcb' \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> ((\<exists>tcb'. obj = TCB tcb') \<longrightarrow> tcb_at (idle_thread sa) sa); ptr \<noteq> idle_thread sa\<rbrakk> \<Longrightarrow> globals_equiv s (sa\<lparr>kheap := (kheap sa)(ptr \<mapsto> obj)\<rparr>)<\STATESEP>apply (clarsimp simp: globals_equiv_def idle_equiv_def tcb_at_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sa. \<lbrakk>idle_thread sa \<noteq> arm_global_pd (arch_state sa); ptr = idle_thread sa; arm_global_pd (arch_state s) = arm_global_pd (arch_state sa); \<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<exists>tcb'. obj = TCB tcb' \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb')); (\<exists>tcb'. obj = TCB tcb') \<longrightarrow> (\<exists>tcb. kheap sa (idle_thread sa) = Some (TCB tcb)); kheap s (arm_global_pd (arch_state sa)) = kheap sa (arm_global_pd (arch_state sa)); cur_thread sa \<noteq> idle_thread sa \<longrightarrow> exclusive_state (machine_state s) = exclusive_state (machine_state sa); idle_thread s = idle_thread sa; \<forall>tcb. kheap s (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap sa (idle_thread sa) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb')); (\<exists>tcb. kheap s (idle_thread sa) = Some (TCB tcb)) = (\<exists>tcb. kheap sa (idle_thread sa) = Some (TCB tcb)); cur_thread s = cur_thread sa; dom (device_state (machine_state s)) = dom (device_state (machine_state sa))\<rbrakk> \<Longrightarrow> (\<forall>tcb. kheap s (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. obj = TCB tcb' \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> (\<exists>tcb. kheap sa (idle_thread sa) = Some (TCB tcb)) = (\<exists>tcb. obj = TCB tcb)
+ 2. \<And>sa. \<lbrakk>globals_equiv s sa; ptr \<noteq> arm_global_pd (arch_state sa); ptr = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> (\<exists>tcb'. obj = TCB tcb' \<and> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> ((\<exists>tcb'. obj = TCB tcb') \<longrightarrow> tcb_at (idle_thread sa) sa); ptr \<noteq> idle_thread sa\<rbrakk> \<Longrightarrow> globals_equiv s (sa\<lparr>kheap := (kheap sa)(ptr \<mapsto> obj)\<rparr>)<\STATESEP>apply (intro impI conjI allI notI iffI | clarsimp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. \<lbrakk>globals_equiv s sa; ptr \<noteq> arm_global_pd (arch_state sa); ptr \<noteq> idle_thread sa\<rbrakk> \<Longrightarrow> globals_equiv s (sa\<lparr>kheap := (kheap sa)(ptr \<mapsto> obj)\<rparr>)<\STATESEP>apply (clarsimp simp: globals_equiv_def idle_equiv_def tcb_at_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_object_globals_equiv'':
+  "\<lbrace>globals_equiv s and (\<lambda> s. ptr \<noteq> arm_global_pd (arch_state s)) and (\<lambda>t. ptr \<noteq> idle_thread t)\<rbrace>
+   set_object ptr obj
+   \<lbrace>\<lambda>_. globals_equiv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and (\<lambda>s. ptr \<noteq> arm_global_pd (arch_state s)) and (\<lambda>t. ptr \<noteq> idle_thread t)\<rbrace> set_object ptr obj \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>by (wpsimp wp: set_object_globals_equiv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_cap_globals_equiv':
+  "\<lbrace>globals_equiv s and (\<lambda> s. fst p \<noteq> arm_global_pd (arch_state s))\<rbrace>
+   set_cap cap p
+   \<lbrace>\<lambda>_. globals_equiv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and (\<lambda>s. fst p \<noteq> arm_global_pd (arch_state s))\<rbrace> set_cap cap p \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>unfolding set_cap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and (\<lambda>s. fst p \<noteq> arm_global_pd (arch_state s))\<rbrace> case p of (oref, cref) \<Rightarrow> do obj <- get_object oref;
+(case obj of CNode sz cn \<Rightarrow> if cref \<in> dom cn \<and> well_formed_cnode_n sz cn then return $ CNode sz $ cn(cref \<mapsto> cap) else fail | TCB tcb \<Rightarrow> if cref = tcb_cnode_index 0 then return $ TCB $ tcb\<lparr>tcb_ctable := cap\<rparr> else if cref = tcb_cnode_index 1 then return $ TCB $ tcb\<lparr>tcb_vtable := cap\<rparr> else if cref = tcb_cnode_index 2 then return $ TCB $ tcb\<lparr>tcb_reply := cap\<rparr> else if cref = tcb_cnode_index 3 then return $ TCB $ tcb\<lparr>tcb_caller := cap\<rparr> else if cref = tcb_cnode_index 4 then return $ TCB $ tcb\<lparr>tcb_ipcframe := cap\<rparr> else fail | _ \<Rightarrow> fail) >>= set_object oref
+od \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>apply (simp only: split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and (\<lambda>s. fst p \<noteq> arm_global_pd (arch_state s))\<rbrace> do obj <- get_object (fst p);
+(case obj of CNode sz cn \<Rightarrow> if snd p \<in> dom cn \<and> well_formed_cnode_n sz cn then return $ CNode sz $ cn(snd p \<mapsto> cap) else fail | TCB tcb \<Rightarrow> if snd p = tcb_cnode_index 0 then return $ TCB $ tcb\<lparr>tcb_ctable := cap\<rparr> else if snd p = tcb_cnode_index 1 then return $ TCB $ tcb\<lparr>tcb_vtable := cap\<rparr> else if snd p = tcb_cnode_index 2 then return $ TCB $ tcb\<lparr>tcb_reply := cap\<rparr> else if snd p = tcb_cnode_index 3 then return $ TCB $ tcb\<lparr>tcb_caller := cap\<rparr> else if snd p = tcb_cnode_index 4 then return $ TCB $ tcb\<lparr>tcb_ipcframe := cap\<rparr> else fail | _ \<Rightarrow> fail) >>= set_object (fst p)
+od \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>apply (wp set_object_globals_equiv hoare_vcg_all_lift get_object_wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. globals_equiv s sa \<and> fst p \<noteq> arm_global_pd (arch_state sa) \<Longrightarrow> (\<forall>x xa. ko_at (CNode x xa) (fst p) sa \<longrightarrow> snd p \<in> dom xa \<and> well_formed_cnode_n x xa \<longrightarrow> fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) \<noteq> Some (TCB tcb))) \<and> (\<forall>x. ko_at (TCB x) (fst p) sa \<longrightarrow> (snd p = tcb_cnode_index 0 \<longrightarrow> fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa) \<and> (snd p \<noteq> tcb_cnode_index 0 \<longrightarrow> (snd p = tcb_cnode_index (Suc 0) \<longrightarrow> fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa) \<and> (snd p \<noteq> tcb_cnode_index (Suc 0) \<longrightarrow> (snd p = tcb_cnode_index 2 \<longrightarrow> fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa) \<and> (snd p \<noteq> tcb_cnode_index 2 \<longrightarrow> (snd p = tcb_cnode_index 3 \<longrightarrow> fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa) \<and> (snd p \<noteq> tcb_cnode_index 3 \<longrightarrow> snd p = tcb_cnode_index 4 \<longrightarrow> fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa)))))<\STATESEP>apply (fastforce simp: obj_at_def is_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_cap_globals_equiv[CNode_IF_assms]:
+  "\<lbrace>globals_equiv s and valid_global_objs and valid_arch_state\<rbrace>
+   set_cap cap p
+   \<lbrace>\<lambda>_. globals_equiv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and valid_global_objs and valid_arch_state\<rbrace> set_cap cap p \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>unfolding set_cap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and valid_global_objs and valid_arch_state\<rbrace> case p of (oref, cref) \<Rightarrow> do obj <- get_object oref;
+(case obj of CNode sz cn \<Rightarrow> if cref \<in> dom cn \<and> well_formed_cnode_n sz cn then return $ CNode sz $ cn(cref \<mapsto> cap) else fail | TCB tcb \<Rightarrow> if cref = tcb_cnode_index 0 then return $ TCB $ tcb\<lparr>tcb_ctable := cap\<rparr> else if cref = tcb_cnode_index 1 then return $ TCB $ tcb\<lparr>tcb_vtable := cap\<rparr> else if cref = tcb_cnode_index 2 then return $ TCB $ tcb\<lparr>tcb_reply := cap\<rparr> else if cref = tcb_cnode_index 3 then return $ TCB $ tcb\<lparr>tcb_caller := cap\<rparr> else if cref = tcb_cnode_index 4 then return $ TCB $ tcb\<lparr>tcb_ipcframe := cap\<rparr> else fail | _ \<Rightarrow> fail) >>= set_object oref
+od \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>apply (simp only: split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv s and valid_global_objs and valid_arch_state\<rbrace> do obj <- get_object (fst p);
+(case obj of CNode sz cn \<Rightarrow> if snd p \<in> dom cn \<and> well_formed_cnode_n sz cn then return $ CNode sz $ cn(snd p \<mapsto> cap) else fail | TCB tcb \<Rightarrow> if snd p = tcb_cnode_index 0 then return $ TCB $ tcb\<lparr>tcb_ctable := cap\<rparr> else if snd p = tcb_cnode_index 1 then return $ TCB $ tcb\<lparr>tcb_vtable := cap\<rparr> else if snd p = tcb_cnode_index 2 then return $ TCB $ tcb\<lparr>tcb_reply := cap\<rparr> else if snd p = tcb_cnode_index 3 then return $ TCB $ tcb\<lparr>tcb_caller := cap\<rparr> else if snd p = tcb_cnode_index 4 then return $ TCB $ tcb\<lparr>tcb_ipcframe := cap\<rparr> else fail | _ \<Rightarrow> fail) >>= set_object (fst p)
+od \<lbrace>\<lambda>_. globals_equiv s\<rbrace><\STATESEP>apply (wp set_object_globals_equiv hoare_vcg_all_lift get_object_wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. globals_equiv s sa \<and> valid_global_objs sa \<and> valid_arch_state sa \<Longrightarrow> (\<forall>x xa. ko_at (CNode x xa) (fst p) sa \<longrightarrow> snd p \<in> dom xa \<and> well_formed_cnode_n x xa \<longrightarrow> fst p \<noteq> arm_global_pd (arch_state sa) \<and> (fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) \<noteq> Some (TCB tcb)))) \<and> (\<forall>x. ko_at (TCB x) (fst p) sa \<longrightarrow> (snd p = tcb_cnode_index 0 \<longrightarrow> fst p \<noteq> arm_global_pd (arch_state sa) \<and> (fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa)) \<and> (snd p \<noteq> tcb_cnode_index 0 \<longrightarrow> (snd p = tcb_cnode_index (Suc 0) \<longrightarrow> fst p \<noteq> arm_global_pd (arch_state sa) \<and> (fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa)) \<and> (snd p \<noteq> tcb_cnode_index (Suc 0) \<longrightarrow> (snd p = tcb_cnode_index 2 \<longrightarrow> fst p \<noteq> arm_global_pd (arch_state sa) \<and> (fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa)) \<and> (snd p \<noteq> tcb_cnode_index 2 \<longrightarrow> (snd p = tcb_cnode_index 3 \<longrightarrow> fst p \<noteq> arm_global_pd (arch_state sa) \<and> (fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa)) \<and> (snd p \<noteq> tcb_cnode_index 3 \<longrightarrow> snd p = tcb_cnode_index 4 \<longrightarrow> fst p \<noteq> arm_global_pd (arch_state sa) \<and> (fst p = idle_thread sa \<longrightarrow> (\<forall>tcb. kheap sa (idle_thread sa) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch x)) \<and> tcb_at (idle_thread sa) sa))))))<\STATESEP>apply (fastforce simp: valid_global_objs_def valid_vso_at_def obj_at_def is_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition irq_at :: "nat \<Rightarrow> (irq \<Rightarrow> bool) \<Rightarrow> irq option" where
+  "irq_at pos masks \<equiv> let i = irq_oracle pos in (if i = 0x3FF \<or> masks i then None else Some i)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma dmo_getActiveIRQ_wp[CNode_IF_assms]:
+  "\<lbrace>\<lambda>s. P (irq_at (irq_state (machine_state s) + 1) (irq_masks (machine_state s)))
+          (s\<lparr>machine_state := (machine_state s\<lparr>irq_state := irq_state (machine_state s) + 1\<rparr>)\<rparr>)\<rbrace>
+   do_machine_op (getActiveIRQ in_kernel)
+   \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (irq_at (irq_state (machine_state s) + 1) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := irq_state (machine_state s) + 1\<rparr>\<rparr>)\<rbrace> do_machine_op (getActiveIRQ in_kernel) \<lbrace>P\<rbrace><\STATESEP>apply (simp add: do_machine_op_def getActiveIRQ_def non_kernel_IRQs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (irq_at (Suc (irq_state (machine_state s))) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>)\<rbrace> do ms <- gets machine_state;
+(r, ms') <- select_f ((do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF then return None else return (Some active_irq)
+od) ms);
+y <- modify (machine_state_update (\<lambda>_. ms'));
+return r
+od \<lbrace>P\<rbrace><\STATESEP>apply (wp modify_wp | wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (irq_at (Suc (irq_state (machine_state s))) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>) \<Longrightarrow> \<forall>x\<in>fst ((do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF then return None else return (Some active_irq)
+od) (machine_state s)). \<forall>xa xb. x = (xa, xb) \<longrightarrow> P xa (s\<lparr>machine_state := xb\<rparr>)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x xa. \<lbrakk>P (irq_at (Suc (irq_state (machine_state s))) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>); (x, xa) \<in> fst ((do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF then return None else return (Some active_irq)
+od) (machine_state s))\<rbrakk> \<Longrightarrow> P x (s\<lparr>machine_state := xa\<rparr>)<\STATESEP>apply (erule use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x xa. P (irq_at (Suc (irq_state (machine_state s))) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>) \<Longrightarrow> \<lbrace>?P32 s x xa\<rbrace> do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF then return None else return (Some active_irq)
+od \<lbrace>\<lambda>a b. P a (s\<lparr>machine_state := b\<rparr>)\<rbrace>
+ 2. \<And>s x xa. P (irq_at (Suc (irq_state (machine_state s))) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>) \<Longrightarrow> ?P32 s x xa (machine_state s)<\STATESEP>apply (wp modify_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x xa. P (irq_at (Suc (irq_state (machine_state s))) (irq_masks (machine_state s))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>) \<Longrightarrow> (irq_masks (machine_state s) ((irq_oracle \<circ> irq_state) (machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>) = 0x3FF \<longrightarrow> P None (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>)) \<and> (\<not> (irq_masks (machine_state s) ((irq_oracle \<circ> irq_state) (machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>) = 0x3FF) \<longrightarrow> P (Some ((irq_oracle \<circ> irq_state) (machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>))) (s\<lparr>machine_state := machine_state s\<lparr>irq_state := Suc (irq_state (machine_state s))\<rparr>\<rparr>))<\STATESEP>apply (auto simp: irq_at_def Let_def split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_globals_equiv_irq_state_update[CNode_IF_assms, simp]:
+  "arch_globals_equiv ct it kh kh' as as' ms (irq_state_update f ms') =
+   arch_globals_equiv ct it kh kh' as as' ms ms'"
+  "arch_globals_equiv ct it kh kh' as as' (irq_state_update f ms) ms' =
+   arch_globals_equiv ct it kh kh' as as' ms ms'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_globals_equiv ct it kh kh' as as' ms (irq_state_update f ms') = arch_globals_equiv ct it kh kh' as as' ms ms' &&& arch_globals_equiv ct it kh kh' as as' (irq_state_update f ms) ms' = arch_globals_equiv ct it kh kh' as as' ms ms'<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts irq_at<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation CNode_IF_1?: CNode_IF_1 _ irq_at<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. CNode_IF_1 TYPE('a) irq_at<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. CNode_IF_1 TYPE('a) irq_at<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. CNode_IF_1 TYPE('a) irq_at<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. CNode_IF_1 TYPE('a) irq_at<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. CNode_IF_1 TYPE('a) irq_at<\STATESEP>by (unfold_locales; (fact CNode_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+CNode_IF_1 TYPE('a) irq_at
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_irq_at_triv[CNode_IF_assms]:
+  assumes a: "\<And>P. \<lbrace>(\<lambda>s. P (irq_masks (machine_state s))) and Q\<rbrace>
+                   f
+                   \<lbrace>\<lambda>rv s. P (irq_masks (machine_state s))\<rbrace>"
+  shows "\<lbrace>(\<lambda>s. P (is_irq_at s)) and Q\<rbrace> f \<lbrace>\<lambda>rv s. P (is_irq_at s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. P (is_irq_at s)) and Q\<rbrace> f \<lbrace>\<lambda>rv s. P (is_irq_at s)\<rbrace><\STATESEP>apply (clarsimp simp: valid_def is_irq_at_def irq_at_def Let_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P (\<lambda>irq pos. irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state s) (irq_oracle pos) \<and> (irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state s) (irq_oracle pos) \<longrightarrow> irq_oracle pos = irq)); Q s\<rbrakk> \<Longrightarrow> P (\<lambda>irq pos. irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state b) (irq_oracle pos) \<and> (irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state b) (irq_oracle pos) \<longrightarrow> irq_oracle pos = irq))<\STATESEP>apply (erule use_valid[OF _ a])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P (\<lambda>irq pos. irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state s) (irq_oracle pos) \<and> (irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state s) (irq_oracle pos) \<longrightarrow> irq_oracle pos = irq)); Q s\<rbrakk> \<Longrightarrow> ((\<lambda>s. P (\<lambda>irq pos. irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state s) (irq_oracle pos) \<and> (irq_oracle pos \<noteq> 0x3FF \<and> \<not> irq_masks (machine_state s) (irq_oracle pos) \<longrightarrow> irq_oracle pos = irq))) and Q) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_irq_at_not_masked[CNode_IF_assms]:
+  "is_irq_at s irq pos \<Longrightarrow> \<not> irq_masks (machine_state s) irq"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_irq_at s irq pos \<Longrightarrow> \<not> irq_masks (machine_state s) irq<\STATESEP>by (clarsimp simp: is_irq_at_def irq_at_def split: option.splits simp: Let_def split: if_splits)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation CNode_IF_2?: CNode_IF_2 irq_at<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. CNode_IF_2 irq_at f<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. CNode_IF_2 irq_at f<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. CNode_IF_2 irq_at f<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. CNode_IF_2 irq_at f<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. CNode_IF_2 irq_at f<\STATESEP>by (unfold_locales; (fact CNode_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+CNode_IF_2 irq_at f
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>lemma dmo_getActiveIRQ_reads_respects[CNode_IF_assms]:
+  notes gets_ev[wp del]
+  shows "reads_respects aag l (invs and only_timer_irq_inv irq st)
+                       (do_machine_op (getActiveIRQ in_kernel))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. reads_respects aag l (invs and only_timer_irq_inv irq st) (do_machine_op (getActiveIRQ in_kernel))<\STATESEP>apply (rule use_spec_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sta. spec_reads_respects sta aag l (invs and only_timer_irq_inv irq st) (do_machine_op (getActiveIRQ in_kernel))<\STATESEP>apply (rule do_machine_op_spec_reads_respects')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st. equiv_valid_inv (equiv_machine_state (aag_can_read aag) and equiv_irq_state) (equiv_machine_state (aag_can_affect aag l)) (?Q2 st) (getActiveIRQ in_kernel)
+ 2. \<And>sta s. (invs and only_timer_irq_inv irq st) s \<Longrightarrow> ?Q2 sta (machine_state s)<\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st. equiv_valid_inv (equiv_machine_state (aag_can_read aag) and equiv_irq_state) (equiv_machine_state (aag_can_affect aag l)) (?Q2 st) (do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od)
+ 2. \<And>sta s. (invs and only_timer_irq_inv irq st) s \<Longrightarrow> ?Q2 sta (machine_state s)<\STATESEP>apply (wp irq_state_increment_reads_respects_memory irq_state_increment_reads_respects_device
+             gets_ev[where f="irq_oracle \<circ> irq_state"] equiv_valid_inv_conj_lift
+             gets_irq_masks_equiv_valid modify_wp
+          | simp add: no_irq_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sta s. invs s \<and> only_timer_irq_inv irq st s \<Longrightarrow> \<not> irq_masks (machine_state s) (?irq18 sta) \<and> (\<forall>x. x \<noteq> ?irq18 sta \<longrightarrow> irq_masks (machine_state s) x)<\STATESEP>apply (rule only_timer_irq_inv_determines_irq_masks, blast+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation CNode_IF_3?: CNode_IF_3 irq_at<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. CNode_IF_3 irq_at f aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. CNode_IF_3 irq_at f aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. CNode_IF_3 irq_at f aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. CNode_IF_3 irq_at f aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. CNode_IF_3 irq_at f aag<\STATESEP>by (unfold_locales; (fact CNode_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+CNode_IF_3 irq_at f aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

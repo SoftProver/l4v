@@ -1,0 +1,826 @@
+<\STATESEP>theory ArchScheduler_IF
+imports Scheduler_IF
+
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Scheduler_IF_assms<\STATESEP>0<\TRANSEP><\STATESEP>definition arch_globals_equiv_scheduler :: "kheap \<Rightarrow> kheap \<Rightarrow> arch_state \<Rightarrow> arch_state \<Rightarrow> bool" where
+  "arch_globals_equiv_scheduler kh kh' as as' \<equiv>
+     arm_global_pd as = arm_global_pd as' \<and> kh (arm_global_pd as) = kh' (arm_global_pd as)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "arch_scheduler_affects_equiv s s' \<equiv> exclusive_state_equiv s s'"<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_globals_equiv_from_scheduler[Scheduler_IF_assms]:
+  "\<lbrakk> arch_globals_equiv_scheduler (kheap s) (kheap s') (arch_state s) (arch_state s');
+     cur_thread s' \<noteq> idle_thread s \<longrightarrow> arch_scheduler_affects_equiv s s' \<rbrakk>
+     \<Longrightarrow> arch_globals_equiv (cur_thread s') (idle_thread s) (kheap s) (kheap s')
+                            (arch_state s) (arch_state s') (machine_state s) (machine_state s')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>arch_globals_equiv_scheduler (kheap s) (kheap s') (arch_state s) (arch_state s'); cur_thread s' \<noteq> idle_thread s \<longrightarrow> arch_scheduler_affects_equiv s s'\<rbrakk> \<Longrightarrow> arch_globals_equiv (cur_thread s') (idle_thread s) (kheap s) (kheap s') (arch_state s) (arch_state s') (machine_state s) (machine_state s')<\STATESEP>by (clarsimp simp: arch_globals_equiv_scheduler_def arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_globals_equiv_scheduler_refl[Scheduler_IF_assms]:
+  "arch_globals_equiv_scheduler (kheap s) (kheap s) (arch_state s) (arch_state s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_globals_equiv_scheduler (kheap s) (kheap s) (arch_state s) (arch_state s)<\STATESEP>by (simp add: idle_equiv_refl arch_globals_equiv_scheduler_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_globals_equiv_scheduler_sym[Scheduler_IF_assms]:
+  "arch_globals_equiv_scheduler (kheap s) (kheap s') (arch_state s) (arch_state s')
+   \<Longrightarrow> arch_globals_equiv_scheduler (kheap s') (kheap s) (arch_state s') (arch_state s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_globals_equiv_scheduler (kheap s) (kheap s') (arch_state s) (arch_state s') \<Longrightarrow> arch_globals_equiv_scheduler (kheap s') (kheap s) (arch_state s') (arch_state s)<\STATESEP>by (auto simp: arch_globals_equiv_scheduler_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_globals_equiv_scheduler_trans[Scheduler_IF_assms]:
+  "\<lbrakk> arch_globals_equiv_scheduler (kheap s) (kheap s') (arch_state s) (arch_state s');
+     arch_globals_equiv_scheduler (kheap s') (kheap s'') (arch_state s') (arch_state s'') \<rbrakk>
+     \<Longrightarrow> arch_globals_equiv_scheduler (kheap s) (kheap s'') (arch_state s) (arch_state s'')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>arch_globals_equiv_scheduler (kheap s) (kheap s') (arch_state s) (arch_state s'); arch_globals_equiv_scheduler (kheap s') (kheap s'') (arch_state s') (arch_state s'')\<rbrakk> \<Longrightarrow> arch_globals_equiv_scheduler (kheap s) (kheap s'') (arch_state s) (arch_state s'')<\STATESEP>by (clarsimp simp: arch_globals_equiv_scheduler_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_trans[Scheduler_IF_assms, elim]:
+  "\<lbrakk> arch_scheduler_affects_equiv s s'; arch_scheduler_affects_equiv s' s'' \<rbrakk>
+     \<Longrightarrow> arch_scheduler_affects_equiv s s''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>arch_scheduler_affects_equiv s s'; arch_scheduler_affects_equiv s' s''\<rbrakk> \<Longrightarrow> arch_scheduler_affects_equiv s s''<\STATESEP>by (simp add: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_sym[Scheduler_IF_assms, elim]:
+  "arch_scheduler_affects_equiv s s' \<Longrightarrow> arch_scheduler_affects_equiv s' s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv s s' \<Longrightarrow> arch_scheduler_affects_equiv s' s<\STATESEP>by (simp add: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_sa_update[Scheduler_IF_assms, simp]:
+  "arch_scheduler_affects_equiv (scheduler_action_update f s) s' =
+   arch_scheduler_affects_equiv s s'"
+  "arch_scheduler_affects_equiv s (scheduler_action_update f s') =
+   arch_scheduler_affects_equiv s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv (scheduler_action_update f s) s' = arch_scheduler_affects_equiv s s' &&& arch_scheduler_affects_equiv s (scheduler_action_update f s') = arch_scheduler_affects_equiv s s'<\STATESEP>by (auto simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asid_cur_thread_update[Scheduler_IF_assms, simp]:
+  "equiv_asid asid (cur_thread_update f s) s' = equiv_asid asid s s'"
+  "equiv_asid asid s (cur_thread_update f s') = equiv_asid asid s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_asid asid (cur_thread_update f s) s' = equiv_asid asid s s' &&& equiv_asid asid s (cur_thread_update f s') = equiv_asid asid s s'<\STATESEP>by (auto simp: equiv_asid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_ready_queues_update[Scheduler_IF_assms, simp]:
+  "arch_scheduler_affects_equiv (ready_queues_update f s) s' = arch_scheduler_affects_equiv s s'"
+  "arch_scheduler_affects_equiv s (ready_queues_update f s') = arch_scheduler_affects_equiv s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv (ready_queues_update f s) s' = arch_scheduler_affects_equiv s s' &&& arch_scheduler_affects_equiv s (ready_queues_update f s') = arch_scheduler_affects_equiv s s'<\STATESEP>by (auto simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>crunches arch_switch_to_thread, arch_switch_to_idle_thread
+  for idle_thread[Scheduler_IF_assms, wp]: "\<lambda>s :: det_state. P (idle_thread s)"
+  and kheap[Scheduler_IF_assms, wp]: "\<lambda>s :: det_state. P (kheap s)"
+  (wp: crunch_wps simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>crunches arch_switch_to_idle_thread
+  for cur_domain[Scheduler_IF_assms, wp]: "\<lambda>s. P (cur_domain s)"
+  and domain_fields[Scheduler_IF_assms, wp]: "domain_fields P"<\STATESEP>0<\TRANSEP><\STATESEP>crunches arch_switch_to_idle_thread
+  for globals_equiv[Scheduler_IF_assms, wp]: "globals_equiv st"
+  and states_equiv_for[Scheduler_IF_assms, wp]: "states_equiv_for P Q R S st"
+  and work_units_completed[Scheduler_IF_assms, wp]: "\<lambda>s. P (work_units_completed s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunches arch_activate_idle_thread
+  for cur_domain[Scheduler_IF_assms, wp]: "\<lambda>s. P (cur_domain s)"
+  and idle_thread[Scheduler_IF_assms, wp]: "\<lambda>s. P (idle_thread s)"
+  and irq_state_of_state[Scheduler_IF_assms, wp]: "\<lambda>s. P (irq_state_of_state s)"
+  and domain_fields[Scheduler_IF_assms, wp]: "domain_fields P"<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_cur_thread_update[Scheduler_IF_assms, simp]:
+  "arch_scheduler_affects_equiv (cur_thread_update f s) s' = arch_scheduler_affects_equiv s s'"
+  "arch_scheduler_affects_equiv s (cur_thread_update f s') = arch_scheduler_affects_equiv s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv (cur_thread_update f s) s' = arch_scheduler_affects_equiv s s' &&& arch_scheduler_affects_equiv s (cur_thread_update f s') = arch_scheduler_affects_equiv s s'<\STATESEP>by (auto simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asid_domain_time_update[Scheduler_IF_assms, simp]:
+  "equiv_asid asid (domain_time_update f s) s' = equiv_asid asid s s'"
+  "equiv_asid asid s (domain_time_update f s') = equiv_asid asid s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_asid asid (domain_time_update f s) s' = equiv_asid asid s s' &&& equiv_asid asid s (domain_time_update f s') = equiv_asid asid s s'<\STATESEP>by (auto simp: equiv_asid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asid_ekheap_update[Scheduler_IF_assms, simp]:
+  "equiv_asid asid (ekheap_update f s) s' = equiv_asid asid s s'"
+  "equiv_asid asid s (ekheap_update f s') = equiv_asid asid s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_asid asid (ekheap_update f s) s' = equiv_asid asid s s' &&& equiv_asid asid s (ekheap_update f s') = equiv_asid asid s s'<\STATESEP>by (auto simp: equiv_asid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_domain_time_update[Scheduler_IF_assms, simp]:
+  "arch_scheduler_affects_equiv (domain_time_update f s) s' = arch_scheduler_affects_equiv s s'"
+  "arch_scheduler_affects_equiv s (domain_time_update f s') = arch_scheduler_affects_equiv s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv (domain_time_update f s) s' = arch_scheduler_affects_equiv s s' &&& arch_scheduler_affects_equiv s (domain_time_update f s') = arch_scheduler_affects_equiv s s'<\STATESEP>by (auto simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_ekheap_update[Scheduler_IF_assms, simp]:
+  "arch_scheduler_affects_equiv (ekheap_update f s) s' = arch_scheduler_affects_equiv s s'"
+  "arch_scheduler_affects_equiv s (ekheap_update f s') = arch_scheduler_affects_equiv s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv (ekheap_update f s) s' = arch_scheduler_affects_equiv s s' &&& arch_scheduler_affects_equiv s (ekheap_update f s') = arch_scheduler_affects_equiv s s'<\STATESEP>by (auto simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>crunch irq_state[Scheduler_IF_assms, wp]: ackInterrupt "\<lambda>s. P (irq_state s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma thread_set_context_globals_equiv[Scheduler_IF_assms]:
+  "\<lbrace>(\<lambda>s. t = idle_thread s \<longrightarrow> tc = idle_context s) and invs and globals_equiv st\<rbrace>
+   thread_set (tcb_arch_update (arch_tcb_context_set tc)) t
+   \<lbrace>\<lambda>rv. globals_equiv st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. t = idle_thread s \<longrightarrow> tc = idle_context s) and invs and globals_equiv st\<rbrace> thread_set (tcb_arch_update (arch_tcb_context_set tc)) t \<lbrace>\<lambda>rv. globals_equiv st\<rbrace><\STATESEP>apply (clarsimp simp: thread_set_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. t = idle_thread s \<longrightarrow> tc = idle_context s) and invs and globals_equiv st\<rbrace> do tcb <- gets_the (get_tcb t);
+set_object t (TCB (tcb_arch_update (arch_tcb_context_set tc) tcb))
+od \<lbrace>\<lambda>rv. globals_equiv st\<rbrace><\STATESEP>apply (wpsimp wp: set_object_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>t = idle_thread s \<longrightarrow> tc = idle_context s; invs s; globals_equiv st s; get_tcb t s = Some y\<rbrakk> \<Longrightarrow> globals_equiv st (s\<lparr>kheap := (kheap s)(t \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) y))\<rparr>)<\STATESEP>apply (subgoal_tac "t \<noteq> arm_global_pd (arch_state s)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y. \<lbrakk>t = idle_thread s \<longrightarrow> tc = idle_context s; invs s; globals_equiv st s; get_tcb t s = Some y; t \<noteq> arm_global_pd (arch_state s)\<rbrakk> \<Longrightarrow> globals_equiv st (s\<lparr>kheap := (kheap s)(t \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) y))\<rparr>)
+ 2. \<And>s y. \<lbrakk>t = idle_thread s \<longrightarrow> tc = idle_context s; invs s; globals_equiv st s; get_tcb t s = Some y\<rbrakk> \<Longrightarrow> t \<noteq> arm_global_pd (arch_state s)<\STATESEP>apply (clarsimp simp: idle_equiv_def globals_equiv_def tcb_at_def2 get_tcb_def idle_context_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y. \<lbrakk>tc = arch_tcb_context_get (tcb_arch y); invs s; (case kheap s (idle_thread s) of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None) = Some y; idle_thread s \<noteq> arm_global_pd (arch_state s); arm_global_pd (arch_state st) = arm_global_pd (arch_state s); kheap st (arm_global_pd (arch_state s)) = kheap s (arm_global_pd (arch_state s)); cur_thread s \<noteq> idle_thread s \<longrightarrow> exclusive_state (machine_state st) = exclusive_state (machine_state s); idle_thread st = idle_thread s; \<forall>tcb. kheap st (idle_thread s) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s (idle_thread s) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb')); (\<exists>tcb. kheap st (idle_thread s) = Some (TCB tcb)) = (\<exists>tcb. kheap s (idle_thread s) = Some (TCB tcb)); cur_thread st = cur_thread s; dom (device_state (machine_state st)) = dom (device_state (machine_state s)); t = idle_thread s\<rbrakk> \<Longrightarrow> (\<forall>tcb. kheap st (idle_thread s) = Some (TCB tcb) \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch y)) \<and> (\<exists>tcb. kheap s (idle_thread s) = Some (TCB tcb))
+ 2. \<And>s y. \<lbrakk>t = idle_thread s \<longrightarrow> tc = idle_context s; invs s; globals_equiv st s; get_tcb t s = Some y\<rbrakk> \<Longrightarrow> t \<noteq> arm_global_pd (arch_state s)<\STATESEP>apply (clarsimp split: option.splits kernel_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>t = idle_thread s \<longrightarrow> tc = idle_context s; invs s; globals_equiv st s; get_tcb t s = Some y\<rbrakk> \<Longrightarrow> t \<noteq> arm_global_pd (arch_state s)<\STATESEP>apply (drule arm_global_pd_not_tcb[OF invs_arch_state])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>t = idle_thread s \<longrightarrow> tc = idle_context s; globals_equiv st s; get_tcb t s = Some y; get_tcb (arm_global_pd (arch_state s)) s = None\<rbrakk> \<Longrightarrow> t \<noteq> arm_global_pd (arch_state s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_scheduler_affects_equiv_update[Scheduler_IF_assms]:
+  "arch_scheduler_affects_equiv st s
+   \<Longrightarrow> arch_scheduler_affects_equiv st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB y')\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_scheduler_affects_equiv st s \<Longrightarrow> arch_scheduler_affects_equiv st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB y')\<rparr>)<\STATESEP>by (clarsimp simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_asid_equiv_update[Scheduler_IF_assms]:
+  "\<lbrakk> get_tcb x s = Some y; equiv_asid asid st s \<rbrakk>
+     \<Longrightarrow> equiv_asid asid st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB y')\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>get_tcb x s = Some y; equiv_asid asid st s\<rbrakk> \<Longrightarrow> equiv_asid asid st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB y')\<rparr>)<\STATESEP>by (clarsimp simp: equiv_asid_def obj_at_def get_tcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts
+  arch_globals_equiv_scheduler
+  arch_scheduler_affects_equiv<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Scheduler_IF_1?:
+  Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>by (unfold_locales; (fact Scheduler_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Scheduler_IF_1 arch_globals_equiv_scheduler arch_scheduler_affects_equiv
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>definition swap_things where
+  "swap_things s t \<equiv>
+     t\<lparr>machine_state := underlying_memory_update
+                          (\<lambda>m a. if a \<in> scheduler_affects_globals_frame t
+                                 then underlying_memory (machine_state s) a
+                                 else m a)
+                          (machine_state t)\<lparr>exclusive_state := exclusive_state (machine_state s)\<rparr>\<rparr>
+      \<lparr>cur_thread := cur_thread s\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma globals_equiv_scheduler_inv'[Scheduler_IF_assms]:
+  "(\<And>st. \<lbrace>P and globals_equiv st\<rbrace> f \<lbrace>\<lambda>_. globals_equiv st\<rbrace>)
+   \<Longrightarrow> \<lbrace>P and globals_equiv_scheduler s\<rbrace> f \<lbrace>\<lambda>_. globals_equiv_scheduler s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>st. \<lbrace>P and globals_equiv st\<rbrace> f \<lbrace>\<lambda>_. globals_equiv st\<rbrace>) \<Longrightarrow> \<lbrace>P and globals_equiv_scheduler s\<rbrace> f \<lbrace>\<lambda>_. globals_equiv_scheduler s\<rbrace><\STATESEP>apply atomize<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>st. \<lbrace>P and globals_equiv st\<rbrace> f \<lbrace>\<lambda>_. globals_equiv st\<rbrace> \<Longrightarrow> \<lbrace>P and globals_equiv_scheduler s\<rbrace> f \<lbrace>\<lambda>_. globals_equiv_scheduler s\<rbrace><\STATESEP>apply (rule use_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. \<forall>st. \<lbrace>P and globals_equiv st\<rbrace> f \<lbrace>\<lambda>_. globals_equiv st\<rbrace> \<Longrightarrow> sa \<turnstile> \<lbrace>P and globals_equiv_scheduler s\<rbrace> f \<lbrace>\<lambda>_. globals_equiv_scheduler s\<rbrace><\STATESEP>apply (simp add: spec_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. \<forall>st. \<lbrace>P and globals_equiv st\<rbrace> f \<lbrace>\<lambda>_. globals_equiv st\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>sb. sb = sa \<and> P sb \<and> globals_equiv_scheduler s sb\<rbrace> f \<lbrace>\<lambda>_. globals_equiv_scheduler s\<rbrace><\STATESEP>apply (erule_tac x="(swap_things sa s)" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>sa. \<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>sb. sb = sa \<and> P sb \<and> globals_equiv_scheduler s sb\<rbrace> f \<lbrace>\<lambda>_. globals_equiv_scheduler s\<rbrace><\STATESEP>apply (rule_tac Q="\<lambda>r st. globals_equiv (swap_things sa s) st" in hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sa. \<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>sb. sb = sa \<and> P sb \<and> globals_equiv_scheduler s sb\<rbrace> f \<lbrace>\<lambda>r. globals_equiv (swap_things sa s)\<rbrace>
+ 2. \<And>sa rv saa. \<lbrakk>\<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace>; globals_equiv (swap_things sa s) saa\<rbrakk> \<Longrightarrow> globals_equiv_scheduler s saa<\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>sa. \<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace> \<Longrightarrow> \<lbrace>?Q5 sa\<rbrace> f \<lbrace>\<lambda>r. globals_equiv (swap_things sa s)\<rbrace>
+ 2. \<And>sa saa. \<lbrakk>\<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace>; saa = sa \<and> P saa \<and> globals_equiv_scheduler s saa\<rbrakk> \<Longrightarrow> ?Q5 sa saa
+ 3. \<And>sa rv saa. \<lbrakk>\<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace>; globals_equiv (swap_things sa s) saa\<rbrakk> \<Longrightarrow> globals_equiv_scheduler s saa<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sa saa. \<lbrakk>\<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace>; saa = sa \<and> P saa \<and> globals_equiv_scheduler s saa\<rbrakk> \<Longrightarrow> (P and globals_equiv (swap_things sa s)) saa
+ 2. \<And>sa rv saa. \<lbrakk>\<lbrace>P and globals_equiv (swap_things sa s)\<rbrace> f \<lbrace>\<lambda>_. globals_equiv (swap_things sa s)\<rbrace>; globals_equiv (swap_things sa s) saa\<rbrakk> \<Longrightarrow> globals_equiv_scheduler s saa<\STATESEP>apply (clarsimp simp: globals_equiv_def swap_things_def globals_equiv_scheduler_def
+                         arch_globals_equiv_scheduler_def arch_scheduler_affects_equiv_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma clearExMonitor_globals_equiv_scheduler[wp]:
+  "do_machine_op clearExMonitor \<lbrace>globals_equiv_scheduler sta\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv_scheduler sta\<rbrace> do_machine_op clearExMonitor \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>unfolding clearExMonitor_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv_scheduler sta\<rbrace> do_machine_op (modify (exclusive_state_update (\<lambda>_. default_exclusive_state))) \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>including classic_wp_pre<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>globals_equiv_scheduler sta\<rbrace> do_machine_op (modify (exclusive_state_update (\<lambda>_. default_exclusive_state))) \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>apply (wp dmo_no_mem_globals_equiv_scheduler)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P s. P (underlying_memory s) \<Longrightarrow> P (underlying_memory (s\<lparr>exclusive_state := default_exclusive_state\<rparr>))
+ 2. \<And>P. \<lbrace>\<lambda>ms. P (device_state ms)\<rbrace> modify (exclusive_state_update (\<lambda>_. default_exclusive_state)) \<lbrace>\<lambda>_ ms. P (device_state ms)\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. \<lbrace>\<lambda>ms. P (device_state ms)\<rbrace> modify (exclusive_state_update (\<lambda>_. default_exclusive_state)) \<lbrace>\<lambda>_ ms. P (device_state ms)\<rbrace><\STATESEP>apply (simp add: simpler_modify_def valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_globals_equiv_scheduler[Scheduler_IF_assms]:
+  "\<lbrace>invs and globals_equiv_scheduler sta\<rbrace>
+   arch_switch_to_thread thread
+   \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and globals_equiv_scheduler sta\<rbrace> arch_switch_to_thread thread \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>unfolding arch_switch_to_thread_def storeWord_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and globals_equiv_scheduler sta\<rbrace> do set_vm_root thread;
+do_machine_op $ clearExMonitor
+od \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>by (wpsimp wp: clearExMonitor_globals_equiv_scheduler dmo_wp modify_wp thread_get_wp'
+      | wp (once) globals_equiv_scheduler_inv'[where P="\<top>"])+<\STATESEP>1<\TRANSEP><\STATESEP>crunches arch_activate_idle_thread
+  for silc_dom_equiv[Scheduler_IF_assms, wp]: "silc_dom_equiv aag st"
+  and scheduler_affects_equiv[Scheduler_IF_assms, wp]: "scheduler_affects_equiv aag l st"<\STATESEP>0<\TRANSEP><\STATESEP>lemma dmo_mol_exclusive_state[wp]:
+  "do_machine_op (machine_op_lift mop) \<lbrace>\<lambda>s. P (exclusive_state (machine_state s))\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (exclusive_state (machine_state s))\<rbrace> do_machine_op (machine_op_lift mop) \<lbrace>\<lambda>_ s. P (exclusive_state (machine_state s))\<rbrace><\STATESEP>by (wp mol_exclusive_state dmo_wp
+      | simp add: split_def dmo_bind_valid writeTTBR0_def isb_def dsb_def)+<\STATESEP>1<\TRANSEP><\STATESEP>crunch exclusive_state[wp]: set_vm_root "\<lambda>s. P (exclusive_state (machine_state s))"
+  (ignore: do_machine_op
+     simp: invalidateLocalTLB_ASID_def setHardwareASID_def set_current_pd_def dsb_def isb_def
+           writeTTBR0_def dmo_bind_valid crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_vm_root_arch_scheduler_affects_equiv[wp]:
+  "set_vm_root tcb \<lbrace>arch_scheduler_affects_equiv st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> set_vm_root tcb \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>unfolding arch_scheduler_affects_equiv_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s'. exclusive_state (machine_state st) = exclusive_state (machine_state s')\<rbrace> set_vm_root tcb \<lbrace>\<lambda>_ s'. exclusive_state (machine_state st) = exclusive_state (machine_state s')\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas set_vm_root_scheduler_affects_equiv[wp] =
+  scheduler_affects_equiv_unobservable[OF set_vm_root_states_equiv_for
+                                          set_vm_root_exst _ _ _ set_vm_root_it
+                                          set_vm_root_arch_scheduler_affects_equiv]<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_vm_root_reads_respects_scheduler[wp]:
+  "reads_respects_scheduler aag l \<top> (set_vm_root thread)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (set_vm_root thread)<\STATESEP>apply (rule reads_respects_scheduler_unobservable'[OF scheduler_equiv_lift'
+                                                          [OF globals_equiv_scheduler_inv']])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>st sta staa. \<lbrace>(\<lambda>_. True) and globals_equiv staa\<rbrace> set_vm_root thread \<lbrace>\<lambda>_. globals_equiv staa\<rbrace>
+ 2. \<And>st Q. \<lbrace>(\<lambda>_. True) and (\<lambda>s. Q (cur_domain s))\<rbrace> set_vm_root thread \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> set_vm_root thread \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. \<lbrace>(\<lambda>_. True) and (\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s))\<rbrace> set_vm_root thread \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> set_vm_root thread \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. \<lbrace>(\<lambda>_. True) and silc_dom_equiv aag sta\<rbrace> set_vm_root thread \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st. \<lbrace>(\<lambda>_. True) and scheduler_affects_equiv aag l st\<rbrace> set_vm_root thread \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (wp silc_dom_equiv_states_equiv_lift set_vm_root_states_equiv_for | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ev_asahi_to_asahi_ex_dmo_clearExMonitor:
+  "equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l)
+               (asahi_ex_scheduler_affects_equiv aag l) \<top> (do_machine_op clearExMonitor)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l) (asahi_ex_scheduler_affects_equiv aag l) (\<lambda>_. True) (do_machine_op clearExMonitor)<\STATESEP>apply (simp add: clearExMonitor_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l) (asahi_ex_scheduler_affects_equiv aag l) (\<lambda>_. True) (do_machine_op (modify (exclusive_state_update (\<lambda>_. default_exclusive_state))))<\STATESEP>apply (wp dmo_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. equiv_valid (\<lambda>ms ms'. scheduler_equiv aag (s\<lparr>machine_state := ms\<rparr>) (s'\<lparr>machine_state := ms'\<rparr>)) (\<lambda>ms ms'. midstrength_scheduler_affects_equiv aag l (s\<lparr>machine_state := ms\<rparr>) (s'\<lparr>machine_state := ms'\<rparr>)) (\<lambda>ms ms'. asahi_ex_scheduler_affects_equiv aag l (s\<lparr>machine_state := ms\<rparr>) (s'\<lparr>machine_state := ms'\<rparr>)) (K (True \<and> True)) (modify (exclusive_state_update (\<lambda>_. default_exclusive_state)))<\STATESEP>apply (rule ev_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' sa t. \<lbrakk>K (True \<and> True) sa; K (True \<and> True) t; midstrength_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_equiv aag (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) \<and> asahi_ex_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' sa t. \<lbrakk>midstrength_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_equiv aag (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) \<and> asahi_ex_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s' sa t. \<lbrakk>midstrength_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_equiv aag (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)
+ 2. \<And>s s' sa t. \<lbrakk>midstrength_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> asahi_ex_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (clarsimp simp: scheduler_equiv_def domain_fields_equiv_def globals_equiv_scheduler_def
+                         silc_dom_equiv_def equiv_for_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' sa t. \<lbrakk>midstrength_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> asahi_ex_scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (clarsimp simp: midstrength_scheduler_affects_equiv_def asahi_scheduler_affects_equiv_def
+                        asahi_ex_scheduler_affects_equiv_def states_equiv_for_def equiv_for_def
+                        arch_scheduler_affects_equiv_def equiv_asids_def equiv_asid_def
+                        scheduler_globals_frame_equiv_def
+              simp del: split_paired_All)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma store_cur_thread_fragment_midstrength_reads_respects:
+  "equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l)
+               (scheduler_affects_equiv aag l) invs
+               (do y \<leftarrow> do_machine_op clearExMonitor;
+                   x \<leftarrow> modify (cur_thread_update (\<lambda>_. t));
+                   set_scheduler_action resume_cur_thread
+                od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. midstrength_reads_respects_scheduler aag l invs (do y <- do_machine_op clearExMonitor;
+x <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)<\STATESEP>apply (rule equiv_valid_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. midstrength_reads_respects_scheduler aag l ?Q (do y <- do_machine_op clearExMonitor;
+x <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 2. \<And>s. invs s \<Longrightarrow> ?Q s<\STATESEP>apply (rule bind_ev_general[OF ev_asahi_ex_to_full_fragement])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l) (asahi_ex_scheduler_affects_equiv aag l) ?P'3 (do_machine_op clearExMonitor)
+ 2. \<lbrace>?P''3\<rbrace> do_machine_op clearExMonitor \<lbrace>\<lambda>y _. True\<rbrace>
+ 3. \<And>s. invs s \<Longrightarrow> ?P'3 s \<and> ?P''3 s<\STATESEP>apply (rule ev_asahi_to_asahi_ex_dmo_clearExMonitor)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P''3\<rbrace> do_machine_op clearExMonitor \<lbrace>\<lambda>y _. True\<rbrace>
+ 2. \<And>s. invs s \<Longrightarrow> True \<and> ?P''3 s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. invs s \<Longrightarrow> True \<and> True<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_globals_equiv_scheduler':
+  "\<lbrace>invs and globals_equiv_scheduler sta\<rbrace>
+   set_vm_root t
+   \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and globals_equiv_scheduler sta\<rbrace> set_vm_root t \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>by (rule globals_equiv_scheduler_inv', wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma reads_respects_scheduler_clearExMonitor[wp]:
+  "reads_respects_scheduler aag l \<top> (do_machine_op clearExMonitor)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (do_machine_op clearExMonitor)<\STATESEP>apply (simp add: clearExMonitor_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (do_machine_op (modify (exclusive_state_update (\<lambda>_. default_exclusive_state))))<\STATESEP>apply (wp dmo_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. equiv_valid_inv (\<lambda>ms ms'. scheduler_equiv aag (s\<lparr>machine_state := ms\<rparr>) (s'\<lparr>machine_state := ms'\<rparr>)) (\<lambda>ms ms'. scheduler_affects_equiv aag l (s\<lparr>machine_state := ms\<rparr>) (s'\<lparr>machine_state := ms'\<rparr>)) (K (True \<and> True)) (modify (exclusive_state_update (\<lambda>_. default_exclusive_state)))<\STATESEP>apply (rule ev_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' sa t. \<lbrakk>K (True \<and> True) sa; K (True \<and> True) t; scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_equiv aag (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) \<and> scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' sa t. \<lbrakk>scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_equiv aag (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) \<and> scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s' sa t. \<lbrakk>scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_equiv aag (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)
+ 2. \<And>s s' sa t. \<lbrakk>scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (clarsimp simp: scheduler_equiv_def domain_fields_equiv_def globals_equiv_scheduler_def
+                         silc_dom_equiv_def equiv_for_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' sa t. \<lbrakk>scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>); scheduler_equiv aag (s\<lparr>machine_state := sa\<rparr>) (s'\<lparr>machine_state := t\<rparr>)\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l (s\<lparr>machine_state := sa\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>) (s'\<lparr>machine_state := t\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (clarsimp simp: scheduler_affects_equiv_def arch_scheduler_affects_equiv_def
+                        states_equiv_for_def equiv_for_def equiv_asids_def equiv_asid_def
+                        scheduler_globals_frame_equiv_def
+              simp del: split_paired_All)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_reads_respects_scheduler[wp]:
+  "reads_respects_scheduler aag l
+     ((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs)
+     (arch_switch_to_thread t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) (arch_switch_to_thread t)<\STATESEP>apply (rule reads_respects_scheduler_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P' (arch_switch_to_thread t)
+ 2. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P' s
+ 3. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P'' (arch_switch_to_thread t)
+ 4. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'' s<\STATESEP>apply (simp add: arch_switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P' (do y <- set_vm_root t;
+do_machine_op clearExMonitor
+od)
+ 2. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P' s
+ 3. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P'' (arch_switch_to_thread t)
+ 4. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> True \<and> True
+ 2. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P'' (arch_switch_to_thread t)
+ 3. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'' s<\STATESEP>apply (clarsimp simp: scheduler_equiv_def globals_equiv_scheduler_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P'' (arch_switch_to_thread t)
+ 2. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'' s<\STATESEP>apply (simp add: arch_switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P'' (do y <- set_vm_root t;
+do_machine_op clearExMonitor
+od)
+ 2. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>((\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)) and invs) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> True \<and> True<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas globals_equiv_scheduler_inv = globals_equiv_scheduler_inv'[where P="\<top>",simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_midstrength_reads_respects_scheduler[Scheduler_IF_assms, wp]:
+  assumes domains_distinct[wp]: "pas_domains_distinct aag"
+  shows "midstrength_reads_respects_scheduler aag l
+           (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)))
+           (do _ <- arch_switch_to_thread t;
+               _ <- modify (cur_thread_update (\<lambda>_. t));
+               modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+            od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. midstrength_reads_respects_scheduler aag l (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)<\STATESEP>apply (rule equiv_valid_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. midstrength_reads_respects_scheduler aag l ?Q (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 2. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> ?Q s<\STATESEP>apply (rule midstrength_reads_respects_scheduler_cases[
+                    where Q="(invs and pas_refined aag and
+                                  (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)))",
+                    OF domains_distinct])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> midstrength_reads_respects_scheduler aag l ?P'3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 2. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'3 s
+ 3. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 4. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 5. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 6. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (simp add: arch_switch_to_thread_def bind_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> midstrength_reads_respects_scheduler aag l ?P'3 (do x <- set_vm_root t;
+_ <- do_machine_op clearExMonitor;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 2. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'3 s
+ 3. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 4. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 5. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 6. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (rule bind_ev_general)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>rv. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid (scheduler_equiv aag) ?B9 (scheduler_affects_equiv aag l) (?Q9 rv) (do _ <- do_machine_op clearExMonitor;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 2. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l) ?B9 ?P'9 (set_vm_root t)
+ 3. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>?Q9\<rbrace>
+ 4. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 5. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+modify (scheduler_action_update (\<lambda>_. resume_cur_thread))
+od)
+ 6. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 7. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 8. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (fold set_scheduler_action_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>rv. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid (scheduler_equiv aag) ?B9 (scheduler_affects_equiv aag l) (?Q9 rv) (do _ <- do_machine_op clearExMonitor;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 2. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l) ?B9 ?P'9 (set_vm_root t)
+ 3. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>?Q9\<rbrace>
+ 4. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 5. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 6. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 7. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 8. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (rule store_cur_thread_fragment_midstrength_reads_respects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (midstrength_scheduler_affects_equiv aag l) ?P'9 (set_vm_root t)
+ 2. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>\<lambda>rv. invs\<rbrace>
+ 3. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 4. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 5. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 6. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 7. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (rule_tac P="\<top>" and P'="\<top>" in equiv_valid_inv_unobservable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. \<And>st. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st\<rbrace> set_vm_root t \<lbrace>\<lambda>_. scheduler_equiv aag st\<rbrace>
+ 2. \<And>st. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st\<rbrace> set_vm_root t \<lbrace>\<lambda>_. midstrength_scheduler_affects_equiv aag l st\<rbrace>
+ 3. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s'. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s \<and> midstrength_scheduler_affects_equiv aag l s' s
+ 4. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s' s''. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s'' \<and> midstrength_scheduler_affects_equiv aag l s' s'' \<longrightarrow> scheduler_equiv aag s s'' \<and> midstrength_scheduler_affects_equiv aag l s s''
+ 5. \<And>s. \<lbrakk>pasObjectAbs aag t \<in> reads_scheduler aag l; ?P'9 s\<rbrakk> \<Longrightarrow> True \<and> True
+ 6. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>\<lambda>rv. invs\<rbrace>
+ 7. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 8. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 9. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 10. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+A total of 11 subgoals...<\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (12 subgoals):
+ 1. \<And>st. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?Q17 st\<rbrace> set_vm_root t \<lbrace>\<lambda>_. scheduler_equiv aag st\<rbrace>
+ 2. \<And>st s. \<lbrakk>pasObjectAbs aag t \<in> reads_scheduler aag l; ((\<lambda>_. True) and scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st) s\<rbrakk> \<Longrightarrow> ?Q17 st s
+ 3. \<And>st. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st\<rbrace> set_vm_root t \<lbrace>\<lambda>_. midstrength_scheduler_affects_equiv aag l st\<rbrace>
+ 4. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s'. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s \<and> midstrength_scheduler_affects_equiv aag l s' s
+ 5. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s' s''. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s'' \<and> midstrength_scheduler_affects_equiv aag l s' s'' \<longrightarrow> scheduler_equiv aag s s'' \<and> midstrength_scheduler_affects_equiv aag l s s''
+ 6. \<And>s. \<lbrakk>pasObjectAbs aag t \<in> reads_scheduler aag l; ?P'9 s\<rbrakk> \<Longrightarrow> True \<and> True
+ 7. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>\<lambda>rv. invs\<rbrace>
+ 8. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 9. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 10. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+A total of 12 subgoals...<\STATESEP>apply (rule scheduler_equiv_lift'[where P=\<top>])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (17 subgoals):
+ 1. \<And>st sta. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and globals_equiv_scheduler sta\<rbrace> set_vm_root t \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace>
+ 2. \<And>st Q. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and (\<lambda>s. Q (cur_domain s))\<rbrace> set_vm_root t \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> set_vm_root t \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and (\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s))\<rbrace> set_vm_root t \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> set_vm_root t \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and silc_dom_equiv aag sta\<rbrace> set_vm_root t \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st s. \<lbrakk>pasObjectAbs aag t \<in> reads_scheduler aag l; ((\<lambda>_. True) and scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st) s\<rbrakk> \<Longrightarrow> ((\<lambda>_. True) and scheduler_equiv aag st) s
+ 8. \<And>st. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>(\<lambda>_. True) and scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st\<rbrace> set_vm_root t \<lbrace>\<lambda>_. midstrength_scheduler_affects_equiv aag l st\<rbrace>
+ 9. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s'. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s \<and> midstrength_scheduler_affects_equiv aag l s' s
+ 10. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s' s''. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s'' \<and> midstrength_scheduler_affects_equiv aag l s' s'' \<longrightarrow> scheduler_equiv aag s s'' \<and> midstrength_scheduler_affects_equiv aag l s s''
+A total of 17 subgoals...<\STATESEP>apply (wp globals_equiv_scheduler_inv silc_dom_lift | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. \<And>st. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>scheduler_equiv aag st and midstrength_scheduler_affects_equiv aag l st\<rbrace> set_vm_root t \<lbrace>\<lambda>_. midstrength_scheduler_affects_equiv aag l st\<rbrace>
+ 2. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s'. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s \<and> midstrength_scheduler_affects_equiv aag l s' s
+ 3. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s' s''. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s'' \<and> midstrength_scheduler_affects_equiv aag l s' s'' \<longrightarrow> scheduler_equiv aag s s'' \<and> midstrength_scheduler_affects_equiv aag l s s''
+ 4. \<And>s. \<lbrakk>pasObjectAbs aag t \<in> reads_scheduler aag l; ?P'9 s\<rbrakk> \<Longrightarrow> True \<and> True
+ 5. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>\<lambda>rv. invs\<rbrace>
+ 6. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 7. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 8. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 9. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 10. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (wp midstrength_scheduler_affects_equiv_unobservable set_vm_root_states_equiv_for
+                  | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s'. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s \<and> midstrength_scheduler_affects_equiv aag l s' s
+ 2. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<forall>s s' s''. scheduler_equiv aag s s' \<and> midstrength_scheduler_affects_equiv aag l s s' \<longrightarrow> scheduler_equiv aag s' s'' \<and> midstrength_scheduler_affects_equiv aag l s' s'' \<longrightarrow> scheduler_equiv aag s s'' \<and> midstrength_scheduler_affects_equiv aag l s s''
+ 3. \<And>s. \<lbrakk>pasObjectAbs aag t \<in> reads_scheduler aag l; ?P'9 s\<rbrakk> \<Longrightarrow> True \<and> True
+ 4. pasObjectAbs aag t \<in> reads_scheduler aag l \<Longrightarrow> \<lbrace>?P''9\<rbrace> set_vm_root t \<lbrace>\<lambda>rv. invs\<rbrace>
+ 5. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<in> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P'9 s \<and> ?P''9 s
+ 6. pasObjectAbs aag t \<notin> reads_scheduler aag l \<Longrightarrow> equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) ?P''3 (do _ <- arch_switch_to_thread t;
+_ <- modify (cur_thread_update (\<lambda>_. t));
+set_scheduler_action resume_cur_thread
+od)
+ 7. \<And>s. \<lbrakk>(invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s; pasObjectAbs aag t \<notin> reads_scheduler aag l\<rbrakk> \<Longrightarrow> ?P''3 s
+ 8. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s)
+ 9. \<And>s. (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s \<Longrightarrow> (invs and pas_refined aag and (\<lambda>s. pasObjectAbs aag t \<in> pasDomainAbs aag (cur_domain s))) s<\STATESEP>apply (wp cur_thread_update_not_subject_reads_respects_scheduler | simp | fastforce)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_idle_thread_globals_equiv_scheduler[Scheduler_IF_assms, wp]:
+  "\<lbrace>invs and globals_equiv_scheduler sta\<rbrace>
+   arch_switch_to_idle_thread
+   \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and globals_equiv_scheduler sta\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>unfolding arch_switch_to_idle_thread_def storeWord_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and globals_equiv_scheduler sta\<rbrace> gets idle_thread >>= set_vm_root \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace><\STATESEP>by (wp dmo_wp modify_wp thread_get_wp' arch_switch_to_thread_globals_equiv_scheduler')<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_idle_thread_unobservable[Scheduler_IF_assms]:
+  "\<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and
+    scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs\<rbrace>
+   arch_switch_to_idle_thread
+   \<lbrace>\<lambda>_ s. scheduler_affects_equiv aag l st s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs\<rbrace> arch_switch_to_idle_thread \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (simp add: arch_switch_to_idle_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs\<rbrace> gets idle_thread >>= set_vm_root \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. ((\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs) s \<Longrightarrow> scheduler_affects_equiv aag l st s<\STATESEP>apply (clarsimp simp add: scheduler_equiv_def domain_fields_equiv_def invs_def valid_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma clearExMonitor_unobservable:
+  "\<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and
+    scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain s = cur_domain st)\<rbrace>
+   do_machine_op clearExMonitor
+   \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain s = cur_domain st)\<rbrace> do_machine_op clearExMonitor \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (simp add: clearExMonitor_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain s = cur_domain st)\<rbrace> do_machine_op (modify (exclusive_state_update (\<lambda>_. default_exclusive_state))) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> do_machine_op (modify (exclusive_state_update (\<lambda>_. default_exclusive_state))) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace>
+ 2. \<And>s. ((\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain s = cur_domain st)) s \<Longrightarrow> ?Q s<\STATESEP>apply (wp dmo_wp modify_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. ((\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain s = cur_domain st)) s \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>machine_state := machine_state s\<lparr>exclusive_state := default_exclusive_state\<rparr>\<rparr>)<\STATESEP>apply (auto simp: states_equiv_for_def scheduler_affects_equiv_def equiv_for_def equiv_asids_def
+                    equiv_asid_def scheduler_globals_frame_equiv_def silc_dom_equiv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_switch_to_thread_unobservable[Scheduler_IF_assms]:
+  "\<lbrace>(\<lambda>s. \<not> reads_scheduler_cur_domain aag l s) and
+    scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs\<rbrace>
+   arch_switch_to_thread t
+   \<lbrace>\<lambda>_ s. scheduler_affects_equiv aag l st s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. \<not> reads_scheduler_cur_domain aag l s) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs\<rbrace> arch_switch_to_thread t \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (simp add: arch_switch_to_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. pasDomainAbs aag (cur_domain s) \<inter> reads_scheduler aag l = {}) and scheduler_affects_equiv aag l st and (\<lambda>s. cur_domain st = cur_domain s) and invs\<rbrace> do y <- set_vm_root t;
+do_machine_op clearExMonitor
+od \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (wp set_vm_root_scheduler_affects_equiv clearExMonitor_unobservable | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma next_domain_midstrength_equiv_scheduler[Scheduler_IF_assms]:
+  "equiv_valid (scheduler_equiv aag) (weak_scheduler_affects_equiv aag l)
+               (midstrength_scheduler_affects_equiv aag l) \<top> next_domain"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (scheduler_equiv aag) (weak_scheduler_affects_equiv aag l) (midstrength_scheduler_affects_equiv aag l) (\<lambda>_. True) next_domain<\STATESEP>apply (simp add: next_domain_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid (scheduler_equiv aag) (weak_scheduler_affects_equiv aag l) (midstrength_scheduler_affects_equiv aag l) (\<lambda>_. True) (modify (\<lambda>s. let domain_index' = Suc (domain_index s) mod length (domain_list s); next_dom = domain_list s ! domain_index' in trans_state (\<lambda>e. e\<lparr>domain_index_internal := domain_index', cur_domain_internal := fst next_dom, domain_time_internal := snd next_dom, work_units_completed_internal := 0\<rparr>) s))<\STATESEP>apply (rule ev_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>True; True; weak_scheduler_affects_equiv aag l s t; scheduler_equiv aag s t\<rbrakk> \<Longrightarrow> scheduler_equiv aag (let domain_index' = Suc (domain_index s) mod length (domain_list s); next_dom = domain_list s ! domain_index' in trans_state (\<lambda>e. e\<lparr>domain_index_internal := domain_index', cur_domain_internal := fst next_dom, domain_time_internal := snd next_dom, work_units_completed_internal := 0\<rparr>) s) (let domain_index' = Suc (domain_index t) mod length (domain_list t); next_dom = domain_list t ! domain_index' in trans_state (\<lambda>e. e\<lparr>domain_index_internal := domain_index', cur_domain_internal := fst next_dom, domain_time_internal := snd next_dom, work_units_completed_internal := 0\<rparr>) t) \<and> midstrength_scheduler_affects_equiv aag l (let domain_index' = Suc (domain_index s) mod length (domain_list s); next_dom = domain_list s ! domain_index' in trans_state (\<lambda>e. e\<lparr>domain_index_internal := domain_index', cur_domain_internal := fst next_dom, domain_time_internal := snd next_dom, work_units_completed_internal := 0\<rparr>) s) (let domain_index' = Suc (domain_index t) mod length (domain_list t); next_dom = domain_list t ! domain_index' in trans_state (\<lambda>e. e\<lparr>domain_index_internal := domain_index', cur_domain_internal := fst next_dom, domain_time_internal := snd next_dom, work_units_completed_internal := 0\<rparr>) t)<\STATESEP>apply (clarsimp simp: equiv_for_def equiv_asid_def equiv_asids_def Let_def scheduler_equiv_def
+                        globals_equiv_scheduler_def silc_dom_equiv_def domain_fields_equiv_def
+                        weak_scheduler_affects_equiv_def midstrength_scheduler_affects_equiv_def
+                        states_equiv_for_def idle_equiv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma resetTimer_exclusive_state[wp]:
+  "resetTimer \<lbrace>\<lambda>s. P (exclusive_state s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (exclusive_state s)\<rbrace> resetTimer \<lbrace>\<lambda>_ s. P (exclusive_state s)\<rbrace><\STATESEP>by (wpsimp simp: resetTimer_def wp: mol_exclusive_state)<\STATESEP>1<\TRANSEP><\STATESEP>lemma resetTimer_irq_state[wp]:
+  "resetTimer \<lbrace>\<lambda>s. P (irq_state s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (irq_state s)\<rbrace> resetTimer \<lbrace>\<lambda>_ s. P (irq_state s)\<rbrace><\STATESEP>apply (simp add: resetTimer_def machine_op_lift_def machine_rest_lift_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (irq_state s)\<rbrace> do mr <- gets machine_state_rest;
+(r, mr') <- select_f (ignore_failure resetTimer_impl mr);
+modify (machine_state_rest_update (\<lambda>_. mr'))
+od \<lbrace>\<lambda>_ s. P (irq_state s)\<rbrace><\STATESEP>apply (wp | wpc| simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_resetTimer_reads_respects_scheduler[Scheduler_IF_assms]:
+  "reads_respects_scheduler aag l \<top> (do_machine_op resetTimer)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (do_machine_op resetTimer)<\STATESEP>apply (rule reads_respects_scheduler_unobservable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st. \<lbrace>scheduler_equiv aag st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. scheduler_equiv aag st\<rbrace>
+ 2. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (rule scheduler_equiv_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>st sta. \<lbrace>globals_equiv_scheduler sta\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace>
+ 2. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (simp add: globals_equiv_scheduler_def[abs_def]  idle_equiv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>sta. \<lbrace>\<lambda>s'. arch_globals_equiv_scheduler (kheap sta) (kheap s') (arch_state sta) (arch_state s') \<and> idle_thread sta = idle_thread s' \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s' (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s' \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s'))\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s'. arch_globals_equiv_scheduler (kheap sta) (kheap s') (arch_state sta) (arch_state s') \<and> idle_thread sta = idle_thread s' \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s' (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s' \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s'))\<rbrace>
+ 2. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (wpsimp wp: dmo_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 2. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 3. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 5. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 6. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply ((wp silc_dom_lift dmo_wp | simp)+)[5]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (rule scheduler_affects_equiv_unobservable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>st P Q R S sta. \<lbrace>states_equiv_for P Q R S sta\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. states_equiv_for P Q R S sta\<rbrace>
+ 2. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 7. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply (simp add: states_equiv_for_def[abs_def] equiv_for_def equiv_asids_def equiv_asid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>P Q R S sta. \<lbrace>\<lambda>s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s' x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s' (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s' x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s' (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s' (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s' x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s' x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s' x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s' \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s' x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s' (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s' x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s' (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s' (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s' x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s' x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s' x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s' \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace>
+ 2. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 7. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>P Q R S sta. \<lbrace>?Q88 P Q R S sta\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s' x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s' (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s' x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s' (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s' (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s' x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s' x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s' x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s' \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace>
+ 2. \<And>P Q R S sta s. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s) x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s) x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid)))) \<Longrightarrow> ?Q88 P Q R S sta s
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 7. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 8. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op resetTimer \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply (wp  | simp add: arch_scheduler_affects_equiv_def | wp dmo_wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ackInterrupt_reads_respects_scheduler[Scheduler_IF_assms]:
+  "reads_respects_scheduler aag l \<top> (do_machine_op (ackInterrupt irq))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (do_machine_op (ackInterrupt irq))<\STATESEP>apply (rule reads_respects_scheduler_unobservable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st. \<lbrace>scheduler_equiv aag st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_equiv aag st\<rbrace>
+ 2. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (rule scheduler_equiv_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>st sta. \<lbrace>globals_equiv_scheduler sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. globals_equiv_scheduler sta\<rbrace>
+ 2. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (simp add:  globals_equiv_scheduler_def[abs_def] idle_equiv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>sta. \<lbrace>\<lambda>s'. arch_globals_equiv_scheduler (kheap sta) (kheap s') (arch_state sta) (arch_state s') \<and> idle_thread sta = idle_thread s' \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s' (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s' \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s'))\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s'. arch_globals_equiv_scheduler (kheap sta) (kheap s') (arch_state sta) (arch_state s') \<and> idle_thread sta = idle_thread s' \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s' (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s' \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s'))\<rbrace>
+ 2. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>sta. \<lbrace>?Q10 sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s'. arch_globals_equiv_scheduler (kheap sta) (kheap s') (arch_state sta) (arch_state s') \<and> idle_thread sta = idle_thread s' \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s' (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s' \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s'))\<rbrace>
+ 2. \<And>sta s. arch_globals_equiv_scheduler (kheap sta) (kheap s) (arch_state sta) (arch_state s) \<and> idle_thread sta = idle_thread s \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s)) \<Longrightarrow> ?Q10 sta s
+ 3. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 5. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 7. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 8. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply wps<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>sta prev_s. \<lbrace>?P13 sta prev_s\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>rv s'. arch_globals_equiv_scheduler (kheap sta) (kheap prev_s) (arch_state sta) (arch_state prev_s) \<and> idle_thread sta = idle_thread prev_s \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap prev_s (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) prev_s \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s'))\<rbrace>
+ 2. \<And>sta s. arch_globals_equiv_scheduler (kheap sta) (kheap s) (arch_state sta) (arch_state s) \<and> idle_thread sta = idle_thread s \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s)) \<Longrightarrow> ?P13 sta s s
+ 3. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 5. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 7. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 8. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (wp dmo_wp ackInterrupt_irq_masks | simp add:no_irq_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>sta s. arch_globals_equiv_scheduler (kheap sta) (kheap s) (arch_state sta) (arch_state s) \<and> idle_thread sta = idle_thread s \<and> (\<forall>tcb. kheap sta (idle_thread sta) = Some (TCB tcb) \<longrightarrow> (\<forall>tcb'. kheap s (idle_thread sta) = Some (TCB tcb') \<longrightarrow> arch_tcb_context_get (tcb_arch tcb) = arch_tcb_context_get (tcb_arch tcb'))) \<and> tcb_at (idle_thread sta) sta = tcb_at (idle_thread sta) s \<and> dom (device_state (machine_state sta)) = dom (device_state (machine_state s)) \<Longrightarrow> tcb_at (idle_thread s) sta = tcb_at (idle_thread s) s
+ 2. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 4. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 6. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 7. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>st Q. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>r s. Q (cur_domain s)\<rbrace>
+ 2. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 3. \<And>st Q. \<lbrace>\<lambda>s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. Q (domain_time s) (domain_index s) (domain_list s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (irq_state_of_state s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (irq_state_of_state s)\<rbrace>
+ 5. \<And>st sta. \<lbrace>silc_dom_equiv aag sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. silc_dom_equiv aag sta\<rbrace>
+ 6. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply ((wp silc_dom_lift dmo_wp | simp)+)[5]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>st. \<lbrace>scheduler_affects_equiv aag l st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (rule scheduler_affects_equiv_unobservable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>st P Q R S sta. \<lbrace>states_equiv_for P Q R S sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. states_equiv_for P Q R S sta\<rbrace>
+ 2. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 7. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply (simp add: states_equiv_for_def[abs_def] equiv_for_def equiv_asids_def equiv_asid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>P Q R S sta. \<lbrace>\<lambda>s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s' x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s' (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s' x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s' (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s' (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s' x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s' x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s' x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s' \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s' x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s' (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s' x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s' (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s' (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s' x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s' x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s' x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s' \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace>
+ 2. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 7. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>P Q R S sta. \<lbrace>?Q91 P Q R S sta\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s' x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s' (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s' x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s' (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s' (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s' x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s' x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s' x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s' (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s' \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s' pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace>
+ 2. \<And>P Q R S sta s. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s) x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s) x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid)))) \<Longrightarrow> ?Q91 P Q R S sta s
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 7. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 8. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply wps<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>P Q R S sta prev_s. \<lbrace>?P94 P Q R S sta prev_s\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>rv s'. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap prev_s x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s') x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s') x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt prev_s (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap prev_s x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list prev_s (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap prev_s (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states prev_s x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node prev_s x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues prev_s x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table prev_s (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr prev_s \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap prev_s pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))))\<rbrace>
+ 2. \<And>P Q R S sta s. (\<forall>x. P x \<longrightarrow> kheap sta x = kheap s x) \<and> (\<forall>x. P x \<longrightarrow> underlying_memory (machine_state sta) x = underlying_memory (machine_state s) x) \<and> (\<forall>x. P x \<longrightarrow> device_state (machine_state sta) x = device_state (machine_state s) x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt sta (a, b) = cdt s (a, b))) \<and> (\<forall>x. P x \<longrightarrow> ekheap sta x = ekheap s x) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. cdt_list sta (a, b) = cdt_list s (a, b))) \<and> (\<forall>a. P a \<longrightarrow> (\<forall>b. is_original_cap sta (a, b) = is_original_cap s (a, b))) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_states sta x = interrupt_states s x) \<and> (\<forall>x. Q x \<longrightarrow> interrupt_irq_node sta x = interrupt_irq_node s x) \<and> (\<forall>x. S x \<longrightarrow> ready_queues sta x = ready_queues s x) \<and> (\<forall>asid. asid \<noteq> 0 \<and> R asid \<longrightarrow> asid_table sta (asid_high_bits_of asid) = asid_table s (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table sta (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr sta = typ_at (AArch AASIDPool) pool_ptr s \<and> (\<forall>asid_pool asid_pool'. kheap sta pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid)))) \<Longrightarrow> ?P94 P Q R S sta s s
+ 3. \<And>st P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_domain s)\<rbrace>
+ 4. \<And>st P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (cur_thread s)\<rbrace>
+ 5. \<And>st P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (scheduler_action s)\<rbrace>
+ 6. \<And>st P. \<lbrace>\<lambda>s. P (work_units_completed s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (work_units_completed s)\<rbrace>
+ 7. \<And>st P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_ s. P (idle_thread s)\<rbrace>
+ 8. \<And>st. \<lbrace>arch_scheduler_affects_equiv st\<rbrace> do_machine_op (ackInterrupt irq) \<lbrace>\<lambda>_. arch_scheduler_affects_equiv st\<rbrace><\STATESEP>apply (wp dmo_wp | simp add: arch_scheduler_affects_equiv_def ackInterrupt_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>st s. \<lbrace>?P168 st s\<rbrace> machine_op_lift (ackInterrupt_impl irq) \<lbrace>\<lambda>a b. exclusive_state (machine_state st) = exclusive_state b\<rbrace>
+ 2. \<And>st s. arch_scheduler_affects_equiv st s \<Longrightarrow> ?P168 st s (machine_state s)<\STATESEP>apply (wp mol_exclusive_state)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>st s. arch_scheduler_affects_equiv st s \<Longrightarrow> exclusive_state (machine_state st) = exclusive_state (machine_state s)<\STATESEP>apply (simp add: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma thread_set_scheduler_affects_equiv[Scheduler_IF_assms, wp]:
+  "\<lbrace>(\<lambda>s. x \<noteq> idle_thread s \<longrightarrow> pasObjectAbs aag x \<notin> reads_scheduler aag l) and
+    (\<lambda>s. x = idle_thread s \<longrightarrow> tc = idle_context s) and scheduler_affects_equiv aag l st\<rbrace>
+   thread_set (tcb_arch_update (arch_tcb_context_set tc)) x
+   \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. x \<noteq> idle_thread s \<longrightarrow> pasObjectAbs aag x \<notin> reads_scheduler aag l) and (\<lambda>s. x = idle_thread s \<longrightarrow> tc = idle_context s) and scheduler_affects_equiv aag l st\<rbrace> thread_set (tcb_arch_update (arch_tcb_context_set tc)) x \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (simp add: thread_set_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. x \<noteq> idle_thread s \<longrightarrow> pasObjectAbs aag x \<notin> reads_scheduler aag l) and (\<lambda>s. x = idle_thread s \<longrightarrow> tc = idle_context s) and scheduler_affects_equiv aag l st\<rbrace> do tcb <- gets_the (get_tcb x);
+set_object x (TCB (tcb_arch_update (arch_tcb_context_set tc) tcb))
+od \<lbrace>\<lambda>_. scheduler_affects_equiv aag l st\<rbrace><\STATESEP>apply (wp set_object_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. ((\<lambda>s. x \<noteq> idle_thread s \<longrightarrow> pasObjectAbs aag x \<notin> reads_scheduler aag l) and (\<lambda>s. x = idle_thread s \<longrightarrow> tc = idle_context s) and scheduler_affects_equiv aag l st) s \<Longrightarrow> get_tcb x s \<noteq> None \<longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) (the (get_tcb x s))))\<rparr>)<\STATESEP>apply (intro impI conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>((\<lambda>s. x \<noteq> idle_thread s \<longrightarrow> pasObjectAbs aag x \<notin> reads_scheduler aag l) and (\<lambda>s. x = idle_thread s \<longrightarrow> tc = idle_context s) and scheduler_affects_equiv aag l st) s; get_tcb x s \<noteq> None\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) (the (get_tcb x s))))\<rparr>)<\STATESEP>apply (case_tac "x \<noteq> idle_thread s",simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>pasObjectAbs aag x \<notin> reads_scheduler aag l \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb x s = Some y; x \<noteq> idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) (the (get_tcb x s))))\<rparr>)
+ 2. \<And>s. \<lbrakk>tc = idle_context s \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb (idle_thread s) s = Some y; x = idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (idle_context s)) (the (get_tcb (idle_thread s) s))))\<rparr>)<\STATESEP>apply (clarsimp simp: scheduler_affects_equiv_def get_tcb_def scheduler_globals_frame_equiv_def
+                  split: option.splits kernel_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x2a. \<lbrakk>x \<noteq> idle_thread s; pasObjectAbs aag x \<notin> reads_scheduler aag l; states_equiv_for (\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasIRQAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasASIDAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l) st s; (pasDomainAbs aag (cur_domain st) \<inter> reads_scheduler aag l = {} \<longrightarrow> reads_scheduler_cur_domain aag l s) \<longrightarrow> cur_thread st = cur_thread s \<and> scheduler_action st = scheduler_action s \<and> work_units_completed st = work_units_completed s \<and> idle_thread st = idle_thread s \<and> (cur_thread st \<noteq> idle_thread s \<longrightarrow> arch_scheduler_affects_equiv st s); kheap s x = Some (TCB x2a)\<rbrakk> \<Longrightarrow> states_equiv_for (\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasIRQAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasASIDAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l) st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) x2a))\<rparr>) \<and> ((pasDomainAbs aag (cur_domain st) \<inter> reads_scheduler aag l = {} \<longrightarrow> reads_scheduler_cur_domain aag l s) \<longrightarrow> cur_thread s \<noteq> idle_thread s \<longrightarrow> arch_scheduler_affects_equiv st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) x2a))\<rparr>))
+ 2. \<And>s. \<lbrakk>tc = idle_context s \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb (idle_thread s) s = Some y; x = idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (idle_context s)) (the (get_tcb (idle_thread s) s))))\<rparr>)<\STATESEP>apply (clarsimp simp: arch_scheduler_affects_equiv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x2a. \<lbrakk>x \<noteq> idle_thread s; pasObjectAbs aag x \<notin> reads_scheduler aag l; states_equiv_for (\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasIRQAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasASIDAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l) st s; (pasDomainAbs aag (cur_domain st) \<inter> reads_scheduler aag l = {} \<longrightarrow> reads_scheduler_cur_domain aag l s) \<longrightarrow> cur_thread st = cur_thread s \<and> scheduler_action st = scheduler_action s \<and> work_units_completed st = work_units_completed s \<and> idle_thread st = idle_thread s \<and> (cur_thread st \<noteq> idle_thread s \<longrightarrow> exclusive_state (machine_state st) = exclusive_state (machine_state s)); kheap s x = Some (TCB x2a)\<rbrakk> \<Longrightarrow> states_equiv_for (\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasIRQAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasASIDAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l) st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) x2a))\<rparr>)
+ 2. \<And>s. \<lbrakk>tc = idle_context s \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb (idle_thread s) s = Some y; x = idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (idle_context s)) (the (get_tcb (idle_thread s) s))))\<rparr>)<\STATESEP>apply (elim states_equiv_forE equiv_forE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x2a. \<lbrakk>x \<noteq> idle_thread s; pasObjectAbs aag x \<notin> reads_scheduler aag l; (pasDomainAbs aag (cur_domain st) \<inter> reads_scheduler aag l = {} \<longrightarrow> reads_scheduler_cur_domain aag l s) \<longrightarrow> cur_thread st = cur_thread s \<and> scheduler_action st = scheduler_action s \<and> work_units_completed st = work_units_completed s \<and> idle_thread st = idle_thread s \<and> (cur_thread st \<noteq> idle_thread s \<longrightarrow> exclusive_state (machine_state st) = exclusive_state (machine_state s)); kheap s x = Some (TCB x2a); equiv_machine_state (\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) (machine_state st) (machine_state s); equiv_asids (\<lambda>x. pasASIDAbs aag x \<in> reads_scheduler aag l) st s; \<And>x. pasObjectAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> kheap st x = kheap s x; \<And>x. ((\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) \<circ> fst) x \<Longrightarrow> cdt st x = cdt s x; \<And>x. ((\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) \<circ> fst) x \<Longrightarrow> cdt_list st x = cdt_list s x; \<And>x. pasObjectAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> ekheap st x = ekheap s x; \<And>x. ((\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) \<circ> fst) x \<Longrightarrow> is_original_cap st x = is_original_cap s x; \<And>x. pasIRQAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> interrupt_states st x = interrupt_states s x; \<And>x. pasIRQAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> interrupt_irq_node st x = interrupt_irq_node s x; \<And>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l \<Longrightarrow> ready_queues st x = ready_queues s x\<rbrakk> \<Longrightarrow> states_equiv_for (\<lambda>x. pasObjectAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasIRQAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. pasASIDAbs aag x \<in> reads_scheduler aag l) (\<lambda>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l) st (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) x2a))\<rparr>)
+ 2. \<And>s. \<lbrakk>tc = idle_context s \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb (idle_thread s) s = Some y; x = idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (idle_context s)) (the (get_tcb (idle_thread s) s))))\<rparr>)<\STATESEP>apply (rule states_equiv_forI,simp_all add: equiv_for_def equiv_asids_def equiv_asid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x2a. \<lbrakk>x \<noteq> idle_thread s; pasObjectAbs aag x \<notin> reads_scheduler aag l; (pasDomainAbs aag (cur_domain st) \<inter> reads_scheduler aag l = {} \<longrightarrow> reads_scheduler_cur_domain aag l s) \<longrightarrow> cur_thread st = cur_thread s \<and> scheduler_action st = scheduler_action s \<and> work_units_completed st = work_units_completed s \<and> idle_thread st = idle_thread s \<and> (cur_thread st \<noteq> idle_thread s \<longrightarrow> exclusive_state (machine_state st) = exclusive_state (machine_state s)); kheap s x = Some (TCB x2a); (\<forall>x. pasObjectAbs aag x \<in> reads_scheduler aag l \<longrightarrow> underlying_memory (machine_state st) x = underlying_memory (machine_state s) x) \<and> (\<forall>x. pasObjectAbs aag x \<in> reads_scheduler aag l \<longrightarrow> device_state (machine_state st) x = device_state (machine_state s) x); \<forall>asid. asid \<noteq> 0 \<and> pasASIDAbs aag asid \<in> reads_scheduler aag l \<longrightarrow> asid_table st (asid_high_bits_of asid) = asid_table s (asid_high_bits_of asid) \<and> (\<forall>pool_ptr. asid_table st (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr st = typ_at (AArch AASIDPool) pool_ptr s \<and> (\<forall>asid_pool asid_pool'. kheap st pool_ptr = Some (ArchObj (ASIDPool asid_pool)) \<and> kheap s pool_ptr = Some (ArchObj (ASIDPool asid_pool')) \<longrightarrow> asid_pool (UCAST(32 \<rightarrow> 10) asid) = asid_pool' (UCAST(32 \<rightarrow> 10) asid))); \<And>x. pasObjectAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> kheap st x = kheap s x; \<And>x. pasObjectAbs aag (fst x) \<in> reads_scheduler aag l \<Longrightarrow> cdt st x = cdt s x; \<And>x. pasObjectAbs aag (fst x) \<in> reads_scheduler aag l \<Longrightarrow> cdt_list st x = cdt_list s x; \<And>x. pasObjectAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> ekheap st x = ekheap s x; \<And>x. pasObjectAbs aag (fst x) \<in> reads_scheduler aag l \<Longrightarrow> is_original_cap st x = is_original_cap s x; \<And>x. pasIRQAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> interrupt_states st x = interrupt_states s x; \<And>x. pasIRQAbs aag x \<in> reads_scheduler aag l \<Longrightarrow> interrupt_irq_node st x = interrupt_irq_node s x; \<And>x. \<exists>la\<in>pasDomainAbs aag x. la \<in> reads_scheduler aag l \<Longrightarrow> ready_queues st x = ready_queues s x\<rbrakk> \<Longrightarrow> \<forall>asid. asid \<noteq> 0 \<and> pasASIDAbs aag asid \<in> reads_scheduler aag l \<longrightarrow> (\<forall>pool_ptr. (pool_ptr = x \<longrightarrow> asid_table s (asid_high_bits_of asid) = Some x \<longrightarrow> typ_at (AArch AASIDPool) x s = typ_at (AArch AASIDPool) x (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) x2a))\<rparr>)) \<and> (pool_ptr \<noteq> x \<longrightarrow> asid_table s (asid_high_bits_of asid) = Some pool_ptr \<longrightarrow> typ_at (AArch AASIDPool) pool_ptr s = typ_at (AArch AASIDPool) pool_ptr (s\<lparr>kheap := (kheap s)(x \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set tc) x2a))\<rparr>)))
+ 2. \<And>s. \<lbrakk>tc = idle_context s \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb (idle_thread s) s = Some y; x = idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (idle_context s)) (the (get_tcb (idle_thread s) s))))\<rparr>)<\STATESEP>apply (clarsimp simp: obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>tc = idle_context s \<and> scheduler_affects_equiv aag l st s; \<exists>y. get_tcb (idle_thread s) s = Some y; x = idle_thread s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (idle_context s)) (the (get_tcb (idle_thread s) s))))\<rparr>)<\STATESEP>apply (clarsimp simp: idle_context_def get_tcb_def
+                  split: option.splits kernel_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (tcb_arch_update (arch_tcb_context_set (arch_tcb_context_get (tcb_arch y))) y))\<rparr>)<\STATESEP>apply (subst arch_tcb_update_aux)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB (y\<lparr>tcb_arch := arch_tcb_context_set (arch_tcb_context_get (tcb_arch y)) (tcb_arch y)\<rparr>))\<rparr>)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> scheduler_affects_equiv aag l st (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)<\STATESEP>apply (subgoal_tac "s = (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)", simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> s = s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr><\STATESEP>apply (rule state.equality)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> kheap s = kheap (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 2. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> cdt s = cdt (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 3. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> is_original_cap s = is_original_cap (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 4. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> cur_thread s = cur_thread (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 5. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> idle_thread s = idle_thread (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 6. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> machine_state s = machine_state (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 7. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> interrupt_irq_node s = interrupt_irq_node (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 8. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> interrupt_states s = interrupt_states (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 9. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> arch_state s = arch_state (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 10. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> exst s = exst (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+A total of 11 subgoals...<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (11 subgoals):
+ 1. \<And>s y xa. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> kheap s xa = kheap (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>) xa
+ 2. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> cdt s = cdt (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 3. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> is_original_cap s = is_original_cap (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 4. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> cur_thread s = cur_thread (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 5. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> idle_thread s = idle_thread (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 6. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> machine_state s = machine_state (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 7. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> interrupt_irq_node s = interrupt_irq_node (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 8. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> interrupt_states s = interrupt_states (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 9. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> arch_state s = arch_state (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+ 10. \<And>s y. \<lbrakk>x = idle_thread s; kheap s (idle_thread s) = Some (TCB y); tc = arch_tcb_context_get (tcb_arch y); scheduler_affects_equiv aag l st s\<rbrakk> \<Longrightarrow> exst s = exst (s\<lparr>kheap := (kheap s)(idle_thread s \<mapsto> TCB y)\<rparr>)
+A total of 11 subgoals...<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_object_reads_respects_scheduler[Scheduler_IF_assms, wp]:
+  "reads_respects_scheduler aag l \<top> (set_object ptr obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (set_object ptr obj)<\STATESEP>unfolding equiv_valid_def2 equiv_valid_2_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. True \<and> True \<and> scheduler_equiv aag s t \<and> scheduler_affects_equiv aag l s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (set_object ptr obj s). \<forall>(rvb, t')\<in>fst (set_object ptr obj t). rva = rvb \<and> scheduler_equiv aag s' t' \<and> scheduler_affects_equiv aag l s' t')<\STATESEP>by (auto simp: set_object_def bind_def get_def put_def return_def get_object_def assert_def
+                 fail_def gets_def scheduler_equiv_def domain_fields_equiv_def equiv_for_def
+                 globals_equiv_scheduler_def arch_globals_equiv_scheduler_def silc_dom_equiv_def
+                 scheduler_affects_equiv_def arch_scheduler_affects_equiv_def
+                 scheduler_globals_frame_equiv_def identical_kheap_updates_def
+          intro: states_equiv_for_identical_kheap_updates idle_equiv_identical_kheap_updates)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_activate_idle_thread_reads_respects_scheduler[Scheduler_IF_assms, wp]:
+  "reads_respects_scheduler aag l \<top> (arch_activate_idle_thread rv)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (arch_activate_idle_thread rv)<\STATESEP>unfolding arch_activate_idle_thread_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv (scheduler_equiv aag) (scheduler_affects_equiv aag l) (\<lambda>_. True) (return ())<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Scheduler_IF_2?:
+  Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv aag<\STATESEP>by (unfold_locales; (fact Scheduler_IF_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Scheduler_IF_2 arch_globals_equiv_scheduler arch_scheduler_affects_equiv aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>hide_fact Scheduler_IF_2.globals_equiv_scheduler_inv'<\STATESEP>0<\TRANSEP><\STATESEP>requalify_facts ARM.globals_equiv_scheduler_inv'<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

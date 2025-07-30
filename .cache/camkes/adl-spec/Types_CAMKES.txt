@@ -1,0 +1,92 @@
+<\STATESEP>chapter \<open>\label{sec:types}Types\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Types_CAMKES
+imports
+  Access.Access
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:symbols}Symbols\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym idl_symbol = string<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym adl_symbol = string<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:methods}Methods\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype number =
+    \<comment> \<open>High level types\<close>
+    UnsignedInteger
+  | Integer
+  | Real
+  | Boolean<\STATESEP>0<\TRANSEP><\STATESEP>datatype textual =
+    \<comment> \<open>High level types\<close>
+    Character
+  | String
+    \<comment> \<open>C-specific types\<close>
+  | char<\STATESEP>0<\TRANSEP><\STATESEP>datatype primitive =
+    Numerical number
+  | Textual textual<\STATESEP>0<\TRANSEP><\STATESEP>datatype array =
+    SizedArray primitive
+  | TerminatedArray primitive<\STATESEP>0<\TRANSEP><\STATESEP>datatype param_type =
+    Primitive primitive
+  | Array array
+  | CType string<\STATESEP>0<\TRANSEP><\STATESEP>datatype param_direction =
+    InParameter (* also covers 'refin' *)
+  | OutParameter
+  | InOutParameter<\STATESEP>0<\TRANSEP><\STATESEP>record parameter =
+  p_type        :: param_type
+  p_direction   :: param_direction
+  p_name        :: idl_symbol<\STATESEP>0<\TRANSEP><\STATESEP>record "method" =
+  m_return_type :: "param_type option"
+  m_name        :: idl_symbol
+  m_parameters  :: "parameter list"<\STATESEP>0<\TRANSEP><\STATESEP>value(*>*)
+  "\<lparr>m_return_type = Some (Primitive (Numerical Integer)),
+    m_name = ''foo'',
+    m_parameters = [
+      \<lparr>p_type = Primitive (Textual String),
+       p_direction = InParameter,
+       p_name = ''s''\<rparr>
+    ]\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:interfaces}Interfaces\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym procedure = "method list"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym event     = nat \<comment> \<open>ID\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym dataport  = "string option" \<comment> \<open>type\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype interface =
+    Procedure procedure
+  | Event event
+  | Dataport dataport<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:connectors}Connectors\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype connector_type =
+    NativeConnector
+  | HardwareConnector
+  | ExportConnector<\STATESEP>0<\TRANSEP><\STATESEP>datatype connector_interface =
+    RPCInterface
+  | EventInterface
+  | DataportInterface<\STATESEP>0<\TRANSEP><\STATESEP>record connector_access =
+    \<comment> \<open>@{text access_foo_bar} means access from the "@{text foo}" label to
+        the "@{text bar}" label; labels may be from-components,
+        to-components, or the connection itself\<close>
+    access_from_to :: "auth set"
+    access_to_from :: "auth set"
+
+    \<comment> \<open>It might seem that components on the same side of a connection
+        should not need access rights to each other.
+        However, these auths are needed in more complicated systems,
+        to work around bugs like VER-1108 and to express non-standard
+        connector semantics such as VirtQueues.\<close>
+    access_from_from :: "auth set"
+    access_to_to :: "auth set"
+
+    \<comment> \<open>we assume connections are passive labels, so they do not
+        need access rights of their own\<close>
+    access_from_conn :: "auth set"
+    access_to_conn :: "auth set"<\STATESEP>0<\TRANSEP><\STATESEP>record connector =
+    connector_type :: connector_type
+    connector_interface :: connector_interface
+    connector_access :: connector_access<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:components}Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype InterfaceRequired = InterfaceRequired | InterfaceOptional<\STATESEP>0<\TRANSEP><\STATESEP>record component =
+  control     :: bool
+  hardware    :: bool
+  requires    :: "(adl_symbol \<times> (InterfaceRequired \<times> procedure)) list"
+  provides    :: "(adl_symbol \<times> procedure) list"
+  dataports   :: "(adl_symbol \<times> dataport) list"
+  emits       :: "(adl_symbol \<times> event) list"
+  consumes    :: "(adl_symbol \<times> (InterfaceRequired \<times> event)) list"
+  attributes  :: "(adl_symbol \<times> param_type) list"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:assembling}Assembling a System\<close><\STATESEP>0<\TRANSEP><\STATESEP>record connection =
+  conn_type   :: connector
+  conn_from   :: "(adl_symbol \<times> adl_symbol) list"
+  conn_to     :: "(adl_symbol \<times> adl_symbol) list"<\STATESEP>0<\TRANSEP><\STATESEP>record composition =
+  components  :: "(adl_symbol \<times> component) list"
+  connections :: "(adl_symbol \<times> connection) list"
+  group_labels :: "(adl_symbol \<times> adl_symbol) list" \<comment> \<open>See @{text get_group_label}, below\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_group_label :: "composition \<Rightarrow> adl_symbol \<Rightarrow> adl_symbol"
+where
+  "get_group_label spec c \<equiv>
+     case map_of (group_labels spec) c of
+         Some c' \<Rightarrow> c'
+       | None \<Rightarrow> c"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym configuration =
+  "(adl_symbol \<times> adl_symbol \<times> string) list"<\STATESEP>0<\TRANSEP><\STATESEP>record assembly =
+  composition   :: "composition"
+  configuration :: "configuration option"
+  \<comment> \<open>This lets us shove extra policy edges into the generated integrity policy\<close>
+  policy_extra  :: "(adl_symbol \<times> auth \<times> adl_symbol) set"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:future}Future Work\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{subsubsec:composites}Component Hierarchy\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{subsubsec:iarrays}Interface Arrays\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

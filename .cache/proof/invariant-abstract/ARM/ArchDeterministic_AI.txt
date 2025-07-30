@@ -1,0 +1,186 @@
+<\STATESEP>theory ArchDeterministic_AI
+imports Deterministic_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Deterministic_AI_assms<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp, Deterministic_AI_assms]:
+  cap_swap_for_delete,set_cap,finalise_cap,arch_get_sanitise_register_info,
+  arch_post_modify_registers valid_list
+  (wp: crunch_wps simp: unless_def crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>declare get_cap_inv[Deterministic_AI_assms]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Deterministic_AI_1?: Deterministic_AI_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Deterministic_AI_1<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Deterministic_AI_1<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Deterministic_AI_1<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Deterministic_AI_1<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Deterministic_AI_1<\STATESEP>by (unfold_locales; (fact Deterministic_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Deterministic_AI_1
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp, Deterministic_AI_assms]: arch_invoke_irq_handler valid_list<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp]: invalidate_tlb_by_asid valid_list
+  (wp: crunch_wps preemption_point_inv' simp: crunch_simps filterM_mapM)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp]: invoke_untyped valid_list
+  (wp: crunch_wps preemption_point_inv' unless_wp mapME_x_wp'
+   simp: mapM_x_def_bak crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp]: invoke_irq_control valid_list<\STATESEP>0<\TRANSEP><\STATESEP>lemma perform_page_table_invocation_valid_list[wp]:
+  "\<lbrace>valid_list\<rbrace> perform_page_table_invocation a \<lbrace>\<lambda>_.valid_list\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> perform_page_table_invocation a \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (simp add: perform_page_table_invocation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> case a of PageTableMap cap ct_slot pde pd_slot \<Rightarrow> do set_cap cap ct_slot;
+store_pde pd_slot pde;
+do_machine_op $ cleanByVA_PoU pd_slot (addrFromPPtr pd_slot)
+od | PageTableUnmap (ArchObjectCap (PageTableCap p mapped_address)) ct_slot \<Rightarrow> do case mapped_address of None \<Rightarrow> return () | Some (asid, vaddr) \<Rightarrow> do unmap_page_table asid vaddr p;
+pte_bits <- return 2;
+slots <- return [p , p + (1 << pte_bits) .e. p + (1 << pt_bits) - 1];
+mapM_x (swp store_pte InvalidPTE) slots;
+do_machine_op $ cleanCacheRange_PoU p (p + (1 << pt_bits) - 1) (addrFromPPtr p)
+od;
+cap <- liftM the_arch_cap $ get_cap ct_slot;
+set_cap (ArchObjectCap $ update_map_data cap None) ct_slot
+od | PageTableUnmap (ArchObjectCap _) ct_slot \<Rightarrow> fail | PageTableUnmap _ ct_slot \<Rightarrow> fail \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (cases a,simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x11 x12 x13 x14. a = PageTableMap x11 x12 x13 x14 \<Longrightarrow> \<lbrace>valid_list\<rbrace> do y <- set_cap x11 x12;
+y <- store_pde x14 x13;
+do_machine_op (cleanByVA_PoU x14 (addrFromPPtr x14))
+od \<lbrace>\<lambda>_. valid_list\<rbrace>
+ 2. \<And>x21 x22. a = PageTableUnmap x21 x22 \<Longrightarrow> \<lbrace>valid_list\<rbrace> case x21 of ArchObjectCap (PageTableCap p mapped_address) \<Rightarrow> do case mapped_address of None \<Rightarrow> return () | Some (asid, vaddr) \<Rightarrow> do unmap_page_table asid vaddr p;
+pte_bits <- return 2;
+slots <- return [p , p + (1 << pte_bits) .e. p + (1 << pt_bits) - 1];
+mapM_x (swp store_pte InvalidPTE) slots;
+do_machine_op $ cleanCacheRange_PoU p (p + (1 << pt_bits) - 1) (addrFromPPtr p)
+od;
+cap <- liftM the_arch_cap $ get_cap x22;
+set_cap (ArchObjectCap $ update_map_data cap None) x22
+od | ArchObjectCap _ \<Rightarrow> fail | _ \<Rightarrow> fail \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (wp mapM_x_wp' | intro impI conjI allI | wpc | simp split: cap.splits arch_cap.splits option.splits)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma perform_page_invocation_valid_list[wp]:
+  "\<lbrace>valid_list\<rbrace> perform_page_invocation a \<lbrace>\<lambda>_.valid_list\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> perform_page_invocation a \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (simp add: perform_page_invocation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> case a of PageMap asid cap ct_slot entries \<Rightarrow> do set_cap cap ct_slot;
+case entries of Inl (pte, slots) \<Rightarrow> do flush <- pte_check_if_mapped (hd slots);
+store_pte (hd slots) pte;
+mapM (swp store_pte InvalidPTE) (tl slots);
+do_machine_op $ cleanCacheRange_PoU (hd slots) (last_byte_pte (last slots)) (addrFromPPtr (hd slots));
+if flush then invalidate_tlb_by_asid asid else return ()
+od | Inr (pde, slots) \<Rightarrow> do flush <- pde_check_if_mapped (hd slots);
+store_pde (hd slots) pde;
+mapM (swp store_pde InvalidPDE) (tl slots);
+do_machine_op $ cleanCacheRange_PoU (hd slots) (last_byte_pde (last slots)) (addrFromPPtr (hd slots));
+if flush then invalidate_tlb_by_asid asid else return ()
+od;
+return []
+od | PageUnmap (PageCap dev p R vp_size vp_mapped_addr) ct_slot \<Rightarrow> do case vp_mapped_addr of None \<Rightarrow> return () | Some (asid, vaddr) \<Rightarrow> unmap_page vp_size asid vaddr p;
+cap <- liftM the_arch_cap $ get_cap ct_slot;
+set_cap (ArchObjectCap $ update_map_data cap None) ct_slot;
+return []
+od | PageUnmap _ ct_slot \<Rightarrow> fail | PageFlush typ start end pstart pd asid \<Rightarrow> do when (start < end) $ do root_switched <- set_vm_root_for_flush pd asid;
+do_machine_op $ do_flush typ start end pstart;
+when root_switched $ gets cur_thread >>= set_vm_root
+od;
+return []
+od | PageGetAddr ptr \<Rightarrow> return [addrFromPPtr ptr] \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (cases a,simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x11 x12 x13 x14. a = PageMap x11 x12 x13 x14 \<Longrightarrow> \<lbrace>valid_list\<rbrace> do y <- set_cap x12 x13;
+y <- case x14 of Inl (pte, slots) \<Rightarrow> do flush <- pte_check_if_mapped (hd slots);
+store_pte (hd slots) pte;
+mapM (swp store_pte InvalidPTE) (tl slots);
+do_machine_op $ cleanCacheRange_PoU (hd slots) (last_byte_pte (last slots)) (addrFromPPtr (hd slots));
+if flush then invalidate_tlb_by_asid x11 else return ()
+od | Inr (pde, slots) \<Rightarrow> do flush <- pde_check_if_mapped (hd slots);
+store_pde (hd slots) pde;
+mapM (swp store_pde InvalidPDE) (tl slots);
+do_machine_op $ cleanCacheRange_PoU (hd slots) (last_byte_pde (last slots)) (addrFromPPtr (hd slots));
+if flush then invalidate_tlb_by_asid x11 else return ()
+od;
+return []
+od \<lbrace>\<lambda>_. valid_list\<rbrace>
+ 2. \<And>x21 x22. a = PageUnmap x21 x22 \<Longrightarrow> \<lbrace>valid_list\<rbrace> case x21 of PageCap dev p R vp_size vp_mapped_addr \<Rightarrow> do case vp_mapped_addr of None \<Rightarrow> return () | Some (asid, vaddr) \<Rightarrow> unmap_page vp_size asid vaddr p;
+cap <- liftM the_arch_cap $ get_cap x22;
+set_cap (ArchObjectCap $ update_map_data cap None) x22;
+return []
+od | _ \<Rightarrow> fail \<lbrace>\<lambda>_. valid_list\<rbrace>
+ 3. \<And>x31 x32 x33 x34 x35 x36. a = PageFlush x31 x32 x33 x34 x35 x36 \<Longrightarrow> \<lbrace>valid_list\<rbrace> do y <- when (x32 < x33) (do root_switched <- set_vm_root_for_flush x35 x36;
+y <- do_machine_op (do_flush x31 x32 x33 x34);
+when root_switched (gets cur_thread >>= set_vm_root)
+od);
+return []
+od \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (wp mapM_x_wp' mapM_wp' crunch_wps | intro impI conjI allI | wpc | simp add: set_message_info_def set_mrs_def split: cap.splits arch_cap.splits option.splits sum.splits)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch valid_list[wp]: perform_invocation valid_list
+  (wp: crunch_wps simp: crunch_simps ignore: without_preemption)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp, Deterministic_AI_assms]: handle_invocation valid_list
+  (wp: crunch_wps syscall_valid simp: crunch_simps
+   ignore: without_preemption syscall)<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp, Deterministic_AI_assms]: handle_recv, handle_yield, handle_call valid_list
+  (wp: crunch_wps simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma handle_vm_fault_valid_list[wp, Deterministic_AI_assms]:
+"\<lbrace>valid_list\<rbrace> handle_vm_fault thread fault \<lbrace>\<lambda>_.valid_list\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> handle_vm_fault thread fault \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (cases fault,simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. fault = ARMDataAbort \<Longrightarrow> \<lbrace>valid_list\<rbrace> doE addr <- liftE (do_machine_op getFAR);
+fault <- liftE (do_machine_op getDFSR);
+throwError (ArchFault (VMFault addr [0, fault && mask 14]))
+odE \<lbrace>\<lambda>_. valid_list\<rbrace>
+ 2. fault = ARMPrefetchAbort \<Longrightarrow> \<lbrace>valid_list\<rbrace> doE pc <- liftE (as_user thread getRestartPC);
+fault <- liftE (do_machine_op getIFSR);
+throwError (ArchFault (VMFault pc [1, fault && mask 14]))
+odE \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (wp|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma handle_interrupt_valid_list[wp, Deterministic_AI_assms]:
+  "\<lbrace>valid_list\<rbrace> handle_interrupt irq \<lbrace>\<lambda>_.valid_list\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> handle_interrupt irq \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>unfolding handle_interrupt_def ackInterrupt_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_list\<rbrace> if maxIRQ < irq then do_machine_op $ do maskInterrupt True irq;
+machine_op_lift (ackInterrupt_impl irq)
+od else do st <- get_irq_state irq;
+case st of IRQInactive \<Rightarrow> fail | IRQSignal \<Rightarrow> do slot <- get_irq_slot irq;
+cap <- get_cap slot;
+when (is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap) $ send_signal (obj_ref_of cap) (cap_ep_badge cap);
+arch_mask_irq_signal irq
+od | IRQTimer \<Rightarrow> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od | IRQReserved \<Rightarrow> handle_reserved_irq irq;
+do_machine_op $ machine_op_lift (ackInterrupt_impl irq)
+od \<lbrace>\<lambda>_. valid_list\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> if maxIRQ < irq then do_machine_op $ do maskInterrupt True irq;
+machine_op_lift (ackInterrupt_impl irq)
+od else do st <- get_irq_state irq;
+case st of IRQInactive \<Rightarrow> fail | IRQSignal \<Rightarrow> do slot <- get_irq_slot irq;
+cap <- get_cap slot;
+when (is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap) $ send_signal (obj_ref_of cap) (cap_ep_badge cap);
+arch_mask_irq_signal irq
+od | IRQTimer \<Rightarrow> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od | IRQReserved \<Rightarrow> handle_reserved_irq irq;
+do_machine_op $ machine_op_lift (ackInterrupt_impl irq)
+od \<lbrace>\<lambda>_. valid_list\<rbrace>
+ 2. \<And>s. valid_list s \<Longrightarrow> ?Q s<\STATESEP>by (wp get_cap_wp  do_machine_op_valid_list
+       | wpc | simp add: get_irq_slot_def handle_reserved_irq_def arch_mask_irq_signal_def
+       | wp (once) hoare_drop_imps)+<\STATESEP>1<\TRANSEP><\STATESEP>crunch valid_list[wp, Deterministic_AI_assms]: handle_send,handle_reply valid_list<\STATESEP>0<\TRANSEP><\STATESEP>crunch valid_list[wp, Deterministic_AI_assms]: handle_hypervisor_fault valid_list<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Deterministic_AI_2?: Deterministic_AI_2<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Deterministic_AI_2<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Deterministic_AI_2<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Deterministic_AI_2<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Deterministic_AI_2<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Deterministic_AI_2<\STATESEP>by (unfold_locales; (fact Deterministic_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Deterministic_AI_2
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

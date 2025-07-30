@@ -1,0 +1,750 @@
+<\STATESEP>theory Machine_AI
+imports Bits_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "no_irq f \<equiv> \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma wpc_helper_no_irq:
+  "no_irq f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (no_irq f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (no_irq f)<\STATESEP>by (simp add: wpc_helper_def)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. no_irq m" wpc_helper_no_irq<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+structure CrunchNoIrqInstance : CrunchInstance =
+struct
+  val name = "no_irq";
+  val prefix_name_scheme = true;
+  type extra = unit;
+  val eq_extra = op =;
+  fun parse_extra ctxt extra
+        = case extra of
+            "" => (Syntax.parse_term ctxt "%_. True", ())
+          | _ => error "no_irq does not need a precondition";
+  val has_preconds = false;
+  fun mk_term _ body _ =
+    (Syntax.parse_term @{context} "no_irq") $ body;
+  fun dest_term (Const (@{const_name no_irq}, _) $ body)
+    = SOME (Term.dummy, body, ())
+    | dest_term _ = NONE;
+  fun put_precond _ _ = error "crunch no_irq should not be calling put_precond";
+  val pre_thms = [];
+  val wpc_tactic = wp_cases_tactic_weak;
+  fun wps_tactic _ _ _ = no_tac;
+  val magic = Syntax.parse_term @{context}
+    "\<lambda>mapp_lambda_ignore. no_irq mapp_lambda_ignore";
+  val get_monad_state_type = get_nondet_monad_state_type;
+end;
+
+structure CrunchNoIrq : CRUNCH = Crunch(CrunchNoIrqInstance);
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>setup \<open>
+  add_crunch_instance "no_irq" (CrunchNoIrq.crunch_x, CrunchNoIrq.crunch_ignore_add_dels)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (no_irq) (add:
+  Nondet_Monad.bind return "when" get gets fail
+  assert put modify unless select
+  alternative assert_opt gets_the
+  returnOk throwError lift bindE
+  liftE whenE unlessE throw_opt
+  assertE liftM liftME sequence_x
+  zipWithM_x mapM_x sequence mapM sequenceE_x
+  mapME_x catch select_f
+  handleE' handleE handle_elseE forM forM_x
+  zipWithM ignore_failure)<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma det_getRegister: "det (getRegister x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (getRegister x)<\STATESEP>by (simp add: getRegister_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_setRegister: "det (setRegister x w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (setRegister x w)<\STATESEP>by (simp add: setRegister_def det_def modify_def get_def put_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_getRestartPC: "det getRestartPC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det getRestartPC<\STATESEP>by (simp add: getRestartPC_def det_getRegister)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_setNextPC: "det (setNextPC p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (setNextPC p)<\STATESEP>by (simp add: setNextPC_def det_setRegister)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ef_loadWord: "empty_fail (loadWord x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (loadWord x)<\STATESEP>by (fastforce simp: loadWord_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ef_storeWord: "empty_fail (storeWord x y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (storeWord x y)<\STATESEP>by (fastforce simp: storeWord_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_getRestartPC: "no_fail \<top> getRestartPC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) getRestartPC<\STATESEP>by (simp add: getRestartPC_def getRegister_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_loadWord [wp]: "no_fail (\<lambda>_. is_aligned p 2) (loadWord p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (loadWord p)<\STATESEP>apply (simp add: loadWord_def is_aligned_mask [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (do m <- gets underlying_memory;
+y <- assert (is_aligned p 2);
+return (word_rcat [m (p + 3), m (p + 2), m (p + 1), m p])
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P (do m <- gets underlying_memory;
+y <- assert (is_aligned p 2);
+return (word_rcat [m (p + 3), m (p + 2), m (p + 1), m p])
+od)
+ 2. \<And>s. is_aligned p 2 \<Longrightarrow> ?P s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. is_aligned p 2 \<Longrightarrow> ((\<lambda>_. True) and ((\<lambda>_. is_aligned p 2) and (\<lambda>s. is_aligned p 2 \<longrightarrow> True))) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_storeWord: "no_fail (\<lambda>_. is_aligned p 2) (storeWord p w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (storeWord p w)<\STATESEP>apply (simp add: storeWord_def is_aligned_mask [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (do y <- assert (is_aligned p 2);
+modify (underlying_memory_update (\<lambda>m. m(p := word_rsplit w ! 3, p + 1 := word_rsplit w ! 2, p + 2 := word_rsplit w ! Suc 0, p + 3 := word_rsplit w ! 0)))
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P1 (do y <- assert (is_aligned p 2);
+modify (underlying_memory_update (\<lambda>m. m(p := word_rsplit w ! 3, p + 1 := word_rsplit w ! 2, p + 2 := word_rsplit w ! Suc 0, p + 3 := word_rsplit w ! 0)))
+od)
+ 2. \<And>s. is_aligned p 2 \<Longrightarrow> ?P1 s<\STATESEP>apply (wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. is_aligned p 2 \<Longrightarrow> ((\<lambda>_. is_aligned p 2) and (\<lambda>s. is_aligned p 2 \<longrightarrow> True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_machine_op_lift [simp]:
+  "no_fail \<top> (machine_op_lift f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (machine_op_lift f)<\STATESEP>by (simp add: machine_op_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ef_machine_op_lift [simp]:
+  "empty_fail (machine_op_lift f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (machine_op_lift f)<\STATESEP>by (simp add: machine_op_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_setNextPC: "no_fail \<top> (setNextPC pc)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (setNextPC pc)<\STATESEP>by (simp add: setNextPC_def setRegister_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_getFAR: "no_fail \<top> getFAR"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) getFAR<\STATESEP>by (simp add: getFAR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_getDFSR: "no_fail \<top> getDFSR"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) getDFSR<\STATESEP>by (simp add: getDFSR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_getIFSR: "no_fail \<top> getIFSR"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) getIFSR<\STATESEP>by (simp add: getIFSR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_isb: "no_fail \<top> isb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) isb<\STATESEP>by (simp add: isb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_dsb: "no_fail \<top> dsb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) dsb<\STATESEP>by (simp add: dsb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_dmb: "no_fail \<top> dmb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) dmb<\STATESEP>by (simp add: dmb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_writeTTBR0: "no_fail \<top> (writeTTBR0 w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (writeTTBR0 w)<\STATESEP>by (simp add: writeTTBR0_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_set_current_pd: "no_fail \<top> (set_current_pd w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (set_current_pd w)<\STATESEP>apply (simp add: set_current_pd_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (do y <- dsb;
+y <- writeTTBR0 (w && 0xFFFFE000 || 0x18);
+isb
+od)<\STATESEP>apply (rule no_fail_pre, wp no_fail_dsb no_fail_writeTTBR0 no_fail_isb, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanByVA: "no_fail \<top> (cleanByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanByVA w p)<\STATESEP>by (simp add: cleanByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanByVA_PoU: "no_fail \<top> (cleanByVA_PoU w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanByVA_PoU w p)<\STATESEP>by (simp add: cleanByVA_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateLocalTLB: "no_fail \<top> invalidateLocalTLB"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) invalidateLocalTLB<\STATESEP>by (simp add: invalidateLocalTLB_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateLocalTLB_ASID: "no_fail \<top> (invalidateLocalTLB_ASID x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateLocalTLB_ASID x)<\STATESEP>by (simp add: invalidateLocalTLB_ASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateLocalTLB_VAASID: "no_fail \<top> (invalidateLocalTLB_VAASID x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateLocalTLB_VAASID x)<\STATESEP>by (simp add: invalidateLocalTLB_VAASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateByVA: "no_fail \<top> (invalidateByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateByVA w p)<\STATESEP>by (simp add: invalidateByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateByVA_I: "no_fail \<top> (invalidateByVA_I w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateByVA_I w p)<\STATESEP>by (simp add: invalidateByVA_I_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidate_I_PoU: "no_fail \<top> invalidate_I_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) invalidate_I_PoU<\STATESEP>by (simp add: invalidate_I_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanInvalByVA: "no_fail \<top> (cleanInvalByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanInvalByVA w p)<\STATESEP>by (simp add: cleanInvalByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_branchFlush: "no_fail \<top> (branchFlush w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (branchFlush w p)<\STATESEP>by (simp add: branchFlush_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_clean_D_PoU: "no_fail \<top> clean_D_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) clean_D_PoU<\STATESEP>by (simp add: clean_D_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanInvalidate_D_PoC: "no_fail \<top> cleanInvalidate_D_PoC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) cleanInvalidate_D_PoC<\STATESEP>by (simp add: cleanInvalidate_D_PoC_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanInvalidateL2Range: "no_fail \<top> (cleanInvalidateL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanInvalidateL2Range w p)<\STATESEP>by (simp add: cleanInvalidateL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateL2Range: "no_fail \<top> (invalidateL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateL2Range w p)<\STATESEP>by (simp add: invalidateL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanL2Range: "no_fail \<top> (cleanL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanL2Range w p)<\STATESEP>by (simp add: cleanL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_initL2Cache: "no_fail \<top> initL2Cache"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) initL2Cache<\STATESEP>by (simp add: initL2Cache_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_clearExMonitor: "no_fail \<top> clearExMonitor"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) clearExMonitor<\STATESEP>by (simp add: clearExMonitor_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_flushBTAC: "no_fail \<top> flushBTAC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) flushBTAC<\STATESEP>by (simp add: flushBTAC_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_writeContextID: "no_fail \<top> writeContextID"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) writeContextID<\STATESEP>by (simp add: writeContextID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_setHardwareASID: "no_fail \<top> (setHardwareASID hw_asid)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (setHardwareASID hw_asid)<\STATESEP>by (simp add: setHardwareASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_resetTimer[wp]: "no_fail \<top> resetTimer"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) resetTimer<\STATESEP>by (simp add: resetTimer_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma loadWord_inv: "\<lbrace>P\<rbrace> loadWord x \<lbrace>\<lambda>x. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> loadWord x \<lbrace>\<lambda>x. P\<rbrace><\STATESEP>unfolding loadWord_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> do m <- gets underlying_memory;
+assert (x && mask 2 = 0);
+return (word_rcat [m (x + 3), m (x + 2), m (x + 1), m x])
+od \<lbrace>\<lambda>x. P\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma getRestartPC_inv: "\<lbrace>P\<rbrace> getRestartPC \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> getRestartPC \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>by (simp add: getRestartPC_def getRegister_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma getDFSR_inv: "\<lbrace>P\<rbrace> getDFSR \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> getDFSR \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>by (simp add: getDFSR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma getFAR_inv: "\<lbrace>P\<rbrace> getFAR \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> getFAR \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>by (simp add: getFAR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma getIFSR_inv: "\<lbrace>P\<rbrace> getIFSR \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> getIFSR \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>by (simp add: getIFSR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cacheRangeOp[simp, wp]:
+  assumes nf: "\<And>a b. no_fail \<top> (oper a b)"
+  shows "no_fail \<top> (cacheRangeOp oper s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cacheRangeOp oper s e p)<\STATESEP>by (simp add: cacheRangeOp_def mapM_x_mapM) (wpsimp wp: no_fail_mapM nf)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanCacheRange_PoU[simp, wp]:
+  "no_fail \<top> (cleanCacheRange_PoU s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanCacheRange_PoU s e p)<\STATESEP>by (simp add: cleanCacheRange_PoU_def, wp no_fail_cleanByVA_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanCacheRange_PoC[simp, wp]:
+  "no_fail \<top> (cleanCacheRange_PoC s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanCacheRange_PoC s e p)<\STATESEP>by (simp add: cleanCacheRange_PoC_def, wp no_fail_cleanByVA)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanInvalidateCacheRange_RAM[simp, wp]:
+  "no_fail \<top> (cleanInvalidateCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanInvalidateCacheRange_RAM s e p)<\STATESEP>by (simp add: cleanInvalidateCacheRange_RAM_def, rule no_fail_pre,
+      wp no_fail_dsb no_fail_cleanInvalidateL2Range no_fail_cleanInvalByVA, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanCacheRange_RAM[simp, wp]:
+  "no_fail \<top> (cleanCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (cleanCacheRange_RAM s e p)<\STATESEP>apply (simp add: cleanCacheRange_RAM_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (do y <- cleanCacheRange_PoC s e p;
+y <- dsb;
+cleanL2Range p (p + (e - s))
+od)<\STATESEP>apply (rule no_fail_pre, wp no_fail_dsb no_fail_cleanL2Range, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateCacheRange_I[simp, wp]:
+  "no_fail \<top> (invalidateCacheRange_I s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateCacheRange_I s e p)<\STATESEP>by (simp add: invalidateCacheRange_I_def, wp no_fail_invalidateByVA_I)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_invalidateCacheRange_RAM[simp, wp]:
+  "no_fail \<top> (invalidateCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (invalidateCacheRange_RAM s e p)<\STATESEP>apply (simp add: invalidateCacheRange_RAM_def lineStart_def cacheLineBits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (do y <- when (s \<noteq> s >> 5 << 5) (cleanCacheRange_RAM s s p);
+y <- when (e + 1 \<noteq> e + 1 >> 5 << 5) (cleanCacheRange_RAM (e >> 5 << 5) (e >> 5 << 5) (p + ((e >> 5 << 5) - s)));
+y <- invalidateL2Range p (p + (e - s));
+y <- cacheRangeOp invalidateByVA s e p;
+dsb
+od)<\STATESEP>apply (wpsimp wp: no_fail_invalidateL2Range no_fail_invalidateByVA no_fail_dsb)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_branchFlushRange[simp, wp]:
+  "no_fail \<top> (branchFlushRange s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (branchFlushRange s e p)<\STATESEP>by (simp add: branchFlushRange_def, wp no_fail_branchFlush)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanCaches_PoU[simp, wp]:
+  "no_fail \<top> cleanCaches_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) cleanCaches_PoU<\STATESEP>by (simp add: cleanCaches_PoU_def, rule no_fail_pre,
+      wp no_fail_dsb no_fail_clean_D_PoU no_fail_invalidate_I_PoU, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_cleanInvalidateL1Caches[simp, wp]:
+  "no_fail \<top> cleanInvalidateL1Caches"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) cleanInvalidateL1Caches<\STATESEP>by (simp add: cleanInvalidateL1Caches_def, rule no_fail_pre,
+      wp no_fail_dsb no_fail_cleanInvalidate_D_PoC no_fail_invalidate_I_PoU, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_clearMemory[simp, wp]:
+  "no_fail (\<lambda>_. is_aligned p 2) (clearMemory p b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (clearMemory p b)<\STATESEP>apply (simp add: clearMemory_def mapM_x_mapM)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (do x <- mapM (\<lambda>p. storeWord p 0) [p , p + word_size .e. p + word_of_nat b - 1];
+cleanCacheRange_RAM p (p + word_of_nat b - 1) (addrFromPPtr p)
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P (do x <- mapM (\<lambda>p. storeWord p 0) [p , p + word_size .e. p + word_of_nat b - 1];
+cleanCacheRange_RAM p (p + word_of_nat b - 1) (addrFromPPtr p)
+od)
+ 2. \<And>s. is_aligned p 2 \<Longrightarrow> ?P s<\STATESEP>apply (wp no_fail_mapM' no_fail_storeWord no_fail_cleanCacheRange_PoU)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. is_aligned p 2 \<Longrightarrow> ((\<lambda>_. \<forall>x\<in>set [p , p + word_size .e. p + word_of_nat b - 1]. is_aligned x 2) and (\<lambda>_. True)) s<\STATESEP>apply (clarsimp simp: upto_enum_step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p 2; \<not> p + word_of_nat b - 1 < p; x \<le> (word_of_nat b - 1) div word_size\<rbrakk> \<Longrightarrow> is_aligned (p + x * word_size) 2<\STATESEP>apply (erule aligned_add_aligned)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<not> p + word_of_nat b - 1 < p; x \<le> (word_of_nat b - 1) div word_size\<rbrakk> \<Longrightarrow> is_aligned (x * word_size) 2
+ 2. \<And>x. \<lbrakk>\<not> p + word_of_nat b - 1 < p; x \<le> (word_of_nat b - 1) div word_size\<rbrakk> \<Longrightarrow> 2 \<le> 2<\STATESEP>apply (simp add: word_size_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<not> p + word_of_nat b - 1 < p; x \<le> (word_of_nat b - 1) div 4\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 2. \<And>x. \<lbrakk>\<not> p + word_of_nat b - 1 < p; x \<le> (word_of_nat b - 1) div word_size\<rbrakk> \<Longrightarrow> 2 \<le> 2<\STATESEP>apply (rule is_aligned_mult_triv2 [where n = 2, simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<not> p + word_of_nat b - 1 < p; x \<le> (word_of_nat b - 1) div word_size\<rbrakk> \<Longrightarrow> 2 \<le> 2<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_freeMemory[simp, wp]:
+  "no_fail (\<lambda>_. is_aligned p 2) (freeMemory p b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (freeMemory p b)<\STATESEP>apply (simp add: freeMemory_def mapM_x_mapM)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. is_aligned p 2) (do x <- mapM (\<lambda>p. storeWord p 0) [p , p + word_size .e. p + 2 ^ b - 1];
+return ()
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P (do x <- mapM (\<lambda>p. storeWord p 0) [p , p + word_size .e. p + 2 ^ b - 1];
+return ()
+od)
+ 2. \<And>s. is_aligned p 2 \<Longrightarrow> ?P s<\STATESEP>apply (wp no_fail_mapM' no_fail_storeWord)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. is_aligned p 2 \<Longrightarrow> ((\<lambda>_. \<forall>x\<in>set [p , p + word_size .e. p + 2 ^ b - 1]. is_aligned x 2) and (\<lambda>_. True)) s<\STATESEP>apply (clarsimp simp: upto_enum_step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p 2; \<not> p + 2 ^ b - 1 < p; x \<le> (2 ^ b - 1) div word_size\<rbrakk> \<Longrightarrow> is_aligned (p + x * word_size) 2<\STATESEP>apply (erule aligned_add_aligned)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<not> p + 2 ^ b - 1 < p; x \<le> (2 ^ b - 1) div word_size\<rbrakk> \<Longrightarrow> is_aligned (x * word_size) 2
+ 2. \<And>x. \<lbrakk>\<not> p + 2 ^ b - 1 < p; x \<le> (2 ^ b - 1) div word_size\<rbrakk> \<Longrightarrow> 2 \<le> 2<\STATESEP>apply (simp add: word_size_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>\<not> p + 2 ^ b - 1 < p; x \<le> (2 ^ b - 1) div 4\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 2. \<And>x. \<lbrakk>\<not> p + 2 ^ b - 1 < p; x \<le> (2 ^ b - 1) div word_size\<rbrakk> \<Longrightarrow> 2 \<le> 2<\STATESEP>apply (rule is_aligned_mult_triv2 [where n = 2, simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<not> p + 2 ^ b - 1 < p; x \<le> (2 ^ b - 1) div word_size\<rbrakk> \<Longrightarrow> 2 \<le> 2<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_getActiveIRQ[wp]:
+  "no_fail \<top> (getActiveIRQ in_kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (getActiveIRQ in_kernel)<\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P1 (do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od)
+ 2. \<And>s. True \<Longrightarrow> ?P1 s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. ((\<lambda>_. True) and (\<lambda>sa. ((\<lambda>_. True) and (\<lambda>sa. (if irq_masks s ((irq_oracle \<circ> irq_state) sa) \<or> (irq_oracle \<circ> irq_state) sa = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) sa \<in> non_kernel_IRQs then \<lambda>_. True else (\<lambda>_. True)) sa)) (sa\<lparr>irq_state := Suc (irq_state sa)\<rparr>))) s)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition "irq_state_independent P \<equiv> \<forall>f s. P s \<longrightarrow> P (irq_state_update f s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma getActiveIRQ_inv [wp]:
+  "\<lbrakk>irq_state_independent P\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_state_independent P \<Longrightarrow> \<lbrace>P\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_state_independent P \<Longrightarrow> \<lbrace>P\<rbrace> do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>irq_state_independent P; P s\<rbrakk> \<Longrightarrow> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs \<longrightarrow> P (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<and> (\<not> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs) \<longrightarrow> P (s\<lparr>irq_state := Suc (irq_state s)\<rparr>))<\STATESEP>apply (simp add: irq_state_independent_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_ackInterrupt[wp]: "no_fail \<top> (ackInterrupt irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (ackInterrupt irq)<\STATESEP>by (simp add: ackInterrupt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_maskInterrupt[wp]: "no_fail \<top> (maskInterrupt irq bool)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (maskInterrupt irq bool)<\STATESEP>by (simp add: maskInterrupt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_use:
+  "\<lbrakk> no_irq f; (rv,s') \<in> fst (f s) \<rbrakk> \<Longrightarrow> irq_masks s' = irq_masks s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_irq f; (rv, s') \<in> fst (f s)\<rbrakk> \<Longrightarrow> irq_masks s' = irq_masks s<\STATESEP>apply (simp add: no_irq_def valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>P s. P (irq_masks s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (irq_masks s')); (rv, s') \<in> fst (f s)\<rbrakk> \<Longrightarrow> irq_masks s' = irq_masks s<\STATESEP>apply (erule_tac x="\<lambda>x. x = irq_masks s" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(rv, s') \<in> fst (f s); \<forall>sa. irq_masks sa = irq_masks s \<longrightarrow> (\<forall>x\<in>fst (f sa). case x of (r, s') \<Rightarrow> irq_masks s' = irq_masks s)\<rbrakk> \<Longrightarrow> irq_masks s' = irq_masks s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_machine_rest_lift:
+  "no_irq (machine_rest_lift f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (machine_rest_lift f)<\STATESEP>apply (clarsimp simp: no_irq_def machine_rest_lift_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> do mr <- gets machine_state_rest;
+p <- select_f (f mr);
+y <- modify (machine_state_rest_update (\<lambda>_. snd p));
+return (fst p)
+od \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s. P (irq_masks s) \<Longrightarrow> \<forall>x\<in>fst (f (machine_state_rest s)). P (irq_masks (s\<lparr>machine_state_rest := snd x\<rparr>))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch (no_irq) no_irq[wp, simp]: machine_op_lift<\STATESEP>0<\TRANSEP><\STATESEP>lemma no_irq:
+  "no_irq f \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq f \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>by (simp add: no_irq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_isb: "no_irq  isb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq isb<\STATESEP>by (simp add: isb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_dsb: "no_irq  dsb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq dsb<\STATESEP>by (simp add: dsb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_dmb: "no_irq  dmb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq dmb<\STATESEP>by (simp add: dmb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanByVA: "no_irq  (cleanByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanByVA w p)<\STATESEP>by (simp add: cleanByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanByVA_PoU: "no_irq  (cleanByVA_PoU w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanByVA_PoU w p)<\STATESEP>by (simp add: cleanByVA_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateLocalTLB: "no_irq  invalidateLocalTLB"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq invalidateLocalTLB<\STATESEP>by (simp add: invalidateLocalTLB_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateLocalTLB_ASID: "no_irq  (invalidateLocalTLB_ASID x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateLocalTLB_ASID x)<\STATESEP>by (simp add: invalidateLocalTLB_ASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateLocalTLB_VAASID: "no_irq  (invalidateLocalTLB_VAASID x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateLocalTLB_VAASID x)<\STATESEP>by (simp add: invalidateLocalTLB_VAASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateByVA: "no_irq  (invalidateByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateByVA w p)<\STATESEP>by (simp add: invalidateByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateByVA_I: "no_irq  (invalidateByVA_I w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateByVA_I w p)<\STATESEP>by (simp add: invalidateByVA_I_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidate_I_PoU: "no_irq  invalidate_I_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq invalidate_I_PoU<\STATESEP>by (simp add: invalidate_I_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanInvalByVA: "no_irq  (cleanInvalByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanInvalByVA w p)<\STATESEP>by (simp add: cleanInvalByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_branchFlush: "no_irq  (branchFlush w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (branchFlush w p)<\STATESEP>by (simp add: branchFlush_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_clean_D_PoU: "no_irq  clean_D_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq clean_D_PoU<\STATESEP>by (simp add: clean_D_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanInvalidate_D_PoC: "no_irq  cleanInvalidate_D_PoC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq cleanInvalidate_D_PoC<\STATESEP>by (simp add: cleanInvalidate_D_PoC_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanInvalidateL2Range: "no_irq  (cleanInvalidateL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanInvalidateL2Range w p)<\STATESEP>by (simp add: cleanInvalidateL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateL2Range: "no_irq  (invalidateL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateL2Range w p)<\STATESEP>by (simp add: invalidateL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanL2Range: "no_irq  (cleanL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanL2Range w p)<\STATESEP>by (simp add: cleanL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_initL2Cache: "no_irq  initL2Cache"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq initL2Cache<\STATESEP>by (simp add: initL2Cache_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_flushBTAC: "no_irq  flushBTAC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq flushBTAC<\STATESEP>by (simp add: flushBTAC_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_writeContextID: "no_irq  writeContextID"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq writeContextID<\STATESEP>by (simp add: writeContextID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_setHardwareASID: "no_irq (setHardwareASID hw_asid)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (setHardwareASID hw_asid)<\STATESEP>by (simp add: setHardwareASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_writeTTBR0: "no_irq (writeTTBR0 pd)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (writeTTBR0 pd)<\STATESEP>by (simp add: writeTTBR0_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_gets [simp]:
+  "no_irq (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (gets f)<\STATESEP>by (simp add: no_irq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_getIFSR: "no_irq getIFSR"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq getIFSR<\STATESEP>by (simp add: getIFSR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_getDFSR: "no_irq getDFSR"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq getDFSR<\STATESEP>by (simp add: getDFSR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_getFAR: "no_irq getFAR"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq getFAR<\STATESEP>by (simp add: getFAR_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_resetTimer: "no_irq resetTimer"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq resetTimer<\STATESEP>by (simp add: resetTimer_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_debugPrint: "no_irq (debugPrint $ xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (debugPrint $ xs)<\STATESEP>by (simp add: no_irq_def)<\STATESEP>1<\TRANSEP><\STATESEP>context notes no_irq[wp] begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma no_irq_ackInterrupt: "no_irq (ackInterrupt irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (ackInterrupt irq)<\STATESEP>by (wp | clarsimp simp: no_irq_def ackInterrupt_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_setIRQTrigger: "no_irq (setIRQTrigger irq bool)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (setIRQTrigger irq bool)<\STATESEP>by (wp | clarsimp simp: no_irq_def setIRQTrigger_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_loadWord: "no_irq (loadWord x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (loadWord x)<\STATESEP>apply (clarsimp simp: no_irq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> loadWord x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule loadWord_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_getActiveIRQ: "no_irq (getActiveIRQ in_kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (getActiveIRQ in_kernel)<\STATESEP>apply (clarsimp simp: no_irq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule getActiveIRQ_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. irq_state_independent (\<lambda>s. P (irq_masks s))<\STATESEP>apply (simp add: irq_state_independent_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_mapM:
+  "(\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> no_irq (mapM f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> no_irq (mapM f xs)<\STATESEP>apply (subst no_irq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply clarify<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule mapM_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. \<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x); x \<in> ?S1 P\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace>
+ 2. \<And>P. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> set xs \<subseteq> ?S1 P<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> set xs \<subseteq> ?S1 P
+ 2. \<And>P x. \<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x); x \<in> ?S1 P\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule order_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P x. \<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x); x \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (wp; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_mapM_x:
+  "(\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> no_irq (mapM_x f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> no_irq (mapM_x f xs)<\STATESEP>apply (subst no_irq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> mapM_x f xs \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply clarify<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> mapM_x f xs \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule mapM_x_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. \<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x); x \<in> ?S1 P\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace>
+ 2. \<And>P. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> set xs \<subseteq> ?S1 P<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P. (\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x)) \<Longrightarrow> set xs \<subseteq> ?S1 P
+ 2. \<And>P x. \<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x); x \<in> ?S1 P\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule order_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P x. \<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> no_irq (f x); x \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f x \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (wp; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_swp:
+  "no_irq (f y x) \<Longrightarrow> no_irq (swp f x y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (f y x) \<Longrightarrow> no_irq (swp f x y)<\STATESEP>by (simp add: swp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_seq [wp]:
+  "\<lbrakk> no_irq f; \<And>x. no_irq (g x) \<rbrakk> \<Longrightarrow> no_irq (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_irq f; \<And>x. no_irq (g x)\<rbrakk> \<Longrightarrow> no_irq (f >>= g)<\STATESEP>apply (subst no_irq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_irq f; \<And>x. no_irq (g x)\<rbrakk> \<Longrightarrow> \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f >>= g \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. \<lbrakk>no_irq f; \<And>x. no_irq (g x)\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f >>= g \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule bind_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P rv. \<lbrakk>no_irq f; \<And>x. no_irq (g x)\<rbrakk> \<Longrightarrow> \<lbrace>?Q'1 P rv\<rbrace> g rv \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace>
+ 2. \<And>P. \<lbrakk>no_irq f; \<And>x. no_irq (g x)\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> f \<lbrace>?Q'1 P\<rbrace><\STATESEP>apply (wp|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_return [simp, wp]: "no_irq (return v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (return v)<\STATESEP>unfolding no_irq_def return_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> \<lambda>s. ({(v, s)}, False) \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>by (rule allI, simp add: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_fail [simp, wp]: "no_irq fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq fail<\STATESEP>unfolding no_irq_def fail_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> \<lambda>s. ({}, True) \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>by (rule allI, simp add: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_assert [simp, wp]: "no_irq (assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (assert P)<\STATESEP>unfolding assert_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (if P then return () else fail)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_modify:
+  "(\<And>s. irq_masks (f s) = irq_masks s) \<Longrightarrow> no_irq (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. irq_masks (f s) = irq_masks s) \<Longrightarrow> no_irq (modify f)<\STATESEP>unfolding modify_def no_irq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. irq_masks (f s) = irq_masks s) \<Longrightarrow> \<forall>P. \<lbrace>\<lambda>s. P (irq_masks s)\<rbrace> do s <- get;
+put (f s)
+od \<lbrace>\<lambda>_ s. P (irq_masks s)\<rbrace><\STATESEP>apply (rule allI, simp add: valid_def put_def get_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P. (\<And>s. irq_masks (f s) = irq_masks s) \<Longrightarrow> \<forall>s. P (irq_masks s) \<longrightarrow> (\<forall>x\<in>fst ((do s <- \<lambda>s. ({(s, s)}, False);
+\<lambda>_. ({((), f s)}, False)
+od) s). case x of (r, s') \<Rightarrow> P (irq_masks s'))<\STATESEP>apply (clarsimp simp: in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_set_current_pd: "no_irq (set_current_pd pd)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (set_current_pd pd)<\STATESEP>apply (clarsimp simp: set_current_pd_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (do y <- dsb;
+y <- writeTTBR0 (pd && 0xFFFFE000 || 0x18);
+isb
+od)<\STATESEP>apply (wp no_irq_dsb no_irq_writeTTBR0 no_irq_isb)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_clearExMonitor: "no_irq clearExMonitor"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq clearExMonitor<\STATESEP>apply (simp add: clearExMonitor_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (modify (exclusive_state_update (\<lambda>_. default_exclusive_state)))<\STATESEP>apply (wp no_irq_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. irq_masks (s\<lparr>exclusive_state := default_exclusive_state\<rparr>) = irq_masks s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_storeWord: "no_irq (storeWord w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (storeWord w p)<\STATESEP>apply (simp add: storeWord_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (do y <- assert (w && mask 2 = 0);
+modify (underlying_memory_update (\<lambda>m. m(w := word_rsplit p ! 3, w + 1 := word_rsplit p ! 2, w + 2 := word_rsplit p ! Suc 0, w + 3 := word_rsplit p ! 0)))
+od)<\STATESEP>apply (wp no_irq_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. irq_masks (underlying_memory_update (\<lambda>m. m(w := word_rsplit p ! 3, w + 1 := word_rsplit p ! 2, w + 2 := word_rsplit p ! Suc 0, w + 3 := word_rsplit p ! 0)) s) = irq_masks s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cacheRangeOp[simp, wp]:
+  assumes nf: "\<And>a b. no_irq (oper a b)"
+  shows "no_irq (cacheRangeOp oper s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cacheRangeOp oper s e p)<\STATESEP>apply (simp add: cacheRangeOp_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (mapM_x (\<lambda>(x, y). oper x y) (zip [lineStart s , lineStart s + word_of_nat cacheLine .e. lineStart e] [lineStart p , lineStart p + word_of_nat cacheLine .e. lineStart (p + (e - s))]))<\STATESEP>apply (wp no_irq_mapM_x nf | wpc | clarsimp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanCacheRange_PoU[simp, wp]:
+  "no_irq (cleanCacheRange_PoU s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanCacheRange_PoU s e p)<\STATESEP>by (simp add: cleanCacheRange_PoU_def, wp no_irq_cleanByVA_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanCacheRange_PoC[simp, wp]:
+  "no_irq (cleanCacheRange_PoC s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanCacheRange_PoC s e p)<\STATESEP>by (simp add: cleanCacheRange_PoC_def, wp no_irq_cleanByVA)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanInvalidateCacheRange_RAM[simp, wp]:
+  "no_irq (cleanInvalidateCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanInvalidateCacheRange_RAM s e p)<\STATESEP>by (simp add: cleanInvalidateCacheRange_RAM_def,
+      wp no_irq_dsb no_irq_cleanInvalidateL2Range no_irq_cleanInvalByVA)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanCacheRange_RAM[simp, wp]:
+  "no_irq (cleanCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (cleanCacheRange_RAM s e p)<\STATESEP>apply (simp add: cleanCacheRange_RAM_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (do y <- cleanCacheRange_PoC s e p;
+y <- dsb;
+cleanL2Range p (p + (e - s))
+od)<\STATESEP>apply (wp no_irq_dsb no_irq_cleanL2Range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateCacheRange_I[simp, wp]:
+  "no_irq (invalidateCacheRange_I s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateCacheRange_I s e p)<\STATESEP>by (simp add: invalidateCacheRange_I_def, wp no_irq_invalidateByVA_I)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_when:
+  "\<lbrakk>P \<Longrightarrow> no_irq f\<rbrakk> \<Longrightarrow> no_irq (when P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> no_irq f) \<Longrightarrow> no_irq (when P f)<\STATESEP>by (simp add: when_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_invalidateCacheRange_RAM[simp, wp]:
+  "no_irq (invalidateCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (invalidateCacheRange_RAM s e p)<\STATESEP>apply (simp add: invalidateCacheRange_RAM_def lineStart_def cacheLineBits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (do y <- when (s \<noteq> s >> 5 << 5) (cleanCacheRange_RAM s s p);
+y <- when (e + 1 \<noteq> e + 1 >> 5 << 5) (cleanCacheRange_RAM (e >> 5 << 5) (e >> 5 << 5) (p + ((e >> 5 << 5) - s)));
+y <- invalidateL2Range p (p + (e - s));
+y <- cacheRangeOp invalidateByVA s e p;
+dsb
+od)<\STATESEP>apply (wp no_irq_invalidateL2Range no_irq_invalidateByVA no_irq_dsb no_irq_when)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_branchFlushRange[simp, wp]:
+  "no_irq (branchFlushRange s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (branchFlushRange s e p)<\STATESEP>by (simp add: branchFlushRange_def, wp no_irq_branchFlush)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanCaches_PoU[simp, wp]:
+  "no_irq cleanCaches_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq cleanCaches_PoU<\STATESEP>by (simp add: cleanCaches_PoU_def,
+      wp no_irq_dsb no_irq_clean_D_PoU no_irq_invalidate_I_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_cleanInvalidateL1Caches[simp, wp]:
+  "no_irq cleanInvalidateL1Caches"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq cleanInvalidateL1Caches<\STATESEP>by (simp add: cleanInvalidateL1Caches_def,
+      wp no_irq_dsb no_irq_cleanInvalidate_D_PoC no_irq_invalidate_I_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_irq_clearMemory: "no_irq (clearMemory a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (clearMemory a b)<\STATESEP>apply (simp add: clearMemory_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_irq (do y <- mapM_x (\<lambda>p. storeWord p 0) [a , a + word_size .e. a + word_of_nat b - 1];
+cleanCacheRange_RAM a (a + word_of_nat b - 1) (addrFromPPtr a)
+od)<\STATESEP>apply (wp no_irq_mapM_x no_irq_storeWord no_irq_cleanCacheRange_PoU)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_le_maxIRQ':
+  "\<lbrace>\<lambda>s. \<forall>irq > maxIRQ. irq_masks s irq\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv s. \<forall>x. rv = Some x \<longrightarrow> x \<le> maxIRQ\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>irq>maxIRQ. irq_masks s irq\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv s. \<forall>x. rv = Some x \<longrightarrow> x \<le> maxIRQ\<rbrace><\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>irq>maxIRQ. irq_masks s irq\<rbrace> do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od \<lbrace>\<lambda>rv s. \<forall>x. rv = Some x \<longrightarrow> x \<le> maxIRQ\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>irq>maxIRQ. irq_masks s irq \<Longrightarrow> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs \<longrightarrow> (\<forall>x. None = Some x \<longrightarrow> x \<le> maxIRQ)) \<and> (\<not> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs) \<longrightarrow> (\<forall>x. Some ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) = Some x \<longrightarrow> x \<le> maxIRQ))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>irq>maxIRQ. irq_masks s irq; \<not> irq_masks s (irq_oracle (Suc (irq_state s))); irq_oracle (Suc (irq_state s)) \<noteq> 0x3FF; in_kernel \<longrightarrow> irq_oracle (Suc (irq_state s)) \<notin> non_kernel_IRQs\<rbrakk> \<Longrightarrow> irq_oracle (Suc (irq_state s)) \<le> maxIRQ<\STATESEP>apply (rule ccontr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>irq>maxIRQ. irq_masks s irq; \<not> irq_masks s (irq_oracle (Suc (irq_state s))); irq_oracle (Suc (irq_state s)) \<noteq> 0x3FF; in_kernel \<longrightarrow> irq_oracle (Suc (irq_state s)) \<notin> non_kernel_IRQs; \<not> irq_oracle (Suc (irq_state s)) \<le> maxIRQ\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (simp add: linorder_not_le)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_neq_Some0xFF':
+  "\<lbrace>\<top>\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv s. rv \<noteq> Some 0x3FF\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv s. rv \<noteq> Some 0x3FF\<rbrace><\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od \<lbrace>\<lambda>rv s. rv \<noteq> Some 0x3FF\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs \<longrightarrow> None \<noteq> Some 0x3FF) \<and> (\<not> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs) \<longrightarrow> Some ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<noteq> Some 0x3FF)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_neq_non_kernel:
+  "\<lbrace>\<top>\<rbrace> getActiveIRQ True \<lbrace>\<lambda>rv s. rv \<notin> Some ` non_kernel_IRQs \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> getActiveIRQ True \<lbrace>\<lambda>rv s. rv \<notin> Some ` non_kernel_IRQs\<rbrace><\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od \<lbrace>\<lambda>rv s. rv \<notin> Some ` non_kernel_IRQs\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs \<longrightarrow> None \<notin> Some ` non_kernel_IRQs) \<and> (\<not> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs) \<longrightarrow> Some ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<notin> Some ` non_kernel_IRQs)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_getActiveIRQ_non_kernel[wp]:
+  "\<lbrace>\<top>\<rbrace> do_machine_op (getActiveIRQ True)
+   \<lbrace>\<lambda>rv s. \<forall>irq. rv = Some irq \<longrightarrow> irq \<in> non_kernel_IRQs \<longrightarrow> P irq s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do_machine_op (getActiveIRQ True) \<lbrace>\<lambda>rv s. \<forall>irq. rv = Some irq \<longrightarrow> irq \<in> non_kernel_IRQs \<longrightarrow> P irq s\<rbrace><\STATESEP>unfolding do_machine_op_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do ms <- gets machine_state;
+(r, ms') <- select_f (getActiveIRQ True ms);
+modify (machine_state_update (\<lambda>_. ms'));
+return r
+od \<lbrace>\<lambda>rv s. \<forall>irq. rv = Some irq \<longrightarrow> irq \<in> non_kernel_IRQs \<longrightarrow> P irq s\<rbrace><\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s xa irq. \<lbrakk>(Some irq, xa) \<in> fst (getActiveIRQ True (machine_state s)); irq \<in> non_kernel_IRQs\<rbrakk> \<Longrightarrow> P irq (s\<lparr>machine_state := xa\<rparr>)<\STATESEP>apply (drule use_valid, rule getActiveIRQ_neq_non_kernel, rule TrueI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s xa irq. \<lbrakk>irq \<in> non_kernel_IRQs; Some irq \<notin> Some ` non_kernel_IRQs\<rbrakk> \<Longrightarrow> P irq (s\<lparr>machine_state := xa\<rparr>)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_isb: "empty_fail  isb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail isb<\STATESEP>by (simp add: isb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_dsb: "empty_fail  dsb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail dsb<\STATESEP>by (simp add: dsb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_dmb: "empty_fail  dmb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail dmb<\STATESEP>by (simp add: dmb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanByVA: "empty_fail  (cleanByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanByVA w p)<\STATESEP>by (simp add: cleanByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanByVA_PoU: "empty_fail  (cleanByVA_PoU w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanByVA_PoU w p)<\STATESEP>by (simp add: cleanByVA_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateLocalTLB: "empty_fail  invalidateLocalTLB"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail invalidateLocalTLB<\STATESEP>by (simp add: invalidateLocalTLB_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateLocalTLB_ASID: "empty_fail  (invalidateLocalTLB_ASID x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateLocalTLB_ASID x)<\STATESEP>by (simp add: invalidateLocalTLB_ASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateLocalTLB_VAASID: "empty_fail  (invalidateLocalTLB_VAASID x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateLocalTLB_VAASID x)<\STATESEP>by (simp add: invalidateLocalTLB_VAASID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateByVA: "empty_fail  (invalidateByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateByVA w p)<\STATESEP>by (simp add: invalidateByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateByVA_I: "empty_fail  (invalidateByVA_I w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateByVA_I w p)<\STATESEP>by (simp add: invalidateByVA_I_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidate_I_PoU: "empty_fail  invalidate_I_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail invalidate_I_PoU<\STATESEP>by (simp add: invalidate_I_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanInvalByVA: "empty_fail  (cleanInvalByVA w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanInvalByVA w p)<\STATESEP>by (simp add: cleanInvalByVA_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_branchFlush: "empty_fail  (branchFlush w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (branchFlush w p)<\STATESEP>by (simp add: branchFlush_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_clean_D_PoU: "empty_fail  clean_D_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail clean_D_PoU<\STATESEP>by (simp add: clean_D_PoU_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanInvalidate_D_PoC: "empty_fail  cleanInvalidate_D_PoC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail cleanInvalidate_D_PoC<\STATESEP>by (simp add: cleanInvalidate_D_PoC_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanInvalidateL2Range: "empty_fail  (cleanInvalidateL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanInvalidateL2Range w p)<\STATESEP>by (simp add: cleanInvalidateL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateL2Range: "empty_fail  (invalidateL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateL2Range w p)<\STATESEP>by (simp add: invalidateL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanL2Range: "empty_fail  (cleanL2Range w p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanL2Range w p)<\STATESEP>by (simp add: cleanL2Range_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_initL2Cache: "empty_fail  initL2Cache"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail initL2Cache<\STATESEP>by (simp add: initL2Cache_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_clearExMonitor: "empty_fail  clearExMonitor"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail clearExMonitor<\STATESEP>by (simp add: clearExMonitor_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_flushBTAC: "empty_fail  flushBTAC"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail flushBTAC<\STATESEP>by (simp add: flushBTAC_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_writeContextID: "empty_fail  writeContextID"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail writeContextID<\STATESEP>by (simp add: writeContextID_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cacheRangeOp [simp, intro!]:
+  assumes ef: "\<And>a b. empty_fail (oper a b)"
+  shows "empty_fail (cacheRangeOp oper s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cacheRangeOp oper s e p)<\STATESEP>apply (simp add: cacheRangeOp_def mapM_x_mapM lineStart_def cacheLineBits_def cacheLine_def ef)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do x <- mapM (\<lambda>(x, y). oper x y) (zip [s >> 5 << 5 , (s >> 5 << 5) + 0x20 .e. e >> 5 << 5] [p >> 5 << 5 , (p >> 5 << 5) + 0x20 .e. p + (e - s) >> 5 << 5]);
+return ()
+od)<\STATESEP>apply (rule empty_fail_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. empty_fail (mapM (\<lambda>(x, y). oper x y) (zip [s >> 5 << 5 , (s >> 5 << 5) + 0x20 .e. e >> 5 << 5] [p >> 5 << 5 , (p >> 5 << 5) + 0x20 .e. p + (e - s) >> 5 << 5]))
+ 2. \<And>x. empty_fail (return ())<\STATESEP>apply (rule empty_fail_mapM)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set (zip [s >> 5 << 5 , (s >> 5 << 5) + 0x20 .e. e >> 5 << 5] [p >> 5 << 5 , (p >> 5 << 5) + 0x20 .e. p + (e - s) >> 5 << 5]) \<Longrightarrow> empty_fail (case x of (x, xa) \<Rightarrow> oper x xa)
+ 2. \<And>x. empty_fail (return ())<\STATESEP>apply (auto intro: ef)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanCacheRange_PoU[simp, intro!]:
+  "empty_fail (cleanCacheRange_PoU s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanCacheRange_PoU s e p)<\STATESEP>by (simp add: cleanCacheRange_PoU_def empty_fail_cleanByVA_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanCacheRange_PoC[simp, intro!]:
+  "empty_fail (cleanCacheRange_PoC s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanCacheRange_PoC s e p)<\STATESEP>by (simp add: cleanCacheRange_PoC_def empty_fail_cleanByVA)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanInvalidateCacheRange_RAM[simp, intro!]:
+  "empty_fail (cleanInvalidateCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanInvalidateCacheRange_RAM s e p)<\STATESEP>by (fastforce simp: cleanInvalidateCacheRange_RAM_def empty_fail_dsb
+                      empty_fail_cleanInvalidateL2Range empty_fail_cleanInvalByVA)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanCacheRange_RAM[simp, intro!]:
+  "empty_fail (cleanCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (cleanCacheRange_RAM s e p)<\STATESEP>by (fastforce simp: cleanCacheRange_RAM_def empty_fail_dsb empty_fail_cleanL2Range)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateCacheRange_I[simp, intro!]:
+  "empty_fail (invalidateCacheRange_I s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateCacheRange_I s e p)<\STATESEP>by (simp add: invalidateCacheRange_I_def empty_fail_invalidateByVA_I)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_invalidateCacheRange_RAM[simp, intro!]:
+  "empty_fail (invalidateCacheRange_RAM s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (invalidateCacheRange_RAM s e p)<\STATESEP>by (fastforce simp: invalidateCacheRange_RAM_def lineStart_def cacheLineBits_def
+                      empty_fail_invalidateL2Range empty_fail_invalidateByVA empty_fail_dsb)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_branchFlushRange[simp, intro!]:
+  "empty_fail (branchFlushRange s e p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (branchFlushRange s e p)<\STATESEP>by (simp add: branchFlushRange_def empty_fail_branchFlush)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanCaches_PoU[simp, intro!]:
+  "empty_fail cleanCaches_PoU"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail cleanCaches_PoU<\STATESEP>by (fastforce simp: cleanCaches_PoU_def empty_fail_dsb empty_fail_clean_D_PoU empty_fail_invalidate_I_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_cleanInvalidateL1Caches[simp, intro!]:
+  "empty_fail cleanInvalidateL1Caches"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail cleanInvalidateL1Caches<\STATESEP>by (fastforce simp: cleanInvalidateL1Caches_def empty_fail_dsb empty_fail_cleanInvalidate_D_PoC
+                     empty_fail_invalidate_I_PoU)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_clearMemory [simp, intro!]:
+  "\<And>a b. empty_fail (clearMemory a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. empty_fail (clearMemory a b)<\STATESEP>by (fastforce simp: clearMemory_def mapM_x_mapM ef_storeWord)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemmas msgRegisters_A_unfold
+  = msg_registers_def
+    msgRegisters_def
+        [unfolded upto_enum_def, simplified,
+         unfolded fromEnum_def enum_register, simplified,
+         unfolded toEnum_def enum_register, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_facts
+  det_getRegister
+  det_setRegister
+  det_getRestartPC
+  det_setNextPC<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

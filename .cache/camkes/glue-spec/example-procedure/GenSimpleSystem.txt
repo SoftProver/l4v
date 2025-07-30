@@ -1,0 +1,28 @@
+<\STATESEP>theory GenSimpleSystem
+imports UserSimple
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{ssec:procsys}Generated System Theory\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:procsystypes}Types\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym component = "(channel, component_state) comp"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym lstate = "component_state local_state"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym gstate = "(inst, channel, component_state) global_state"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{ssec:procsysuntrusted}Untrusted Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Client_untrusted :: "(Client_channel \<Rightarrow> channel) \<Rightarrow> component"
+where
+  "Client_untrusted ch \<equiv>
+    LOOP (
+      UserStep
+    \<squnion> ArbitraryRequest (ch Client_s)
+    \<squnion> ArbitraryResponse (ch Client_s))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Echo_untrusted :: "(Echo_channel \<Rightarrow> channel) \<Rightarrow> component"
+where
+  "Echo_untrusted ch \<equiv>
+    LOOP (
+      UserStep
+    \<squnion> ArbitraryRequest (ch Echo_s)
+    \<squnion> ArbitraryResponse (ch Echo_s))"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{ssec:procsysinst}Component Instances\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  client_untrusted :: component
+where
+  "client_untrusted \<equiv> Client_untrusted (\<lambda>c. case c of Client_s \<Rightarrow> simple)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  echo_untrusted :: component
+where
+  "echo_untrusted \<equiv> Echo_untrusted (\<lambda>c. case c of Echo_s \<Rightarrow> simple)"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:procsysgs}Initial State\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  gs\<^sub>0 :: gstate
+where
+  "gs\<^sub>0 p \<equiv> case trusted p of Some s \<Rightarrow> Some s | _ \<Rightarrow>
+  (case p of client \<Rightarrow> Some (client_untrusted, Component init_component_state)
+           | echo \<Rightarrow> Some (echo_untrusted, Component init_component_state))"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

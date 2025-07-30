@@ -1,0 +1,301 @@
+<\STATESEP>chapter "Abstract Separation Logic, Alternative Definition"<\STATESEP>0<\TRANSEP><\STATESEP>theory Separation_Algebra_Alt
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>no_notation map_add (infixl "++" 100)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lift2 :: "('a => 'b => 'c option) \<Rightarrow> 'a option => 'b option => 'c option"
+where
+  "lift2 f a b \<equiv> case (a,b) of (Some a, Some b) \<Rightarrow> f a b | _ \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>class sep_algebra_alt = zero +
+  fixes add :: "'a => 'a => 'a option" (infixr "\<oplus>" 65)
+
+  assumes add_zero [simp]: "x \<oplus> 0 = Some x"
+  assumes add_comm: "x \<oplus> y = y \<oplus> x"
+  assumes add_assoc: "lift2 add a (lift2 add b c) = lift2 add (lift2 add a b) c"
+
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  disjoint :: "'a => 'a => bool" (infix "##" 60)
+where
+  "a ## b \<equiv> a \<oplus> b \<noteq> None"<\STATESEP>0<\TRANSEP><\STATESEP>lemma disj_com: "x ## y = y ## x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## y = y ## x<\STATESEP>by (auto simp: disjoint_def add_comm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma disj_zero [simp]: "x ## 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ## (0::'a)<\STATESEP>by (auto simp: disjoint_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma disj_zero2 [simp]: "0 ## x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0::'a) ## x<\STATESEP>by (subst disj_com) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma add_zero2 [simp]: "0 \<oplus> x = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0::'a) \<oplus> x = Some x<\STATESEP>by (subst add_comm) auto<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  substate :: "'a => 'a => bool" (infix "\<preceq>" 60) where
+  "a \<preceq> b \<equiv> \<exists>c. a \<oplus> c = Some b"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_conj :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)" (infixl "**" 61)
+  where
+  "P ** Q \<equiv> \<lambda>s. \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> Q q"<\STATESEP>0<\TRANSEP><\STATESEP>definition emp :: "'a \<Rightarrow> bool" ("\<box>") where
+  "\<box> \<equiv> \<lambda>s. s = 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_impl :: "('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool)" (infixr "\<longrightarrow>\<^sup>*" 25)
+  where
+  "P \<longrightarrow>\<^sup>* Q \<equiv> \<lambda>h. \<forall>h' h''. h \<oplus> h' = Some h'' \<and> P h' \<longrightarrow> Q h''"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "sep_true \<equiv> \<lambda>s. True"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "sep_false \<equiv> \<lambda>s. False"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  add2 :: "'a option => 'a option => 'a option" (infixr "++" 65)
+where
+  "add2 == lift2 add"<\STATESEP>0<\TRANSEP><\STATESEP>lemma add2_comm:
+  "a ++ b = b ++ a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a ++ b = b ++ a<\STATESEP>by (simp add: lift2_def add_comm split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma add2_None [simp]:
+  "x ++ None = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x ++ None = None<\STATESEP>by (simp add: lift2_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma None_add2 [simp]:
+  "None ++ x = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. None ++ x = None<\STATESEP>by (simp add: lift2_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma add2_Some_Some:
+  "Some x ++ Some y = x \<oplus> y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Some x ++ Some y = x \<oplus> y<\STATESEP>by (simp add: lift2_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma add2_zero [simp]:
+  "Some x ++ Some 0 = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Some x ++ Some (0::'a) = Some x<\STATESEP>by (simp add: add2_Some_Some)<\STATESEP>1<\TRANSEP><\STATESEP>lemma zero_add2 [simp]:
+  "Some 0 ++ Some x = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Some (0::'a) ++ Some x = Some x<\STATESEP>by (simp add: add2_Some_Some)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conjE:
+  "\<lbrakk> (P ** Q) s; \<And>p q. \<lbrakk> P p; Q q; p \<oplus> q = Some s \<rbrakk> \<Longrightarrow> X \<rbrakk> \<Longrightarrow> X"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P ** Q) s; \<And>p q. \<lbrakk>P p; Q q; p \<oplus> q = Some s\<rbrakk> \<Longrightarrow> X\<rbrakk> \<Longrightarrow> X<\STATESEP>by (auto simp: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conjI:
+  "\<lbrakk> P p; Q q; p \<oplus> q = Some s \<rbrakk> \<Longrightarrow> (P ** Q) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P p; Q q; p \<oplus> q = Some s\<rbrakk> \<Longrightarrow> (P ** Q) s<\STATESEP>by (auto simp: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_comI:
+  "(P ** Q) s \<Longrightarrow> (Q ** P) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P ** Q) s \<Longrightarrow> (Q ** P) s<\STATESEP>by (auto intro!: sep_conjI elim!: sep_conjE simp: add_comm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_com:
+  "P ** Q = Q ** P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** Q = Q ** P<\STATESEP>by (auto intro: sep_conj_comI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lift_to_add2:
+  "\<lbrakk>z \<oplus> q = Some s; x \<oplus> y = Some q\<rbrakk> \<Longrightarrow> Some z ++ Some x ++ Some y = Some s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>z \<oplus> q = Some s; x \<oplus> y = Some q\<rbrakk> \<Longrightarrow> Some z ++ Some x ++ Some y = Some s<\STATESEP>by (simp add: add2_Some_Some)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lift_to_add2':
+  "\<lbrakk>q \<oplus> z = Some s; x \<oplus> y = Some q\<rbrakk> \<Longrightarrow> (Some x ++ Some y) ++ Some z = Some s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>q \<oplus> z = Some s; x \<oplus> y = Some q\<rbrakk> \<Longrightarrow> (Some x ++ Some y) ++ Some z = Some s<\STATESEP>by (simp add: add2_Some_Some)<\STATESEP>1<\TRANSEP><\STATESEP>lemma add2_Some:
+  "(x ++ Some y = Some z) = (\<exists>x'. x = Some x' \<and> x' \<oplus> y = Some z)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x ++ Some y = Some z) = (\<exists>x'. x = Some x' \<and> x' \<oplus> y = Some z)<\STATESEP>by (simp add: lift2_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma Some_add2:
+  "(Some x ++ y = Some z) = (\<exists>y'. y = Some y' \<and> x \<oplus> y' = Some z)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (Some x ++ y = Some z) = (\<exists>y'. y = Some y' \<and> x \<oplus> y' = Some z)<\STATESEP>by (simp add: lift2_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_assoc:
+  "P ** (Q ** R) = (P ** Q) ** R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** (Q ** R) = P ** Q ** R<\STATESEP>unfolding sep_conj_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>s. \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)) = (\<lambda>s. \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)) = (\<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa) \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q
+ 2. \<And>s. \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s p q pa qa. \<lbrakk>p \<oplus> q = Some s; P p; pa \<oplus> qa = Some q; Q pa; R qa\<rbrakk> \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q
+ 2. \<And>s. \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply (drule (1) lift_to_add2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s p q pa qa. \<lbrakk>P p; pa \<oplus> qa = Some q; Q pa; R qa; Some p ++ Some pa ++ Some qa = Some s\<rbrakk> \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q
+ 2. \<And>s. \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply (subst (asm) add_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s p q pa qa. \<lbrakk>P p; pa \<oplus> qa = Some q; Q pa; R qa; (Some p ++ Some pa) ++ Some qa = Some s\<rbrakk> \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q
+ 2. \<And>s. \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply (fastforce simp: add2_Some_Some add2_Some)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<exists>p q. p \<oplus> q = Some s \<and> (\<exists>pa q. pa \<oplus> q = Some p \<and> P pa \<and> Q q) \<and> R q \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s p q pa qa. \<lbrakk>p \<oplus> q = Some s; R q; pa \<oplus> qa = Some p; P pa; Q qa\<rbrakk> \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply (drule (1) lift_to_add2')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s p q pa qa. \<lbrakk>R q; pa \<oplus> qa = Some p; P pa; Q qa; (Some pa ++ Some qa) ++ Some q = Some s\<rbrakk> \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply (subst (asm) add_assoc [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s p q pa qa. \<lbrakk>R q; pa \<oplus> qa = Some p; P pa; Q qa; Some pa ++ Some qa ++ Some q = Some s\<rbrakk> \<Longrightarrow> \<exists>p q. p \<oplus> q = Some s \<and> P p \<and> (\<exists>p qa. p \<oplus> qa = Some q \<and> Q p \<and> R qa)<\STATESEP>apply (fastforce simp: add2_Some_Some Some_add2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_true[simp]: "sep_true s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_true s<\STATESEP>by (simp add: sep_true_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_false[simp]: "\<not>sep_false x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> sep_false x<\STATESEP>by (simp add: sep_false_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true:
+  "P s \<Longrightarrow> (P ** sep_true) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P s \<Longrightarrow> (P ** sep_true) s<\STATESEP>by (auto simp: sep_conjI [where q=0])<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true':
+  "P s \<Longrightarrow> (sep_true ** P) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P s \<Longrightarrow> (sep_true ** P) s<\STATESEP>by (auto simp: sep_conjI [where p=0])<\STATESEP>1<\TRANSEP><\STATESEP>lemma disjoint_submaps_exist:
+  "\<exists>h\<^sub>0 h\<^sub>1. h\<^sub>0 \<oplus> h\<^sub>1 = Some h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>h\<^sub>0 h\<^sub>1. h\<^sub>0 \<oplus> h\<^sub>1 = Some h<\STATESEP>by (rule_tac x=0 in exI, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_true[simp]:
+  "(sep_true ** sep_true) = sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_true ** sep_true = sep_true<\STATESEP>unfolding sep_conj_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>s. \<exists>p q. p \<oplus> q = Some s \<and> sep_true p \<and> sep_true q) = sep_true<\STATESEP>by (auto intro: disjoint_submaps_exist)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_false_right[simp]:
+  "(P ** sep_false) = sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** sep_false = sep_false<\STATESEP>by (force elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_false_left[simp]:
+  "(sep_false ** P) = sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_false ** P = sep_false<\STATESEP>by (subst sep_conj_com) (rule sep_conj_false_right)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_left_com:
+  "(P ** (Q ** R)) = (Q ** (P ** R))" (is "?x = ?y")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** (P ** R)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** (P ** R)<\STATESEP>have "?x = ((Q ** R) ** P)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** R ** P<\STATESEP>by (simp add: sep_conj_com)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P ** (Q ** R) = Q ** R ** P
+
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** (P ** R)<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P ** (Q ** R) = Q ** R ** P
+
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** (P ** R)<\STATESEP>have "\<dots> = (Q ** (R ** P))"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Q ** R ** P = Q ** (R ** P)<\STATESEP>by (subst sep_conj_assoc, simp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Q ** R ** P = Q ** (R ** P)
+
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** (P ** R)<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+P ** (Q ** R) = Q ** (R ** P)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P ** (Q ** R) = Q ** (R ** P)
+
+goal (1 subgoal):
+ 1. P ** (Q ** R) = Q ** (P ** R)<\STATESEP>by (simp add: sep_conj_com)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+P ** (Q ** R) = Q ** (P ** R)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemmas sep_conj_ac = sep_conj_com sep_conj_assoc sep_conj_left_com<\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_empty[simp]: "\<box> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<box> (0::'a)<\STATESEP>by (simp add: emp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_empty[simp]:
+  "(P ** \<box>) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** \<box> = P<\STATESEP>by (simp add: sep_conj_def emp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_empty'[simp]:
+  "(\<box> ** P) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<box> ** P = P<\STATESEP>by (subst sep_conj_com, rule sep_conj_empty)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_emptyI:
+  "P s \<Longrightarrow> (P ** \<box>) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P s \<Longrightarrow> (P ** \<box>) s<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_true_P[simp]:
+  "(sep_true ** (sep_true ** P)) = (sep_true ** P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_true ** (sep_true ** P) = sep_true ** P<\STATESEP>by (simp add: sep_conj_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_disj:
+  "((\<lambda>s. P s \<or> Q s) ** R) s = ((P ** R) s \<or> (Q ** R) s)" (is "?x = (?y \<or> ?z)")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. P s \<or> Q s) ** R) s = ((P ** R) s \<or> (Q ** R) s)<\STATESEP>by (auto simp: sep_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_conj:
+  "((\<lambda>s. P s \<and> Q s) ** R) s \<Longrightarrow> (P ** R) s \<and> (Q ** R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. P s \<and> Q s) ** R) s \<Longrightarrow> (P ** R) s \<and> (Q ** R) s<\STATESEP>by (force intro: sep_conjI elim!: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_exists1:
+  "((\<lambda>s. \<exists>x. P x s) ** Q) s = (\<exists>x. (P x ** Q) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. \<exists>x. P x s) ** Q) s = (\<exists>x. (P x ** Q) s)<\STATESEP>by (force intro: sep_conjI elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_exists2:
+  "(P ** (\<lambda>s. \<exists>x. Q x s)) = (\<lambda>s. (\<exists>x. (P ** Q x) s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P ** (\<lambda>s. \<exists>x. Q x s) = (\<lambda>s. \<exists>x. (P ** Q x) s)<\STATESEP>by (force intro!: sep_conjI elim!: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sep_conj_exists = sep_conj_exists1 sep_conj_exists2<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_conj_forall:
+  "((\<lambda>s. \<forall>x. P x s) ** Q) s \<Longrightarrow> (P x ** Q) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lambda>s. \<forall>x. P x s) ** Q) s \<Longrightarrow> (P x ** Q) s<\STATESEP>by (force intro: sep_conjI elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_impl:
+  "\<lbrakk> (P ** Q) s; \<And>s. P s \<Longrightarrow> P' s; \<And>s. Q s \<Longrightarrow> Q' s \<rbrakk> \<Longrightarrow> (P' ** Q') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P ** Q) s; \<And>s. P s \<Longrightarrow> P' s; \<And>s. Q s \<Longrightarrow> Q' s\<rbrakk> \<Longrightarrow> (P' ** Q') s<\STATESEP>by (erule sep_conjE, auto intro!: sep_conjI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_impl1:
+  assumes P: "\<And>s. P s \<Longrightarrow> I s"
+  shows "(P ** R) s \<Longrightarrow> (I ** R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P ** R) s \<Longrightarrow> (I ** R) s<\STATESEP>by (auto intro: sep_conj_impl P)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true_left:
+  "(P ** Q) s \<Longrightarrow> (sep_true ** Q) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P ** Q) s \<Longrightarrow> (sep_true ** Q) s<\STATESEP>by (erule sep_conj_impl, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_true_right:
+  "(P ** Q) s \<Longrightarrow> (P ** sep_true) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P ** Q) s \<Longrightarrow> (P ** sep_true) s<\STATESEP>by (subst (asm) sep_conj_com, drule sep_conj_sep_true_left,
+      simp add: sep_conj_ac)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_globalise:
+  "\<lbrakk> (P ** R) s; (\<And>s. P s \<Longrightarrow> Q s) \<rbrakk> \<Longrightarrow> (Q ** R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P ** R) s; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> (Q ** R) s<\STATESEP>by (fast elim: sep_conj_impl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_implI:
+  assumes a: "\<And>h' h''. \<lbrakk> h \<oplus> h' = Some h''; P h' \<rbrakk> \<Longrightarrow> Q h''"
+  shows "(P \<longrightarrow>\<^sup>* Q) h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<longrightarrow>\<^sup>* Q) h<\STATESEP>unfolding sep_impl_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>h' h''. h \<oplus> h' = Some h'' \<and> P h' \<longrightarrow> Q h''<\STATESEP>by (auto elim: a)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_implD:
+  "(x \<longrightarrow>\<^sup>* y) h \<Longrightarrow> \<forall>h' h''. h \<oplus> h' = Some h'' \<and> x h' \<longrightarrow> y h''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x \<longrightarrow>\<^sup>* y) h \<Longrightarrow> \<forall>h' h''. h \<oplus> h' = Some h'' \<and> x h' \<longrightarrow> y h''<\STATESEP>by (force simp: sep_impl_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_true[simp]:
+  "(P \<longrightarrow>\<^sup>* sep_true) = sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<longrightarrow>\<^sup>* sep_true) = sep_true<\STATESEP>by (force intro!: sep_implI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_false[simp]:
+  "(sep_false \<longrightarrow>\<^sup>* P) = sep_true"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sep_false \<longrightarrow>\<^sup>* P) = sep_true<\STATESEP>by (force intro!: sep_implI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_true_P:
+  "(sep_true \<longrightarrow>\<^sup>* P) s \<Longrightarrow> P s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sep_true \<longrightarrow>\<^sup>* P) s \<Longrightarrow> P s<\STATESEP>apply (drule sep_implD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>h' h''. s \<oplus> h' = Some h'' \<and> sep_true h' \<longrightarrow> P h'' \<Longrightarrow> P s<\STATESEP>apply (erule_tac x=0 in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>h''. s \<oplus> (0::'a) = Some h'' \<and> sep_true (0::'a) \<longrightarrow> P h'' \<Longrightarrow> P s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_sep_true_false[simp]:
+  "(sep_true \<longrightarrow>\<^sup>* sep_false) = sep_false"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sep_true \<longrightarrow>\<^sup>* sep_false) = sep_false<\STATESEP>by (force dest: sep_impl_sep_true_P)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_impl:
+  "\<lbrakk> P s; \<And>s. (P ** Q) s \<Longrightarrow> R s \<rbrakk> \<Longrightarrow> (Q \<longrightarrow>\<^sup>* R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> (Q \<longrightarrow>\<^sup>* R) s<\STATESEP>proof (rule sep_implI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h' h''. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s; s \<oplus> h' = Some h''; Q h'\<rbrakk> \<Longrightarrow> R h''<\STATESEP>fix h' h h''<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>h' h''. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s; s \<oplus> h' = Some h''; Q h'\<rbrakk> \<Longrightarrow> R h''<\STATESEP>assume "P h" and "h \<oplus> h' = Some h''" and "Q h'"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+P h
+h \<oplus> h' = Some h''
+Q h'
+
+goal (1 subgoal):
+ 1. \<And>h' h''. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s; s \<oplus> h' = Some h''; Q h'\<rbrakk> \<Longrightarrow> R h''<\STATESEP>hence "(P ** Q) h''"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+P h
+h \<oplus> h' = Some h''
+Q h'
+
+goal (1 subgoal):
+ 1. (P ** Q) h''<\STATESEP>by (force intro: sep_conjI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(P ** Q) h''
+
+goal (1 subgoal):
+ 1. \<And>h' h''. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s; s \<oplus> h' = Some h''; Q h'\<rbrakk> \<Longrightarrow> R h''<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P ** Q) h''
+
+goal (1 subgoal):
+ 1. \<And>h' h''. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s; s \<oplus> h' = Some h''; Q h'\<rbrakk> \<Longrightarrow> R h''<\STATESEP>assume "\<And>s. (P ** Q) s \<Longrightarrow> R s"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(P ** Q) ?s \<Longrightarrow> R ?s
+
+goal (1 subgoal):
+ 1. \<And>h' h''. \<lbrakk>P s; \<And>s. (P ** Q) s \<Longrightarrow> R s; s \<oplus> h' = Some h''; Q h'\<rbrakk> \<Longrightarrow> R h''<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(P ** Q) h''
+(P ** Q) ?s \<Longrightarrow> R ?s<\STATESEP>show "R h''"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(P ** Q) h''
+(P ** Q) ?s \<Longrightarrow> R ?s
+
+goal (1 subgoal):
+ 1. R h''<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+R h''
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma sep_conj_sep_impl2:
+  "\<lbrakk> (P ** Q) s; \<And>s. P s \<Longrightarrow> (Q \<longrightarrow>\<^sup>* R) s \<rbrakk> \<Longrightarrow> R s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P ** Q) s; \<And>s. P s \<Longrightarrow> (Q \<longrightarrow>\<^sup>* R) s\<rbrakk> \<Longrightarrow> R s<\STATESEP>by (force dest: sep_implD elim: sep_conjE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_sep_impl_sep_conj2:
+  "(P ** R) s \<Longrightarrow> (P ** (Q \<longrightarrow>\<^sup>* (Q ** R))) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P ** R) s \<Longrightarrow> (P ** (Q \<longrightarrow>\<^sup>* Q ** R)) s<\STATESEP>by (erule (1) sep_conj_impl, erule sep_conj_sep_impl, simp add: sep_conj_ac)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_triv_strip2:
+  "Q = R \<Longrightarrow> (Q ** P) = (R ** P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Q = R \<Longrightarrow> Q ** P = R ** P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

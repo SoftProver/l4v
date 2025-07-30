@@ -1,0 +1,93 @@
+<\STATESEP>chapter "A simplified version of the actual capDL specification."<\STATESEP>0<\TRANSEP><\STATESEP>theory Types_D
+imports "HOL-Library.Word"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_object_id = "32 word"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_object_set = "cdl_object_id set"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_size_bits = nat<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_cnode_index = nat<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_cap_ref = "cdl_object_id \<times> cdl_cnode_index"<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_right = AllowRead | AllowWrite | AllowGrant<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_cap =
+    NullCap
+  | EndpointCap cdl_object_id "cdl_right set"
+  | CNodeCap cdl_object_id
+  | TcbCap cdl_object_id<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_cap_map = "cdl_cnode_index \<Rightarrow> cdl_cap option"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "cdl_cap_map" <= (type) "nat \<Rightarrow> cdl_cap option"
+  (type) "cdl_cap_ref" <= (type) "cdl_object_id \<times> nat"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_cptr = "32 word"<\STATESEP>0<\TRANSEP><\STATESEP>record cdl_tcb =
+  cdl_tcb_caps :: cdl_cap_map
+  cdl_tcb_fault_endpoint :: cdl_cptr<\STATESEP>0<\TRANSEP><\STATESEP>record cdl_cnode =
+  cdl_cnode_caps :: cdl_cap_map
+  cdl_cnode_size_bits :: cdl_size_bits<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_object =
+    Endpoint
+  | Tcb cdl_tcb
+  | CNode cdl_cnode<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_heap = "cdl_object_id \<Rightarrow> cdl_object option"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_component  = "nat option"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_components = "cdl_component set"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_ghost_state = "cdl_object_id \<Rightarrow> cdl_components"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "cdl_heap" <= (type) "cdl_object_id \<Rightarrow> cdl_object option"
+  (type) "cdl_ghost_state" <= (type) "cdl_object_id \<Rightarrow> nat option set"<\STATESEP>0<\TRANSEP><\STATESEP>record cdl_state =
+  cdl_objects :: "cdl_heap"
+  cdl_current_thread :: "cdl_object_id option"
+  cdl_ghost_state :: "cdl_ghost_state"<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_object_type =
+    EndpointType
+  | TcbType
+  | CNodeType<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_type :: "cdl_object \<Rightarrow> cdl_object_type"
+where
+  "object_type x \<equiv>
+    case x of
+        Endpoint \<Rightarrow> EndpointType
+      | Tcb _ \<Rightarrow> TcbType
+      | CNode _ \<Rightarrow> CNodeType"<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_objects :: "cdl_cap \<Rightarrow> cdl_object_id set"
+where
+    "cap_objects cap \<equiv>
+       case cap of
+           TcbCap x \<Rightarrow> {x}
+         | CNodeCap x \<Rightarrow> {x}
+         | EndpointCap x _ \<Rightarrow> {x}"<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_has_object :: "cdl_cap \<Rightarrow> bool"
+where
+    "cap_has_object cap \<equiv>
+       case cap of
+           NullCap          \<Rightarrow> False
+         | _                \<Rightarrow> True"<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_object :: "cdl_cap \<Rightarrow> cdl_object_id"
+where
+    "cap_object cap \<equiv>
+       if cap_has_object cap
+         then THE obj_id. cap_objects cap = {obj_id}
+         else undefined "<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_object_simps:
+  "cap_object (TcbCap x) = x"
+  "cap_object (CNodeCap x) = x"
+  "cap_object (EndpointCap x j) = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_object (TcbCap x) = x &&& cap_object (CNodeCap x) = x &&& cap_object (EndpointCap x j) = x<\STATESEP>by (simp_all add:cap_object_def cap_objects_def cap_has_object_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  cap_rights :: "cdl_cap \<Rightarrow> cdl_right set"
+where
+  "cap_rights c \<equiv> case c of
+      EndpointCap _ x \<Rightarrow> x
+    | _ \<Rightarrow> UNIV"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  update_cap_rights :: "cdl_right set \<Rightarrow> cdl_cap \<Rightarrow> cdl_cap"
+where
+  "update_cap_rights r c \<equiv> case c of
+      EndpointCap f1 _ \<Rightarrow> EndpointCap f1 r
+    | _ \<Rightarrow> c"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_slots :: "cdl_object \<Rightarrow> cdl_cap_map"
+where
+  "object_slots obj \<equiv> case obj of
+    CNode x \<Rightarrow> cdl_cnode_caps x
+  | Tcb x \<Rightarrow> cdl_tcb_caps x
+  | _ \<Rightarrow> Map.empty"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  update_slots :: "cdl_cap_map \<Rightarrow> cdl_object \<Rightarrow> cdl_object"
+where
+  "update_slots new_val obj \<equiv> case obj of
+    CNode x \<Rightarrow> CNode (x\<lparr>cdl_cnode_caps := new_val\<rparr>)
+  | Tcb x \<Rightarrow> Tcb (x\<lparr>cdl_tcb_caps := new_val\<rparr>)
+  | _ \<Rightarrow> obj"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  add_to_slots :: "cdl_cap_map \<Rightarrow> cdl_object \<Rightarrow> cdl_object"
+where
+  "add_to_slots new_val obj \<equiv> update_slots (new_val ++ (object_slots obj)) obj"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  slots_of :: "cdl_heap \<Rightarrow> cdl_object_id \<Rightarrow> cdl_cap_map"
+where
+  "slots_of h \<equiv> \<lambda>obj_id.
+  case h obj_id of
+    None \<Rightarrow> Map.empty
+  | Some obj \<Rightarrow> object_slots obj"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  has_slots :: "cdl_object \<Rightarrow> bool"
+where
+  "has_slots obj \<equiv> case obj of
+    CNode _ \<Rightarrow> True
+  | Tcb _ \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_at :: "(cdl_object \<Rightarrow> bool) \<Rightarrow> cdl_object_id \<Rightarrow> cdl_heap \<Rightarrow> bool"
+where
+  "object_at P p s \<equiv> \<exists>object. s p = Some object \<and> P object"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "ko_at k \<equiv> object_at ((=) k)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

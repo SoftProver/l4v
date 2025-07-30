@@ -1,0 +1,236 @@
+<\STATESEP>theory ArchDomainSepInv
+imports
+  "DomainSepInv"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems DomainSepInv_assms<\STATESEP>0<\TRANSEP><\STATESEP>crunches arch_post_cap_deletion, set_pd, set_pt, set_asid_pool, prepare_thread_delete, init_arch_objects
+  for domain_sep_inv[DomainSepInv_assms, wp]: "domain_sep_inv irqs st"
+  (wp: domain_sep_inv_triv crunch_wps set_asid_pool_cte_wp_at set_pd_cte_wp_at set_pt_cte_wp_at)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_sep_inv[DomainSepInv_assms, wp]: arch_finalise_cap "domain_sep_inv irqs st"
+  (wp: crunch_wps simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_finalise_cap_rv[DomainSepInv_assms]:
+  "\<lbrace>\<lambda>_. P (NullCap,NullCap)\<rbrace> arch_finalise_cap c x \<lbrace>\<lambda>rv _. P rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. P (NullCap, NullCap)\<rbrace> arch_finalise_cap c x \<lbrace>\<lambda>rv _. P rv\<rbrace><\STATESEP>unfolding arch_finalise_cap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. P (NullCap, NullCap)\<rbrace> case (c, x) of (ASIDPoolCap ptr b, True) \<Rightarrow> do delete_asid_pool b ptr;
+return (NullCap, NullCap)
+od | (ASIDPoolCap ptr b, False) \<Rightarrow> return (NullCap, NullCap) | (ASIDControlCap, xb) \<Rightarrow> return (NullCap, NullCap) | (PageCap x ptr xa s None, xb) \<Rightarrow> return (NullCap, NullCap) | (PageCap x ptr xa s (Some (a, v)), xb) \<Rightarrow> do unmap_page s a v ptr;
+return (NullCap, NullCap)
+od | (PageTableCap ptr None, xb) \<Rightarrow> return (NullCap, NullCap) | (PageTableCap ptr (Some (a, v)), True) \<Rightarrow> do unmap_page_table a v ptr;
+return (NullCap, NullCap)
+od | (PageTableCap ptr (Some (a, v)), False) \<Rightarrow> return (NullCap, NullCap) | (PageDirectoryCap ptr None, xb) \<Rightarrow> return (NullCap, NullCap) | (PageDirectoryCap ptr (Some a), True) \<Rightarrow> do delete_asid a ptr;
+return (NullCap, NullCap)
+od | (PageDirectoryCap ptr (Some a), False) \<Rightarrow> return (NullCap, NullCap) \<lbrace>\<lambda>rv _. P rv\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation DomainSepInv_1?: DomainSepInv_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DomainSepInv_1 TYPE('a)<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DomainSepInv_1 TYPE('a)<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DomainSepInv_1 TYPE('a)<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. DomainSepInv_1 TYPE('a)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DomainSepInv_1 TYPE('a)<\STATESEP>by (unfold_locales; fact DomainSepInv_assms)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+DomainSepInv_1 TYPE('a)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>crunches
+  invalidate_tlb_by_asid, handle_reserved_irq, handle_vm_fault,
+  handle_hypervisor_fault, handle_arch_fault_reply, arch_mask_irq_signal,
+  arch_switch_to_thread, arch_switch_to_idle_thread, arch_activate_idle_thread
+  for domain_sep_inv[DomainSepInv_assms, wp]: "domain_sep_inv irqs st"<\STATESEP>0<\TRANSEP><\STATESEP>lemma perform_page_invocation_domain_sep_inv:
+  "\<lbrace>domain_sep_inv irqs st and valid_page_inv pgi\<rbrace>
+   perform_page_invocation pgi
+   \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st and valid_page_inv pgi\<rbrace> perform_page_invocation pgi \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> perform_page_invocation pgi \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>
+ 2. \<And>s. (domain_sep_inv irqs st and valid_page_inv pgi) s \<Longrightarrow> ?Q s<\STATESEP>apply (wp mapM_wp[OF _ subset_refl] set_cap_domain_sep_inv mapM_x_wp[OF _ subset_refl]
+             perform_page_invocation_domain_sep_inv_get_cap_helper hoare_weak_lift_imp
+          | simp add: perform_page_invocation_def o_def | wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. domain_sep_inv irqs st s \<and> valid_page_inv pgi s \<Longrightarrow> \<forall>x xa a b xb. pgi = PageMap x xa (a, b) xb \<longrightarrow> ((\<exists>a b. xb = Inl (a, b)) \<longrightarrow> domain_sep_inv_cap irqs xa) \<and> ((\<exists>a b. xb = Inr (a, b)) \<longrightarrow> domain_sep_inv_cap irqs xa)<\STATESEP>apply (clarsimp simp: valid_page_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x xa a b xb aa pd ba. \<lbrakk>domain_sep_inv irqs st s; pgi = PageMap x xa (a, b) xb; cte_wp_at (is_arch_update xa) (a, b) s; cte_wp_at (\<lambda>c. vs_cap_ref c = None) (a, b) s \<or> cte_wp_at (\<lambda>c. same_refs xb c s) (a, b) s; cte_wp_at is_pg_cap (a, b) s; same_refs xb xa s; valid_slots xb s; s \<turnstile> xa; is_pg_cap xa; empty_refs xb; x \<le> mask local.asid_bits; x \<noteq> 0; vspace_at_asid x pd s; cte_wp_at (parent_for_refs xb) (aa, ba) s\<rbrakk> \<Longrightarrow> ((\<exists>a b. xb = Inl (a, b)) \<longrightarrow> domain_sep_inv_cap irqs xa) \<and> ((\<exists>a b. xb = Inr (a, b)) \<longrightarrow> domain_sep_inv_cap irqs xa)<\STATESEP>apply (case_tac xa, simp_all add: domain_sep_inv_cap_def is_pg_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma perform_page_table_invocation_domain_sep_inv:
+  "\<lbrace>domain_sep_inv irqs st and valid_pti pgi\<rbrace>
+   perform_page_table_invocation pgi
+   \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st and valid_pti pgi\<rbrace> perform_page_table_invocation pgi \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> perform_page_table_invocation pgi \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>
+ 2. \<And>s. (domain_sep_inv irqs st and valid_pti pgi) s \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: perform_page_table_invocation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> case pgi of PageTableMap cap ct_slot pde pd_slot \<Rightarrow> do set_cap cap ct_slot;
+store_pde pd_slot pde;
+do_machine_op $ cleanByVA_PoU pd_slot (addrFromPPtr pd_slot)
+od | PageTableUnmap (ArchObjectCap (PageTableCap p mapped_address)) ct_slot \<Rightarrow> do case mapped_address of None \<Rightarrow> return () | Some (asid, vaddr) \<Rightarrow> do unmap_page_table asid vaddr p;
+pte_bits <- return 2;
+slots <- return [p , p + (1 << pte_bits) .e. p + (1 << pt_bits) - 1];
+mapM_x (swp store_pte InvalidPTE) slots;
+do_machine_op $ cleanCacheRange_PoU p (p + (1 << pt_bits) - 1) (addrFromPPtr p)
+od;
+cap <- liftM the_arch_cap $ get_cap ct_slot;
+set_cap (ArchObjectCap $ update_map_data cap None) ct_slot
+od | PageTableUnmap (ArchObjectCap _) ct_slot \<Rightarrow> fail | PageTableUnmap _ ct_slot \<Rightarrow> fail \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>
+ 2. \<And>s. (domain_sep_inv irqs st and valid_pti pgi) s \<Longrightarrow> ?Q s<\STATESEP>apply (wpsimp wp: perform_page_invocation_domain_sep_inv_get_cap_helper
+                     crunch_wps set_cap_domain_sep_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (domain_sep_inv irqs st and valid_pti pgi) s \<Longrightarrow> (\<forall>x xa xb xc. pgi = PageTableMap x xa xb xc \<longrightarrow> (domain_sep_inv irqs st and K (domain_sep_inv_cap irqs x)) s) \<and> (\<forall>x xa. pgi = PageTableUnmap x xa \<longrightarrow> (x = NullCap \<longrightarrow> True) \<and> (\<forall>xa xb xc xd. x = UntypedCap xa xb xc xd \<longrightarrow> True) \<and> (\<forall>xa xb xc. x = EndpointCap xa xb xc \<longrightarrow> True) \<and> (\<forall>xa xb xc. x = NotificationCap xa xb xc \<longrightarrow> True) \<and> (\<forall>xa xb xc. x = ReplyCap xa xb xc \<longrightarrow> True) \<and> (\<forall>xa xb xc. x = CNodeCap xa xb xc \<longrightarrow> True) \<and> (\<forall>xa. x = ThreadCap xa \<longrightarrow> True) \<and> (x = DomainCap \<longrightarrow> True) \<and> (x = IRQControlCap \<longrightarrow> True) \<and> (\<forall>xa. x = IRQHandlerCap xa \<longrightarrow> True) \<and> (\<forall>xa xb xc. x = Zombie xa xb xc \<longrightarrow> True) \<and> (\<forall>xa. x = ArchObjectCap xa \<longrightarrow> (\<forall>x xb. xa = ASIDPoolCap x xb \<longrightarrow> True) \<and> (xa = ASIDControlCap \<longrightarrow> True) \<and> (\<forall>x xb xc xd xe. xa = PageCap x xb xc xd xe \<longrightarrow> True) \<and> (\<forall>x xb. xa = PageTableCap x xb \<longrightarrow> (xb = None \<longrightarrow> domain_sep_inv irqs st s) \<and> (\<forall>x. xb = Some x \<longrightarrow> (\<forall>xa xb. x = (xa, xb) \<longrightarrow> domain_sep_inv irqs st s))) \<and> (\<forall>x xb. xa = PageDirectoryCap x xb \<longrightarrow> True)))<\STATESEP>apply (clarsimp simp: valid_pti_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s x a b xa xb p' ref y ao. \<lbrakk>domain_sep_inv irqs st s; pgi = PageTableMap x (a, b) xa xb; pde_at xb s; wellformed_pde xa; valid_pde xa s; s \<turnstile> x; cte_wp_at (\<lambda>c. is_arch_update x c \<and> cap_asid c = None) (a, b) s; empty_pde_at xb s; is_pt_cap x; cap_asid x = Some y; vs_cap_ref x = Some (VSRef (xb && mask pd_bits >> 2) (Some APageDirectory) # ref); (ref \<rhd> (xb && ~~ mask pd_bits)) s; pde_ref xa = Some p'; p' \<in> obj_refs x; VSRef (xb && mask pd_bits >> 2) (Some APageDirectory) \<notin> kernel_vsrefs; ako_at ao p' s; valid_vspace_obj ao s\<rbrakk> \<Longrightarrow> domain_sep_inv_cap irqs x<\STATESEP>apply (case_tac x, simp_all add: domain_sep_inv_cap_def is_pt_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma perform_page_directory_invocation_domain_sep_inv:
+  "perform_page_directory_invocation pti \<lbrace>domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> perform_page_directory_invocation pti \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (simp add: perform_page_directory_invocation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> case pti of PageDirectoryFlush typ start end pstart pd asid \<Rightarrow> when (start < end) $ do root_switched <- set_vm_root_for_flush pd asid;
+do_machine_op $ do_flush typ start end pstart;
+when root_switched $ gets cur_thread >>= set_vm_root
+od | PageDirectoryNothing \<Rightarrow> return () \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (cases pti)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x11 x12 x13 x14 x15 x16. pti = PageDirectoryFlush x11 x12 x13 x14 x15 x16 \<Longrightarrow> \<lbrace>domain_sep_inv irqs st\<rbrace> case pti of PageDirectoryFlush typ start end pstart pd asid \<Rightarrow> when (start < end) $ do root_switched <- set_vm_root_for_flush pd asid;
+do_machine_op $ do_flush typ start end pstart;
+when root_switched $ gets cur_thread >>= set_vm_root
+od | PageDirectoryNothing \<Rightarrow> return () \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>
+ 2. pti = PageDirectoryNothing \<Longrightarrow> \<lbrace>domain_sep_inv irqs st\<rbrace> case pti of PageDirectoryFlush typ start end pstart pd asid \<Rightarrow> when (start < end) $ do root_switched <- set_vm_root_for_flush pd asid;
+do_machine_op $ do_flush typ start end pstart;
+when root_switched $ gets cur_thread >>= set_vm_root
+od | PageDirectoryNothing \<Rightarrow> return () \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (simp | wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma perform_asid_control_invocation_domain_sep_inv:
+  "perform_asid_control_invocation iv \<lbrace>domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> perform_asid_control_invocation iv \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>unfolding perform_asid_control_invocation_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> case iv of MakePool frame slot parent base \<Rightarrow> do delete_objects frame page_bits;
+pcap <- get_cap parent;
+set_cap (max_free_index_update pcap) parent;
+retype_region frame 1 0 (ArchObject ASIDPoolObj) False;
+cap_insert (ArchObjectCap $ ASIDPoolCap frame base) parent slot;
+assert (base && mask local.asid_low_bits = 0);
+asid_table <- gets (arm_asid_table \<circ> arch_state);
+asid_table' <- return (asid_table(asid_high_bits_of base \<mapsto> frame));
+modify (\<lambda>s. s\<lparr>arch_state := arch_state s\<lparr>arm_asid_table := asid_table'\<rparr>\<rparr>)
+od \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> case iv of MakePool frame slot parent base \<Rightarrow> do delete_objects frame page_bits;
+pcap <- get_cap parent;
+set_cap (max_free_index_update pcap) parent;
+retype_region frame 1 0 (ArchObject ASIDPoolObj) False;
+cap_insert (ArchObjectCap $ ASIDPoolCap frame base) parent slot;
+assert (base && mask local.asid_low_bits = 0);
+asid_table <- gets (arm_asid_table \<circ> arch_state);
+asid_table' <- return (asid_table(asid_high_bits_of base \<mapsto> frame));
+modify (\<lambda>s. s\<lparr>arch_state := arch_state s\<lparr>arm_asid_table := asid_table'\<rparr>\<rparr>)
+od \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>
+ 2. \<And>s. domain_sep_inv irqs st s \<Longrightarrow> ?Q s<\STATESEP>apply (wp modify_wp cap_insert_domain_sep_inv' set_cap_domain_sep_inv
+            get_cap_domain_sep_inv_cap[where st=st] hoare_weak_lift_imp
+         | wpc | simp )+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma perform_asid_pool_invocation_domain_sep_inv:
+  "perform_asid_pool_invocation iv \<lbrace>domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> perform_asid_pool_invocation iv \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (simp add: perform_asid_pool_invocation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> case iv of Assign asid pool_ptr ct_slot \<Rightarrow> do pd_cap <- get_cap ct_slot;
+case pd_cap of ArchObjectCap (PageDirectoryCap pd_base x) \<Rightarrow> do pool <- get_asid_pool pool_ptr;
+pool' <- return (pool(UCAST(32 \<rightarrow> 10) asid \<mapsto> pd_base));
+set_cap (ArchObjectCap $ PageDirectoryCap pd_base (Some asid)) ct_slot;
+set_asid_pool pool_ptr pool'
+od | ArchObjectCap _ \<Rightarrow> fail | _ \<Rightarrow> fail
+od \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> case iv of Assign asid pool_ptr ct_slot \<Rightarrow> do pd_cap <- get_cap ct_slot;
+case pd_cap of ArchObjectCap (PageDirectoryCap pd_base x) \<Rightarrow> do pool <- get_asid_pool pool_ptr;
+pool' <- return (pool(UCAST(32 \<rightarrow> 10) asid \<mapsto> pd_base));
+set_cap (ArchObjectCap $ PageDirectoryCap pd_base (Some asid)) ct_slot;
+set_asid_pool pool_ptr pool'
+od | ArchObjectCap _ \<Rightarrow> fail | _ \<Rightarrow> fail
+od \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>
+ 2. \<And>s. domain_sep_inv irqs st s \<Longrightarrow> ?Q s<\STATESEP>apply (wp set_cap_domain_sep_inv get_cap_wp | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_perform_invocation_domain_sep_inv[DomainSepInv_assms]:
+  "\<lbrace>domain_sep_inv irqs st and valid_arch_inv ai\<rbrace>
+   arch_perform_invocation ai
+   \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st and valid_arch_inv ai\<rbrace> arch_perform_invocation ai \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>unfolding arch_perform_invocation_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st and valid_arch_inv ai\<rbrace> liftE $ case ai of InvokePageTable oper \<Rightarrow> do perform_page_table_invocation oper;
+return []
+od | InvokePageDirectory oper \<Rightarrow> do perform_page_directory_invocation oper;
+return []
+od | InvokePage oper \<Rightarrow> perform_page_invocation oper | InvokeASIDControl oper \<Rightarrow> do perform_asid_control_invocation oper;
+return []
+od | InvokeASIDPool oper \<Rightarrow> do perform_asid_pool_invocation oper;
+return []
+od \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (wpsimp wp: perform_page_table_invocation_domain_sep_inv
+                    perform_page_directory_invocation_domain_sep_inv
+                    perform_page_invocation_domain_sep_inv
+                    perform_asid_control_invocation_domain_sep_inv
+                    perform_asid_pool_invocation_domain_sep_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>domain_sep_inv irqs st s; valid_arch_inv ai s\<rbrakk> \<Longrightarrow> (\<forall>x. ai = InvokePageTable x \<longrightarrow> valid_pti x s) \<and> (\<forall>x. ai = InvokePage x \<longrightarrow> valid_page_inv x s)<\STATESEP>apply (clarsimp simp: valid_arch_inv_def split: arch_invocation.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_handler_domain_sep_inv[DomainSepInv_assms, wp]:
+  "arch_invoke_irq_handler ihi \<lbrace>domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> arch_invoke_irq_handler ihi \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>by (cases ihi; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_control_domain_sep_inv[DomainSepInv_assms]:
+  "\<lbrace>domain_sep_inv irqs st and arch_irq_control_inv_valid ivk\<rbrace>
+   arch_invoke_irq_control ivk
+   \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st and arch_irq_control_inv_valid ivk\<rbrace> arch_invoke_irq_control ivk \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (cases ivk)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4. ivk = ArchIRQControlIssue x1 x2 x3 x4 \<Longrightarrow> \<lbrace>domain_sep_inv irqs st and arch_irq_control_inv_valid ivk\<rbrace> arch_invoke_irq_control ivk \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>apply (wpsimp wp: cap_insert_domain_sep_inv' simp: set_irq_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x1 a b aa ba x4. ivk = ArchIRQControlIssue x1 (a, b) (aa, ba) x4 \<Longrightarrow> \<lbrace>?Q12 x1 a b aa ba (a, b) (aa, ba) x4\<rbrace> do_machine_op (setIRQTrigger x1 x4) \<lbrace>\<lambda>y s. domain_sep_inv irqs st (s\<lparr>interrupt_states := \<lambda>a. if a = x1 then IRQSignal else interrupt_states s a\<rparr>) \<and> domain_sep_inv_cap irqs (IRQHandlerCap x1)\<rbrace>
+ 2. \<And>x1 x2 x3 x4 s. \<lbrakk>ivk = ArchIRQControlIssue x1 x2 x3 x4; (domain_sep_inv irqs st and arch_irq_control_inv_valid ivk) s\<rbrakk> \<Longrightarrow> ?Q12 x1 (fst x2) (snd x2) (fst x3) (snd x3) x2 x3 x4 s<\STATESEP>apply (rule_tac Q="\<lambda>_. domain_sep_inv irqs st and arch_irq_control_inv_valid ivk"
+                in hoare_strengthen_post[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x1 a b aa ba x4 rv s. \<lbrakk>ivk = ArchIRQControlIssue x1 (a, b) (aa, ba) x4; (domain_sep_inv irqs st and arch_irq_control_inv_valid ivk) s\<rbrakk> \<Longrightarrow> domain_sep_inv irqs st (s\<lparr>interrupt_states := \<lambda>a. if a = x1 then IRQSignal else interrupt_states s a\<rparr>) \<and> domain_sep_inv_cap irqs (IRQHandlerCap x1)
+ 2. \<And>x1 a b aa ba x4. ivk = ArchIRQControlIssue x1 (a, b) (aa, ba) x4 \<Longrightarrow> \<lbrace>?Q12 x1 a b aa ba (a, b) (aa, ba) x4\<rbrace> do_machine_op (setIRQTrigger x1 x4) \<lbrace>\<lambda>_. domain_sep_inv irqs st and arch_irq_control_inv_valid ivk\<rbrace>
+ 3. \<And>x1 x2 x3 x4 s. \<lbrakk>ivk = ArchIRQControlIssue x1 x2 x3 x4; (domain_sep_inv irqs st and arch_irq_control_inv_valid ivk) s\<rbrakk> \<Longrightarrow> ?Q12 x1 (fst x2) (snd x2) (fst x3) (snd x3) x2 x3 x4 s<\STATESEP>apply (fastforce simp: domain_sep_inv_def domain_sep_inv_cap_def arch_irq_control_inv_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x1 a b aa ba x4. ivk = ArchIRQControlIssue x1 (a, b) (aa, ba) x4 \<Longrightarrow> \<lbrace>?Q12 x1 a b aa ba (a, b) (aa, ba) x4\<rbrace> do_machine_op (setIRQTrigger x1 x4) \<lbrace>\<lambda>_. domain_sep_inv irqs st and arch_irq_control_inv_valid ivk\<rbrace>
+ 2. \<And>x1 x2 x3 x4 s. \<lbrakk>ivk = ArchIRQControlIssue x1 x2 x3 x4; (domain_sep_inv irqs st and arch_irq_control_inv_valid ivk) s\<rbrakk> \<Longrightarrow> ?Q12 x1 (fst x2) (snd x2) (fst x3) (snd x3) x2 x3 x4 s<\STATESEP>apply (wpsimp wp: do_machine_op_domain_sep_inv simp: arch_irq_control_inv_valid_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_derive_cap_domain_sep_inv[DomainSepInv_assms, wp]:
+  "\<lbrace>\<top>\<rbrace> arch_derive_cap acap \<lbrace>\<lambda>rv _. domain_sep_inv_cap irqs rv\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> arch_derive_cap acap \<lbrace>\<lambda>rv _. domain_sep_inv_cap irqs rv\<rbrace>, -<\STATESEP>unfolding arch_derive_cap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> case acap of PageCap dev r R pgs x \<Rightarrow> returnOk (ArchObjectCap (PageCap dev r R pgs None)) | PageTableCap xa None \<Rightarrow> throwError IllegalOperation | PageTableCap xa (Some x) \<Rightarrow> returnOk (ArchObjectCap acap) | PageDirectoryCap xa None \<Rightarrow> throwError IllegalOperation | PageDirectoryCap xa (Some x) \<Rightarrow> returnOk (ArchObjectCap acap) | _ \<Rightarrow> returnOk (ArchObjectCap acap) \<lbrace>\<lambda>rv _. domain_sep_inv_cap irqs rv\<rbrace>, -<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_post_modify_registers_domain_sep_inv[DomainSepInv_assms, wp]:
+  "arch_post_modify_registers cur x31 \<lbrace>domain_sep_inv irqs st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> arch_post_modify_registers cur x31 \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>unfolding arch_post_modify_registers_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>domain_sep_inv irqs st\<rbrace> return () \<lbrace>\<lambda>_. domain_sep_inv irqs st\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation DomainSepInv_2?: DomainSepInv_2<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DomainSepInv_2 TYPE('a)<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DomainSepInv_2 TYPE('a)<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DomainSepInv_2 TYPE('a)<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. DomainSepInv_2 TYPE('a)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DomainSepInv_2 TYPE('a)<\STATESEP>by (unfold_locales; fact DomainSepInv_assms)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+DomainSepInv_2 TYPE('a)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

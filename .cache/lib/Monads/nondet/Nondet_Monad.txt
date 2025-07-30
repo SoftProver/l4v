@@ -1,0 +1,300 @@
+<\STATESEP>chapter "Nondeterministic State Monad with Failure"<\STATESEP>0<\TRANSEP><\STATESEP>theory Nondet_Monad
+  imports
+    Fun_Pred_Syntax
+    Monad_Lib
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section "The Monad"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym ('s, 'a) nondet_monad = "'s \<Rightarrow> ('a \<times> 's) set \<times> bool"<\STATESEP>0<\TRANSEP><\STATESEP>print_ast_translation \<open>
+  let
+    fun monad_tr _ [t1, Ast.Appl [Ast.Constant @{type_syntax prod},
+                          Ast.Appl [Ast.Constant @{type_syntax set},
+                            Ast.Appl [Ast.Constant @{type_syntax prod}, t2, t3]],
+                          Ast.Constant @{type_syntax bool}]] =
+      if t3 = t1
+      then Ast.Appl [Ast.Constant @{type_syntax "nondet_monad"}, t1, t2]
+      else raise Match
+  in [(@{type_syntax "fun"}, monad_tr)] end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition return :: "'a \<Rightarrow> ('s,'a) nondet_monad" where
+  "return a \<equiv> \<lambda>s. ({(a,s)},False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition bind ::
+  "('s, 'a) nondet_monad \<Rightarrow> ('a \<Rightarrow> ('s, 'b) nondet_monad) \<Rightarrow> ('s, 'b) nondet_monad" (infixl ">>=" 60)
+  where
+  "bind f g \<equiv> \<lambda>s. (\<Union>(fst ` case_prod g ` fst (f s)),
+                   True \<in> snd ` case_prod g ` fst (f s) \<or> snd (f s))"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input) bind_rev ::
+  "('c \<Rightarrow> ('a, 'b) nondet_monad) \<Rightarrow> ('a, 'c) nondet_monad \<Rightarrow> ('a, 'b) nondet_monad" (infixl "=<<" 60)
+  where
+  "g =<< f \<equiv> f >>= g"<\STATESEP>0<\TRANSEP><\STATESEP>definition get :: "('s,'s) nondet_monad" where
+  "get \<equiv> \<lambda>s. ({(s,s)}, False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition put :: "'s \<Rightarrow> ('s, unit) nondet_monad" where
+  "put s \<equiv> \<lambda>_. ({((),s)}, False)"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Nondeterminism"<\STATESEP>0<\TRANSEP><\STATESEP>definition select :: "'a set \<Rightarrow> ('s,'a) nondet_monad" where
+  "select A \<equiv> \<lambda>s. (A \<times> {s}, False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition alternative ::
+  "('s, 'a) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad" (infixl "\<sqinter>" 20)
+  where
+  "f \<sqinter> g \<equiv> \<lambda>s. (fst (f s) \<union> fst (g s), snd (f s) \<or> snd (g s))"<\STATESEP>0<\TRANSEP><\STATESEP>definition select_f :: "'a set \<times> bool  \<Rightarrow> ('s,'a) nondet_monad" where
+  "select_f S \<equiv> \<lambda>s. (fst S \<times> {s}, snd S)"<\STATESEP>0<\TRANSEP><\STATESEP>definition state_select :: "('s \<times> 's) set \<Rightarrow> ('s, unit) nondet_monad" where
+  "state_select r \<equiv> \<lambda>s. ((\<lambda>x. ((), x)) ` {s'. (s, s') \<in> r}, \<not> (\<exists>s'. (s, s') \<in> r))"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Failure"<\STATESEP>0<\TRANSEP><\STATESEP>definition fail :: "('s, 'a) nondet_monad" where
+  "fail \<equiv> \<lambda>s. ({}, True)"<\STATESEP>0<\TRANSEP><\STATESEP>definition assert :: "bool \<Rightarrow> ('a, unit) nondet_monad" where
+  "assert P \<equiv> if P then return () else fail"<\STATESEP>0<\TRANSEP><\STATESEP>definition assert_opt :: "'a option \<Rightarrow> ('b, 'a) nondet_monad" where
+  "assert_opt v \<equiv> case v of None \<Rightarrow> fail | Some v \<Rightarrow> return v"<\STATESEP>0<\TRANSEP><\STATESEP>definition state_assert :: "('s \<Rightarrow> bool) \<Rightarrow> ('s, unit) nondet_monad" where
+  "state_assert P \<equiv> get >>= (\<lambda>s. assert (P s))"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Generic functions on top of the state monad"<\STATESEP>0<\TRANSEP><\STATESEP>definition gets :: "('s \<Rightarrow> 'a) \<Rightarrow> ('s, 'a) nondet_monad" where
+  "gets f \<equiv> get >>= (\<lambda>s. return (f s))"<\STATESEP>0<\TRANSEP><\STATESEP>definition modify :: "('s \<Rightarrow> 's) \<Rightarrow> ('s, unit) nondet_monad" where
+  "modify f \<equiv> get >>= (\<lambda>s. put (f s))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma simpler_gets_def:
+  "gets f = (\<lambda>s. ({(f s, s)}, False))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets f = (\<lambda>s. ({(f s, s)}, False))<\STATESEP>by (simp add: gets_def return_def bind_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma simpler_modify_def:
+  "modify f = (\<lambda>s. ({((), f s)}, False))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. modify f = (\<lambda>s. ({((), f s)}, False))<\STATESEP>by (simp add: modify_def bind_def get_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition "when" :: "bool \<Rightarrow> ('s, unit) nondet_monad \<Rightarrow> ('s, unit) nondet_monad" where
+  "when P m \<equiv> if P then m else return ()"<\STATESEP>0<\TRANSEP><\STATESEP>definition unless :: "bool \<Rightarrow> ('s, unit) nondet_monad \<Rightarrow> ('s, unit) nondet_monad" where
+  "unless P m \<equiv> when (\<not>P) m"<\STATESEP>0<\TRANSEP><\STATESEP>definition condition ::
+  "('s \<Rightarrow> bool) \<Rightarrow> ('s, 'r) nondet_monad \<Rightarrow> ('s, 'r) nondet_monad \<Rightarrow> ('s, 'r) nondet_monad"
+  where
+  "condition P L R \<equiv> \<lambda>s. if (P s) then (L s) else (R s)"<\STATESEP>0<\TRANSEP><\STATESEP>notation (output)
+  condition  ("(condition (_)//  (_)//  (_))" [1000,1000,1000] 1000)<\STATESEP>0<\TRANSEP><\STATESEP>definition gets_the :: "('s \<Rightarrow> 'a option) \<Rightarrow> ('s, 'a) nondet_monad" where
+  "gets_the f \<equiv> gets f >>= assert_opt"<\STATESEP>0<\TRANSEP><\STATESEP>definition gets_map :: "('s \<Rightarrow> 'a \<Rightarrow> 'b option) \<Rightarrow> 'a \<Rightarrow> ('s, 'b) nondet_monad" where
+  "gets_map f p \<equiv> gets f >>= (\<lambda>m. assert_opt (m p))"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>The Monad Laws\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bind_def':
+  "(f >>= g) \<equiv>
+       \<lambda>s. ({(r'', s''). \<exists>(r', s') \<in> fst (f s). (r'', s'') \<in> fst (g r' s') },
+                     snd (f s) \<or> (\<exists>(r', s') \<in> fst (f s). snd (g r' s')))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f >>= g \<equiv> \<lambda>s. ({(r'', s''). \<exists>(r', s')\<in>fst (f s). (r'', s'') \<in> fst (g r' s')}, snd (f s) \<or> (\<exists>(r', s')\<in>fst (f s). snd (g r' s')))<\STATESEP>by (rule eq_reflection)
+     (auto simp add: bind_def split_def Let_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_bind[simp]:
+  "(return x >>= f) = f x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. return x >>= f = f x<\STATESEP>by (simp add: return_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_return[simp]:
+  "(m >>= return) = m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m >>= return = m<\STATESEP>by (simp add: bind_def return_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_assoc:
+  fixes m :: "('a,'b) nondet_monad"
+  fixes f :: "'b \<Rightarrow> ('a,'c) nondet_monad"
+  fixes g :: "'c \<Rightarrow> ('a,'d) nondet_monad"
+  shows "(m >>= f) >>= g  =  m >>= (\<lambda>x. f x >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m >>= f >>= g = m >>= (\<lambda>x. f x >>= g)<\STATESEP>unfolding bind_def Let_def split_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>s. (\<Union> (fst ` (\<lambda>p. g (fst p) (snd p)) ` fst (\<Union> (fst ` (\<lambda>p. f (fst p) (snd p)) ` fst (m s)), True \<in> snd ` (\<lambda>p. f (fst p) (snd p)) ` fst (m s) \<or> snd (m s))), True \<in> snd ` (\<lambda>p. g (fst p) (snd p)) ` fst (\<Union> (fst ` (\<lambda>p. f (fst p) (snd p)) ` fst (m s)), True \<in> snd ` (\<lambda>p. f (fst p) (snd p)) ` fst (m s) \<or> snd (m s)) \<or> snd (\<Union> (fst ` (\<lambda>p. f (fst p) (snd p)) ` fst (m s)), True \<in> snd ` (\<lambda>p. f (fst p) (snd p)) ` fst (m s) \<or> snd (m s)))) = (\<lambda>s. (\<Union> (fst ` (\<lambda>p. (\<Union> (fst ` (\<lambda>p. g (fst p) (snd p)) ` fst (f (fst p) (snd p))), True \<in> snd ` (\<lambda>p. g (fst p) (snd p)) ` fst (f (fst p) (snd p)) \<or> snd (f (fst p) (snd p)))) ` fst (m s)), True \<in> snd ` (\<lambda>p. (\<Union> (fst ` (\<lambda>p. g (fst p) (snd p)) ` fst (f (fst p) (snd p))), True \<in> snd ` (\<lambda>p. g (fst p) (snd p)) ` fst (f (fst p) (snd p)) \<or> snd (f (fst p) (snd p)))) ` fst (m s) \<or> snd (m s)))<\STATESEP>by (auto intro: rev_image_eqI)<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Adding Exceptions\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition returnOk :: "'a \<Rightarrow> ('s, 'e + 'a) nondet_monad" where
+  "returnOk \<equiv> return o Inr"<\STATESEP>0<\TRANSEP><\STATESEP>definition throwError :: "'e \<Rightarrow> ('s, 'e + 'a) nondet_monad" where
+  "throwError \<equiv> return o Inl"<\STATESEP>0<\TRANSEP><\STATESEP>definition lift :: "('a \<Rightarrow> ('s, 'e + 'b) nondet_monad) \<Rightarrow> 'e +'a \<Rightarrow> ('s, 'e + 'b) nondet_monad" where
+  "lift f v \<equiv> case v of Inl e \<Rightarrow> throwError e | Inr v' \<Rightarrow> f v'"<\STATESEP>0<\TRANSEP><\STATESEP>definition bindE ::
+  "('s, 'e + 'a) nondet_monad \<Rightarrow> ('a \<Rightarrow> ('s, 'e + 'b) nondet_monad) \<Rightarrow> ('s, 'e + 'b) nondet_monad"
+  (infixl ">>=E" 60) where
+  "f >>=E g \<equiv> f >>= lift g"<\STATESEP>0<\TRANSEP><\STATESEP>definition liftE :: "('s,'a) nondet_monad \<Rightarrow> ('s, 'e+'a) nondet_monad" where
+  "liftE f \<equiv> f >>= (\<lambda>r. return (Inr r))"<\STATESEP>0<\TRANSEP><\STATESEP>definition whenE :: "bool \<Rightarrow> ('s, 'e + unit) nondet_monad \<Rightarrow> ('s, 'e + unit) nondet_monad" where
+  "whenE P f \<equiv> if P then f else returnOk ()"<\STATESEP>0<\TRANSEP><\STATESEP>definition unlessE :: "bool \<Rightarrow> ('s, 'e + unit) nondet_monad \<Rightarrow> ('s, 'e + unit) nondet_monad" where
+  "unlessE P f \<equiv> if P then returnOk () else f"<\STATESEP>0<\TRANSEP><\STATESEP>definition throw_opt :: "'e \<Rightarrow> 'a option \<Rightarrow> ('s, 'e + 'a) nondet_monad" where
+  "throw_opt ex x \<equiv> case x of None \<Rightarrow> throwError ex | Some v \<Rightarrow> returnOk v"<\STATESEP>0<\TRANSEP><\STATESEP>definition assertE :: "bool \<Rightarrow> ('a, 'e + unit) nondet_monad" where
+  "assertE P \<equiv> if P then returnOk () else fail"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Monad Laws for the Exception Monad"<\STATESEP>0<\TRANSEP><\STATESEP>lemma liftE_def2:
+  "liftE f = (\<lambda>s. ((\<lambda>(v,s'). (Inr v, s')) ` fst (f s), snd (f s)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. liftE f = (\<lambda>s. ((\<lambda>(v, s'). (Inr v, s')) ` fst (f s), snd (f s)))<\STATESEP>by (auto simp: liftE_def return_def split_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma returnOk_bindE[simp]: "(returnOk x >>=E f) = f x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. returnOk x >>=E f = f x<\STATESEP>unfolding bindE_def returnOk_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (return \<circ> Inr) x >>= lift f = f x<\STATESEP>by (clarsimp simp: lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lift_return[simp]:
+  "lift (return \<circ> Inr) = return"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lift (return \<circ> Inr) = return<\STATESEP>by (auto simp: lift_def throwError_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_returnOk[simp]:
+  "(m >>=E returnOk) = m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m >>=E returnOk = m<\STATESEP>by (simp add: bindE_def returnOk_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_assoc:
+  "(m >>=E f) >>=E g = m >>=E (\<lambda>x. f x >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m >>=E f >>=E g = m >>=E (\<lambda>x. f x >>=E g)<\STATESEP>unfolding bindE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m >>= lift f >>= lift g = m >>= lift (\<lambda>x. f x >>= lift g)<\STATESEP>by (fastforce simp: bind_assoc lift_def throwError_def
+                split: sum.splits
+                intro: arg_cong[where f="\<lambda>x. m >>= x"])<\STATESEP>1<\TRANSEP><\STATESEP>lemma returnOk_liftE:
+  "returnOk x = liftE (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. returnOk x = liftE (return x)<\STATESEP>by (simp add: liftE_def returnOk_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma throwError_bindE[simp]:
+  "(throwError E >>=E f) = throwError E"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. throwError E >>=E f = throwError E<\STATESEP>by (simp add: bindE_def bind_def throwError_def lift_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>section "Syntax"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Syntax for the Nondeterministic State Monad"<\STATESEP>0<\TRANSEP><\STATESEP>definition K_bind :: "'a \<Rightarrow> 'b \<Rightarrow> 'a" where
+  K_bind_def[iff]: "K_bind \<equiv> \<lambda>x y. x"<\STATESEP>0<\TRANSEP><\STATESEP>nonterminal
+  dobinds and dobind and nobind<\STATESEP>0<\TRANSEP><\STATESEP>syntax
+  "_dobind"    :: "[pttrn, 'a] => dobind"             ("(_ <-/ _)" 10)
+  ""           :: "dobind => dobinds"                 ("_")
+  "_nobind"    :: "'a => dobind"                      ("_")
+  "_dobinds"   :: "[dobind, dobinds] => dobinds"      ("(_);//(_)")
+
+  "_do"        :: "[dobinds, 'a] => 'a"               ("(do ((_);//(_))//od)" 100)<\STATESEP>0<\TRANSEP><\STATESEP>syntax (xsymbols)
+  "_dobind"    :: "[pttrn, 'a] => dobind"             ("(_ \<leftarrow>/ _)" 10)<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  "_do (_dobinds b bs) e"  == "_do b (_do bs e)"
+  "_do (_nobind b) e"      == "b >>= (CONST K_bind e)"
+  "do x <- a; e od"        == "a >>= (\<lambda>x. e)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "do x \<leftarrow> return 1;
+          return (2::nat);
+          return x
+       od =
+       return 1 >>=
+       (\<lambda>x. return (2::nat) >>=
+            K_bind (return x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- return (1::'b);
+return 2;
+return x
+od = do x <- return (1::'b);
+return 2;
+return x
+od<\STATESEP>by (rule refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "do x \<leftarrow> return 1;
+          return 2;
+          return x
+       od = return 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- return (1::'b);
+return (2::'c);
+return x
+od = return (1::'b)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>subsection "Syntax for the Exception Monad"<\STATESEP>0<\TRANSEP><\STATESEP>syntax
+  "_doE" :: "[dobinds, 'a] => 'a"  ("(doE ((_);//(_))//odE)" 100)<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  "_doE (_dobinds b bs) e"  == "_doE b (_doE bs e)"
+  "_doE (_nobind b) e"      == "b >>=E (CONST K_bind e)"
+  "doE x <- a; e odE"       == "a >>=E (\<lambda>x. e)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "doE x \<leftarrow> returnOk 1;
+           returnOk (2::nat);
+           returnOk x
+       odE =
+       returnOk 1 >>=E
+       (\<lambda>x. returnOk (2::nat) >>=E
+            K_bind (returnOk x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. doE x <- returnOk (1::'c);
+returnOk 2;
+returnOk x
+odE = doE x <- returnOk (1::'c);
+returnOk 2;
+returnOk x
+odE<\STATESEP>by (rule refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "doE x \<leftarrow> returnOk 1;
+           returnOk 2;
+           returnOk x
+       odE = returnOk 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. doE x <- returnOk (1::'c);
+returnOk (2::'d);
+returnOk x
+odE = returnOk (1::'c)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>section "Library of additional Monadic Functions and Combinators"<\STATESEP>0<\TRANSEP><\STATESEP>definition liftM :: "('a \<Rightarrow> 'b) \<Rightarrow> ('s,'a) nondet_monad \<Rightarrow> ('s, 'b) nondet_monad" where
+  "liftM f m \<equiv> do x \<leftarrow> m; return (f x) od"<\STATESEP>0<\TRANSEP><\STATESEP>definition liftME :: "('a \<Rightarrow> 'b) \<Rightarrow> ('s,'e+'a) nondet_monad \<Rightarrow> ('s,'e+'b) nondet_monad" where
+  "liftME f m \<equiv> doE x \<leftarrow> m; returnOk (f x) odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition maybeM :: "('a \<Rightarrow> ('s, unit) nondet_monad) \<Rightarrow> 'a option \<Rightarrow> ('s, unit) nondet_monad" where
+  "maybeM f y \<equiv> case y of Some x \<Rightarrow> f x | None \<Rightarrow> return ()"<\STATESEP>0<\TRANSEP><\STATESEP>definition sequence_x :: "('s, 'a) nondet_monad list \<Rightarrow> ('s, unit) nondet_monad" where
+  "sequence_x xs \<equiv> foldr (\<lambda>x y. x >>= (\<lambda>_. y)) xs (return ())"<\STATESEP>0<\TRANSEP><\STATESEP>definition mapM_x :: "('a \<Rightarrow> ('s,'b) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> ('s, unit) nondet_monad" where
+  "mapM_x f xs \<equiv> sequence_x (map f xs)"<\STATESEP>0<\TRANSEP><\STATESEP>definition zipWithM_x ::
+  "('a \<Rightarrow> 'b \<Rightarrow> ('s,'c) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> 'b list \<Rightarrow> ('s, unit) nondet_monad"
+  where
+  "zipWithM_x f xs ys \<equiv> sequence_x (zipWith f xs ys)"<\STATESEP>0<\TRANSEP><\STATESEP>definition sequence :: "('s, 'a) nondet_monad list \<Rightarrow> ('s, 'a list) nondet_monad" where
+  "sequence xs \<equiv> let mcons = (\<lambda>p q. p >>= (\<lambda>x. q >>= (\<lambda>y. return (x#y))))
+                 in foldr mcons xs (return [])"<\STATESEP>0<\TRANSEP><\STATESEP>definition mapM :: "('a \<Rightarrow> ('s,'b) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> ('s, 'b list) nondet_monad" where
+  "mapM f xs \<equiv> sequence (map f xs)"<\STATESEP>0<\TRANSEP><\STATESEP>definition zipWithM ::
+  "('a \<Rightarrow> 'b \<Rightarrow> ('s,'c) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> 'b list \<Rightarrow> ('s, 'c list) nondet_monad"
+  where
+  "zipWithM f xs ys \<equiv> sequence (zipWith f xs ys)"<\STATESEP>0<\TRANSEP><\STATESEP>definition foldM ::
+  "('b \<Rightarrow> 'a \<Rightarrow> ('s, 'a) nondet_monad) \<Rightarrow> 'b list \<Rightarrow> 'a \<Rightarrow> ('s, 'a) nondet_monad"
+  where
+  "foldM m xs a \<equiv> foldr (\<lambda>p q. q >>= m p) xs (return a) "<\STATESEP>0<\TRANSEP><\STATESEP>definition foldME ::
+  "('b \<Rightarrow> 'a \<Rightarrow> ('s,('e + 'b)) nondet_monad) \<Rightarrow> 'b \<Rightarrow> 'a list \<Rightarrow> ('s, ('e + 'b)) nondet_monad"
+  where
+  "foldME m a xs \<equiv> foldr (\<lambda>p q. q >>=E swp m p) xs (returnOk a)"<\STATESEP>0<\TRANSEP><\STATESEP>definition sequenceE_x :: "('s, 'e+'a) nondet_monad list \<Rightarrow> ('s, 'e+unit) nondet_monad" where
+  "sequenceE_x xs \<equiv> foldr (\<lambda>x y. doE _ <- x; y odE) xs (returnOk ())"<\STATESEP>0<\TRANSEP><\STATESEP>definition mapME_x :: "('a \<Rightarrow> ('s,'e+'b) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> ('s,'e+unit) nondet_monad" where
+  "mapME_x f xs \<equiv> sequenceE_x (map f xs)"<\STATESEP>0<\TRANSEP><\STATESEP>definition sequenceE :: "('s, 'e+'a) nondet_monad list \<Rightarrow> ('s, 'e+'a list) nondet_monad" where
+  "sequenceE xs \<equiv> let mcons = (\<lambda>p q. p >>=E (\<lambda>x. q >>=E (\<lambda>y. returnOk (x#y))))
+                   in foldr mcons xs (returnOk [])"<\STATESEP>0<\TRANSEP><\STATESEP>definition mapME ::
+  "('a \<Rightarrow> ('s,'e+'b) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> ('s,'e+'b list) nondet_monad"
+  where
+  "mapME f xs \<equiv> sequenceE (map f xs)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec filterM :: "('a \<Rightarrow> ('s, bool) nondet_monad) \<Rightarrow> 'a list \<Rightarrow> ('s, 'a list) nondet_monad" where
+  "filterM P []       = return []"
+| "filterM P (x # xs) = do
+     b  <- P x;
+     ys <- filterM P xs;
+     return (if b then (x # ys) else ys)
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>lemma state_select_def2:
+  "state_select r \<equiv> (do
+    s \<leftarrow> get;
+    S \<leftarrow> return {s'. (s, s') \<in> r};
+    assert (S \<noteq> {});
+    s' \<leftarrow> select S;
+    put s'
+  od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. state_select r \<equiv> do s <- get;
+S <- return {s'. (s, s') \<in> r};
+assert (S \<noteq> {});
+select S >>= put
+od<\STATESEP>apply (clarsimp simp add: state_select_def get_def return_def assert_def fail_def select_def
+                            put_def bind_def fun_eq_iff
+                    intro!: eq_reflection)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. (x, xa) \<in> r \<Longrightarrow> Pair () ` {s'. (x, s') \<in> r} = (\<Union>a\<in>{s'. (x, s') \<in> r} \<times> {x}. fst (case a of (s', uu_) \<Rightarrow> ({((), s')}, False)))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section "Catching and Handling Exceptions"<\STATESEP>0<\TRANSEP><\STATESEP>definition catch ::
+  "('s, 'e + 'a) nondet_monad \<Rightarrow> ('e \<Rightarrow> ('s, 'a) nondet_monad) \<Rightarrow> ('s, 'a) nondet_monad"
+  (infix "<catch>" 10) where
+  "f <catch> handler \<equiv>
+     do x \<leftarrow> f;
+        case x of
+          Inr b \<Rightarrow> return b
+        | Inl e \<Rightarrow> handler e
+     od"<\STATESEP>0<\TRANSEP><\STATESEP>definition handleE' ::
+  "('s, 'e1 + 'a) nondet_monad \<Rightarrow> ('e1 \<Rightarrow> ('s, 'e2 + 'a) nondet_monad) \<Rightarrow> ('s, 'e2 + 'a) nondet_monad"
+  (infix "<handle2>" 10) where
+  "f <handle2> handler \<equiv>
+   do
+      v \<leftarrow> f;
+      case v of
+        Inl e \<Rightarrow> handler e
+      | Inr v' \<Rightarrow> return (Inr v')
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition handleE ::
+  "('s, 'x + 'a) nondet_monad \<Rightarrow> ('x \<Rightarrow> ('s, 'x + 'a) nondet_monad) \<Rightarrow> ('s, 'x + 'a) nondet_monad"
+  (infix "<handle>" 10) where
+  "handleE \<equiv> handleE'"<\STATESEP>0<\TRANSEP><\STATESEP>definition handle_elseE ::
+  "('s, 'e + 'a) nondet_monad \<Rightarrow> ('e \<Rightarrow> ('s, 'ee + 'b) nondet_monad) \<Rightarrow>
+   ('a \<Rightarrow> ('s, 'ee + 'b) nondet_monad) \<Rightarrow> ('s, 'ee + 'b) nondet_monad" ("_ <handle> _ <else> _" 10)
+  where
+  "f <handle> handler <else> continue \<equiv>
+   do v \<leftarrow> f;
+      case v of Inl e  \<Rightarrow> handler e
+              | Inr v' \<Rightarrow> continue v'
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Loops"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_set whileLoop_results ::
+  "('r \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('r \<Rightarrow> ('s, 'r) nondet_monad) \<Rightarrow> ((('r \<times> 's) option) \<times> (('r \<times> 's) option)) set"
+  for C B where
+    "\<lbrakk> \<not> C r s \<rbrakk> \<Longrightarrow> (Some (r, s), Some (r, s)) \<in> whileLoop_results C B"
+  | "\<lbrakk> C r s; snd (B r s) \<rbrakk> \<Longrightarrow> (Some (r, s), None) \<in> whileLoop_results C B"
+  | "\<lbrakk> C r s; (r', s') \<in> fst (B r s); (Some (r', s'), z) \<in> whileLoop_results C B  \<rbrakk>
+       \<Longrightarrow> (Some (r, s), z) \<in> whileLoop_results C B"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_cases whileLoop_results_cases_valid: "(Some x, Some y) \<in> whileLoop_results C B"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_cases whileLoop_results_cases_fail: "(Some x, None) \<in> whileLoop_results C B"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_simps whileLoop_results_simps: "(Some x, y) \<in> whileLoop_results C B"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_simps whileLoop_results_simps_valid: "(Some x, Some y) \<in> whileLoop_results C B"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_simps whileLoop_results_simps_start_fail[simp]: "(None, x) \<in> whileLoop_results C B"<\STATESEP>0<\TRANSEP><\STATESEP>inductive whileLoop_terminates ::
+  "('r \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('r \<Rightarrow> ('s, 'r) nondet_monad) \<Rightarrow> 'r \<Rightarrow> 's \<Rightarrow> bool"
+  for C B where
+    "\<not> C r s \<Longrightarrow> whileLoop_terminates C B r s"
+  | "\<lbrakk> C r s; \<forall>(r', s') \<in> fst (B r s). whileLoop_terminates C B r' s' \<rbrakk>
+        \<Longrightarrow> whileLoop_terminates C B r s"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_cases whileLoop_terminates_cases: "whileLoop_terminates C B r s"<\STATESEP>0<\TRANSEP><\STATESEP>inductive_simps whileLoop_terminates_simps: "whileLoop_terminates C B r s"<\STATESEP>0<\TRANSEP><\STATESEP>definition whileLoop ::
+  "('a \<Rightarrow> 'b \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> ('b, 'a) nondet_monad) \<Rightarrow> 'a \<Rightarrow> ('b, 'a) nondet_monad"
+  where
+  "whileLoop C B \<equiv> \<lambda>r s.
+     ({(r',s'). (Some (r, s), Some (r', s')) \<in> whileLoop_results C B},
+      (Some (r, s), None) \<in> whileLoop_results C B \<or> \<not>whileLoop_terminates C B r s)"<\STATESEP>0<\TRANSEP><\STATESEP>notation (output)
+  whileLoop  ("(whileLoop (_)//  (_))" [1000, 1000] 1000)<\STATESEP>0<\TRANSEP><\STATESEP>definition whileLoopE ::
+  "('r \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('r \<Rightarrow> ('s, 'e + 'r) nondet_monad) \<Rightarrow> 'r \<Rightarrow> 's \<Rightarrow> (('e + 'r) \<times> 's) set \<times> bool"
+  where
+  "whileLoopE C body \<equiv>
+     \<lambda>r. whileLoop (\<lambda>r s. (case r of Inr v \<Rightarrow> C v s | _ \<Rightarrow> False)) (lift body) (Inr r)"<\STATESEP>0<\TRANSEP><\STATESEP>notation (output)
+  whileLoopE  ("(whileLoopE (_)//  (_))" [1000, 1000] 1000)<\STATESEP>0<\TRANSEP><\STATESEP>section "Combinators that have conditions with side effects"<\STATESEP>0<\TRANSEP><\STATESEP>definition notM :: "('s, bool) nondet_monad \<Rightarrow> ('s, bool) nondet_monad" where
+  "notM m = do c \<leftarrow> m; return (\<not> c) od"<\STATESEP>0<\TRANSEP><\STATESEP>definition whileM ::
+  "('s, bool) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('s, unit) nondet_monad"
+  where
+  "whileM C B \<equiv> do
+    c \<leftarrow> C;
+    whileLoop (\<lambda>c s. c) (\<lambda>_. do B; C od) c;
+    return ()
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition ifM ::
+  "('s, bool) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('s, 'a) nondet_monad"
+  where
+  "ifM test t f = do
+    c \<leftarrow> test;
+    if c then t else f
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition ifME ::
+  "('a, 'b + bool) nondet_monad \<Rightarrow> ('a, 'b + 'c) nondet_monad \<Rightarrow> ('a, 'b + 'c) nondet_monad
+   \<Rightarrow> ('a, 'b + 'c) nondet_monad"
+  where
+  "ifME test t f = doE
+    c \<leftarrow> test;
+    if c then t else f
+   odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition whenM ::
+  "('s, bool) nondet_monad \<Rightarrow> ('s, unit) nondet_monad \<Rightarrow> ('s, unit) nondet_monad"
+  where
+  "whenM t m = ifM t m (return ())"<\STATESEP>0<\TRANSEP><\STATESEP>definition orM ::
+  "('s, bool) nondet_monad \<Rightarrow> ('s, bool) nondet_monad \<Rightarrow> ('s, bool) nondet_monad"
+  where
+  "orM a b = ifM a (return True) b"<\STATESEP>0<\TRANSEP><\STATESEP>definition andM ::
+  "('s, bool) nondet_monad \<Rightarrow> ('s, bool) nondet_monad \<Rightarrow> ('s, bool) nondet_monad"
+  where
+  "andM a b = ifM a b (return False)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

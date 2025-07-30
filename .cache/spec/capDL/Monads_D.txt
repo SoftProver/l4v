@@ -1,0 +1,28 @@
+<\STATESEP>theory Monads_D
+imports
+  Types_D
+  Monads.Nondet_In_Monad
+  Monads.Nondet_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a k_monad = "(cdl_state, 'a) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_except_error = ExceptError<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_preempt_error = PreemptError<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_fault_error = FaultError<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a except_monad = "(cdl_state, cdl_except_error + 'a) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a preempt_monad = "(cdl_state, cdl_preempt_error + 'a) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a fault_monad =  "(cdl_state, cdl_fault_error + 'a) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  throw :: "(cdl_state, 'a + 'b) nondet_monad" where
+  "throw == throwError undefined"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  preemption_point :: "unit preempt_monad" where
+ "preemption_point \<equiv> throw \<sqinter> returnOk ()"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  unify_failure :: "('f + 'a) k_monad \<Rightarrow> (unit + 'a) k_monad" where
+ "unify_failure m \<equiv> handleE' m (\<lambda>x. throwError ())"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  fault_to_except :: "'a fault_monad \<Rightarrow> 'a except_monad"
+where
+  "fault_to_except m \<equiv> handleE' m (\<lambda>x. throw)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  option_select :: "'a set \<Rightarrow> ('s, 'a option) nondet_monad"
+where
+  "option_select S \<equiv>
+    if S = {} then
+      return None
+    else
+      select S >>= (\<lambda>a. return (Some a))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  throw_on_none :: "'a option \<Rightarrow> ('e + 'a) k_monad"
+where
+  "throw_on_none x \<equiv>
+    case x of
+        None \<Rightarrow> throw
+      | Some y \<Rightarrow> returnOk y"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

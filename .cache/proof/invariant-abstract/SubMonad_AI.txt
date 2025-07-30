@@ -1,0 +1,92 @@
+<\STATESEP>theory SubMonad_AI
+imports KHeap_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma submonad_do_machine_op:
+  "submonad machine_state (machine_state_update \<circ> K) \<top> do_machine_op"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad machine_state (machine_state_update \<circ> K) (\<lambda>_. True) do_machine_op<\STATESEP>apply unfold_locales<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<forall>x s. True \<longrightarrow> machine_state ((machine_state_update \<circ> K) x s) = x
+ 2. \<forall>x y s. (machine_state_update \<circ> K) x ((machine_state_update \<circ> K) y s) = (machine_state_update \<circ> K) x s
+ 3. \<forall>s. (machine_state_update \<circ> K) (machine_state s) s = s
+ 4. \<And>s x. True = True
+ 5. do_machine_op = submonad_fn machine_state (machine_state_update \<circ> K) (\<lambda>_. True)<\STATESEP>apply (clarsimp simp: ext stateAssert_def do_machine_op_def o_def gets_def
+                             get_def bind_def return_def submonad_fn_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>interpretation submonad_do_machine_op:
+  submonad machine_state "(machine_state_update \<circ> K)" \<top> do_machine_op<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad machine_state (machine_state_update \<circ> K) (\<lambda>_. True) do_machine_op<\STATESEP>by (rule submonad_do_machine_op)<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_args_pspace:
+  "submonad_args kheap (kheap_update o (\<lambda>x _. x)) \<top>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad_args kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True)<\STATESEP>by (simp add: submonad_args_def)<\STATESEP>1<\TRANSEP><\STATESEP>schematic_goal assert_get_tcb_pspace:
+  "gets_the (get_tcb t) = submonad_fn kheap (kheap_update o (\<lambda>x _. x)) \<top> ?f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (get_tcb t) = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) ?f<\STATESEP>apply (unfold gets_the_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets (get_tcb t) >>= assert_opt = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) ?f<\STATESEP>apply (rule submonad_bind_alt [OF submonad_args_pspace])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. gets (get_tcb t) = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) ?a'4
+ 2. \<And>rv. assert_opt rv = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) (?b'4 rv)
+ 3. empty_fail ?a'4
+ 4. \<And>x. empty_fail (?b'4 x)
+goal instantiation:
+?f \<leadsto> ?a'4 >>= ?b'4<\STATESEP>apply (rule gets_submonad [OF submonad_args_pspace _ refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s. get_tcb t s = ?f'10 (kheap s)
+ 2. \<And>rv. assert_opt rv = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) (?b'4 rv)
+ 3. empty_fail (gets ?f'10)
+ 4. \<And>x. empty_fail (?b'4 x)
+goal instantiation:
+?f \<leadsto> gets ?f'10 >>= ?b'4<\STATESEP>apply (simp add: get_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv. assert_opt rv = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) (?b'4 rv)
+ 2. empty_fail (gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None))
+ 3. \<And>x. empty_fail (?b'4 x)
+goal instantiation:
+?f \<leadsto> gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None) >>= ?b'4<\STATESEP>apply (rule assert_opt_submonad [OF submonad_args_pspace])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. empty_fail (gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None))
+ 2. \<And>x. empty_fail (assert_opt x)
+goal instantiation:
+?f \<leadsto> gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None) >>= assert_opt<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail (assert_opt x)
+goal instantiation:
+?f \<leadsto> gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None) >>= assert_opt<\STATESEP>apply (rule empty_fail_assert_opt)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!
+goal instantiation:
+?f \<leadsto> gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None) >>= assert_opt<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_get_thread_do_machine_op_comm:
+  "empty_fail m' \<Longrightarrow>
+   do x \<leftarrow> gets_the (get_tcb t); y \<leftarrow> do_machine_op m'; n x y od =
+   do y \<leftarrow> do_machine_op m'; x \<leftarrow> gets_the (get_tcb t); n x y od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail m' \<Longrightarrow> do x <- gets_the (get_tcb t);
+do_machine_op m' >>= n x
+od = do y <- do_machine_op m';
+x <- gets_the (get_tcb t);
+n x y
+od<\STATESEP>apply (rule submonad_comm2 [OF _ _ submonad_do_machine_op])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. empty_fail m' \<Longrightarrow> submonad_args ?f ?r ?g
+ 2. empty_fail m' \<Longrightarrow> gets_the (get_tcb t) = submonad_fn ?f ?r ?g ?im
+ 3. \<And>s x x'. empty_fail m' \<Longrightarrow> ?r x ((machine_state_update \<circ> K) x' s) = (machine_state_update \<circ> K) x' (?r x s)
+ 4. \<And>s x. empty_fail m' \<Longrightarrow> ?g ((machine_state_update \<circ> K) x s) = ?g s
+ 5. \<And>s x. empty_fail m' \<Longrightarrow> True = True
+ 6. empty_fail m' \<Longrightarrow> empty_fail ?im
+ 7. empty_fail m' \<Longrightarrow> empty_fail m'<\STATESEP>apply (rule submonad_args_pspace)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. empty_fail m' \<Longrightarrow> gets_the (get_tcb t) = submonad_fn kheap (kheap_update \<circ> (\<lambda>x _. x)) (\<lambda>_. True) ?im
+ 2. \<And>s x x'. empty_fail m' \<Longrightarrow> (kheap_update \<circ> (\<lambda>x _. x)) x ((machine_state_update \<circ> K) x' s) = (machine_state_update \<circ> K) x' ((kheap_update \<circ> (\<lambda>x _. x)) x s)
+ 3. \<And>s x. empty_fail m' \<Longrightarrow> True = True
+ 4. \<And>s x. empty_fail m' \<Longrightarrow> True = True
+ 5. empty_fail m' \<Longrightarrow> empty_fail ?im
+ 6. empty_fail m' \<Longrightarrow> empty_fail m'<\STATESEP>apply (rule assert_get_tcb_pspace)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s x x'. empty_fail m' \<Longrightarrow> (kheap_update \<circ> (\<lambda>x _. x)) x ((machine_state_update \<circ> K) x' s) = (machine_state_update \<circ> K) x' ((kheap_update \<circ> (\<lambda>x _. x)) x s)
+ 2. \<And>s x. empty_fail m' \<Longrightarrow> True = True
+ 3. \<And>s x. empty_fail m' \<Longrightarrow> True = True
+ 4. empty_fail m' \<Longrightarrow> empty_fail (gets (\<lambda>a. case a t of None \<Rightarrow> None | Some (TCB tcb) \<Rightarrow> Some tcb | Some _ \<Rightarrow> None) >>= assert_opt)
+ 5. empty_fail m' \<Longrightarrow> empty_fail m'<\STATESEP>apply (simp add: empty_fail_cond)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

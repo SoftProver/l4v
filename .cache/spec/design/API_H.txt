@@ -1,0 +1,19 @@
+<\STATESEP>chapter "The API"<\STATESEP>0<\TRANSEP><\STATESEP>theory API_H
+imports Syscall_H Delete_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+kernelExitAssertions :: "kernel_state \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>consts'
+fastpathKernelAssertions :: "kernel_state \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+callKernel :: "event \<Rightarrow> unit kernel"
+where
+"callKernel ev\<equiv> (do
+    stateAssert fastpathKernelAssertions [];
+    runExceptT $ handleEvent ev
+        `~catchError~` (\<lambda> _. withoutPreemption $ (do
+                      irq \<leftarrow> doMachineOp (getActiveIRQ True);
+                      when (isJust irq) $ handleInterrupt (fromJust irq)
+        od)
+                                                                        );
+    schedule;
+    activateThread;
+    stateAssert kernelExitAssertions []
+od)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

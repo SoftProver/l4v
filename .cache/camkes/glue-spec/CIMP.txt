@@ -1,0 +1,91 @@
+<\STATESEP>chapter \<open>Concurrent Imperative Syntax and Semantics \label{s:cimp}\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory CIMP
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 's bexp = "'s \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>datatype ('a, 'q, 's) com
+  = Skip  ("SKIP")
+  | LocalOp "'s \<Rightarrow> 's set"
+  | Seq "('a,  'q, 's) com" "('a,  'q, 's) com"
+    (infixr ";;"  60)
+  | If "'s bexp" "('a,  'q, 's) com" "('a,  'q, 's) com"
+    ("(IF _/ THEN _/ ELSE _)"  [0, 61] 61)
+  | While "'s bexp" "('a,  'q, 's) com"
+    ("(WHILE _/ DO _)"  [0, 61] 61)
+  | Choose "('a,  'q, 's) com" "('a,  'q, 's) com"
+    (infixl "\<squnion>" 20)
+  | Request "'s \<Rightarrow> 'q set" "'a \<Rightarrow> 's \<Rightarrow> 's set"
+  | Response "'q \<Rightarrow> 's \<Rightarrow> ('s \<times> 'a) set"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  LOOP_syn ("LOOP/ _")
+where
+  "LOOP c \<equiv> WHILE (\<lambda>_. True) DO c"<\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+  After the sequential part, we are now ready to define the
+  externally-visible communication behaviour of a process.
+
+  A process can make three kinds of labelled steps: internal $\tau$ steps,
+  message sends, and message receives. Both of the latter are annotated
+  with the action/payload of both the request and instantaneous response
+  (if any) of that message.
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype ('a, 'q) seq_label
+  = SL_Internal ("\<tau>")
+  | SL_Send 'q 'a ("\<guillemotleft>_, _\<guillemotright>")
+  | SL_Receive 'q 'a ("\<guillemotright>_, _\<guillemotleft>")<\STATESEP>0<\TRANSEP><\STATESEP>inductive small_step ::
+  "('a,  'q, 's) com \<times> 's \<Rightarrow> ('a, 'q) seq_label \<Rightarrow>
+   ('a,  'q, 's) com \<times> 's \<Rightarrow> bool"
+  ("_ \<rightarrow>\<^bsub>_\<^esub> _" [55, 0, 56] 55)
+where
+  Request:
+  "\<lbrakk> \<alpha> \<in> action s; s' \<in> val \<beta> s \<rbrakk> \<Longrightarrow>
+  (Request action val, s) \<rightarrow>\<^bsub>\<guillemotleft>\<alpha>, \<beta>\<guillemotright>\<^esub> (SKIP, s')"
+| Response:
+  "(s', \<beta>) \<in> action \<alpha> s \<Longrightarrow> (Response action, s) \<rightarrow>\<^bsub>\<guillemotright>\<alpha>, \<beta>\<guillemotleft>\<^esub> (SKIP, s')"
+
+| LocalOp:
+  "s' \<in> R s \<Longrightarrow> (LocalOp R, s) \<rightarrow>\<^bsub>\<tau>\<^esub> (SKIP, s')"
+
+| Seq1:
+  "(c\<^sub>1, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (SKIP, s') \<Longrightarrow> (c\<^sub>1;; c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>2, s')"
+| Seq2:
+  "\<lbrakk> (c\<^sub>1, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>1', s'); c\<^sub>1' \<noteq> SKIP \<rbrakk> \<Longrightarrow> (c\<^sub>1;; c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>1';; c\<^sub>2, s')"
+
+| IfTrue:
+  "\<lbrakk> b s; (c\<^sub>1, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>1', s') \<rbrakk> \<Longrightarrow> (IF b THEN c\<^sub>1 ELSE c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>1', s')"
+| IfFalse:
+  "\<lbrakk> \<not> b s; (c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>2', s') \<rbrakk> \<Longrightarrow> (IF b THEN c\<^sub>1 ELSE c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>2', s')"
+
+| WhileTrue:
+  "\<lbrakk> b s; (c, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c', s') \<rbrakk> \<Longrightarrow>
+  (WHILE b DO c, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c';; WHILE b DO c, s')"
+| WhileFalse:
+  "\<not> b s \<Longrightarrow> (WHILE b DO c, s) \<rightarrow>\<^bsub>\<tau>\<^esub> (SKIP, s)"
+
+| Choose1:
+  "(c\<^sub>1, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>1', s') \<Longrightarrow> (c\<^sub>1 \<squnion> c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>1', s')"
+| Choose2:
+  "(c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>2', s') \<Longrightarrow> (c\<^sub>1 \<squnion> c\<^sub>2, s) \<rightarrow>\<^bsub>\<alpha>\<^esub> (c\<^sub>2', s')"<\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+  Note that the generic nature of the @{const LocalOp} command lets us choose the
+  atomicity of local actions as appropriate for the language. Since we are in a message
+  passing setting, the atomicity of internal @{term \<tau>} actions is not important for
+  the generation of verification conditions.
+
+  With the semantics for the sequential part, we can now define composition of sequential
+  processes into systems.
+
+  For this purpose, we define the global state of a component system as a function from
+  process names @{typ 'proc} to configurations. The type @{typ 'proc} will later be instantiated
+  with a type that enumerates precisely all process names in the system.
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym ('a, 'proc, 'q, 's) global_state =
+  "'proc \<Rightarrow> (('a, 'q, 's) com \<times> 's)"<\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+  With this, we can now define an execution step of the overall system as either
+  any enabled internal @{term \<tau>} step of any process, or as a communication step
+  between two processes. For such a communication step to occur, two different
+  processes @{term "p\<^sub>1"} and @{term "p\<^sub>2"} must be ready to execute a request/response
+  pair with matching labels @{term \<alpha>} and @{term \<beta>}.
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>inductive
+  system_step ::
+  "('a, 'proc, 'q, 's) global_state \<Rightarrow> ('a, 'proc, 'q, 's) global_state \<Rightarrow> bool"
+  ("_ \<rightarrow> _" [55, 56] 55)
+where
+  LocalStep:
+  "\<lbrakk> gs p \<rightarrow>\<^bsub>\<tau>\<^esub> c'; gs' = gs(p := c') \<rbrakk> \<Longrightarrow> gs \<rightarrow> gs'"
+| CommunicationStep:
+  "\<lbrakk>gs p\<^sub>1 \<rightarrow>\<^bsub>\<guillemotleft>\<alpha>, \<beta>\<guillemotright>\<^esub> c\<^sub>1'; gs p\<^sub>2 \<rightarrow>\<^bsub>\<guillemotright>\<alpha>, \<beta>\<guillemotleft>\<^esub> c\<^sub>2'; p\<^sub>1 \<noteq> p\<^sub>2;
+    gs' = gs(p\<^sub>1 := c\<^sub>1', p\<^sub>2 := c\<^sub>2') \<rbrakk>
+  \<Longrightarrow> gs \<rightarrow> gs'"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

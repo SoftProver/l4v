@@ -1,0 +1,100 @@
+<\STATESEP>theory Isolation_S
+imports Islands_S
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  set_flow :: "state \<Rightarrow> (entity_id set \<times> entity_id set) set" where
+  "set_flow s \<equiv> {(X,Y). \<exists>x \<in> X. \<exists>y \<in> Y.
+                        (read_cap x \<in>cap caps_of s y \<or>
+                        write_cap y \<in>cap caps_of s x)}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_flow_def2:
+  "(X, Y) \<in> set_flow s = (\<exists>x \<in> X. \<exists>y \<in> Y.
+                        (read_cap x \<in>cap caps_of s y \<or>
+                        write_cap y \<in>cap caps_of s x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((X, Y) \<in> set_flow s) = (\<exists>x\<in>X. \<exists>y\<in>Y. read_cap x \<in>cap caps_of s y \<or> write_cap y \<in>cap caps_of s x)<\STATESEP>by (simp add: set_flow_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  flow :: "state \<Rightarrow> (entity_id \<times> entity_id) set" where
+  "flow s \<equiv>  {(x,y). (island s x, island s y) \<in> set_flow s}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma flow_def2:
+  "(x, y) \<in> flow s = ((island s x, island s y) \<in> set_flow s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((x, y) \<in> flow s) = ((island s x, island s y) \<in> set_flow s)<\STATESEP>by (simp add: flow_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation
+  in_flow :: "state \<Rightarrow> entity_id \<Rightarrow> entity_id \<Rightarrow> bool" ("_ \<turnstile> _ \<leadsto> _" [60,0,60] 61)
+where
+  "s \<turnstile> x \<leadsto> y \<equiv> (x,y) \<in> flow s"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  flow_trans :: "state \<Rightarrow> (entity_id \<times> entity_id) set" ("flow\<^sup>*") where
+  "flow_trans s \<equiv> (flow s)\<^sup>*"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  in_flow_trans :: "state \<Rightarrow> entity_id \<Rightarrow> entity_id \<Rightarrow> bool" ("_ \<turnstile> _ \<leadsto>* _" [60,0,60] 61)
+where
+  "s \<turnstile> x \<leadsto>* y == (x,y) \<in> flow_trans s"<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output)
+  in_flow_trans ("_ \<turnstile> _ \<leadsto>\<^sup>* _" [60,0,60] 61)<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  "\<not> (s \<turnstile> x \<leadsto> y)" <= "(x,y) \<notin> CONST flow s"
+  "\<not> (s \<turnstile> x \<leadsto>* y)" <= "(x,y) \<notin> CONST flow_trans s"<\STATESEP>0<\TRANSEP><\STATESEP>lemma rights_extra_rights_read_cap [simp]:
+  "rights (extra_rights (read_cap e)) = {Read}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. rights (extra_rights (read_cap e)) = {Read}<\STATESEP>by (simp add: rights_extra_rights)<\STATESEP>1<\TRANSEP><\STATESEP>lemma rights_extra_rights_write_cap [simp]:
+  "rights (extra_rights (write_cap e)) = {Write}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. rights (extra_rights (write_cap e)) = {Write}<\STATESEP>by (simp add: rights_extra_rights)<\STATESEP>1<\TRANSEP><\STATESEP>lemma flow_trans_refl [simp]:
+  "s \<turnstile> x \<leadsto>* x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> x \<leadsto>* x<\STATESEP>by (metis flow_trans_def rtrancl.rtrancl_refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma flow_connected_step:
+  "\<lbrakk>s' \<turnstile> x \<leadsto>* y; s' \<in> step cmd s\<rbrakk> \<Longrightarrow>
+    s \<turnstile> x \<leadsto>* y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s' \<turnstile> x \<leadsto>* y; s' \<in> step cmd s\<rbrakk> \<Longrightarrow> s \<turnstile> x \<leadsto>* y<\STATESEP>apply (erule rtrancl_induct [where r="flow s'",
+                              simplified flow_trans_def[symmetric]])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. s' \<in> step cmd s \<Longrightarrow> s \<turnstile> x \<leadsto>* x
+ 2. \<And>y z. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leadsto> z; s \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> s \<turnstile> x \<leadsto>* z<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leadsto> z; s \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> s \<turnstile> x \<leadsto>* z<\STATESEP>apply (subgoal_tac "s \<turnstile> y \<leadsto> z")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y z. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leadsto> z; s \<turnstile> x \<leadsto>* y; s \<turnstile> y \<leadsto> z\<rbrakk> \<Longrightarrow> s \<turnstile> x \<leadsto>* z
+ 2. \<And>y z. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leadsto> z; s \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> s \<turnstile> y \<leadsto> z<\STATESEP>apply (fastforce simp: flow_trans_def rtrancl.rtrancl_into_rtrancl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leadsto> z; s \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> s \<turnstile> y \<leadsto> z<\STATESEP>apply (clarsimp simp: flow_def island_def set_flow_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; read_cap xa \<in>cap caps_of s' ya \<or> write_cap ya \<in>cap caps_of s' xa\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> (read_cap x \<in>cap caps_of s y \<or> write_cap y \<in>cap caps_of s x))<\STATESEP>apply (frule_tac x=y in tgs_connected_preserved_step, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; read_cap xa \<in>cap caps_of s' ya \<or> write_cap ya \<in>cap caps_of s' xa; s \<turnstile> y \<leftrightarrow>* xa\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> (read_cap x \<in>cap caps_of s y \<or> write_cap y \<in>cap caps_of s x))<\STATESEP>apply (frule_tac x=z in tgs_connected_preserved_step, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; read_cap xa \<in>cap caps_of s' ya \<or> write_cap ya \<in>cap caps_of s' xa; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> (read_cap x \<in>cap caps_of s y \<or> write_cap y \<in>cap caps_of s x))<\STATESEP>apply (clarsimp simp: cap_in_caps_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; (\<exists>c'\<in>caps_of s' ya. xa = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s' xa. ya = target c' \<and> Write \<in> rights (extra_rights c')); s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya; \<exists>c'\<in>caps_of s' ya. xa = target c' \<and> Read \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))
+ 2. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya; \<exists>c'\<in>caps_of s' xa. ya = target c' \<and> Write \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y z ya c'. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* target c'; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* target c'; s \<turnstile> z \<leftrightarrow>* ya; c' \<in> caps_of s' ya; Read \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))
+ 2. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya; \<exists>c'\<in>caps_of s' xa. ya = target c' \<and> Write \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (drule (1) caps_of_op)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y z ya c'. \<lbrakk>s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* target c'; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* target c'; s \<turnstile> z \<leftrightarrow>* ya; c' \<in> caps_of s' ya; Read \<in> rights (extra_rights c'); \<exists>z. s \<turnstile> ya \<leftrightarrow>* z \<and> c' \<in>cap caps_of s z\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))
+ 2. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya; \<exists>c'\<in>caps_of s' xa. ya = target c' \<and> Write \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (clarsimp simp: cap_in_caps_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y z ya c' za c'a. \<lbrakk>s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* target c'a; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* target c'a; s \<turnstile> z \<leftrightarrow>* ya; c' \<in> caps_of s' ya; Read \<in> rights (extra_rights c'); s \<turnstile> ya \<leftrightarrow>* za; c'a \<in> caps_of s za; target c' = target c'a; rights (extra_rights c') \<subseteq> rights (extra_rights c'a)\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))
+ 2. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya; \<exists>c'\<in>caps_of s' xa. ya = target c' \<and> Write \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (metis (no_types) tgs_connected_trans subsetD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa ya. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* ya; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* ya; \<exists>c'\<in>caps_of s' xa. ya = target c' \<and> Write \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa c'. \<lbrakk>s' \<in> step cmd s; s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* target c'; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* target c'; c' \<in> caps_of s' xa; Write \<in> rights (extra_rights c')\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (drule (1) caps_of_op)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa c'. \<lbrakk>s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* target c'; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* target c'; c' \<in> caps_of s' xa; Write \<in> rights (extra_rights c'); \<exists>z. s \<turnstile> xa \<leftrightarrow>* z \<and> c' \<in>cap caps_of s z\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (clarsimp simp: cap_in_caps_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z xa c' za c'a. \<lbrakk>s' \<turnstile> x \<leadsto>* y; s \<turnstile> x \<leadsto>* y; s' \<turnstile> y \<leftrightarrow>* xa; s' \<turnstile> z \<leftrightarrow>* target c'a; s \<turnstile> y \<leftrightarrow>* xa; s \<turnstile> z \<leftrightarrow>* target c'a; c' \<in> caps_of s' xa; Write \<in> rights (extra_rights c'); s \<turnstile> xa \<leftrightarrow>* za; c'a \<in> caps_of s za; target c' = target c'a; rights (extra_rights c') \<subseteq> rights (extra_rights c'a)\<rbrakk> \<Longrightarrow> \<exists>x. s \<turnstile> y \<leftrightarrow>* x \<and> (\<exists>y. s \<turnstile> z \<leftrightarrow>* y \<and> ((\<exists>c'\<in>caps_of s y. x = target c' \<and> Read \<in> rights (extra_rights c')) \<or> (\<exists>c'\<in>caps_of s x. y = target c' \<and> Write \<in> rights (extra_rights c'))))<\STATESEP>apply (metis (no_types) tgs_connected_trans subsetD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma flow_connected [rule_format]:
+  "\<forall>s'.  s' \<in> execute cmds s \<longrightarrow>
+    s' \<turnstile> x \<leadsto>* y \<longrightarrow>
+    s \<turnstile> x \<leadsto>* y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s'. s' \<in> execute cmds s \<longrightarrow> s' \<turnstile> x \<leadsto>* y \<longrightarrow> s \<turnstile> x \<leadsto>* y<\STATESEP>apply (induct_tac cmds, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. \<forall>s'. s' \<in> execute list s \<longrightarrow> s' \<turnstile> x \<leadsto>* y \<longrightarrow> s \<turnstile> x \<leadsto>* y \<Longrightarrow> \<forall>s'. s' \<in> execute (a # list) s \<longrightarrow> s' \<turnstile> x \<leadsto>* y \<longrightarrow> s \<turnstile> x \<leadsto>* y<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list s' xa. \<lbrakk>\<forall>s'. s' \<in> execute list s \<longrightarrow> s' \<turnstile> x \<leadsto>* y \<longrightarrow> s \<turnstile> x \<leadsto>* y; xa \<in> execute list s; s' \<in> step a xa; s' \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> s \<turnstile> x \<leadsto>* y<\STATESEP>apply (drule (1) flow_connected_step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list s' xa. \<lbrakk>\<forall>s'. s' \<in> execute list s \<longrightarrow> s' \<turnstile> x \<leadsto>* y \<longrightarrow> s \<turnstile> x \<leadsto>* y; xa \<in> execute list s; s' \<in> step a xa; xa \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> s \<turnstile> x \<leadsto>* y<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma information_flow:
+  "\<lbrakk>s' \<in> execute cmds s;
+  \<not> s \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow>
+  \<not> s' \<turnstile> x \<leadsto>* y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s' \<in> execute cmds s; \<not> s \<turnstile> x \<leadsto>* y\<rbrakk> \<Longrightarrow> \<not> s' \<turnstile> x \<leadsto>* y<\STATESEP>by (auto simp: flow_connected)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,117 @@
+<\STATESEP>theory WPEx
+imports
+  Nondet_In_Monad
+  Nondet_VCG
+  Strengthen
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition mresults :: "('s, 'a) nondet_monad \<Rightarrow> ('a \<times> 's \<times> 's) set" where
+ "mresults f = {(rv, s', s). (rv, s') \<in> fst (f s)}"<\STATESEP>0<\TRANSEP><\STATESEP>definition assert_value_exported ::
+  "'x \<times> 's \<Rightarrow> ('s, 'a) nondet_monad \<Rightarrow> ('x \<Rightarrow> ('s, 'a) nondet_monad)" where
+  "assert_value_exported x f y \<equiv> do s \<leftarrow> get; if x = (y, s) then f else fail od"<\STATESEP>0<\TRANSEP><\STATESEP>lemma in_mresults_export:
+  "(rv, s', s) \<in> mresults (assert_value_exported (rv', s'') f rv'')
+      = ((rv, s', s) \<in> mresults f \<and> rv' = rv'' \<and> s'' = s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((rv, s', s) \<in> mresults (assert_value_exported (rv', s'') f rv'')) = ((rv, s', s) \<in> mresults f \<and> rv' = rv'' \<and> s'' = s)<\STATESEP>by (simp add: assert_value_exported_def mresults_def in_monad)<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_mresults_bind:
+  "(rv, s', s) \<in> mresults (a >>= b)
+       = (\<exists>rv' s''. (rv, s', s'') \<in> mresults (b rv') \<and> (rv', s'', s) \<in> mresults a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((rv, s', s) \<in> mresults (a >>= b)) = (\<exists>rv' s''. (rv, s', s'') \<in> mresults (b rv') \<and> (rv', s'', s) \<in> mresults a)<\STATESEP>by (auto simp: mresults_def bind_def elim: rev_bexI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mresults_export_bindD:
+  "(rv, s', s) \<in> mresults (a >>= assert_value_exported (rv', s'') b) \<Longrightarrow> (rv, s', s'') \<in> mresults b"
+  "(rv, s', s) \<in> mresults (a >>= assert_value_exported (rv', s'') b) \<Longrightarrow> (rv', s'', s) \<in> mresults a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((rv, s', s) \<in> mresults (a >>= assert_value_exported (rv', s'') b) \<Longrightarrow> (rv, s', s'') \<in> mresults b) &&& ((rv, s', s) \<in> mresults (a >>= assert_value_exported (rv', s'') b) \<Longrightarrow> (rv', s'', s) \<in> mresults a)<\STATESEP>by (simp_all add: in_mresults_export in_mresults_bind)<\STATESEP>1<\TRANSEP><\STATESEP>definition wpex_name_for_id :: "'a \<Rightarrow> 'a" where
+  "wpex_name_for_id = id"<\STATESEP>0<\TRANSEP><\STATESEP>lemma use_valid_mresults:
+  "\<lbrakk> (rv, s', s) \<in> mresults f; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> P s \<longrightarrow> Q rv s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(rv, s', s) \<in> mresults f; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> P s \<longrightarrow> Q rv s'<\STATESEP>by (auto simp: mresults_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_strengthen_with_mresults:
+  "\<lbrakk> \<And>s rv s'. \<lbrakk> (rv, s', s) \<in> mresults f; wpex_name_for_id (Q' s rv s') \<rbrakk> \<Longrightarrow> Q rv s';
+     \<And>prev_s. \<lbrace>P prev_s\<rbrace> f \<lbrace>Q' prev_s\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>\<lambda>s. P s s\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s rv s'. \<lbrakk>(rv, s', s) \<in> mresults f; wpex_name_for_id (Q' s rv s')\<rbrakk> \<Longrightarrow> Q rv s'; \<And>prev_s. \<lbrace>P prev_s\<rbrace> f \<lbrace>Q' prev_s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s s\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (clarsimp simp: valid_def mresults_def wpex_name_for_id_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpex_name_for_idE: "wpex_name_for_id P \<Longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wpex_name_for_id P \<Longrightarrow> P<\STATESEP>by (simp add: wpex_name_for_id_def)<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+
+fun dest_mresults_tac t = Seq.of_list ([t] RL @{thms mresults_export_bindD});
+
+(* take a rule of conclusion p --> q and decide whether to use it
+   as an introduction rule or if of form ?P x --> ?P y to use it
+   as y = x *)
+fun get_rule_uses ctxt rule = let
+    val (p, q) = (Thm.concl_of #> Envir.beta_eta_contract #> HOLogic.dest_Trueprop
+                    #> HOLogic.dest_imp) rule;
+    fun mk_eqthm v (n, (x, _)) = let
+        val (_, tp) = dest_Var v;
+        val (argtps, tp') = strip_type tp;
+        val _ = if (tp' = @{typ bool}) then ()
+                else error "get_rule_uses: range type <> bool";
+        val ct = Thm.cterm_of ctxt;
+        val eq = HOLogic.eq_const (nth argtps (n - 1))
+                    $ Bound (length argtps - n) $ x;
+        val v' = fold_rev Term.abs (map (pair "x") argtps) eq;
+      in rule
+        |> Thm.instantiate (TVars.empty, Vars.make [(Term.dest_Var v, ct v')])
+        |> simplify (put_simpset HOL_ss ctxt)
+      end;
+  in case (strip_comb p, strip_comb q) of
+      ((v as Var _, args), (v' as Var _, args')) =>
+        if v = v' andalso length args = length args'
+        then (map (mk_eqthm v) ((1 upto length args) ~~ (args ~~ args')), [])
+        else ([], [])
+    | (_, (Var _, _)) => ([], [])
+    | _ => ([], [rule])
+  end;
+
+fun get_wp_simps_strgs ctxt rules asms = let
+    val wp_rules = rules @ (WeakestPre.debug_get ctxt |> #rules |> WeakestPre.dest_rules);
+    val wp_rules' = filter (null o Thm.prems_of) wp_rules;
+    val asms' = maps (Seq.list_of o REPEAT dest_mresults_tac) asms;
+    val uses = asms' RL [@{thm use_valid_mresults}];
+    val wp_rules'' = wp_rules' RL uses;
+  in
+    apply2 flat (map_split (get_rule_uses ctxt) wp_rules'')
+  end;
+
+fun postcond_ss ctxt = ctxt
+    |> put_simpset HOL_basic_ss
+    |> (fn ctxt => ctxt addsimps @{thms pred_conj_def})
+    |> simpset_of
+
+fun wp_default_ss ctxt = ctxt
+    |> put_simpset HOL_ss
+    |> Splitter.del_split @{thm if_split}
+    |> simpset_of
+
+fun wps_tac ctxt rules =
+let
+  (* avoid duplicate simp rule etc warnings: *)
+  val ctxt = Context_Position.set_visible false ctxt
+in
+  resolve_tac ctxt [@{thm valid_strengthen_with_mresults}]
+  THEN' (safe_simp_tac (put_simpset (postcond_ss ctxt) ctxt))
+  THEN' Subgoal.FOCUS (fn focus => let
+      val ctxt = #context focus;
+      val (simps, _) = get_wp_simps_strgs ctxt rules (#prems focus);
+    in CHANGED (simp_tac (put_simpset (wp_default_ss ctxt) ctxt addsimps simps) 1) end) ctxt
+  THEN' eresolve_tac ctxt [@{thm wpex_name_for_idE}]
+end
+
+val wps_method = Attrib.thms >> curry
+  (fn (ts, ctxt) => Method.SIMPLE_METHOD' (wps_tac ctxt ts));
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup wps = \<open>wps_method\<close> "experimental wp simp method"<\STATESEP>0<\TRANSEP><\STATESEP>experiment
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<lbrace>P\<rbrace> do v \<leftarrow> return (Suc 0); return (Suc (Suc 0)) od \<lbrace>(=)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> do v <- return (Suc 0);
+return (Suc (Suc 0))
+od \<lbrace>(=)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> do v <- return (Suc 0);
+return (Suc (Suc 0))
+od \<lbrace>(=)\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> ?Q s<\STATESEP>apply (rule bind_wp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>v. \<lbrace>?Q'3 v\<rbrace> return (Suc (Suc 0)) \<lbrace>(=)\<rbrace>
+ 2. \<lbrace>?Q\<rbrace> return (Suc 0) \<lbrace>?Q'3\<rbrace>
+ 3. \<And>s. P s \<Longrightarrow> ?Q s<\STATESEP>apply (wps | rule hoare_vcg_prop)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> Suc (Suc 0) = s<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

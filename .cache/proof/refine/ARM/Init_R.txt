@@ -1,0 +1,140 @@
+<\STATESEP>theory Init_R
+imports
+  KHeap_R
+
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>definition zeroed_arch_abstract_state ::
+  arch_state
+  where
+  "zeroed_arch_abstract_state \<equiv> \<lparr>
+    arm_asid_table = Map.empty,
+    arm_hwasid_table = Map.empty,
+    arm_next_asid = 0,
+    arm_asid_map = Map.empty,
+    arm_global_pd = 0,
+    arm_global_pts = [],
+    arm_kernel_vspace = K ArmVSpaceUserRegion
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition zeroed_main_abstract_state ::
+  abstract_state
+  where
+  "zeroed_main_abstract_state \<equiv> \<lparr>
+    kheap = Map.empty,
+    cdt = Map.empty,
+    is_original_cap = (K True),
+    cur_thread = 0,
+    idle_thread = 0,
+    machine_state = init_machine_state,
+    interrupt_irq_node = (\<lambda>irq. ucast irq << cte_level_bits),
+    interrupt_states = (K irq_state.IRQInactive),
+    arch_state = zeroed_arch_abstract_state
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition zeroed_extended_state ::
+  det_ext
+  where
+  "zeroed_extended_state \<equiv> \<lparr>
+    work_units_completed_internal = 0,
+    scheduler_action_internal = resume_cur_thread,
+    ekheap_internal = K None,
+    domain_list_internal = [],
+    domain_index_internal = 0,
+    cur_domain_internal = 0,
+    domain_time_internal = 0,
+    ready_queues_internal = (\<lambda>_ _. []),
+    cdt_list_internal = K []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition zeroed_abstract_state ::
+  det_state
+  where
+  "zeroed_abstract_state \<equiv> abstract_state.extend zeroed_main_abstract_state
+                           (state.fields zeroed_extended_state)"<\STATESEP>0<\TRANSEP><\STATESEP>definition zeroed_arch_intermediate_state ::
+  Arch.kernel_state
+  where
+  "zeroed_arch_intermediate_state \<equiv> ARMKernelState Map.empty Map.empty 0 Map.empty 0 [] (K ArmVSpaceUserRegion)"<\STATESEP>0<\TRANSEP><\STATESEP>definition zeroed_intermediate_state ::
+  global.kernel_state
+  where
+  "zeroed_intermediate_state \<equiv> \<lparr>
+    ksPSpace = Map.empty,
+    gsUserPages = Map.empty,
+    gsCNodes = Map.empty,
+    gsUntypedZeroRanges = {},
+    gsMaxObjectSize = 0,
+    ksDomScheduleIdx = 0,
+    ksDomSchedule = [],
+    ksCurDomain = 0,
+    ksDomainTime = 0,
+    ksReadyQueues = K (TcbQueue None None),
+    ksReadyQueuesL1Bitmap = K 0,
+    ksReadyQueuesL2Bitmap = K 0,
+    ksCurThread = 0,
+    ksIdleThread = 0,
+    ksSchedulerAction = ResumeCurrentThread,
+    ksInterruptState = (InterruptState 0 (K IRQInactive)),
+    ksWorkUnitsCompleted = 0,
+    ksArchState = zeroed_arch_intermediate_state,
+    ksMachineState = init_machine_state
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas zeroed_state_defs = zeroed_main_abstract_state_def zeroed_abstract_state_def
+                           zeroed_arch_abstract_state_def zeroed_extended_state_def
+                           zeroed_intermediate_state_def abstract_state.defs
+                           zeroed_arch_intermediate_state_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma non_empty_refine_state_relation:
+  "(zeroed_abstract_state, zeroed_intermediate_state) \<in> state_relation"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (zeroed_abstract_state, zeroed_intermediate_state) \<in> state_relation<\STATESEP>apply (clarsimp simp: state_relation_def zeroed_state_defs state.defs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pspace_relation (\<lambda>x. None) (\<lambda>x. None) \<and> ekheap_relation (\<lambda>y. None) (\<lambda>x. None) \<and> ready_queues_relation_2 (\<lambda>_ _. []) (\<lambda>y. TcbQueue None None) (\<lambda>x. None) (\<lambda>x. None) (\<lambda>d p. inQ d p |< (\<lambda>x. None)) \<and> ghost_relation (\<lambda>x. None) (\<lambda>x. None) (\<lambda>x. None) \<and> cdt_relation (swp (cte_wp_at (\<lambda>_. True)) \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None)) \<and> cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None)) \<and> revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None)) \<and> (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation \<and> interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. pspace_relation (\<lambda>x. None) (\<lambda>x. None)
+ 2. ekheap_relation (\<lambda>y. None) (\<lambda>x. None)
+ 3. ready_queues_relation_2 (\<lambda>_ _. []) (\<lambda>y. TcbQueue None None) (\<lambda>x. None) (\<lambda>x. None) (\<lambda>d p. inQ d p |< (\<lambda>x. None))
+ 4. ghost_relation (\<lambda>x. None) (\<lambda>x. None) (\<lambda>x. None)
+ 5. cdt_relation (swp (cte_wp_at (\<lambda>_. True)) \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 6. cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 7. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 8. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 9. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: pspace_relation_def pspace_dom_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. ekheap_relation (\<lambda>y. None) (\<lambda>x. None)
+ 2. ready_queues_relation_2 (\<lambda>_ _. []) (\<lambda>y. TcbQueue None None) (\<lambda>x. None) (\<lambda>x. None) (\<lambda>d p. inQ d p |< (\<lambda>x. None))
+ 3. ghost_relation (\<lambda>x. None) (\<lambda>x. None) (\<lambda>x. None)
+ 4. cdt_relation (swp (cte_wp_at (\<lambda>_. True)) \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 5. cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 6. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 7. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 8. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: ekheap_relation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. ready_queues_relation_2 (\<lambda>_ _. []) (\<lambda>y. TcbQueue None None) (\<lambda>x. None) (\<lambda>x. None) (\<lambda>d p. inQ d p |< (\<lambda>x. None))
+ 2. ghost_relation (\<lambda>x. None) (\<lambda>x. None) (\<lambda>x. None)
+ 3. cdt_relation (swp (cte_wp_at (\<lambda>_. True)) \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 4. cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 5. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 6. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 7. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: ready_queues_relation_def ready_queue_relation_def queue_end_valid_def
+                              opt_pred_def list_queue_relation_def tcbQueueEmpty_def
+                              prev_queue_head_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. ghost_relation (\<lambda>x. None) (\<lambda>x. None) (\<lambda>x. None)
+ 2. cdt_relation (swp (cte_wp_at (\<lambda>_. True)) \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 3. cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 4. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 5. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 6. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: ghost_relation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. cdt_relation (swp (cte_wp_at (\<lambda>_. True)) \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 2. cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 3. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 4. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 5. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (fastforce simp: cdt_relation_def swp_def dest: cte_wp_at_domI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. cdt_list_relation (\<lambda>y. []) (\<lambda>x. None) (map_to_ctes (\<lambda>x. None))
+ 2. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 3. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 4. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: cdt_list_relation_def map_to_ctes_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. revokable_relation (\<lambda>y. True) (null_filter (caps_of_state \<lparr>kheap = \<lambda>x. None, cdt = \<lambda>x. None, is_original_cap = \<lambda>y. True, cur_thread = 0, idle_thread = 0, machine_state = init_machine_state, interrupt_irq_node = \<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits, interrupt_states = \<lambda>y. irq_state.IRQInactive, arch_state = \<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, exst = \<lparr>work_units_completed_internal = 0, scheduler_action_internal = resume_cur_thread, ekheap_internal = \<lambda>y. None, domain_list_internal = [], domain_index_internal = 0, cur_domain_internal = 0, domain_time_internal = 0, ready_queues_internal = \<lambda>_ _. [], cdt_list_internal = \<lambda>y. []\<rparr>\<rparr>)) (map_to_ctes (\<lambda>x. None))
+ 2. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 3. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: revokable_relation_def map_to_ctes_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (\<lparr>arm_asid_table = \<lambda>x. None, arm_hwasid_table = \<lambda>x. None, arm_next_asid = 0, arm_asid_map = \<lambda>x. None, arm_global_pd = 0, arm_global_pts = [], arm_kernel_vspace = \<lambda>y. ArmVSpaceUserRegion\<rparr>, ARMKernelState (\<lambda>x. None) (\<lambda>x. None) 0 (\<lambda>x. None) 0 [] (\<lambda>y. ArmVSpaceUserRegion)) \<in> arch_state_relation
+ 2. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: zeroed_state_defs arch_state_relation_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. interrupt_state_relation (\<lambda>irq. UCAST(10 \<rightarrow> 32) irq << cte_level_bits) (\<lambda>y. irq_state.IRQInactive) (InterruptState 0 (\<lambda>y. irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: interrupt_state_relation_def irq_state_relation_def cte_level_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

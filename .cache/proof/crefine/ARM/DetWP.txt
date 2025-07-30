@@ -1,0 +1,341 @@
+<\STATESEP>theory DetWP
+imports "Lib.DetWPLib" "CBaseRefine.Include_C"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_doMachineOp [wp]:
+  "det_wp (\<lambda>_. P) f \<Longrightarrow> det_wp (\<lambda>_. P) (doMachineOp f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. P) f \<Longrightarrow> det_wp (\<lambda>_. P) (doMachineOp f)<\STATESEP>apply (simp add: doMachineOp_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. P) f \<Longrightarrow> det_wp (\<lambda>_. P) (do ms <- gets ksMachineState;
+p <- select_f (f ms);
+y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od)<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>ms. det_wp (\<lambda>_. P) f \<Longrightarrow> det_wp (?P6 ms) (select_f (f ms))
+ 2. \<And>ms p. det_wp (\<lambda>_. P) f \<Longrightarrow> det_wp (?Q6 ms p) (do y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od)
+ 3. \<And>ms. det_wp (\<lambda>_. P) f \<Longrightarrow> \<lbrace>?P'6 ms\<rbrace> select_f (f ms) \<lbrace>?Q6 ms\<rbrace>
+ 4. det_wp (\<lambda>_. P) f \<Longrightarrow> \<lbrace>?P'4\<rbrace> gets ksMachineState \<lbrace>\<lambda>ms. ?P6 ms and ?P'6 ms\<rbrace>
+ 5. \<And>s. \<lbrakk>det_wp (\<lambda>_. P) f; P\<rbrakk> \<Longrightarrow> ((\<lambda>_. True) and ?P'4) s<\STATESEP>apply (erule det_wp_select_f)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>ms p. det_wp (\<lambda>_. P) f \<Longrightarrow> det_wp (?Q6 ms p) (do y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od)
+ 2. \<And>ms. det_wp (\<lambda>_. P) f \<Longrightarrow> \<lbrace>?P'6 ms\<rbrace> select_f (f ms) \<lbrace>?Q6 ms\<rbrace>
+ 3. det_wp (\<lambda>_. P) f \<Longrightarrow> \<lbrace>?P'4\<rbrace> gets ksMachineState \<lbrace>\<lambda>ms. (\<lambda>_. P) and ?P'6 ms\<rbrace>
+ 4. \<And>s. \<lbrakk>det_wp (\<lambda>_. P) f; P\<rbrakk> \<Longrightarrow> ((\<lambda>_. True) and ?P'4) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>det_wp (\<lambda>_. P) f; P\<rbrakk> \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. ((\<lambda>_. P) and (\<lambda>sa. \<forall>x\<in>fst (f (ksMachineState s)). ((\<lambda>_. True) and (\<lambda>s. True)) sa)) s)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_loadWordUser [wp]:
+  "det_wp (pointerInUserData x and K (is_aligned x 2)) (loadWordUser x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (pointerInUserData x and K (is_aligned x 2)) (loadWordUser x)<\STATESEP>apply (simp add: loadWordUser_def loadWord_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (pointerInUserData x and (\<lambda>y. is_aligned x 2)) (do y <- stateAssert (pointerInUserData x) [];
+doMachineOp (do m <- gets underlying_memory;
+y <- assert (x && mask 2 = 0);
+return (word_rcat [m (x + 3), m (x + 2), m (x + 1), m x])
+od)
+od)<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. det_wp (\<lambda>_. ?Q7 y) (do m <- gets underlying_memory;
+y <- assert (x && mask 2 = 0);
+return (word_rcat [m (x + 3), m (x + 2), m (x + 1), m x])
+od)
+ 2. \<lbrace>?P'4\<rbrace> stateAssert (pointerInUserData x) [] \<lbrace>\<lambda>y _. ?Q7 y\<rbrace>
+ 3. \<And>s. (pointerInUserData x and (\<lambda>y. is_aligned x 2)) s \<Longrightarrow> (pointerInUserData x and ?P'4) s<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y s. ?Q7 y \<Longrightarrow> ((\<lambda>_. True) and ((\<lambda>_. x && mask 2 = 0) and (\<lambda>s. x && mask 2 = 0 \<longrightarrow> True))) s
+ 2. \<lbrace>?P'4\<rbrace> stateAssert (pointerInUserData x) [] \<lbrace>\<lambda>y _. ?Q7 y\<rbrace>
+ 3. \<And>s. (pointerInUserData x and (\<lambda>y. is_aligned x 2)) s \<Longrightarrow> (pointerInUserData x and ?P'4) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. ?Q7 () \<Longrightarrow> x && mask 2 = 0
+ 2. \<lbrace>?P'4\<rbrace> stateAssert (pointerInUserData x) [] \<lbrace>\<lambda>y _. ?Q7 y\<rbrace>
+ 3. \<And>s. (pointerInUserData x and (\<lambda>y. is_aligned x 2)) s \<Longrightarrow> (pointerInUserData x and ?P'4) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'4\<rbrace> stateAssert (pointerInUserData x) [] \<lbrace>\<lambda>y _. x && mask 2 = 0\<rbrace>
+ 2. \<And>s. (pointerInUserData x and (\<lambda>y. is_aligned x 2)) s \<Longrightarrow> (pointerInUserData x and ?P'4) s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (pointerInUserData x and (\<lambda>y. is_aligned x 2)) s \<Longrightarrow> (pointerInUserData x and (\<lambda>s. pointerInUserData x s \<longrightarrow> x && mask 2 = 0)) s<\STATESEP>apply (clarsimp simp: is_aligned_mask)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>declare det_wp_liftM[wp]<\STATESEP>0<\TRANSEP><\STATESEP>declare det_wp_assert_opt[wp]<\STATESEP>0<\TRANSEP><\STATESEP>declare det_wp_when[wp]<\STATESEP>0<\TRANSEP><\STATESEP>declare det_wp_unless[wp]<\STATESEP>0<\TRANSEP><\STATESEP>declare word_neq_0_conv [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma det_wp_loadObject_default [wp]:
+  "det_wp (\<lambda>s. \<exists>obj. projectKO_opt ko = Some (obj::'a) \<and>
+                      is_aligned p (objBits obj) \<and> q = p
+                      \<and> case_option True (\<lambda>x. 2 ^ (objBits obj) \<le> x - p) n)
+           (loadObject_default p q n ko :: ('a::pre_storable) kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. \<exists>obj. projectKO_opt ko = Some obj \<and> is_aligned p (objBits obj) \<and> q = p \<and> (case n of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits obj \<le> x - p)) (loadObject_default p q n ko)<\STATESEP>apply (simp add: loadObject_default_def split_def projectKO_def
+                   alignCheck_def alignError_def magnitudeCheck_def
+                   unless_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. \<exists>obj. projectKO_opt ko = Some obj \<and> is_aligned p (objBits obj) \<and> q = p \<and> (case n of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits obj \<le> x - p)) (do y <- assert (p = q);
+val <- case projectKO_opt ko of None \<Rightarrow> fail | Some x \<Rightarrow> return x;
+y <- when (p && mask (objBits val) \<noteq> 0) fail;
+y <- case n of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - p < 1 << objBits val) fail;
+return val
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp ?P' (do y <- assert (p = q);
+val <- case projectKO_opt ko of None \<Rightarrow> fail | Some x \<Rightarrow> return x;
+y <- when (p && mask (objBits val) \<noteq> 0) fail;
+y <- case n of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - p < 1 << objBits val) fail;
+return val
+od)
+ 2. \<And>s. \<exists>obj. projectKO_opt ko = Some obj \<and> is_aligned p (objBits obj) \<and> q = p \<and> (case n of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits obj \<le> x - p) \<Longrightarrow> ?P' s<\STATESEP>apply (wp case_option_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<exists>obj. projectKO_opt ko = Some obj \<and> is_aligned p (objBits obj) \<and> q = p \<and> (case n of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits obj \<le> x - p) \<Longrightarrow> ((\<lambda>_. p = q) and (\<lambda>s. p = q \<longrightarrow> ((\<lambda>s. (projectKO_opt ko = None \<longrightarrow> False) \<and> (\<forall>y. projectKO_opt ko = Some y \<longrightarrow> True)) and (\<lambda>s. (projectKO_opt ko = None \<longrightarrow> True) \<and> (projectKO_opt ko \<noteq> None \<longrightarrow> ((\<lambda>s. p && mask (objBits (the (projectKO_opt ko))) \<noteq> 0 \<longrightarrow> False) and (\<lambda>s. ((n = None \<longrightarrow> True) \<and> (\<forall>y. n = Some y \<longrightarrow> y - p < 1 << objBits (the (projectKO_opt ko)) \<longrightarrow> False)) \<and> (n = None \<longrightarrow> True) \<and> (n \<noteq> None \<longrightarrow> True))) s))) s)) s<\STATESEP>apply (clarsimp simp: is_aligned_mask[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>obj y. \<lbrakk>projectKO_opt ko = Some obj; is_aligned p (objBits obj); 2 ^ objBits obj \<le> y - p; q = p; n = Some y; y - p < 2 ^ objBits obj\<rbrakk> \<Longrightarrow> False<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_getTCB [wp]:
+  "det_wp (tcb_at' t) (getObject t :: tcb kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (getObject t)<\STATESEP>apply (simp add: getObject_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (do map <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 t map));
+loadObject_default t (fst p) (snd (lookupAround2 t map)) (snd p)
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp ?P' (do map <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 t map));
+loadObject_default t (fst p) (snd (lookupAround2 t map)) (snd p)
+od)
+ 2. \<And>s. tcb_at' t s \<Longrightarrow> ?P' s<\STATESEP>apply (wp|wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. tcb_at' t s \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. ((\<lambda>_. fst (lookupAround2 t (ksPSpace s)) \<noteq> None) and (\<lambda>sa. fst (lookupAround2 t (ksPSpace s)) \<noteq> None \<longrightarrow> (\<exists>obj. tcb_of' (snd (the (fst (lookupAround2 t (ksPSpace s))))) = Some obj \<and> is_aligned t (objBits obj) \<and> fst (the (fst (lookupAround2 t (ksPSpace s)))) = t \<and> (case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits obj \<le> x - t)))) s)) s<\STATESEP>apply (clarsimp simp add: obj_at'_def projectKOs objBits_simps
+                      cong: conj_cong option.case_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> (\<exists>a b. fst (lookupAround2 t (ksPSpace s)) = Some (a, b)) \<and> (\<exists>obj. snd (the (fst (lookupAround2 t (ksPSpace s)))) = KOTCB obj) \<and> fst (the (fst (lookupAround2 t (ksPSpace s)))) = t \<and> (case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t)<\STATESEP>apply (simp add: lookupAround2_known1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t<\STATESEP>apply (rule ps_clear_lookupAround2, assumption+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> t \<le> t
+ 2. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> t \<le> t + 2 ^ tcbBlockSizeBits - 1
+ 3. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s; fst (lookupAround2 t (ksPSpace s)) = Some (t, KOTCB obj); case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t\<rbrakk> \<Longrightarrow> case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> t \<le> t + 2 ^ tcbBlockSizeBits - 1
+ 2. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s; fst (lookupAround2 t (ksPSpace s)) = Some (t, KOTCB obj); case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t\<rbrakk> \<Longrightarrow> case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t<\STATESEP>apply (erule is_aligned_no_overflow)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s t = Some (KOTCB obj); is_aligned t tcbBlockSizeBits; ps_clear t tcbBlockSizeBits s; fst (lookupAround2 t (ksPSpace s)) = Some (t, KOTCB obj); case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t\<rbrakk> \<Longrightarrow> case snd (lookupAround2 t (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ tcbBlockSizeBits \<le> x - t<\STATESEP>apply (simp add: word_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_setObject_other [wp]:
+  fixes ob :: "'a :: pspace_storable"
+  assumes x: "updateObject ob = updateObject_default ob"
+  shows "det_wp (obj_at' (\<lambda>k::'a. objBits k = objBits ob) ptr)
+                  (setObject ptr ob)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (obj_at' (\<lambda>k. objBits k = objBits ob) ptr) (setObject ptr ob)<\STATESEP>apply (simp add: setObject_def x split_def updateObject_default_def
+                   magnitudeCheck_def
+                   projectKO_def2 alignCheck_def alignError_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (obj_at' (\<lambda>k. objBits k = objBits ob) ptr) (do ps <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 ptr ps));
+obj' <- do y <- assert (ptr = fst p);
+_ <- assert_opt (projectKO_opt (snd p));
+y <- unless (ptr && mask (objBits ob) = 0) fail;
+y <- case snd (lookupAround2 ptr ps) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - ptr < 1 << objBits ob) fail;
+return (injectKOS ob)
+od;
+modify (ksPSpace_update (\<lambda>_. ps(fst p \<mapsto> obj')))
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp ?P'1 (do ps <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 ptr ps));
+obj' <- do y <- assert (ptr = fst p);
+_ <- assert_opt (projectKO_opt (snd p));
+y <- unless (ptr && mask (objBits ob) = 0) fail;
+y <- case snd (lookupAround2 ptr ps) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - ptr < 1 << objBits ob) fail;
+return (injectKOS ob)
+od;
+modify (ksPSpace_update (\<lambda>_. ps(fst p \<mapsto> obj')))
+od)
+ 2. \<And>s. obj_at' (\<lambda>k. objBits k = objBits ob) ptr s \<Longrightarrow> ?P'1 s<\STATESEP>apply (wp )<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. obj_at' (\<lambda>k. objBits k = objBits ob) ptr s \<Longrightarrow> ((\<lambda>_. True) and (\<lambda>s. ((\<lambda>_. fst (lookupAround2 ptr (ksPSpace s)) \<noteq> None) and (\<lambda>sa. fst (lookupAround2 ptr (ksPSpace s)) \<noteq> None \<longrightarrow> ((\<lambda>_. ptr = fst (the (fst (lookupAround2 ptr (ksPSpace s))))) and (\<lambda>sa. ptr = fst (the (fst (lookupAround2 ptr (ksPSpace s)))) \<longrightarrow> ((\<lambda>_. projectKO_opt (snd (the (fst (lookupAround2 ptr (ksPSpace s))))) \<noteq> None) and (\<lambda>sa. projectKO_opt (snd (the (fst (lookupAround2 ptr (ksPSpace s))))) \<noteq> None \<longrightarrow> ((\<lambda>s. ptr && mask (objBits ob) \<noteq> 0 \<longrightarrow> False) and (\<lambda>sa. ((snd (lookupAround2 ptr (ksPSpace s)) = None \<longrightarrow> True) \<and> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> y - ptr < 1 << objBits ob \<longrightarrow> False)) \<and> True)) sa)) sa) and (\<lambda>_. True)) sa)) s)) s<\STATESEP>apply (clarsimp simp: is_aligned_mask[symmetric] obj_at'_def
+                        objBits_def[symmetric] projectKOs
+                        project_inject lookupAround2_known1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; ps_clear ptr (objBits ob) s\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply (erule(1) ps_clear_lookupAround2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr
+ 2. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 3. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 2. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply (erule is_aligned_get_word_bits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; is_aligned ptr (objBits ob); objBits ob < LENGTH(32)\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 2. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; ptr = 0; LENGTH(32) \<le> objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 3. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply (subst add_diff_eq[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; is_aligned ptr (objBits ob); objBits ob < LENGTH(32)\<rbrakk> \<Longrightarrow> ptr \<le> ptr + (2 ^ objBits ob - 1)
+ 2. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; ptr = 0; LENGTH(32) \<le> objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 3. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply (erule is_aligned_no_wrap')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; objBits ob < LENGTH(32)\<rbrakk> \<Longrightarrow> 2 ^ objBits ob - 1 < 2 ^ objBits ob
+ 2. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; ptr = 0; LENGTH(32) \<le> objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 3. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); objBits obj = objBits ob; ptr = 0; LENGTH(32) \<le> objBits ob\<rbrakk> \<Longrightarrow> ptr \<le> ptr + 2 ^ objBits ob - 1
+ 2. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>ksPSpace s ptr = Some (injectKOS obj); is_aligned ptr (objBits ob); objBits obj = objBits ob; fst (lookupAround2 ptr (ksPSpace s)) = Some (ptr, injectKOS obj); case snd (lookupAround2 ptr (ksPSpace s)) of None \<Rightarrow> True | Some x \<Rightarrow> 2 ^ objBits ob \<le> x - ptr\<rbrakk> \<Longrightarrow> (\<exists>y. injectKOS y = injectKOS obj) \<and> ((\<exists>y. injectKOS y = injectKOS obj) \<longrightarrow> (\<forall>y. snd (lookupAround2 ptr (ksPSpace s)) = Some y \<longrightarrow> \<not> y - ptr < 2 ^ objBits ob))<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_setTCB [wp]:
+  "det_wp (tcb_at' t) (setObject t (v::tcb))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (setObject t v)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp ?P' (setObject t v)
+ 2. \<And>s. tcb_at' t s \<Longrightarrow> ?P' s<\STATESEP>apply (wp|wpc|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. tcb_at' t s \<Longrightarrow> obj_at' (\<lambda>k. objBits k = objBits v) t s<\STATESEP>apply (clarsimp simp: objBits_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_threadGet [wp]:
+  "det_wp (tcb_at' t) (threadGet f t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (threadGet f t)<\STATESEP>apply (simp add: threadGet_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (liftM f (getObject t))<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. tcb_at' t s \<Longrightarrow> tcb_at' t s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_threadSet [wp]:
+  "det_wp (tcb_at' t) (threadSet f t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (threadSet f t)<\STATESEP>apply (simp add: threadSet_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' t) (do tcb <- getObject t;
+setObject t (f tcb)
+od)<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. tcb_at' t s \<Longrightarrow> (tcb_at' t and tcb_at' t) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_asUser [wp]:
+  "det f \<Longrightarrow> det_wp (tcb_at' t) (asUser t f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det f \<Longrightarrow> det_wp (tcb_at' t) (asUser t f)<\STATESEP>apply (simp add: asUser_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det f \<Longrightarrow> det_wp (tcb_at' t) (do uc <- threadGet (atcbContextGet \<circ> tcbArch) t;
+p <- select_f (f uc);
+y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det f \<Longrightarrow> det_wp ?P' (do uc <- threadGet (atcbContextGet \<circ> tcbArch) t;
+p <- select_f (f uc);
+y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od)
+ 2. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> ?P' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>uc. det f \<Longrightarrow> det_wp (?P6 uc) (select_f (f uc))
+ 2. \<And>uc p. det f \<Longrightarrow> det_wp (?Q6 uc p) (do y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od)
+ 3. \<And>uc. det f \<Longrightarrow> \<lbrace>?P'6 uc\<rbrace> select_f (f uc) \<lbrace>?Q6 uc\<rbrace>
+ 4. det f \<Longrightarrow> \<lbrace>?P'4\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>uc. ?P6 uc and ?P'6 uc\<rbrace>
+ 5. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and ?P'4) s<\STATESEP>apply (drule det_wp_det)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>uc. det_wp (\<lambda>_. True) f \<Longrightarrow> det_wp (?P6 uc) (select_f (f uc))
+ 2. \<And>uc p. det f \<Longrightarrow> det_wp (?Q6 uc p) (do y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od)
+ 3. \<And>uc. det f \<Longrightarrow> \<lbrace>?P'6 uc\<rbrace> select_f (f uc) \<lbrace>?Q6 uc\<rbrace>
+ 4. det f \<Longrightarrow> \<lbrace>?P'4\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>uc. ?P6 uc and ?P'6 uc\<rbrace>
+ 5. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and ?P'4) s<\STATESEP>apply (erule det_wp_select_f)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>uc p. det f \<Longrightarrow> det_wp (?Q6 uc p) (do y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od)
+ 2. \<And>uc. det f \<Longrightarrow> \<lbrace>?P'6 uc\<rbrace> select_f (f uc) \<lbrace>?Q6 uc\<rbrace>
+ 3. det f \<Longrightarrow> \<lbrace>?P'4\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>uc. (\<lambda>_. True) and ?P'6 uc\<rbrace>
+ 4. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and ?P'4) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det f \<Longrightarrow> \<lbrace>?P'22\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>rv s. \<forall>x\<in>fst (f rv). (tcb_at' t and (\<lambda>s. True)) s\<rbrace>
+ 2. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and (\<lambda>s. True \<and> ?P'22 s)) s<\STATESEP>apply (rule_tac Q="\<lambda>_. tcb_at' t" in hoare_post_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> \<forall>x\<in>fst (f rv). (tcb_at' t and (\<lambda>s. True)) s
+ 2. det f \<Longrightarrow> \<lbrace>?P'22\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>_. tcb_at' t\<rbrace>
+ 3. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and (\<lambda>s. True \<and> ?P'22 s)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det f \<Longrightarrow> \<lbrace>?P'22\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>_. tcb_at' t\<rbrace>
+ 2. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and (\<lambda>s. True \<and> ?P'22 s)) s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>det f; tcb_at' t s\<rbrakk> \<Longrightarrow> (tcb_at' t and (\<lambda>s. True \<and> tcb_at' t s)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma wordSize_def':
+  "wordSize = 4"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wordSize = 4<\STATESEP>unfolding wordSize_def wordBits_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. finiteBitSize undefined div 8 = 4<\STATESEP>by (simp add: word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_getMRs:
+  "det_wp (tcb_at' thread and case_option \<top> valid_ipc_buffer_ptr' buffer) (getMRs thread buffer mi)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' thread and (case buffer of None \<Rightarrow> \<lambda>_. True | Some x \<Rightarrow> valid_ipc_buffer_ptr' x)) (getMRs thread buffer mi)<\STATESEP>apply (clarsimp simp: getMRs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (tcb_at' thread and (case buffer of None \<Rightarrow> \<lambda>_. True | Some x \<Rightarrow> valid_ipc_buffer_ptr' x)) (do hardwareMRValues <- asUser thread (mapM getRegister TCB_H.msgRegisters);
+bufferMRValues <- case buffer of None \<Rightarrow> return [] | Some bufferPtr \<Rightarrow> return (map (\<lambda>x. bufferPtr + PPtr (x * word_of_nat wordSize)) [fromIntegral $ length TCB_H.msgRegisters + 1 .e. msgMaxLength]) >>= mapM loadWordUser;
+return (take (unat (msgLength mi)) hardwareMRValues @ take (unat (msgLength mi) - length hardwareMRValues) bufferMRValues)
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp ?P' (do hardwareMRValues <- asUser thread (mapM getRegister TCB_H.msgRegisters);
+bufferMRValues <- case buffer of None \<Rightarrow> return [] | Some bufferPtr \<Rightarrow> return (map (\<lambda>x. bufferPtr + PPtr (x * word_of_nat wordSize)) [fromIntegral $ length TCB_H.msgRegisters + 1 .e. msgMaxLength]) >>= mapM loadWordUser;
+return (take (unat (msgLength mi)) hardwareMRValues @ take (unat (msgLength mi) - length hardwareMRValues) bufferMRValues)
+od)
+ 2. \<And>s. (tcb_at' thread and (case buffer of None \<Rightarrow> \<lambda>_. True | Some x \<Rightarrow> valid_ipc_buffer_ptr' x)) s \<Longrightarrow> ?P' s<\STATESEP>apply (wp det_mapM det_getRegister order_refl det_wp_mapM)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'22\<rbrace> asUser thread (mapM getRegister TCB_H.msgRegisters) \<lbrace>\<lambda>rv s. (\<forall>y. buffer = Some y \<longrightarrow> ((\<lambda>_. True) and (\<lambda>a. \<forall>x\<in>set (map (\<lambda>x. y + PPtr (x * word_of_nat wordSize)) [fromIntegral $ length TCB_H.msgRegisters + 1 .e. msgMaxLength]). (pointerInUserData x and K (is_aligned x 2)) a)) s) \<and> True\<rbrace>
+ 2. \<And>s. (tcb_at' thread and (case buffer of None \<Rightarrow> \<lambda>_. True | Some x \<Rightarrow> valid_ipc_buffer_ptr' x)) s \<Longrightarrow> (tcb_at' thread and (\<lambda>s. (buffer = None \<longrightarrow> True) \<and> ?P'22 s)) s<\STATESEP>apply (simp add: word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'22\<rbrace> asUser thread (mapM getRegister TCB_H.msgRegisters) \<lbrace>\<lambda>rv s. \<forall>y. buffer = Some y \<longrightarrow> (\<forall>x. 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x \<and> x \<le> msgMaxLength \<longrightarrow> pointerInUserData (y + x * word_of_nat wordSize) s \<and> is_aligned (y + x * word_of_nat wordSize) 2)\<rbrace>
+ 2. \<And>s. (tcb_at' thread and (case buffer of None \<Rightarrow> \<lambda>_. True | Some x \<Rightarrow> valid_ipc_buffer_ptr' x)) s \<Longrightarrow> (tcb_at' thread and (\<lambda>s. (buffer = None \<longrightarrow> True) \<and> ?P'22 s)) s<\STATESEP>apply (wp asUser_inv mapM_wp' getRegister_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (tcb_at' thread and (case buffer of None \<Rightarrow> \<lambda>_. True | Some x \<Rightarrow> valid_ipc_buffer_ptr' x)) s \<Longrightarrow> (tcb_at' thread and (\<lambda>s. (buffer = None \<longrightarrow> True) \<and> (\<forall>y. buffer = Some y \<longrightarrow> (\<forall>x. 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x \<and> x \<le> msgMaxLength \<longrightarrow> pointerInUserData (y + x * word_of_nat wordSize) s \<and> is_aligned (y + x * word_of_nat wordSize) 2)))) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> pointerInUserData (y + x * word_of_nat wordSize) s \<and> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> pointerInUserData (y + x * word_of_nat wordSize) s
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (simp add: pointerInUserData_def wordSize_def' word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> typ_at' UserDataT (y + x * 4 && ~~ mask pageBits) s
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (erule valid_ipc_buffer_ptr'D2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> x * 4 < max_ipc_words * 4
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 3. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (rule word_mult_less_mono1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> x < max_ipc_words
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> 0 < 4
+ 3. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> unat max_ipc_words * unat 4 < 2 ^ LENGTH(32)
+ 4. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 5. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (erule order_le_less_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x\<rbrakk> \<Longrightarrow> msgMaxLength < max_ipc_words
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> 0 < 4
+ 3. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> unat max_ipc_words * unat 4 < 2 ^ LENGTH(32)
+ 4. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 5. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (simp add: msgMaxLength_def max_ipc_words)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> 0 < 4
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> unat max_ipc_words * unat 4 < 2 ^ LENGTH(32)
+ 3. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 4. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> unat max_ipc_words * unat 4 < 2 ^ LENGTH(32)
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 3. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (simp add: max_ipc_words)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * 4) 2
+ 2. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (simp add: is_aligned_mult_triv2 [where n = 2, simplified] word_bits_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; valid_ipc_buffer_ptr' y s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (y + x * word_of_nat wordSize) 2<\STATESEP>apply (erule valid_ipc_buffer_ptr_aligned_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y x. \<lbrakk>tcb_at' thread s; buffer = Some y; 1 + word_of_nat (length TCB_H.msgRegisters) \<le> x; x \<le> msgMaxLength\<rbrakk> \<Longrightarrow> is_aligned (x * word_of_nat wordSize) 2<\STATESEP>apply (simp add: wordSize_def' is_aligned_mult_triv2 [where n = 2, simplified] word_bits_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

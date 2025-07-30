@@ -1,0 +1,54 @@
+<\STATESEP>theory Injection_Handler
+  imports Monads.Nondet_VCG
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition injection_handler ::
+  "('a \<Rightarrow> 'b) \<Rightarrow> ('s, 'a + 'c) nondet_monad \<Rightarrow> ('s, 'b + 'c) nondet_monad" where
+  "injection_handler f m \<equiv> m <handle2> (\<lambda>ft. throwError (f ft))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma injection_wp:
+  "\<lbrakk> t = injection_handler f; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>,\<lbrace>\<lambda>ft. E (f ft)\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> t m \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = injection_handler f; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>ft. E (f ft)\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> t m \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding injection_handler_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = (\<lambda>m. m <handle2> (\<lambda>ft. throwError (f ft))); \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>ft. E (f ft)\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> t m \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma injection_wp_E:
+  "\<lbrakk> t = injection_handler f; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>,- \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> t m \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = injection_handler f; \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> t m \<lbrace>Q\<rbrace>, -<\STATESEP>by (simp add: validE_R_def injection_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma injection_bindE:
+  "\<lbrakk> t = injection_handler f; t2 = injection_handler f \<rbrakk>
+    \<Longrightarrow> t (x >>=E y) = (t2 x) >>=E (\<lambda>rv. t (y rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = injection_handler f; t2 = injection_handler f\<rbrakk> \<Longrightarrow> t (x >>=E y) = doE rv <- t2 x;
+t (y rv)
+odE<\STATESEP>apply (simp add: injection_handler_def bindE_def handleE'_def bind_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = injection_handler f; t2 = injection_handler f\<rbrakk> \<Longrightarrow> do x <- x;
+lift y x >>= case_sum (\<lambda>e. throwError (f e)) (\<lambda>v'. return (Inr v'))
+od = do x <- x;
+(case x of Inl e \<Rightarrow> throwError (f e) | Inr v' \<Rightarrow> return (Inr v')) >>= lift (\<lambda>rv. y rv >>= case_sum (\<lambda>e. throwError (f e)) (\<lambda>v'. return (Inr v')))
+od<\STATESEP>apply (rule arg_cong [where f="bind x"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>t = injection_handler f; t2 = injection_handler f\<rbrakk> \<Longrightarrow> (\<lambda>x. lift y x >>= case_sum (\<lambda>e. throwError (f e)) (\<lambda>v'. return (Inr v'))) = (\<lambda>x. (case x of Inl e \<Rightarrow> throwError (f e) | Inr v' \<Rightarrow> return (Inr v')) >>= lift (\<lambda>rv. y rv >>= case_sum (\<lambda>e. throwError (f e)) (\<lambda>v'. return (Inr v'))))<\STATESEP>apply (fastforce simp: lift_def throwError_def split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma injection_liftE:
+  "t = injection_handler f \<Longrightarrow> t (liftE x) = liftE x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. t = injection_handler f \<Longrightarrow> t (liftE x) = liftE x<\STATESEP>by (simp add: injection_handler_def handleE'_def liftE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma id_injection:
+  "id = injection_handler id"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. id = injection_handler id<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. id = injection_handler id<\STATESEP>have P: "case_sum throwError (\<lambda>v. return (Inr v)) = return"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. case_sum throwError (\<lambda>v. return (Inr v)) = return<\STATESEP>by (auto simp: throwError_def split: sum.splits)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+case_sum throwError (\<lambda>v. return (Inr v)) = return
+
+goal (1 subgoal):
+ 1. id = injection_handler id<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. id = injection_handler id<\STATESEP>by (auto simp: injection_handler_def handleE'_def P)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+id = injection_handler id
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma injection_handler_assertE:
+  "injection_handler inject (assertE f) = assertE f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. injection_handler inject (assertE f) = assertE f<\STATESEP>by (simp add: assertE_liftE injection_liftE)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

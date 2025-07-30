@@ -1,0 +1,30 @@
+<\STATESEP>chapter \<open>\label{h:connector}Connector Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Connector
+imports Abbreviations
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{ssec:eventcomponents}Event Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  event :: "'channel \<Rightarrow> ('channel, 'component_state) comp"
+where
+  "event c \<equiv> LOOP
+    Response (\<lambda>q s'. case s' of Event s \<Rightarrow>
+      (case q_data q of
+         Set \<Rightarrow> {(Event True, \<lparr>a_channel = q_channel q, a_data = Void\<rparr>)}
+       | Poll \<Rightarrow> {(Event False, \<lparr>a_channel = q_channel q, a_data = Pending s\<rparr>)}
+       | _ \<Rightarrow> {}))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  init_event_state :: "'component_state local_state"
+where
+  "init_event_state \<equiv> Event False"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{ssec:memorycomponents}Shared Memory Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  memory :: "'channel \<Rightarrow> ('channel, 'component_state) comp"
+where
+  "memory c \<equiv> LOOP
+   Response (\<lambda>q s'. case s' of Memory s \<Rightarrow>
+    (case q_data q of
+      Read addr \<Rightarrow> {(Memory s,
+                    \<lparr>a_channel = q_channel q, a_data = Value (the (s addr))\<rparr>)}
+    | Write addr val \<Rightarrow> {(Memory (s(addr \<mapsto> val)),
+                         \<lparr>a_channel = q_channel q, a_data = Void\<rparr>)})
+    | _ \<Rightarrow> {})"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  init_memory_state :: "'component_state local_state"
+where
+  "init_memory_state \<equiv> Memory Map.empty"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym Buf\<^sub>d_channel = unit<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Buf\<^sub>d :: "(Buf\<^sub>d_channel \<Rightarrow> 'channel) \<Rightarrow> ('channel, 'component_state) comp"
+where
+  "Buf\<^sub>d ch \<equiv> memory (ch ())"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

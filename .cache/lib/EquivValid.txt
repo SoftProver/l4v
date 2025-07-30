@@ -1,0 +1,1605 @@
+<\STATESEP>theory EquivValid
+imports Corres_UL
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section\<open>State equivalence validity\<close><\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+
+A generalised information flow property.
+
+Often, we read in the entire state, but then only examine part of it.
+The following property may be used to split up binds whose first part
+does this.
+
+@{term "I"} is the state relation that holds invariantly.
+
+@{term "A"} (also) holds between initial states.
+
+@{term "B"} (also) holds between final states.
+
+@{term "P"} holds in the initial state for @{term "f"}.
+
+@{term "P'"} holds in the initial state for @{term "f'"}.
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  equiv_valid_2 :: "('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('b \<Rightarrow> 'c \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s,'b) nondet_monad \<Rightarrow> ('s,'c) nondet_monad \<Rightarrow> bool"
+where
+  "equiv_valid_2 I A B R P P' f f' \<equiv> \<forall>s t.
+       P s \<and> P' t \<and> I s t \<and> A s t
+     \<longrightarrow> (\<forall>(rva, s') \<in> fst (f s). \<forall>(rvb, t') \<in> fst (f' t).
+          R rva rvb \<and> I s' t' \<and> B s' t')"<\STATESEP>0<\TRANSEP><\STATESEP>lemma equiv_valid_2_bind_general:
+  assumes r2: "\<And> rv rv'. R' rv rv' \<Longrightarrow> equiv_valid_2 D B C R (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes r1: "equiv_valid_2 D A B R' P P' f f'"
+  assumes hoare: "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes hoare': "\<lbrace> S' \<rbrace> f' \<lbrace> Q' \<rbrace>"
+  shows "equiv_valid_2 D A C R (\<lambda> s. P s \<and> S s) (\<lambda> s. P' s \<and> S' s) (f >>= g) (f' >>= g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A C R (\<lambda>s. P s \<and> S s) (\<lambda>s. P' s \<and> S' s) (f >>= g) (f' >>= g')<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+R' ?rv ?rv' \<Longrightarrow> equiv_valid_2 D B C R (Q ?rv) (Q' ?rv') (g ?rv) (g' ?rv')
+equiv_valid_2 D A B R' P P' f f'
+\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>
+\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid_2 D A C R (\<lambda>s. P s \<and> S s) (\<lambda>s. P' s \<and> S' s) (f >>= g) (f' >>= g')<\STATESEP>unfolding bind_def equiv_valid_2_def valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+R' ?rv ?rv' \<Longrightarrow> \<forall>s t. Q ?rv s \<and> Q' ?rv' t \<and> D s t \<and> B s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (g ?rv s). \<forall>(rvb, t')\<in>fst (g' ?rv' t). R rva rvb \<and> D s' t' \<and> C s' t')
+\<forall>s t. P s \<and> P' t \<and> D s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (f s). \<forall>(rvb, t')\<in>fst (f' t). R' rva rvb \<and> D s' t' \<and> B s' t')
+\<forall>s. S s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s')
+\<forall>s. S' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f' s). Q' r s')
+
+goal (1 subgoal):
+ 1. \<forall>s t. (P s \<and> S s) \<and> (P' t \<and> S' t) \<and> D s t \<and> A s t \<longrightarrow> (\<forall>(rva, s')\<in>fst (\<Union> (fst ` (\<lambda>(x, y). g x y) ` fst (f s)), True \<in> snd ` (\<lambda>(x, y). g x y) ` fst (f s) \<or> snd (f s)). \<forall>(rvb, t')\<in>fst (\<Union> (fst ` (\<lambda>(x, y). g' x y) ` fst (f' t)), True \<in> snd ` (\<lambda>(x, y). g' x y) ` fst (f' t) \<or> snd (f' t)). R rva rvb \<and> D s' t' \<and> C s' t')<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_bind:
+  assumes r2: "\<And> rv rv'. R' rv rv' \<Longrightarrow> equiv_valid_2 D A A R (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes r1: "equiv_valid_2 D A A R' P P' f f'"
+  assumes hoare: "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes hoare': "\<lbrace> S' \<rbrace> f' \<lbrace> Q' \<rbrace>"
+  shows "equiv_valid_2 D A A R (\<lambda> s. P s \<and> S s) (\<lambda> s. P' s \<and> S' s) (f >>= g) (f' >>= g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A R (\<lambda>s. P s \<and> S s) (\<lambda>s. P' s \<and> S' s) (f >>= g) (f' >>= g')<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+R' ?rv ?rv' \<Longrightarrow> equiv_valid_2 D A A R (Q ?rv) (Q' ?rv') (g ?rv) (g' ?rv')
+equiv_valid_2 D A A R' P P' f f'
+\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>
+\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A R (\<lambda>s. P s \<and> S s) (\<lambda>s. P' s \<and> S' s) (f >>= g) (f' >>= g')<\STATESEP>by (blast intro: equiv_valid_2_bind_general)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_guard_imp:
+  assumes reads_res: "equiv_valid_2 D A B R Q Q' f f'"
+  assumes guard_imp: "\<And> s. P s \<Longrightarrow> Q s"
+  assumes guard_imp': "\<And> s. P' s \<Longrightarrow> Q' s"
+  shows "equiv_valid_2 D A B R P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A B R P P' f f'<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid_2 D A B R Q Q' f f'
+P ?s \<Longrightarrow> Q ?s
+P' ?s \<Longrightarrow> Q' ?s
+
+goal (1 subgoal):
+ 1. equiv_valid_2 D A B R P P' f f'<\STATESEP>by (fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_bind_pre:
+  assumes r2: "\<And> rv rv'. R' rv rv' \<Longrightarrow> equiv_valid_2 D A A R (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes r1: "equiv_valid_2 D A A R' P P' f f'"
+  assumes hoare: "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes hoare': "\<lbrace> S' \<rbrace> f' \<lbrace> Q' \<rbrace>"
+  assumes guard_imp: "\<And> s. T s \<Longrightarrow> P s \<and> S s"
+  assumes guard_imp': "\<And> s. T' s \<Longrightarrow> P' s \<and> S' s"
+  shows "equiv_valid_2 D A A R T T' (f >>= g) (f' >>= g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A R T T' (f >>= g) (f' >>= g')<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+R' ?rv ?rv' \<Longrightarrow> equiv_valid_2 D A A R (Q ?rv) (Q' ?rv') (g ?rv) (g' ?rv')
+equiv_valid_2 D A A R' P P' f f'
+\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>
+\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>
+T ?s \<Longrightarrow> P ?s \<and> S ?s
+T' ?s \<Longrightarrow> P' ?s \<and> S' ?s
+
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A R T T' (f >>= g) (f' >>= g')<\STATESEP>by (blast intro: equiv_valid_2_bind[THEN equiv_valid_2_guard_imp])<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_ev2:
+  assumes rel: "\<And> s t. \<lbrakk>P s; P' t; I s t; A s t\<rbrakk> \<Longrightarrow> R a b"
+  shows "equiv_valid_2 I A A R P P' (return a) (return b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A A R P P' (return a) (return b)<\STATESEP>by(auto simp: equiv_valid_2_def return_def rel)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_liftE:
+  "equiv_valid_2 D A B R P P' f f' \<Longrightarrow>
+   equiv_valid_2 D A B (E \<oplus> R) P P' (liftE f) (liftE f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> equiv_valid_2 D A B (E \<oplus> R) P P' (liftE f) (liftE f')<\STATESEP>apply(unfold liftE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> equiv_valid_2 D A B (E \<oplus> R) P P' (do r <- f;
+return (Inr r)
+od) (do r <- f';
+return (Inr r)
+od)<\STATESEP>apply(rule equiv_valid_2_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> equiv_valid_2 D A B (E \<oplus> R) ?Q ?Q' (do r <- f;
+return (Inr r)
+od) (do r <- f';
+return (Inr r)
+od)
+ 2. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P s\<rbrakk> \<Longrightarrow> ?Q s
+ 3. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P' s\<rbrakk> \<Longrightarrow> ?Q' s<\STATESEP>apply(rule_tac Q="\<top>\<top>" and Q'="\<top>\<top>" and R'=R in equiv_valid_2_bind_general)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. \<lbrakk>equiv_valid_2 D A B R P P' f f'; R rv rv'\<rbrakk> \<Longrightarrow> equiv_valid_2 D ?B4 B (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (return (Inr rv)) (return (Inr rv'))
+ 2. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> equiv_valid_2 D A ?B4 R ?P4 ?P'4 f f'
+ 3. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> \<lbrace>?S4\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>
+ 4. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> \<lbrace>?S'4\<rbrace> f' \<lbrace>\<lambda>_ _. True\<rbrace>
+ 5. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P s\<rbrakk> \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 6. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P' s\<rbrakk> \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(fastforce intro: return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> equiv_valid_2 D A B R ?P4 ?P'4 f f'
+ 2. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> \<lbrace>?S4\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>
+ 3. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> \<lbrace>?S'4\<rbrace> f' \<lbrace>\<lambda>_ _. True\<rbrace>
+ 4. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P s\<rbrakk> \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 5. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P' s\<rbrakk> \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> \<lbrace>?S4\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>
+ 2. equiv_valid_2 D A B R P P' f f' \<Longrightarrow> \<lbrace>?S'4\<rbrace> f' \<lbrace>\<lambda>_ _. True\<rbrace>
+ 3. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P s\<rbrakk> \<Longrightarrow> P s \<and> ?S4 s
+ 4. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P' s\<rbrakk> \<Longrightarrow> P' s \<and> ?S'4 s<\STATESEP>apply(rule wp_post_taut)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P s\<rbrakk> \<Longrightarrow> P s \<and> True
+ 2. \<And>s. \<lbrakk>equiv_valid_2 D A B R P P' f f'; P' s\<rbrakk> \<Longrightarrow> P' s \<and> True<\STATESEP>by(simp_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_liftE_bindE_general:
+  assumes r2: "\<And> rv rv'. R' rv rv' \<Longrightarrow> equiv_valid_2 D B C R (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes hoare: "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes hoare':  "\<lbrace> S' \<rbrace> f' \<lbrace> Q' \<rbrace>"
+  assumes r1: "equiv_valid_2 D A B R' P P' f f'"
+  shows "equiv_valid_2 D A C R (P and S) (P' and S') (liftE f >>=E g) (liftE f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A C R (P and S) (P' and S') (liftE f >>=E g) (liftE f' >>=E g')<\STATESEP>apply(unfold bindE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A C R (P and S) (P' and S') (liftE f >>= lift g) (liftE f' >>= lift g')<\STATESEP>apply(rule equiv_valid_2_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_2 D A C R ?Q ?Q' (liftE f >>= lift g) (liftE f' >>= lift g')
+ 2. \<And>s. (P and S) s \<Longrightarrow> ?Q s
+ 3. \<And>s. (P' and S') s \<Longrightarrow> ?Q' s<\STATESEP>apply(rule_tac Q="\<lambda> rv. K (\<forall> v. rv \<noteq> Inl v) and (\<lambda> s. \<forall> v. rv = Inr v \<longrightarrow> Q v s)" and Q'="\<lambda> rv. K (\<forall> v. rv \<noteq> Inl v) and (\<lambda> s. \<forall> v. rv = Inr v \<longrightarrow> Q' v s)" in equiv_valid_2_bind_general)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. ?R'4 rv rv' \<Longrightarrow> equiv_valid_2 D ?B4 C R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q' v s)) (lift g rv) (lift g' rv')
+ 2. equiv_valid_2 D A ?B4 ?R'4 ?P4 ?P'4 (liftE f) (liftE f')
+ 3. \<lbrace>?S4\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace>
+ 4. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. equiv_valid_2 D A ?B4 ?R'4 ?P4 ?P'4 (liftE f) (liftE f')
+ 2. \<And>rv rv'. ?R'4 rv rv' \<Longrightarrow> equiv_valid_2 D ?B4 C R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q' v s)) (lift g rv) (lift g' rv')
+ 3. \<lbrace>?S4\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace>
+ 4. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(rule_tac E="dc" in equiv_valid_2_liftE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. equiv_valid_2 D A ?B4 ?R6 ?P4 ?P'4 f f'
+ 2. \<And>rv rv'. (dc \<oplus> ?R6) rv rv' \<Longrightarrow> equiv_valid_2 D ?B4 C R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q' v s)) (lift g rv) (lift g' rv')
+ 3. \<lbrace>?S4\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace>
+ 4. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(rule r1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>rv rv'. (dc \<oplus> R') rv rv' \<Longrightarrow> equiv_valid_2 D B C R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q' v s)) (lift g rv) (lift g' rv')
+ 2. \<lbrace>?S4\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace>
+ 3. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 4. \<And>s. (P and S) s \<Longrightarrow> P s \<and> ?S4 s
+ 5. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> ?S'4 s<\STATESEP>apply(clarsimp simp: lift_def split: sum.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>rv rv'. (dc \<oplus> R') rv rv' \<Longrightarrow> (\<forall>x1. rv = Inl x1 \<longrightarrow> (\<forall>x1a. rv' = Inl x1a \<longrightarrow> equiv_valid_2 D B C R (\<lambda>y. False) (\<lambda>y. False) (throwError x1) (throwError x1a)) \<and> (\<forall>x2. rv' = Inr x2 \<longrightarrow> equiv_valid_2 D B C R (\<lambda>y. False) (Q' x2) (throwError x1) (g' x2))) \<and> (\<forall>x2. rv = Inr x2 \<longrightarrow> (\<forall>x1. rv' = Inl x1 \<longrightarrow> equiv_valid_2 D B C R (Q x2) (\<lambda>y. False) (g x2) (throwError x1)) \<and> (\<forall>x2a. rv' = Inr x2a \<longrightarrow> equiv_valid_2 D B C R (Q x2) (Q' x2a) (g x2) (g' x2a)))
+ 2. \<lbrace>?S4\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace>
+ 3. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 4. \<And>s. (P and S) s \<Longrightarrow> P s \<and> ?S4 s
+ 5. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> ?S'4 s<\STATESEP>apply(insert r2, fastforce simp: equiv_valid_2_def)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?S4\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace>
+ 2. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 3. \<And>s. (P and S) s \<Longrightarrow> P s \<and> ?S4 s
+ 4. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> ?S'4 s<\STATESEP>apply(simp add: liftE_def, wp, fastforce intro!: hoare_strengthen_post[OF hoare])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?S'4\<rbrace> liftE f' \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q' v s)\<rbrace>
+ 2. \<And>s. (P and S) s \<Longrightarrow> P s \<and> S s
+ 3. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> ?S'4 s<\STATESEP>apply(simp add: liftE_def, wp, fastforce intro!: hoare_strengthen_post[OF hoare'])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (P and S) s \<Longrightarrow> P s \<and> S s
+ 2. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> S' s<\STATESEP>by(auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_liftE_bindE:
+  assumes r2: "\<And> rv rv'. R' rv rv' \<Longrightarrow> equiv_valid_2 D A A R (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes hoare: "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes hoare':  "\<lbrace> S' \<rbrace> f' \<lbrace> Q' \<rbrace>"
+  assumes r1: "equiv_valid_2 D A A R' P P' f f'"
+  shows "equiv_valid_2 D A A R (P and S) (P' and S') (liftE f >>=E g) (liftE f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A R (P and S) (P' and S') (liftE f >>=E g) (liftE f' >>=E g')<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+R' ?rv ?rv' \<Longrightarrow> equiv_valid_2 D A A R (Q ?rv) (Q' ?rv') (g ?rv) (g' ?rv')
+\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>
+\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>
+equiv_valid_2 D A A R' P P' f f'
+
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A R (P and S) (P' and S') (liftE f >>=E g) (liftE f' >>=E g')<\STATESEP>by(blast intro: equiv_valid_2_liftE_bindE_general)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_rvrel_imp:
+  "\<lbrakk>equiv_valid_2 I A A R P P' f f'; \<And> s t. R s t \<Longrightarrow> R' s t\<rbrakk> \<Longrightarrow>
+   equiv_valid_2 I A A R' P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_valid_2 I A A R P P' f f'; \<And>s t. R s t \<Longrightarrow> R' s t\<rbrakk> \<Longrightarrow> equiv_valid_2 I A A R' P P' f f'<\STATESEP>apply(fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection\<open>Specialised fixed-state state equivalence validity\<close><\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+
+For resolve_address_bits and rec_del: talk about a fixed initial
+state. Note we only do this for one of the computations; the other
+state can be constrained by how it is related to this one by @{term
+"I"} and so forth.
+
+Also captures the typical case where the relation between the return
+values is equality and the required preconditions are identical.
+
+wp can cope with this.
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  spec_equiv_valid :: "'s \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s,'b) nondet_monad \<Rightarrow> bool"
+where
+  "spec_equiv_valid st I A B P f \<equiv> equiv_valid_2 I A B (=) (P and ((=) st)) P f f"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation spec_equiv_valid_inv where
+  "spec_equiv_valid_inv st I A P f \<equiv> spec_equiv_valid st I A A P f"<\STATESEP>0<\TRANSEP><\STATESEP>subsection\<open>Specialised state equivalence validity\<close><\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+
+Most of the time we deal with the streamlined version.
+
+wp can cope with this too.
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  equiv_valid :: "('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s,'b) nondet_monad \<Rightarrow> bool"
+where
+  "equiv_valid I A B P f \<equiv> \<forall>st. spec_equiv_valid st I A B P f"<\STATESEP>0<\TRANSEP><\STATESEP>lemma equiv_valid_def2:
+  "equiv_valid I A B P f = equiv_valid_2 I A B (=) P P f f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P f = equiv_valid_2 I A B (=) P P f f<\STATESEP>by (simp add: equiv_valid_def spec_equiv_valid_def equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation equiv_valid_rv where
+  "equiv_valid_rv I A B R P f \<equiv> equiv_valid_2 I A B R P P f f"<\STATESEP>0<\TRANSEP><\STATESEP>lemma bind_ev_general:
+  assumes reads_res_2: "\<And>rv. equiv_valid I B C (Q rv) (g rv)"
+  assumes reads_res_1: "equiv_valid I A B P' f"
+  assumes hoare: "\<lbrace> P'' \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid I A C (\<lambda>s. P' s \<and> P'' s) (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A C (\<lambda>s. P' s \<and> P'' s) (f >>= g)<\STATESEP>unfolding equiv_valid_def2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A C (=) (\<lambda>s. P' s \<and> P'' s) (f >>= g)<\STATESEP>apply (rule equiv_valid_2_bind_general[where R'="(=)"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>rv rv'. rv = rv' \<Longrightarrow> equiv_valid_2 I ?B C (=) (?Q rv) (?Q' rv') (g rv) (g rv')
+ 2. equiv_valid_rv I A ?B (=) P' f
+ 3. \<lbrace>P''\<rbrace> f \<lbrace>?Q\<rbrace>
+ 4. \<lbrace>P''\<rbrace> f \<lbrace>?Q'\<rbrace><\STATESEP>apply (auto intro: reads_res_1[unfolded equiv_valid_def2] reads_res_2[unfolded equiv_valid_def2])[2]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace>
+ 2. \<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>apply (rule hoare)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>apply (rule hoare)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_ev:
+  assumes reads_res_2: "\<And>rv. equiv_valid I A A (Q rv) (g rv)"
+  assumes reads_res_1: "equiv_valid I A A P' f"
+  assumes hoare: "\<lbrace> P'' \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid I A A (\<lambda>s. P' s \<and> P'' s) (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A A (\<lambda>s. P' s \<and> P'' s) (f >>= g)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid I A A (Q ?rv) (g ?rv)
+equiv_valid I A A P' f
+\<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid I A A (\<lambda>s. P' s \<and> P'' s) (f >>= g)<\STATESEP>by (blast intro: bind_ev_general)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_weaken_pre:
+  "\<lbrakk> equiv_valid I A' B P f; \<forall>st t. I st t \<and> A st t \<longrightarrow> A' st t \<rbrakk>
+     \<Longrightarrow> equiv_valid I A B P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_valid I A' B P f; \<forall>st t. I st t \<and> A st t \<longrightarrow> A' st t\<rbrakk> \<Longrightarrow> equiv_valid I A B P f<\STATESEP>by (fastforce simp: equiv_valid_def spec_equiv_valid_def equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_guard_imp:
+  assumes reads_res: "equiv_valid I A B Q f"
+  assumes guard_imp: "\<And> s. P s \<Longrightarrow> Q s"
+  shows "equiv_valid I A B P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P f<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid I A B Q f
+P ?s \<Longrightarrow> Q ?s
+
+goal (1 subgoal):
+ 1. equiv_valid I A B P f<\STATESEP>by (fastforce simp: equiv_valid_def2 equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bind_ev_pre = bind_ev[THEN equiv_valid_guard_imp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma gen_asm_ev':
+  assumes "Q \<Longrightarrow> equiv_valid D A B P f"
+  shows "equiv_valid D A B (P and K Q) f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid D A B (P and K Q) f<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+Q \<Longrightarrow> equiv_valid D A B P f
+
+goal (1 subgoal):
+ 1. equiv_valid D A B (P and K Q) f<\STATESEP>by (fastforce simp: equiv_valid_def2 equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>declare K_def [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas gen_asm_ev =
+  gen_asm_ev'[where P="\<top>", simplified]
+  gen_asm_ev'
+  gen_asm_ev'[simplified K_def, where P="\<top>", simplified]
+  gen_asm_ev'[simplified K_def]<\STATESEP>0<\TRANSEP><\STATESEP>declare K_def [simp]<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation equiv_valid_inv where
+  "equiv_valid_inv I A P f \<equiv> equiv_valid I A A P f"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation equiv_valid_rv_inv where
+  "equiv_valid_rv_inv I A R P f \<equiv> equiv_valid_rv I A A R P f"<\STATESEP>0<\TRANSEP><\STATESEP>lemma get_evrv:
+  "equiv_valid_rv_inv I A (I and A) \<top> get"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A (I and A) (\<lambda>_. True) get<\STATESEP>by(auto simp: equiv_valid_2_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_rv_bind_general:
+  assumes ev1:
+  "equiv_valid_rv I A B W P f"
+  assumes ev2:
+  "\<And> rv rv'. W rv rv' \<Longrightarrow> equiv_valid_2 I B C R (Q rv) (Q rv') (g rv) (g rv')"
+  assumes hoare:
+  "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid_rv I A C R P (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A C R P (f >>= g)<\STATESEP>apply(rule equiv_valid_2_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_2 I A C R ?Q ?Q' (f >>= g) (f >>= g)
+ 2. \<And>s. P s \<Longrightarrow> ?Q s
+ 3. \<And>s. P s \<Longrightarrow> ?Q' s<\STATESEP>apply(rule equiv_valid_2_bind_general[OF ev2])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. ?R'4 rv rv' \<Longrightarrow> W rv rv'
+ 2. equiv_valid_2 I A B ?R'4 ?P4 ?P'4 f f
+ 3. \<lbrace>?S4\<rbrace> f \<lbrace>Q\<rbrace>
+ 4. \<lbrace>?S'4\<rbrace> f \<lbrace>Q\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 6. \<And>s. P s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. equiv_valid_2 I A B W ?P4 ?P'4 f f
+ 2. \<lbrace>?S4\<rbrace> f \<lbrace>Q\<rbrace>
+ 3. \<lbrace>?S'4\<rbrace> f \<lbrace>Q\<rbrace>
+ 4. \<And>s. P s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 5. \<And>s. P s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(rule ev1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?S4\<rbrace> f \<lbrace>Q\<rbrace>
+ 2. \<lbrace>?S'4\<rbrace> f \<lbrace>Q\<rbrace>
+ 3. \<And>s. P s \<Longrightarrow> P s \<and> ?S4 s
+ 4. \<And>s. P s \<Longrightarrow> P s \<and> ?S'4 s<\STATESEP>apply(rule hoare)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?S'4\<rbrace> f \<lbrace>Q\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> P s \<and> P s
+ 3. \<And>s. P s \<Longrightarrow> P s \<and> ?S'4 s<\STATESEP>apply(rule hoare)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. P s \<Longrightarrow> P s \<and> P s
+ 2. \<And>s. P s \<Longrightarrow> P s \<and> P s<\STATESEP>apply(simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_rv_bind:
+  assumes ev1:
+  "equiv_valid_rv_inv I A W P f"
+  assumes ev2:
+  "\<And> rv rv'. W rv rv' \<Longrightarrow> equiv_valid_2 I A A R (Q rv) (Q rv') (g rv) (g rv')"
+  assumes hoare:
+  "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid_rv_inv I A R P (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P (f >>= g)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid_rv_inv I A W P f
+W ?rv ?rv' \<Longrightarrow> equiv_valid_2 I A A R (Q ?rv) (Q ?rv') (g ?rv) (g ?rv')
+\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P (f >>= g)<\STATESEP>by(blast intro: equiv_valid_rv_bind_general)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_ev2:
+  assumes "\<And> s t. \<lbrakk>I s t; A s t; P s; P' t\<rbrakk> \<Longrightarrow> R () () \<and> I (f s) (f' t) \<and> B (f s) (f' t)"
+  shows
+  "equiv_valid_2 I A B R P P' (modify f) (modify f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' (modify f) (modify f')<\STATESEP>apply(clarsimp simp: equiv_valid_2_def in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>P s; P' t; I s t; A s t\<rbrakk> \<Longrightarrow> R () () \<and> I (f s) (f' t) \<and> B (f s) (f' t)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>I ?s ?t; A ?s ?t; P ?s; P' ?t\<rbrakk> \<Longrightarrow> R () () \<and> I (f ?s) (f' ?t) \<and> B (f ?s) (f' ?t)
+
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>P s; P' t; I s t; A s t\<rbrakk> \<Longrightarrow> R () () \<and> I (f s) (f' t) \<and> B (f s) (f' t)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_ev:
+  "equiv_valid I A B
+     (\<lambda> s. \<forall> s t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t))
+     (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B (\<lambda>s. \<forall>s t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t)) (modify f)<\STATESEP>apply(clarsimp simp:equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A B (=) (\<lambda>s. \<forall>s t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t)) (modify f)<\STATESEP>apply(rule modify_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>I s t; A s t; \<forall>s t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t); \<forall>s t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t)\<rbrakk> \<Longrightarrow> () = () \<and> I (f s) (f t) \<and> B (f s) (f t)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_ev':
+  "equiv_valid I A B
+     (\<lambda> s. \<forall> t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t))
+     (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B (\<lambda>s. \<forall>t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t)) (modify f)<\STATESEP>apply(clarsimp simp:equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A B (=) (\<lambda>s. \<forall>t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t)) (modify f)<\STATESEP>apply(rule modify_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>I s t; A s t; \<forall>t. I s t \<and> A s t \<longrightarrow> I (f s) (f t) \<and> B (f s) (f t); \<forall>ta. I t ta \<and> A t ta \<longrightarrow> I (f t) (f ta) \<and> B (f t) (f ta)\<rbrakk> \<Longrightarrow> () = () \<and> I (f s) (f t) \<and> B (f s) (f t)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_ev'':
+  assumes "\<And> s t. \<lbrakk>I s t; A s t; P s; P t\<rbrakk> \<Longrightarrow> I (f s) (f t) \<and> B (f s) (f t)"
+  shows "equiv_valid I A B P (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P (modify f)<\STATESEP>apply(clarsimp simp:equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv I A B (=) P (modify f)<\STATESEP>apply(rule modify_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>I s t; A s t; P s; P t\<rbrakk> \<Longrightarrow> () = () \<and> I (f s) (f t) \<and> B (f s) (f t)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>I ?s ?t; A ?s ?t; P ?s; P ?t\<rbrakk> \<Longrightarrow> I (f ?s) (f ?t) \<and> B (f ?s) (f ?t)
+
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>I s t; A s t; P s; P t\<rbrakk> \<Longrightarrow> () = () \<and> I (f s) (f t) \<and> B (f s) (f t)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma put_ev2:
+  assumes "\<And> s t. \<lbrakk>I s t; A s t; P s; P' t\<rbrakk> \<Longrightarrow> R () () \<and> I x x' \<and> B x x'"
+  shows
+  "equiv_valid_2 I A B R P P' (put x) (put x')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' (put x) (put x')<\STATESEP>apply(clarsimp simp: equiv_valid_2_def in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>P s; P' t; I s t; A s t\<rbrakk> \<Longrightarrow> R () () \<and> I x x' \<and> B x x'<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>I ?s ?t; A ?s ?t; P ?s; P' ?t\<rbrakk> \<Longrightarrow> R () () \<and> I x x' \<and> B x x'
+
+goal (1 subgoal):
+ 1. \<And>s t. \<lbrakk>P s; P' t; I s t; A s t\<rbrakk> \<Longrightarrow> R () () \<and> I x x' \<and> B x x'<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_bind_ev2:
+  assumes "\<And> rv rv'. \<lbrakk>I rv rv'; A rv rv'\<rbrakk> \<Longrightarrow> equiv_valid_2 I A B R (P and ((=) rv)) (P' and ((=) rv')) (f rv) (f' rv')"
+  shows "equiv_valid_2 I A B R P P' (get >>= f) (get >>= f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' (get >>= f) (get >>= f')<\STATESEP>apply(rule equiv_valid_2_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_2 I A B R ?Q ?Q' (get >>= f) (get >>= f')
+ 2. \<And>s. P s \<Longrightarrow> ?Q s
+ 3. \<And>s. P' s \<Longrightarrow> ?Q' s<\STATESEP>apply(rule_tac R'="I and A" in equiv_valid_2_bind_general)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. (I and A) rv rv' \<Longrightarrow> equiv_valid_2 I ?B4 B R (?Q4 rv) (?Q'4 rv') (f rv) (f' rv')
+ 2. equiv_valid_2 I A ?B4 (I and A) ?P4 ?P'4 get get
+ 3. \<lbrace>?S4\<rbrace> get \<lbrace>?Q4\<rbrace>
+ 4. \<lbrace>?S'4\<rbrace> get \<lbrace>?Q'4\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 6. \<And>s. P' s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(rule assms, simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. equiv_valid_2 I A A (I and A) ?P4 ?P'4 get get
+ 2. \<lbrace>?S4\<rbrace> get \<lbrace>\<lambda>rv. P and (=) rv\<rbrace>
+ 3. \<lbrace>?S'4\<rbrace> get \<lbrace>\<lambda>rv'. P' and (=) rv'\<rbrace>
+ 4. \<And>s. P s \<Longrightarrow> ?P4 s \<and> ?S4 s
+ 5. \<And>s. P' s \<Longrightarrow> ?P'4 s \<and> ?S'4 s<\STATESEP>apply(rule get_evrv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?S4\<rbrace> get \<lbrace>\<lambda>rv. P and (=) rv\<rbrace>
+ 2. \<lbrace>?S'4\<rbrace> get \<lbrace>\<lambda>rv'. P' and (=) rv'\<rbrace>
+ 3. \<And>s. P s \<Longrightarrow> True \<and> ?S4 s
+ 4. \<And>s. P' s \<Longrightarrow> True \<and> ?S'4 s<\STATESEP>apply(wp get_sp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. P s \<Longrightarrow> True \<and> (P and (=) s) s
+ 2. \<And>s. P' s \<Longrightarrow> True \<and> (P' and (=) s) s<\STATESEP>by(auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_ev_pre:
+  "equiv_valid_inv I A P (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (return x)<\STATESEP>apply (simp add: equiv_valid_def2 return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas return_ev = return_ev_pre[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemma fail_ev2_l:
+  "equiv_valid_2 I A B R P P' fail f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' fail f'<\STATESEP>by(simp add: equiv_valid_2_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_ev2_r:
+  "equiv_valid_2 I A B R P P' f fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' f fail<\STATESEP>by(simp add: equiv_valid_2_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_ev_pre:
+  "equiv_valid I A B P fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P fail<\STATESEP>apply (simp add: equiv_valid_def2 fail_ev2_l)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas fail_ev = fail_ev_pre[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemma assert_ev2:
+  "R () () \<Longrightarrow> equiv_valid_2 I A A R P P' (assert a) (assert b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. R () () \<Longrightarrow> equiv_valid_2 I A A R P P' (assert a) (assert b)<\STATESEP>apply(simp add: assert_def fail_ev2_l fail_ev2_r)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. R () () \<Longrightarrow> a \<longrightarrow> b \<longrightarrow> equiv_valid_2 I A A R P P' (return ()) (return ())<\STATESEP>apply(blast intro: return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_ev:
+  "equiv_valid I A B P f \<Longrightarrow> equiv_valid I A B P (liftE f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P f \<Longrightarrow> equiv_valid I A B P (liftE f)<\STATESEP>unfolding liftE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P f \<Longrightarrow> equiv_valid I A B P (do r <- f;
+return (Inr r)
+od)<\STATESEP>apply (rule bind_ev_general[THEN equiv_valid_guard_imp, OF return_ev _ wp_post_taut])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. equiv_valid I A B P f \<Longrightarrow> equiv_valid I A B ?P'1 f
+ 2. \<And>s. \<lbrakk>equiv_valid I A B P f; P s\<rbrakk> \<Longrightarrow> ?P'1 s \<and> True<\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_ev:
+  assumes "b \<Longrightarrow> equiv_valid I A B P f"
+  assumes "\<not> b \<Longrightarrow> equiv_valid I A B Q g"
+  shows "equiv_valid I A B (\<lambda>s. (b \<longrightarrow> P s) \<and> (\<not>b \<longrightarrow> Q s)) (if b then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B (\<lambda>s. (b \<longrightarrow> P s) \<and> (\<not> b \<longrightarrow> Q s)) (if b then f else g)<\STATESEP>apply (clarsimp split: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (b \<longrightarrow> equiv_valid I A B P f) \<and> (\<not> b \<longrightarrow> equiv_valid I A B Q g)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+b \<Longrightarrow> equiv_valid I A B P f
+\<not> b \<Longrightarrow> equiv_valid I A B Q g
+
+goal (1 subgoal):
+ 1. (b \<longrightarrow> equiv_valid I A B P f) \<and> (\<not> b \<longrightarrow> equiv_valid I A B Q g)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemmas if_ev_pre = equiv_valid_guard_imp[OF if_ev]<\STATESEP>0<\TRANSEP><\STATESEP>lemma assert_ev_pre:
+  "equiv_valid_inv I A P (assert b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (assert b)<\STATESEP>apply(simp add: equiv_valid_def2 assert_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas assert_ev = assert_ev_pre[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemma assert_opt_ev:
+  "equiv_valid_inv I A \<top> (assert_opt v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>_. True) (assert_opt v)<\STATESEP>apply (simp add: assert_opt_def return_ev fail_ev
+            split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_opt_ev2:
+  assumes "\<And> a a'. \<lbrakk>v = Some a; v' = Some a'\<rbrakk> \<Longrightarrow> R a a'"
+  shows "equiv_valid_2 I A A R \<top> \<top> (assert_opt v) (assert_opt v')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A A R (\<lambda>_. True) (\<lambda>_. True) (assert_opt v) (assert_opt v')<\STATESEP>apply (simp add: assert_opt_def return_ev fail_ev2_l fail_ev2_r
+            split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x2. v = Some x2 \<longrightarrow> (\<forall>x2a. v' = Some x2a \<longrightarrow> equiv_valid_2 I A A R (\<lambda>_. True) (\<lambda>_. True) (return x2) (return x2a))<\STATESEP>apply(intro allI impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2 x2a. \<lbrakk>v = Some x2; v' = Some x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 I A A R (\<lambda>_. True) (\<lambda>_. True) (return x2) (return x2a)<\STATESEP>apply(rule return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2 x2a s t. \<lbrakk>v = Some x2; v' = Some x2a; True; True; I s t; A s t\<rbrakk> \<Longrightarrow> R x2 x2a<\STATESEP>apply(rule assms, assumption+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_f_ev:
+  "equiv_valid_inv I A (K (det f)) (select_f (f x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (K (det f)) (select_f (f x))<\STATESEP>apply (rule gen_asm_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det f \<Longrightarrow> equiv_valid_inv I A (\<lambda>_. True) (select_f (f x))<\STATESEP>apply (simp add: select_f_def equiv_valid_def2 equiv_valid_2_def det_set_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_evrv:
+  "equiv_valid_rv_inv I A R (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (f s) (f t))) (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (f s) (f t))) (gets f)<\STATESEP>apply (auto simp: equiv_valid_2_def in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_evrv':
+  "equiv_valid_rv_inv I A R (\<lambda>s. (\<forall>t. I s t \<and> A s t \<longrightarrow> R (f s) (f t))) (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R (\<lambda>s. \<forall>t. I s t \<and> A s t \<longrightarrow> R (f s) (f t)) (gets f)<\STATESEP>apply (auto simp: equiv_valid_2_def in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_evrv'':
+  "\<forall>s t. I s t \<and> A s t \<and> P s \<and> P t \<longrightarrow> R (f s) (f t) \<Longrightarrow> equiv_valid_rv_inv I A R P (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. I s t \<and> A s t \<and> P s \<and> P t \<longrightarrow> R (f s) (f t) \<Longrightarrow> equiv_valid_rv_inv I A R P (gets f)<\STATESEP>apply (auto simp: equiv_valid_2_def in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_rv_guard_imp:
+  "\<lbrakk>equiv_valid_rv I A B R P f; \<And> s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow>
+   equiv_valid_rv I A B R Q f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_valid_rv I A B R P f; \<And>s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> equiv_valid_rv I A B R Q f<\STATESEP>apply(simp add: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s t. P s \<and> P t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (f t). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> B s' t'); \<And>s. Q s \<Longrightarrow> P s\<rbrakk> \<Longrightarrow> \<forall>s t. Q s \<and> Q t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (f t). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> B s' t')<\STATESEP>apply fast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_ev:
+  shows "equiv_valid_inv I A (\<lambda> s. \<forall> s t. I s t \<and> A s t \<longrightarrow> f s = f t) (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. \<forall>s t. I s t \<and> A s t \<longrightarrow> f s = f t) (gets f)<\STATESEP>apply (simp add: equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A (=) (\<lambda>s. \<forall>s t. I s t \<and> A s t \<longrightarrow> f s = f t) (gets f)<\STATESEP>apply (auto intro: equiv_valid_rv_guard_imp[OF gets_evrv])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_ev':
+  shows "equiv_valid_inv I A (\<lambda> s. \<forall> t. I s t \<and> A s t \<longrightarrow> f s = f t) (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. \<forall>t. I s t \<and> A s t \<longrightarrow> f s = f t) (gets f)<\STATESEP>apply (simp add: equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A (=) (\<lambda>s. \<forall>t. I s t \<and> A s t \<longrightarrow> f s = f t) (gets f)<\STATESEP>apply (auto intro: equiv_valid_rv_guard_imp[OF gets_evrv'])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_ev'':
+  "\<forall>s t. I s t \<and> A s t \<and> P s \<and> P t \<longrightarrow> f s = f t \<Longrightarrow> equiv_valid_inv I A P (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. I s t \<and> A s t \<and> P s \<and> P t \<longrightarrow> f s = f t \<Longrightarrow> equiv_valid_inv I A P (gets f)<\STATESEP>apply (simp add: equiv_valid_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s t. I s t \<and> A s t \<and> P s \<and> P t \<longrightarrow> f s = f t \<Longrightarrow> equiv_valid_rv_inv I A (=) P (gets f)<\STATESEP>apply (auto intro: equiv_valid_rv_guard_imp[OF gets_evrv''])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_evrv:
+  "equiv_valid_rv_inv I A R (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))) (gets_the f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))) (gets_the f)<\STATESEP>unfolding gets_the_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))) (gets f >>= assert_opt)<\STATESEP>apply (rule equiv_valid_rv_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_rv_inv I A ?W (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))) (gets f)
+ 2. \<And>rv rv'. ?W rv rv' \<Longrightarrow> equiv_valid_2 I A A R (?Q rv) (?Q rv') (assert_opt rv) (assert_opt rv')
+ 3. \<lbrace>K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))\<rbrace> gets f \<lbrace>?Q\<rbrace><\STATESEP>apply(rule equiv_valid_rv_guard_imp[OF gets_evrv])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s. K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t))) s \<Longrightarrow> K (\<forall>s t. I s t \<and> A s t \<longrightarrow> ?W (f s) (f t)) s
+ 2. \<And>rv rv'. ?W rv rv' \<Longrightarrow> equiv_valid_2 I A A R (?Q rv) (?Q rv') (assert_opt rv) (assert_opt rv')
+ 3. \<lbrace>K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))\<rbrace> gets f \<lbrace>?Q\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv rv'. R (the rv) (the rv') \<Longrightarrow> equiv_valid_2 I A A R (?Q rv) (?Q rv') (assert_opt rv) (assert_opt rv')
+ 2. \<lbrace>K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))\<rbrace> gets f \<lbrace>?Q\<rbrace><\STATESEP>apply(rule assert_opt_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv rv' a a'. \<lbrakk>R (the rv) (the rv'); rv = Some a; rv' = Some a'\<rbrakk> \<Longrightarrow> R a a'
+ 2. \<lbrace>K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))\<rbrace> gets f \<lbrace>\<lambda>rv _. True\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (\<forall>s t. I s t \<and> A s t \<longrightarrow> R (the (f s)) (the (f t)))\<rbrace> gets f \<lbrace>\<lambda>rv _. True\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_ev:
+  "equiv_valid_inv I A (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> f s = f t)) (gets_the f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> f s = f t)) (gets_the f)<\STATESEP>unfolding equiv_valid_def2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A (=) (K (\<forall>s t. I s t \<and> A s t \<longrightarrow> f s = f t)) (gets_the f)<\STATESEP>apply(rule equiv_valid_rv_guard_imp[OF gets_the_evrv])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. K (\<forall>s t. I s t \<and> A s t \<longrightarrow> f s = f t) s \<Longrightarrow> K (\<forall>s t. I s t \<and> A s t \<longrightarrow> the (f s) = the (f t)) s<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma throwError_ev_pre:
+  "equiv_valid_inv I A P (throwError e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (throwError e)<\STATESEP>by (auto simp: throwError_def return_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas throwError_ev = throwError_ev_pre[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemma returnOk_ev_pre:
+  "equiv_valid_inv I A P (returnOk v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (returnOk v)<\STATESEP>by (auto simp: returnOk_def return_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas returnOk_ev = returnOk_ev_pre[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bindE_ev:
+  assumes reads_res_2: "\<And> rv. equiv_valid_inv I A (Q rv) (g rv)"
+  assumes reads_res_1: "equiv_valid_inv I A P' f"
+  assumes hoare: "\<lbrace> P'' \<rbrace> f \<lbrace> Q \<rbrace>,-"
+  shows "equiv_valid_inv I A (\<lambda>s. P' s \<and> P'' s) (f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. P' s \<and> P'' s) (f >>=E g)<\STATESEP>unfolding bindE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. P' s \<and> P'' s) (f >>= lift g)<\STATESEP>apply (rule bind_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv. equiv_valid_inv I A (?Q rv) (lift g rv)
+ 2. equiv_valid_inv I A P' f
+ 3. \<lbrace>P''\<rbrace> f \<lbrace>?Q\<rbrace><\STATESEP>prefer 3<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>P''\<rbrace> f \<lbrace>?Q\<rbrace>
+ 2. \<And>rv. equiv_valid_inv I A (?Q rv) (lift g rv)
+ 3. equiv_valid_inv I A P' f<\STATESEP>apply(rule hoare[unfolded validE_R_def validE_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv. equiv_valid_inv I A (\<lambda>s. case rv of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s) (lift g rv)
+ 2. equiv_valid_inv I A P' f<\STATESEP>apply(simp split: sum.split add: lift_def throwError_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv. \<forall>x2. rv = Inr x2 \<longrightarrow> equiv_valid_inv I A (Q x2) (g x2)
+ 2. equiv_valid_inv I A P' f<\STATESEP>apply(blast intro!: reads_res_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P' f<\STATESEP>apply(rule reads_res_1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bindE_ev_pre = bindE_ev[THEN equiv_valid_guard_imp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma liftE_bindE_ev_general:
+  assumes r2: "\<And> val. equiv_valid I B C (Q val) (g val)"
+  assumes r1: "equiv_valid I A B P f"
+  assumes hoare: "\<lbrace> R \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid I A C (\<lambda> s. P s \<and> R s) (liftE f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A C (\<lambda>s. P s \<and> R s) (liftE f >>=E g)<\STATESEP>apply(simp add: bindE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A C (\<lambda>s. P s \<and> R s) (liftE f >>= lift g)<\STATESEP>apply(rule_tac Q="\<lambda> rv. K (\<forall> v. rv \<noteq> Inl v) and (\<lambda> s. \<forall> v. rv = Inr v \<longrightarrow> Q v s)" in bind_ev_general)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv. equiv_valid I ?B C (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (lift g rv)
+ 2. equiv_valid I A ?B P (liftE f)
+ 3. \<lbrace>R\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid I A ?B P (liftE f)
+ 2. \<And>rv. equiv_valid I ?B C (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (lift g rv)
+ 3. \<lbrace>R\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(rule liftE_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid I A ?B P f
+ 2. \<And>rv. equiv_valid I ?B C (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (lift g rv)
+ 3. \<lbrace>R\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(rule r1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv. equiv_valid I B C (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (lift g rv)
+ 2. \<lbrace>R\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(insert r2, fastforce simp: lift_def split: sum.split simp: equiv_valid_def2 equiv_valid_2_def)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>R\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(insert hoare, fastforce simp: valid_def liftE_def return_def bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_bindE_ev:
+  assumes r2: "\<And> val. equiv_valid_inv I A (Q val) (g val)"
+  assumes r1: "equiv_valid_inv I A P f"
+  assumes hoare: "\<lbrace> R \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid_inv I A (\<lambda> s. P s \<and> R s) (liftE f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. P s \<and> R s) (liftE f >>=E g)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+equiv_valid_inv I A (Q ?val) (g ?val)
+equiv_valid_inv I A P f
+\<lbrace>R\<rbrace> f \<lbrace>Q\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. P s \<and> R s) (liftE f >>=E g)<\STATESEP>by (blast intro: liftE_bindE_ev_general)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas liftE_bindE_ev_pre = liftE_bindE_ev[THEN equiv_valid_guard_imp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma liftM_ev:
+  assumes reads_res: "equiv_valid I A B P g"
+  shows "equiv_valid I A B P (liftM f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P (liftM f g)<\STATESEP>apply (simp add: liftM_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P (do x <- g;
+return (f x)
+od)<\STATESEP>apply (rule bind_ev_general[THEN equiv_valid_guard_imp, OF return_ev reads_res wp_post_taut])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> P s \<and> True<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftME_ev:
+  assumes reads_res: "equiv_valid_inv I A P g"
+  shows "equiv_valid_inv I A P (liftME f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (liftME f g)<\STATESEP>apply(simp add: liftME_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (doE x <- g;
+returnOk (f x)
+odE)<\STATESEP>apply (rule bindE_ev_pre[OF returnOk_ev reads_res])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P''\<rbrace> g \<lbrace>\<lambda>x _. True\<rbrace>, -
+ 2. \<And>s. P s \<Longrightarrow> P s \<and> ?P'' s<\STATESEP>apply (rule hoareE_R_TrueI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> P s \<and> ?P'' s<\STATESEP>apply fast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_ev:
+  assumes a: "b \<Longrightarrow> equiv_valid_inv I A P m"
+  shows "equiv_valid_inv I A (\<lambda>s. b \<longrightarrow> P s) (whenE b m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. b \<longrightarrow> P s) (whenE b m)<\STATESEP>unfolding whenE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>s. b \<longrightarrow> P s) (if b then m else returnOk ())<\STATESEP>by (auto intro: a returnOk_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_throwError_bindE_ev:
+  assumes "\<And> rv. \<not> b \<Longrightarrow> equiv_valid_inv I A P (g rv)"
+  shows "equiv_valid_inv I A P (whenE b (throwError e) >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (whenE b (throwError e) >>=E g)<\STATESEP>apply (rule_tac Q="\<lambda> rv. P and (\<lambda> s. \<not> b)" in bindE_ev_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>rv. equiv_valid_inv I A (P and (\<lambda>s. \<not> b)) (g rv)
+ 2. equiv_valid_inv I A ?P' (whenE b (throwError e))
+ 3. \<lbrace>?P''\<rbrace> whenE b (throwError e) \<lbrace>\<lambda>rv. P and (\<lambda>s. \<not> b)\<rbrace>, -
+ 4. \<And>s. P s \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply (rule gen_asm_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>rv. \<not> b \<Longrightarrow> equiv_valid_inv I A P (g rv)
+ 2. equiv_valid_inv I A ?P' (whenE b (throwError e))
+ 3. \<lbrace>?P''\<rbrace> whenE b (throwError e) \<lbrace>\<lambda>rv. P and (\<lambda>s. \<not> b)\<rbrace>, -
+ 4. \<And>s. P s \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply (blast intro: assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_inv I A ?P' (whenE b (throwError e))
+ 2. \<lbrace>?P''\<rbrace> whenE b (throwError e) \<lbrace>\<lambda>rv. P and (\<lambda>s. \<not> b)\<rbrace>, -
+ 3. \<And>s. P s \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply (rule whenE_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. b \<Longrightarrow> equiv_valid_inv I A ?P10 (throwError e)
+ 2. \<lbrace>?P''\<rbrace> whenE b (throwError e) \<lbrace>\<lambda>rv. P and (\<lambda>s. \<not> b)\<rbrace>, -
+ 3. \<And>s. P s \<Longrightarrow> (b \<longrightarrow> ?P10 s) \<and> ?P'' s<\STATESEP>apply (rule throwError_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P''\<rbrace> whenE b (throwError e) \<lbrace>\<lambda>rv. P and (\<lambda>s. \<not> b)\<rbrace>, -
+ 2. \<And>s. P s \<Longrightarrow> (b \<longrightarrow> True) \<and> ?P'' s<\STATESEP>apply (wp whenE_throwError_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> (b \<longrightarrow> True) \<and> (\<not> b \<longrightarrow> (P and (\<lambda>s. \<not> b)) s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma K_bind_ev:
+  "equiv_valid I A B P f \<Longrightarrow> equiv_valid I A B P (K_bind f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P f \<Longrightarrow> equiv_valid I A B P (K_bind f x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>subsection\<open>wp setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas splits_ev[wp_split] =
+  bind_ev_pre bindE_ev_pre
+  bind_ev bindE_ev
+  if_ev_pre
+  if_ev<\STATESEP>0<\TRANSEP><\STATESEP>lemmas wp_ev[wp] =
+  return_ev_pre
+  return_ev
+  liftE_ev
+  fail_ev_pre
+  fail_ev
+  assert_opt_ev
+  assert_ev
+  gets_ev
+  gets_the_ev
+  returnOk_ev_pre
+  returnOk_ev
+  throwError_ev_pre
+  throwError_ev
+  liftM_ev
+  liftME_ev
+  whenE_ev
+  K_bind_ev<\STATESEP>0<\TRANSEP><\STATESEP>subsection\<open>crunch setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas pre_ev =
+  hoare_pre
+  equiv_valid_guard_imp<\STATESEP>0<\TRANSEP><\STATESEP>subsection\<open>wpc setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma wpc_helper_equiv_valid:
+  "equiv_valid D A B Q f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (equiv_valid D A B P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid D A B Q f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (equiv_valid D A B P f)<\STATESEP>using equiv_valid_guard_imp<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>equiv_valid ?I ?A ?B ?Q ?f; \<And>s. ?P s \<Longrightarrow> ?Q s\<rbrakk> \<Longrightarrow> equiv_valid ?I ?A ?B ?P ?f
+
+goal (1 subgoal):
+ 1. equiv_valid D A B Q f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (equiv_valid D A B P f)<\STATESEP>apply (simp add: wpc_helper_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_valid D A B Q f; \<And>I A B Q f P. \<lbrakk>equiv_valid I A B Q f; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> equiv_valid I A B P f\<rbrakk> \<Longrightarrow> (\<forall>s. P s \<longrightarrow> Q s) \<and> (\<forall>s. P' s \<longrightarrow> Q' s) \<and> P'' \<subseteq> Q'' \<longrightarrow> equiv_valid D A B P f<\STATESEP>apply (blast)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. equiv_valid D A B Q m" wpc_helper_equiv_valid<\STATESEP>0<\TRANSEP><\STATESEP>subsection\<open>More hoare-like rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma mapM_ev_pre:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>"
+  assumes inv_established: "\<And> s. P s \<Longrightarrow> I s"
+  shows "equiv_valid_inv D A P (mapM m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (mapM m lst)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m ?x)
+?x \<in> set lst \<Longrightarrow> \<lbrace>I\<rbrace> m ?x \<lbrace>\<lambda>_. I\<rbrace>
+P ?s \<Longrightarrow> I ?s
+
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (mapM m lst)<\STATESEP>apply(atomize)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A P (mapM m lst)<\STATESEP>apply(rule_tac Q=I in equiv_valid_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst)
+ 2. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(induct lst)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>\<forall>x. x \<in> set [] \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set [] \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m [])
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m (a # lst))
+ 3. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(simp add: mapM_Nil return_ev_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m (a # lst))
+ 2. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(subst mapM_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (do y <- m a;
+ys <- mapM m lst;
+return (y # ys)
+od)
+ 2. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(rule bind_ev_pre[where P''="I"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?Q6 a lst rv) (do ys <- mapM m lst;
+return (rv # ys)
+od)
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'6 a lst) (m a)
+ 3. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>I\<rbrace> m a \<lbrace>?Q6 a lst\<rbrace>
+ 4. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'6 a lst s \<and> I s
+ 5. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(rule bind_ev[OF return_ev])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'11 a lst rv) (mapM m lst)
+ 2. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''11 a lst rv\<rbrace> mapM m lst \<lbrace>\<lambda>ys _. True\<rbrace>
+ 3. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'6 a lst) (m a)
+ 4. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>I\<rbrace> m a \<lbrace>\<lambda>rv s. ?P'11 a lst rv s \<and> ?P''11 a lst rv s\<rbrace>
+ 5. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'6 a lst s \<and> I s
+ 6. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''11 a lst rv\<rbrace> mapM m lst \<lbrace>\<lambda>ys _. True\<rbrace>
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'6 a lst) (m a)
+ 3. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>I\<rbrace> m a \<lbrace>\<lambda>rv s. I s \<and> ?P''11 a lst rv s\<rbrace>
+ 4. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'6 a lst s \<and> I s
+ 5. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply (rule wp_post_taut)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'6 a lst) (m a)
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>I\<rbrace> m a \<lbrace>\<lambda>rv s. I s \<and> True\<rbrace>
+ 3. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapM m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'6 a lst s \<and> I s
+ 4. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_ev_pre:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>"
+  assumes inv_established: "\<And> s. P s \<Longrightarrow> I s"
+  shows "equiv_valid_inv D A P (mapM_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (mapM_x m lst)<\STATESEP>apply(subst mapM_x_mapM)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (do x <- mapM m lst;
+return ()
+od)<\STATESEP>apply(rule bind_ev_pre[OF return_ev mapM_ev_pre])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A ?I1 (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>?I1\<rbrace> m x \<lbrace>\<lambda>_. ?I1\<rbrace>
+ 3. \<And>s. ?P' s \<Longrightarrow> ?I1 s
+ 4. \<lbrace>?P''\<rbrace> mapM m lst \<lbrace>\<lambda>x _. True\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> ?P' s \<and> ?P'' s<\STATESEP>apply (blast intro: reads_res invariant inv_established wp_post_taut)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_ev:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>"
+  shows "equiv_valid_inv D A I (mapM m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A I (mapM m lst)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m ?x)
+?x \<in> set lst \<Longrightarrow> \<lbrace>I\<rbrace> m ?x \<lbrace>\<lambda>_. I\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid_inv D A I (mapM m lst)<\STATESEP>by (auto intro: mapM_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_ev:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>"
+  shows "equiv_valid_inv D A I (mapM_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A I (mapM_x m lst)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m ?x)
+?x \<in> set lst \<Longrightarrow> \<lbrace>I\<rbrace> m ?x \<lbrace>\<lambda>_. I\<rbrace>
+
+goal (1 subgoal):
+ 1. equiv_valid_inv D A I (mapM_x m lst)<\STATESEP>by (auto intro: mapM_x_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_x_mapME:
+  "mapME_x f l = mapME f l >>=E (\<lambda> y. returnOk ())"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mapME_x f l = doE y <- mapME f l;
+returnOk ()
+odE<\STATESEP>apply (simp add: mapME_x_def sequenceE_x_def mapME_def sequenceE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldr (\<lambda>x y. doE _ <- x;
+y
+odE) (map f l) (returnOk ()) = doE y <- foldr (\<lambda>p q. doE x <- p;
+y <- q;
+returnOk (x # y)
+odE) (map f l) (returnOk []);
+returnOk ()
+odE<\STATESEP>apply (induct l, simp_all add: Let_def bindE_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_ev_pre:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>,-"
+  assumes inv_established: "\<And> s. P s \<Longrightarrow> I s"
+  shows "equiv_valid_inv D A P (mapME m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (mapME m lst)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m ?x)
+?x \<in> set lst \<Longrightarrow> \<lbrace>I\<rbrace> m ?x \<lbrace>\<lambda>_. I\<rbrace>, -
+P ?s \<Longrightarrow> I ?s
+
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (mapME m lst)<\STATESEP>apply(atomize)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A P (mapME m lst)<\STATESEP>apply(rule_tac Q=I in equiv_valid_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst)
+ 2. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(induct lst)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>\<forall>x. x \<in> set [] \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set [] \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m [])
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m (a # lst))
+ 3. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(simp add: mapME_Nil returnOk_ev_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m (a # lst))
+ 2. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply(subst mapME_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (doE y <- m a;
+ys <- mapME m lst;
+returnOk (y # ys)
+odE)
+ 2. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'8 a lst rv) (mapME m lst)
+ 2. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''8 a lst rv\<rbrace> mapME m lst \<lbrace>\<lambda>rva _. True\<rbrace>, -
+ 3. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'7 a lst) (m a)
+ 4. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''7 a lst\<rbrace> m a \<lbrace>\<lambda>rv s. ?P'8 a lst rv s \<and> ?P''8 a lst rv s\<rbrace>, -
+ 5. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'7 a lst s \<and> ?P''7 a lst s
+ 6. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a lst rv. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''8 a lst rv\<rbrace> mapME m lst \<lbrace>\<lambda>rva _. True\<rbrace>, -
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'7 a lst) (m a)
+ 3. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''7 a lst\<rbrace> m a \<lbrace>\<lambda>rv s. I s \<and> ?P''8 a lst rv s\<rbrace>, -
+ 4. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'7 a lst s \<and> ?P''7 a lst s
+ 5. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply (rule wp_post_tautE_R)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A (?P'7 a lst) (m a)
+ 2. \<And>a lst. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> \<lbrace>?P''7 a lst\<rbrace> m a \<lbrace>\<lambda>rv s. I s \<and> True\<rbrace>, -
+ 3. \<And>a lst s. \<lbrakk>\<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s\<rbrakk> \<Longrightarrow> equiv_valid_inv D A I (mapME m lst); \<forall>x. x \<in> set (a # lst) \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set (a # lst) \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; I s\<rbrakk> \<Longrightarrow> ?P'7 a lst s \<and> ?P''7 a lst s
+ 4. \<And>s. \<lbrakk>\<forall>x. x \<in> set lst \<longrightarrow> equiv_valid_inv D A I (m x); \<forall>x. x \<in> set lst \<longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>_. I\<rbrace>, -; \<forall>s. P s \<longrightarrow> I s; P s\<rbrakk> \<Longrightarrow> I s<\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_ev:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv I A P (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> P \<rbrace> m x \<lbrace> \<lambda>_. P \<rbrace>, -"
+  shows "equiv_valid_inv I A P (mapME m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (mapME m lst)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set lst \<Longrightarrow> equiv_valid_inv I A P (m ?x)
+?x \<in> set lst \<Longrightarrow> \<lbrace>P\<rbrace> m ?x \<lbrace>\<lambda>_. P\<rbrace>, -
+
+goal (1 subgoal):
+ 1. equiv_valid_inv I A P (mapME m lst)<\STATESEP>by (auto intro: mapME_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_x_ev_pre:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>,-"
+  assumes inv_established: "\<And> s. P s \<Longrightarrow> I s"
+  shows "equiv_valid_inv D A P (mapME_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (mapME_x m lst)<\STATESEP>unfolding mapME_x_mapME<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A P (doE y <- mapME m lst;
+returnOk ()
+odE)<\STATESEP>apply (wp assms mapME_ev_pre | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_x_ev:
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m x)"
+  assumes invariant: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> I \<rbrace> m x \<lbrace> \<lambda>_. I \<rbrace>, -"
+  shows "equiv_valid_inv D A I (mapME_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A I (mapME_x m lst)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set lst \<Longrightarrow> equiv_valid_inv D A I (m ?x)
+?x \<in> set lst \<Longrightarrow> \<lbrace>I\<rbrace> m ?x \<lbrace>\<lambda>_. I\<rbrace>, -
+
+goal (1 subgoal):
+ 1. equiv_valid_inv D A I (mapME_x m lst)<\STATESEP>by (auto intro: mapME_x_ev_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_ev':
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (P x)) (m x)"
+  shows "equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapM m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapM m lst)<\STATESEP>apply(rule mapM_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>K (\<forall>x\<in>set lst. P x)\<rbrace> m x \<lbrace>\<lambda>_. K (\<forall>x\<in>set lst. P x)\<rbrace><\STATESEP>apply(rule equiv_valid_guard_imp[OF reads_res], simp+, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_ev':
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (P x)) (m x)"
+  shows "equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapM_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapM_x m lst)<\STATESEP>apply(rule mapM_x_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>K (\<forall>x\<in>set lst. P x)\<rbrace> m x \<lbrace>\<lambda>_. K (\<forall>x\<in>set lst. P x)\<rbrace><\STATESEP>apply(rule equiv_valid_guard_imp[OF reads_res], simp+, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_ev':
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (P x)) (m x)"
+  shows "equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapME m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapME m lst)<\STATESEP>apply(rule mapME_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>K (\<forall>x\<in>set lst. P x)\<rbrace> m x \<lbrace>\<lambda>_. K (\<forall>x\<in>set lst. P x)\<rbrace>, -<\STATESEP>apply(rule equiv_valid_guard_imp[OF reads_res], simp+, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapME_x_ev':
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (P x)) (m x)"
+  shows "equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapME_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (mapME_x m lst)<\STATESEP>apply(rule mapME_x_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (K (\<forall>x\<in>set lst. P x)) (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>K (\<forall>x\<in>set lst. P x)\<rbrace> m x \<lbrace>\<lambda>_. K (\<forall>x\<in>set lst. P x)\<rbrace>, -<\STATESEP>apply(rule equiv_valid_guard_imp[OF reads_res], simp+, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection\<open>Rules for the specialised validity\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma use_spec_ev:
+  "(\<And>st. spec_equiv_valid st I A B P f) \<Longrightarrow> equiv_valid I A B P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>st. spec_equiv_valid st I A B P f) \<Longrightarrow> equiv_valid I A B P f<\STATESEP>by (simp add: equiv_valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma drop_spec_ev:
+  "equiv_valid I A B P f \<Longrightarrow> spec_equiv_valid st I A B P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid I A B P f \<Longrightarrow> spec_equiv_valid st I A B P f<\STATESEP>by (simp add: equiv_valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma spec_equiv_valid_guard_imp:
+  assumes reads_res: "spec_equiv_valid_inv s' I A P' f"
+  assumes guard_imp: "\<And> s. P s \<Longrightarrow> P' s"
+  shows "spec_equiv_valid_inv s' I A P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A P f<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+spec_equiv_valid_inv s' I A P' f
+P ?s \<Longrightarrow> P' ?s
+
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A P f<\STATESEP>by (fastforce simp: spec_equiv_valid_def equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_spec_ev:
+  assumes reads_res_2: "\<And> rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> spec_equiv_valid_inv s'' I A (Q rv) (g rv)"
+  assumes reads_res_1: "spec_equiv_valid_inv s' I A P' f"
+  assumes hoare: "\<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace>"
+  shows "spec_equiv_valid_inv s' I A (\<lambda>s. P' s \<and> P'' s) (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A (\<lambda>s. P' s \<and> P'' s) (f >>= g)<\STATESEP>using reads_res_1<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+spec_equiv_valid_inv s' I A P' f
+
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A (\<lambda>s. P' s \<and> P'' s) (f >>= g)<\STATESEP>apply (clarsimp simp: spec_equiv_valid_def equiv_valid_2_def valid_def bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>\<forall>t. P' t \<and> I s' t \<and> A s' t \<longrightarrow> (\<forall>x\<in>fst (f s'). \<forall>xa\<in>fst (f t). fst x = fst xa \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa)); (a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (rename_tac t a b aa ba ab bb ac bc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>\<forall>t. P' t \<and> I s' t \<and> A s' t \<longrightarrow> (\<forall>x\<in>fst (f s'). \<forall>xa\<in>fst (f t). fst x = fst xa \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa)); (a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (erule_tac x=t in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; P' t \<and> I s' t \<and> A s' t \<longrightarrow> (\<forall>x\<in>fst (f s'). \<forall>xa\<in>fst (f t). fst x = fst xa \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa))\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; \<forall>x\<in>fst (f s'). \<forall>xa\<in>fst (f t). fst x = fst xa \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (erule_tac x="(a, b)" in ballE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; \<forall>x\<in>fst (f t). fst (a, b) = fst x \<and> I (snd (a, b)) (snd x) \<and> A (snd (a, b)) (snd x)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (erule_tac x="(ab, bb)" in ballE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; fst (a, b) = fst (ab, bb) \<and> I (snd (a, b)) (snd (ab, bb)) \<and> A (snd (a, b)) (snd (ab, bb))\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (cut_tac reads_res_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb; spec_equiv_valid_inv (?s''47 t a b aa ba bb ac bc) I A (Q (?rv47 t a b aa ba bb ac bc)) (g (?rv47 t a b aa ba bb ac bc))\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb\<rbrakk> \<Longrightarrow> (?rv47 t a b aa ba bb ac bc, ?s''47 t a b aa ba bb ac bc) \<in> fst (f s')
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 4. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb\<rbrakk> \<Longrightarrow> (?rv47 t a b aa ba bb ac bc, ?s''47 t a b aa ba bb ac bc) \<in> fst (f s')
+ 2. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb; spec_equiv_valid_inv (?s''47 t a b aa ba bb ac bc) I A (Q (?rv47 t a b aa ba bb ac bc)) (g (?rv47 t a b aa ba bb ac bc))\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 4. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb; spec_equiv_valid_inv b I A (Q a) (g a)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (clarsimp simp: spec_equiv_valid_def equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb; \<forall>t. Q a b \<and> Q a t \<and> I b t \<and> A b t \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g a t). case x of (rvb, t') \<Rightarrow> rva = rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply(erule_tac x=bb in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb; Q a b \<and> Q a bb \<and> I b bb \<and> A b bb \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g a bb). case x of (rvb, t') \<Rightarrow> rva = rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>using hoare<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace>
+
+goal (3 subgoals):
+ 1. \<And>t a b aa ba bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (a, bb) \<in> fst (f t); (ac, bc) \<in> fst (g a bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; I b bb; A b bb; Q a b \<and> Q a bb \<and> I b bb \<and> A b bb \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g a bb). case x of (rvb, t') \<Rightarrow> rva = rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (ab, bb) \<notin> fst (f t)\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s'); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f t); (ac, bc) \<in> fst (g ab bb); P' s'; P'' s'; P' t; P'' t; I s' t; A s' t; (a, b) \<notin> fst (f s')\<rbrakk> \<Longrightarrow> aa = ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (fastforce simp: valid_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_spec_ev:
+  assumes reads_res_2: "\<And> rv s''. (Inr rv, s'') \<in> fst (f s') \<Longrightarrow> spec_equiv_valid_inv s'' I A (Q rv) (g rv)"
+  assumes reads_res_1: "spec_equiv_valid_inv s' I A P' f"
+  assumes hoare: "\<lbrace>P''\<rbrace> f \<lbrace>Q\<rbrace>,-"
+  shows "spec_equiv_valid_inv s' I A (\<lambda>s. P' s \<and> P'' s) (f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A (\<lambda>s. P' s \<and> P'' s) (f >>=E g)<\STATESEP>unfolding bindE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A (\<lambda>s. P' s \<and> P'' s) (f >>= lift g)<\STATESEP>apply (rule bind_spec_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> spec_equiv_valid_inv s'' I A (?Q rv) (lift g rv)
+ 2. spec_equiv_valid_inv s' I A P' f
+ 3. \<lbrace>P''\<rbrace> f \<lbrace>?Q\<rbrace><\STATESEP>prefer 3<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>P''\<rbrace> f \<lbrace>?Q\<rbrace>
+ 2. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> spec_equiv_valid_inv s'' I A (?Q rv) (lift g rv)
+ 3. spec_equiv_valid_inv s' I A P' f<\STATESEP>apply(rule hoare[simplified validE_R_def validE_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> spec_equiv_valid_inv s'' I A (\<lambda>s. case rv of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s) (lift g rv)
+ 2. spec_equiv_valid_inv s' I A P' f<\STATESEP>apply(simp split: sum.split add: lift_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> (\<forall>x1. rv = Inl x1 \<longrightarrow> spec_equiv_valid_inv s'' I A (\<lambda>s. True) (throwError x1)) \<and> (\<forall>x2. rv = Inr x2 \<longrightarrow> spec_equiv_valid_inv s'' I A (Q x2) (g x2))
+ 2. spec_equiv_valid_inv s' I A P' f<\STATESEP>apply(rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> \<forall>x1. rv = Inl x1 \<longrightarrow> spec_equiv_valid_inv s'' I A (\<lambda>s. True) (throwError x1)
+ 2. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> \<forall>x2. rv = Inr x2 \<longrightarrow> spec_equiv_valid_inv s'' I A (Q x2) (g x2)
+ 3. spec_equiv_valid_inv s' I A P' f<\STATESEP>apply(fastforce simp: spec_equiv_valid_def throwError_def return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s''. (rv, s'') \<in> fst (f s') \<Longrightarrow> \<forall>x2. rv = Inr x2 \<longrightarrow> spec_equiv_valid_inv s'' I A (Q x2) (g x2)
+ 2. spec_equiv_valid_inv s' I A P' f<\STATESEP>apply(fastforce simp: reads_res_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s' I A P' f<\STATESEP>apply(rule reads_res_1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_spec_ev:
+  "\<lbrakk> G \<Longrightarrow> spec_equiv_valid_inv s' I A P f;
+     \<not> G \<Longrightarrow> spec_equiv_valid_inv s' I A P' f'
+   \<rbrakk>  \<Longrightarrow> spec_equiv_valid_inv s' I A (\<lambda>s. (G \<longrightarrow> P s) \<and> (\<not> G \<longrightarrow> P' s)) (if G then f else f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>G \<Longrightarrow> spec_equiv_valid_inv s' I A P f; \<not> G \<Longrightarrow> spec_equiv_valid_inv s' I A P' f'\<rbrakk> \<Longrightarrow> spec_equiv_valid_inv s' I A (\<lambda>s. (G \<longrightarrow> P s) \<and> (\<not> G \<longrightarrow> P' s)) (if G then f else f')<\STATESEP>by (cases G, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas splits_spec_ev[wp_split] =
+  drop_spec_ev
+  spec_equiv_valid_guard_imp[OF bind_spec_ev] spec_equiv_valid_guard_imp[OF bindE_spec_ev]
+  bind_spec_ev bindE_spec_ev
+  spec_equiv_valid_guard_imp[OF if_spec_ev] if_spec_ev<\STATESEP>0<\TRANSEP><\STATESEP>lemma assertE_ev[wp]:
+  "equiv_valid_inv I A \<top> (assertE b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>_. True) (assertE b)<\STATESEP>unfolding assertE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (\<lambda>_. True) (if b then returnOk () else fail)<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> (b \<longrightarrow> True) \<and> (\<not> b \<longrightarrow> True)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_bindE:
+  assumes g: "\<And>rv rv'. R' rv rv' \<Longrightarrow>
+      equiv_valid_2 D A A (E \<oplus> R) (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes h1: "\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>,-"
+  assumes h2: "\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>,-"
+  assumes f: "equiv_valid_2 D A A (E \<oplus> R') P P' f f'"
+  shows "equiv_valid_2 D A A (E \<oplus> R) (P and S) (P' and S') (f >>=E g) (f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A (E \<oplus> R) (P and S) (P' and S') (f >>=E g) (f' >>=E g')<\STATESEP>apply(unfold bindE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 D A A (E \<oplus> R) (P and S) (P' and S') (f >>= lift g) (f' >>= lift g')<\STATESEP>apply(rule equiv_valid_2_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_2 D A A (E \<oplus> R) ?Q ?Q' (f >>= lift g) (f' >>= lift g')
+ 2. \<And>s. (P and S) s \<Longrightarrow> ?Q s
+ 3. \<And>s. (P' and S') s \<Longrightarrow> ?Q' s<\STATESEP>apply(rule_tac R'="E \<oplus> R'" and Q="case_sum \<top>\<top> Q" and Q'="case_sum \<top>\<top> Q'" and S=S and S'=S' in equiv_valid_2_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. (E \<oplus> R') rv rv' \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (case rv of Inl uu_ \<Rightarrow> \<lambda>_. True | Inr x \<Rightarrow> Q x) (case rv' of Inl uu_ \<Rightarrow> \<lambda>_. True | Inr x \<Rightarrow> Q' x) (lift g rv) (lift g' rv')
+ 2. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 3. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 4. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(clarsimp simp: lift_def split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv'. (E \<oplus> R') rv rv' \<Longrightarrow> (\<forall>x1. rv = Inl x1 \<longrightarrow> (\<forall>x1a. rv' = Inl x1a \<longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (throwError x1) (throwError x1a)) \<and> (\<forall>x2. rv' = Inr x2 \<longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2))) \<and> (\<forall>x2. rv = Inr x2 \<longrightarrow> (\<forall>x1. rv' = Inl x1 \<longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)) \<and> (\<forall>x2a. rv' = Inr x2a \<longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)))
+ 2. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 3. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 4. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(intro impI conjI allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv rv' x1 x1a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inl x1a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (throwError x1) (throwError x1a)
+ 2. \<And>rv rv' x1 x2. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 3. \<And>rv rv' x2 x1. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 4. \<And>rv rv' x2 x2a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 5. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 6. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 7. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 8. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 9. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(simp add: throwError_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv rv' x1 x1a. \<lbrakk>E x1 x1a; rv = Inl x1; rv' = Inl x1a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (return (Inl x1)) (return (Inl x1a))
+ 2. \<And>rv rv' x1 x2. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 3. \<And>rv rv' x2 x1. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 4. \<And>rv rv' x2 x2a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 5. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 6. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 7. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 8. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 9. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(rule return_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv rv' x1 x1a s t. \<lbrakk>E x1 x1a; rv = Inl x1; rv' = Inl x1a; True; True; D s t; A s t\<rbrakk> \<Longrightarrow> (E \<oplus> R) (Inl x1) (Inl x1a)
+ 2. \<And>rv rv' x1 x2. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 3. \<And>rv rv' x2 x1. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 4. \<And>rv rv' x2 x2a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 5. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 6. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 7. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 8. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 9. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>rv rv' x1 x2. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 2. \<And>rv rv' x2 x1. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 3. \<And>rv rv' x2 x2a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 4. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 5. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 6. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 7. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 8. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>rv rv' x2 x1. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 2. \<And>rv rv' x2 x2a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 3. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 4. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 5. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 6. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 7. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv rv' x2 x2a. \<lbrakk>(E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> equiv_valid_2 D A A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 2. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 3. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 4. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(fastforce intro: g)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. equiv_valid_2 D A A (E \<oplus> R') ?P4 ?P'4 f f'
+ 2. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 3. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 4. \<And>s. (P and S) s \<Longrightarrow> ?P4 s \<and> S s
+ 5. \<And>s. (P' and S') s \<Longrightarrow> ?P'4 s \<and> S' s<\STATESEP>apply(rule f)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 2. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 3. \<And>s. (P and S) s \<Longrightarrow> P s \<and> S s
+ 4. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> S' s<\STATESEP>apply(insert h1, fastforce simp: valid_def validE_R_def validE_def split: sum.splits)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 2. \<And>s. (P and S) s \<Longrightarrow> P s \<and> S s
+ 3. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> S' s<\STATESEP>apply(insert h2, fastforce simp: valid_def validE_R_def validE_def split: sum.splits)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (P and S) s \<Longrightarrow> P s \<and> S s
+ 2. \<And>s. (P' and S') s \<Longrightarrow> P' s \<and> S' s<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma rel_sum_comb_equals:
+  "((=) \<oplus> (=)) = (=)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (=) \<oplus> (=) = (=)<\STATESEP>apply(rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. ((=) \<oplus> (=)) x = (=) x<\STATESEP>apply(rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. ((=) \<oplus> (=)) x xa = (x = xa)<\STATESEP>apply(rename_tac a b)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. ((=) \<oplus> (=)) a b = (a = b)<\STATESEP>apply(case_tac a, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition spec_equiv_valid_2_inv where
+  "spec_equiv_valid_2_inv s I A R P P' f f' \<equiv>
+      equiv_valid_2 I A A R (P and ((=) s)) P' f f'"<\STATESEP>0<\TRANSEP><\STATESEP>lemma spec_equiv_valid_def2:
+  "spec_equiv_valid s I A A P f =
+   spec_equiv_valid_2_inv s I A (=) P P f f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s I A P f = spec_equiv_valid_2_inv s I A (=) P P f f<\STATESEP>apply(simp add: spec_equiv_valid_def spec_equiv_valid_2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma drop_spec_ev2_inv:
+  "equiv_valid_2 I A A R P P' f f' \<Longrightarrow>
+   spec_equiv_valid_2_inv s I A R P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A A R P P' f f' \<Longrightarrow> spec_equiv_valid_2_inv s I A R P P' f f'<\STATESEP>apply(simp add: spec_equiv_valid_2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A A R P P' f f' \<Longrightarrow> equiv_valid_2 I A A R (P and (=) s) P' f f'<\STATESEP>apply(erule equiv_valid_2_guard_imp, auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma spec_equiv_valid_2_inv_guard_imp:
+  "\<lbrakk>spec_equiv_valid_2_inv s I A R Q Q' f f'; \<And> s. P s \<Longrightarrow> Q s; \<And> s. P' s \<Longrightarrow> Q' s\<rbrakk> \<Longrightarrow>
+    spec_equiv_valid_2_inv s I A R P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>spec_equiv_valid_2_inv s I A R Q Q' f f'; \<And>s. P s \<Longrightarrow> Q s; \<And>s. P' s \<Longrightarrow> Q' s\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s I A R P P' f f'<\STATESEP>by(auto simp: spec_equiv_valid_2_inv_def equiv_valid_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_spec_ev2:
+  assumes reads_res_2: "\<And> rv s' rv'. \<lbrakk>(rv, s') \<in> fst (f s); R' rv rv'\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A R (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes reads_res_1: "spec_equiv_valid_2_inv s I A R' P P' f f'"
+  assumes hoare: "\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>"
+  assumes hoare': "\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>"
+  shows "spec_equiv_valid_2_inv s I A R (P and S) (P' and S') (f >>= g) (f' >>= g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_2_inv s I A R (P and S) (P' and S') (f >>= g) (f' >>= g')<\STATESEP>using reads_res_1<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+spec_equiv_valid_2_inv s I A R' P P' f f'
+
+goal (1 subgoal):
+ 1. spec_equiv_valid_2_inv s I A R (P and S) (P' and S') (f >>= g) (f' >>= g')<\STATESEP>apply (clarsimp simp: spec_equiv_valid_2_inv_def equiv_valid_2_def bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>\<forall>t. P' t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>x\<in>fst (f s). \<forall>xa\<in>fst (f' t). R' (fst x) (fst xa) \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa)); (a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (erule_tac x=t in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; P' t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>x\<in>fst (f s). \<forall>xa\<in>fst (f' t). R' (fst x) (fst xa) \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa))\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; \<forall>x\<in>fst (f s). \<forall>xa\<in>fst (f' t). R' (fst x) (fst xa) \<and> I (snd x) (snd xa) \<and> A (snd x) (snd xa)\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (drule_tac x="(a, b)" in bspec, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; \<forall>x\<in>fst (f' t). R' (fst (a, b)) (fst x) \<and> I (snd (a, b)) (snd x) \<and> A (snd (a, b)) (snd x)\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (drule_tac x="(ab, bb)" in bspec, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' (fst (a, b)) (fst (ab, bb)) \<and> I (snd (a, b)) (snd (ab, bb)) \<and> A (snd (a, b)) (snd (ab, bb))\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (cut_tac rv="a" and s'="b" in reads_res_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb\<rbrakk> \<Longrightarrow> (a, b) \<in> fst (f s)
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb\<rbrakk> \<Longrightarrow> R' a (?rv'47 t a b aa ba ab bb ac bc)
+ 3. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; spec_equiv_valid_2_inv b I A R (Q a) (Q' (?rv'47 t a b aa ba ab bb ac bc)) (g a) (g' (?rv'47 t a b aa ba ab bb ac bc))\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb\<rbrakk> \<Longrightarrow> R' a (?rv'47 t a b aa ba ab bb ac bc)
+ 2. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; spec_equiv_valid_2_inv b I A R (Q a) (Q' (?rv'47 t a b aa ba ab bb ac bc)) (g a) (g' (?rv'47 t a b aa ba ab bb ac bc))\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; spec_equiv_valid_2_inv b I A R (Q a) (Q' ab) (g a) (g' ab)\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (clarsimp simp: spec_equiv_valid_2_inv_def equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; \<forall>t. Q a b \<and> Q' ab t \<and> I b t \<and> A b t \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g' ab t). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply(drule_tac x=bb in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; Q a b \<and> Q' ab bb \<and> I b bb \<and> A b bb \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g' ab bb). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; Q a b \<and> Q' ab bb \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g' ab bb). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>using hoare hoare'<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>
+\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>
+
+goal (1 subgoal):
+ 1. \<And>t a b aa ba ab bb ac bc. \<lbrakk>(a, b) \<in> fst (f s); (aa, ba) \<in> fst (g a b); (ab, bb) \<in> fst (f' t); (ac, bc) \<in> fst (g' ab bb); P s; S s; P' t; S' t; I s t; A s t; R' a ab; I b bb; A b bb; Q a b \<and> Q' ab bb \<longrightarrow> (\<forall>x\<in>fst (g a b). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (g' ab bb). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> A s' t')\<rbrakk> \<Longrightarrow> R aa ac \<and> I ba bc \<and> A ba bc<\STATESEP>apply (fastforce simp: valid_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma spec_equiv_valid_2_inv_bindE:
+  assumes g: "\<And>rv s' rv'. \<lbrakk>(Inr rv, s') \<in> fst (f s); R' rv rv'\<rbrakk> \<Longrightarrow>
+      spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q rv) (Q' rv') (g rv) (g' rv')"
+  assumes h1: "\<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace>,-"
+  assumes h2: "\<lbrace>S'\<rbrace> f' \<lbrace>Q'\<rbrace>,-"
+  assumes f: "spec_equiv_valid_2_inv s I A (E \<oplus> R') P P' f f'"
+  shows "spec_equiv_valid_2_inv s I A (E \<oplus> R) (P and S) (P' and S') (f >>=E g) (f' >>=E g')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_2_inv s I A (E \<oplus> R) (P and S) (P' and S') (f >>=E g) (f' >>=E g')<\STATESEP>apply(unfold bindE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_2_inv s I A (E \<oplus> R) (P and S) (P' and S') (f >>= lift g) (f' >>= lift g')<\STATESEP>apply(rule spec_equiv_valid_2_inv_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. spec_equiv_valid_2_inv s I A (E \<oplus> R) ?Q ?Q' (f >>= lift g) (f' >>= lift g')
+ 2. \<And>s. (P and S) s \<Longrightarrow> ?Q s
+ 3. \<And>s. (P' and S') s \<Longrightarrow> ?Q' s<\STATESEP>apply(rule_tac R'="E \<oplus> R'" and Q="case_sum \<top>\<top> Q" and Q'="case_sum \<top>\<top> Q'" and S=S and S'=S' in bind_spec_ev2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv s' rv'. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (case rv of Inl uu_ \<Rightarrow> \<lambda>_. True | Inr x \<Rightarrow> Q x) (case rv' of Inl uu_ \<Rightarrow> \<lambda>_. True | Inr x \<Rightarrow> Q' x) (lift g rv) (lift g' rv')
+ 2. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 3. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 4. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(clarsimp simp: lift_def split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv s' rv'. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'\<rbrakk> \<Longrightarrow> (\<forall>x1. rv = Inl x1 \<longrightarrow> (\<forall>x1a. rv' = Inl x1a \<longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (throwError x1) (throwError x1a)) \<and> (\<forall>x2. rv' = Inr x2 \<longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2))) \<and> (\<forall>x2. rv = Inr x2 \<longrightarrow> (\<forall>x1. rv' = Inl x1 \<longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)) \<and> (\<forall>x2a. rv' = Inr x2a \<longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)))
+ 2. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 3. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 4. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(intro impI conjI allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv s' rv' x1 x1a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inl x1a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (throwError x1) (throwError x1a)
+ 2. \<And>rv s' rv' x1 x2. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 3. \<And>rv s' rv' x2 x1. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 4. \<And>rv s' rv' x2 x2a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 5. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 6. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 7. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 8. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 9. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(simp add: throwError_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv s' rv' x1 x1a. \<lbrakk>(Inl x1, s') \<in> fst (f s); E x1 x1a; rv = Inl x1; rv' = Inl x1a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (\<lambda>_. True) (return (Inl x1)) (return (Inl x1a))
+ 2. \<And>rv s' rv' x1 x2. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 3. \<And>rv s' rv' x2 x1. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 4. \<And>rv s' rv' x2 x2a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 5. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 6. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 7. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 8. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 9. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(rule drop_spec_ev2_inv[OF return_ev2])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>rv s' rv' x1 x1a sa t. \<lbrakk>(Inl x1, s') \<in> fst (f s); E x1 x1a; rv = Inl x1; rv' = Inl x1a; True; True; I sa t; A sa t\<rbrakk> \<Longrightarrow> (E \<oplus> R) (Inl x1) (Inl x1a)
+ 2. \<And>rv s' rv' x1 x2. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 3. \<And>rv s' rv' x2 x1. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 4. \<And>rv s' rv' x2 x2a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 5. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 6. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 7. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 8. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 9. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>rv s' rv' x1 x2. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inl x1; rv' = Inr x2\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (\<lambda>_. True) (Q' x2) (throwError x1) (g' x2)
+ 2. \<And>rv s' rv' x2 x1. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 3. \<And>rv s' rv' x2 x2a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 4. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 5. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 6. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 7. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 8. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>rv s' rv' x2 x1. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inl x1\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (\<lambda>_. True) (g x2) (throwError x1)
+ 2. \<And>rv s' rv' x2 x2a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 3. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 4. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 5. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 6. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 7. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>rv s' rv' x2 x2a. \<lbrakk>(rv, s') \<in> fst (f s); (E \<oplus> R') rv rv'; rv = Inr x2; rv' = Inr x2a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s' I A (E \<oplus> R) (Q x2) (Q' x2a) (g x2) (g' x2a)
+ 2. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 3. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 4. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 5. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 6. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(fastforce intro: g)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. spec_equiv_valid_2_inv s I A (E \<oplus> R') ?P4 ?P'4 f f'
+ 2. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 3. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 4. \<And>s. (P and S) s \<Longrightarrow> (?P4 and S) s
+ 5. \<And>s. (P' and S') s \<Longrightarrow> (?P'4 and S') s<\STATESEP>apply(rule f)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>S\<rbrace> f \<lbrace>case_sum (\<lambda>_ _. True) Q\<rbrace>
+ 2. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 3. \<And>s. (P and S) s \<Longrightarrow> (P and S) s
+ 4. \<And>s. (P' and S') s \<Longrightarrow> (P' and S') s<\STATESEP>apply(insert h1, fastforce simp: valid_def validE_R_def validE_def split: sum.splits)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>S'\<rbrace> f' \<lbrace>case_sum (\<lambda>_ _. True) Q'\<rbrace>
+ 2. \<And>s. (P and S) s \<Longrightarrow> (P and S) s
+ 3. \<And>s. (P' and S') s \<Longrightarrow> (P' and S') s<\STATESEP>apply(insert h2, fastforce simp: valid_def validE_R_def validE_def split: sum.splits)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (P and S) s \<Longrightarrow> (P and S) s
+ 2. \<And>s. (P' and S') s \<Longrightarrow> (P' and S') s<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma trancl_subset_equivalence:
+  "\<lbrakk>(a, b) \<in> r'\<^sup>+; \<forall>x. (a, x)\<in>r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, b) \<in> r\<^sup>+"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(a, b) \<in> r'\<^sup>+; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, b) \<in> r\<^sup>+<\STATESEP>apply(induct a b rule: trancl.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, b) \<in> r\<^sup>+
+ 2. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; \<lbrakk>\<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, c) \<in> r\<^sup>+<\STATESEP>apply(blast)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; \<lbrakk>\<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x y. Q x \<longrightarrow> ((y, x) \<in> r) = ((y, x) \<in> r')\<rbrakk> \<Longrightarrow> (a, c) \<in> r\<^sup>+<\STATESEP>apply(simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r'))\<rbrakk> \<Longrightarrow> (a, c) \<in> r\<^sup>+<\STATESEP>apply(rule_tac b=b in trancl_into_trancl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r'))\<rbrakk> \<Longrightarrow> (a, b) \<in> r\<^sup>+
+ 2. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r'))\<rbrakk> \<Longrightarrow> (b, c) \<in> r<\STATESEP>apply(simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. (a, x) \<in> r'\<^sup>+ \<longrightarrow> Q x; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r'))\<rbrakk> \<Longrightarrow> (b, c) \<in> r<\STATESEP>apply(erule_tac x=c in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r')); (a, c) \<in> r'\<^sup>+ \<longrightarrow> Q c\<rbrakk> \<Longrightarrow> (b, c) \<in> r<\STATESEP>apply(subgoal_tac "(a, c) \<in> r'\<^sup>+")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r')); (a, c) \<in> r'\<^sup>+ \<longrightarrow> Q c; (a, c) \<in> r'\<^sup>+\<rbrakk> \<Longrightarrow> (b, c) \<in> r
+ 2. \<And>a b c. \<lbrakk>(a, b) \<in> r'\<^sup>+; (a, b) \<in> r\<^sup>+; (b, c) \<in> r'; \<forall>x. Q x \<longrightarrow> (\<forall>y. ((y, x) \<in> r) = ((y, x) \<in> r')); (a, c) \<in> r'\<^sup>+ \<longrightarrow> Q c\<rbrakk> \<Longrightarrow> (a, c) \<in> r'\<^sup>+<\STATESEP>apply(auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_rv_gets_compD:
+  "equiv_valid_rv_inv I A R P (gets (f \<circ> g)) \<Longrightarrow>
+   equiv_valid_rv_inv I A (\<lambda> rv rv'. R (f rv) (f rv')) P (gets g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P (gets (f \<circ> g)) \<Longrightarrow> equiv_valid_rv_inv I A (\<lambda>rv rv'. R (f rv) (f rv')) P (gets g)<\STATESEP>apply(clarsimp simp: equiv_valid_2_def gets_def bind_def return_def get_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_ev2:
+  "equiv_valid_2 I A B R P P' f f' \<Longrightarrow>
+   equiv_valid_2 I A B (E \<oplus> R) P P' (liftE f) (liftE f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A B R P P' f f' \<Longrightarrow> equiv_valid_2 I A B (E \<oplus> R) P P' (liftE f) (liftE f')<\STATESEP>apply(clarsimp simp: liftE_def equiv_valid_2_def bind_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s t a b ab bb. \<lbrakk>\<forall>s t. P s \<and> P' t \<and> I s t \<and> A s t \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (rva, s') \<Rightarrow> \<forall>x\<in>fst (f' t). case x of (rvb, t') \<Rightarrow> R rva rvb \<and> I s' t' \<and> B s' t'); (a, b) \<in> fst (f s); (ab, bb) \<in> fst (f' t); P s; P' t; I s t; A s t\<rbrakk> \<Longrightarrow> R a ab \<and> I b bb \<and> B b bb<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_spec_ev2_inv:
+  assumes a: "b \<Longrightarrow> spec_equiv_valid_2_inv s I A R P P' m m'"
+  assumes r: "\<And> x. R x x"
+  shows "spec_equiv_valid_2_inv s I A R P P' (whenE b m) (whenE b m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_2_inv s I A R P P' (whenE b m) (whenE b m')<\STATESEP>unfolding whenE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_2_inv s I A R P P' (if b then m else returnOk ()) (if b then m' else returnOk ())<\STATESEP>apply (auto intro: a simp: returnOk_def intro!: drop_spec_ev2_inv[OF return_ev2] intro: r)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_spec_ev:
+  assumes a: "b \<Longrightarrow> spec_equiv_valid_inv s I A P m"
+  shows "spec_equiv_valid_inv s I A P  (whenE b m) "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s I A P (whenE b m)<\STATESEP>unfolding whenE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. spec_equiv_valid_inv s I A P (if b then m else returnOk ())<\STATESEP>apply (auto intro: a simp: returnOk_def intro!: drop_spec_ev[OF return_ev_pre])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma spec_equiv_valid_2_inv_by_spec_equiv_valid:
+  "\<lbrakk>spec_equiv_valid s I A A P f; P' = P; f' = f;
+    (\<And> a. R a a)\<rbrakk> \<Longrightarrow>
+       spec_equiv_valid_2_inv s I A R P P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>spec_equiv_valid_inv s I A P f; P' = P; f' = f; \<And>a. R a a\<rbrakk> \<Longrightarrow> spec_equiv_valid_2_inv s I A R P P' f f'<\STATESEP>apply(clarsimp simp: spec_equiv_valid_def spec_equiv_valid_2_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>equiv_valid_2 I A A (=) (P and (=) s) P f f; P' = P; f' = f; \<And>a. R a a\<rbrakk> \<Longrightarrow> equiv_valid_2 I A A R (P and (=) s) P f f<\STATESEP>apply(fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_ev'':
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (P x) (m x)"
+  assumes inv: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> \<lambda>s. \<forall>x\<in>set lst. P x s \<rbrace> m x \<lbrace> \<lambda>_ s. \<forall>x\<in>set lst. P x s \<rbrace>"
+  shows "equiv_valid_inv D A (\<lambda> s. \<forall>x\<in>set lst. P x s) (mapM m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A (\<lambda>s. \<forall>x\<in>set lst. P x s) (mapM m lst)<\STATESEP>apply(rule mapM_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (\<lambda>s. \<forall>x\<in>set lst. P x s) (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set lst. P x s\<rbrace> m x \<lbrace>\<lambda>_ s. \<forall>x\<in>set lst. P x s\<rbrace><\STATESEP>apply(rule equiv_valid_guard_imp[OF reads_res]; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set lst. P x s\<rbrace> m x \<lbrace>\<lambda>_ s. \<forall>x\<in>set lst. P x s\<rbrace><\STATESEP>apply(wpsimp wp: inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_ev'':
+  assumes reads_res: "\<And> x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (P x) (m x)"
+  assumes inv: "\<And> x. x \<in> set lst \<Longrightarrow> \<lbrace> \<lambda>s. \<forall>x\<in>set lst. P x s \<rbrace> m x \<lbrace> \<lambda>_ s. \<forall>x\<in>set lst. P x s \<rbrace>"
+  shows "equiv_valid_inv D A (\<lambda> s. \<forall>x\<in>set lst. P x s) (mapM_x m lst)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv D A (\<lambda>s. \<forall>x\<in>set lst. P x s) (mapM_x m lst)<\STATESEP>apply(rule mapM_x_ev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> equiv_valid_inv D A (\<lambda>s. \<forall>x\<in>set lst. P x s) (m x)
+ 2. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set lst. P x s\<rbrace> m x \<lbrace>\<lambda>_ s. \<forall>x\<in>set lst. P x s\<rbrace><\STATESEP>apply(rule equiv_valid_guard_imp[OF reads_res]; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> set lst \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set lst. P x s\<rbrace> m x \<lbrace>\<lambda>_ s. \<forall>x\<in>set lst. P x s\<rbrace><\STATESEP>apply(wpsimp wp: inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma catch_ev[wp]:
+  assumes ok:
+    "equiv_valid I A A P f"
+  assumes err:
+    "\<And> e. equiv_valid I A A (E e) (handler e)"
+  assumes hoare:
+    "\<lbrace> Q \<rbrace> f -, \<lbrace> E \<rbrace>"
+  shows
+    "equiv_valid I A A (P and Q) (f <catch> handler)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (P and Q) (f <catch> handler)<\STATESEP>apply (simp add: catch_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_inv I A (P and Q) (do x <- f;
+case x of Inl e \<Rightarrow> handler e | Inr b \<Rightarrow> return b
+od)<\STATESEP>apply (wp err ok | wpc | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P''\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. rv = Inl x \<longrightarrow> E x s\<rbrace>
+ 2. \<And>s. (P and Q) s \<Longrightarrow> P s \<and> ?P'' s<\STATESEP>apply (insert hoare[simplified validE_E_def validE_def])[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> True\<rbrace> \<Longrightarrow> \<lbrace>?P''\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. rv = Inl x \<longrightarrow> E x s\<rbrace>
+ 2. \<And>s. (P and Q) s \<Longrightarrow> P s \<and> ?P'' s<\STATESEP>apply (simp split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (P and Q) s \<Longrightarrow> P s \<and> Q s<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_rv_trivial:
+  assumes inv: "\<And> P. \<lbrace> P \<rbrace> f \<lbrace> \<lambda>_. P \<rbrace>"
+  shows "equiv_valid_rv_inv I A \<top>\<top> \<top> f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A (\<lambda>_ _. True) (\<lambda>_. True) f<\STATESEP>by(auto simp: equiv_valid_2_def dest: state_unchanged[OF inv])<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_2_trivial:
+  assumes inv: "\<And> P. \<lbrace> P \<rbrace> f \<lbrace> \<lambda>_. P \<rbrace>"
+  assumes inv': "\<And> P. \<lbrace> P \<rbrace> f' \<lbrace> \<lambda>_. P \<rbrace>"
+  shows "equiv_valid_2 I A A \<top>\<top> \<top> \<top> f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_2 I A A (\<lambda>_ _. True) (\<lambda>_. True) (\<lambda>_. True) f f'<\STATESEP>by(auto simp: equiv_valid_2_def dest: state_unchanged[OF inv] state_unchanged[OF inv'])<\STATESEP>1<\TRANSEP><\STATESEP>lemma gen_asm_ev2_r:
+  "\<lbrakk>P' \<Longrightarrow> equiv_valid_2 I A B R P Q f f'\<rbrakk> \<Longrightarrow>
+   equiv_valid_2 I A B R P  (Q and (K P')) f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P' \<Longrightarrow> equiv_valid_2 I A B R P Q f f') \<Longrightarrow> equiv_valid_2 I A B R P (Q and K P') f f'<\STATESEP>apply(fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gen_asm_ev2_l:
+  "\<lbrakk>P \<Longrightarrow> equiv_valid_2 I A B R Q P' f f'\<rbrakk> \<Longrightarrow>
+   equiv_valid_2 I A B R (Q and (K P)) P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> equiv_valid_2 I A B R Q P' f f') \<Longrightarrow> equiv_valid_2 I A B R (Q and K P) P' f f'<\STATESEP>apply(fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gen_asm_ev2_r':
+  "\<lbrakk>P' \<Longrightarrow> equiv_valid_2 I A B R P \<top> f f'\<rbrakk> \<Longrightarrow>
+   equiv_valid_2 I A B R P (\<lambda>s. P') f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P' \<Longrightarrow> equiv_valid_2 I A B R P (\<lambda>_. True) f f') \<Longrightarrow> equiv_valid_2 I A B R P (\<lambda>s. P') f f'<\STATESEP>apply(fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gen_asm_ev2_l':
+  "\<lbrakk>P \<Longrightarrow> equiv_valid_2 I A B R \<top> P' f f'\<rbrakk> \<Longrightarrow>
+   equiv_valid_2 I A B R (\<lambda>s. P) P' f f'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> equiv_valid_2 I A B R (\<lambda>_. True) P' f f') \<Longrightarrow> equiv_valid_2 I A B R (\<lambda>s. P) P' f f'<\STATESEP>apply(fastforce simp: equiv_valid_2_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma equiv_valid_rv_liftE_bindE:
+  assumes ev1:
+  "equiv_valid_rv_inv I A W P f"
+  assumes ev2:
+  "\<And> rv rv'. W rv rv' \<Longrightarrow> equiv_valid_2 I A A R (Q rv) (Q rv') (g rv) (g rv')"
+  assumes hoare:
+  "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "equiv_valid_rv_inv I A R P ((liftE f) >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P (liftE f >>=E g)<\STATESEP>apply(unfold bindE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R P (liftE f >>= lift g)<\STATESEP>apply(rule_tac Q="\<lambda> rv. K (\<forall> v. rv \<noteq> Inl v) and (\<lambda> s. \<forall> v. rv = Inr v \<longrightarrow> Q v s)" in equiv_valid_rv_bind)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_rv_inv I A ?W P (liftE f)
+ 2. \<And>rv rv'. ?W rv rv' \<Longrightarrow> equiv_valid_2 I A A R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q v s)) (lift g rv) (lift g rv')
+ 3. \<lbrace>P\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(rule_tac E="dc" in equiv_valid_2_liftE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. equiv_valid_rv_inv I A ?R2 P f
+ 2. \<And>rv rv'. (dc \<oplus> ?R2) rv rv' \<Longrightarrow> equiv_valid_2 I A A R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q v s)) (lift g rv) (lift g rv')
+ 3. \<lbrace>P\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(rule ev1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv rv'. (dc \<oplus> W) rv rv' \<Longrightarrow> equiv_valid_2 I A A R (K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)) (K (\<forall>v. rv' \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv' = Inr v \<longrightarrow> Q v s)) (lift g rv) (lift g rv')
+ 2. \<lbrace>P\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(clarsimp simp: lift_def split: sum.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv rv'. (dc \<oplus> W) rv rv' \<Longrightarrow> (\<forall>x1. rv = Inl x1 \<longrightarrow> (\<forall>x1a. rv' = Inl x1a \<longrightarrow> equiv_valid_2 I A A R (\<lambda>y. False) (\<lambda>y. False) (throwError x1) (throwError x1a)) \<and> (\<forall>x2. rv' = Inr x2 \<longrightarrow> equiv_valid_2 I A A R (\<lambda>y. False) (Q x2) (throwError x1) (g x2))) \<and> (\<forall>x2. rv = Inr x2 \<longrightarrow> (\<forall>x1. rv' = Inl x1 \<longrightarrow> equiv_valid_2 I A A R (Q x2) (\<lambda>y. False) (g x2) (throwError x1)) \<and> (\<forall>x2a. rv' = Inr x2a \<longrightarrow> equiv_valid_2 I A A R (Q x2) (Q x2a) (g x2) (g x2a)))
+ 2. \<lbrace>P\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(insert ev2, fastforce simp: equiv_valid_2_def)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> liftE f \<lbrace>\<lambda>rv. K (\<forall>v. rv \<noteq> Inl v) and (\<lambda>s. \<forall>v. rv = Inr v \<longrightarrow> Q v s)\<rbrace><\STATESEP>apply(insert hoare, clarsimp simp: valid_def liftE_def bind_def return_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_evrv:
+  assumes "b \<Longrightarrow> equiv_valid_rv_inv I A R P f"
+  assumes "\<not> b \<Longrightarrow> equiv_valid_rv_inv I A R Q g"
+  shows "equiv_valid_rv_inv I A R (\<lambda>s. (b \<longrightarrow> P s) \<and> (\<not>b \<longrightarrow> Q s)) (if b then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. equiv_valid_rv_inv I A R (\<lambda>s. (b \<longrightarrow> P s) \<and> (\<not> b \<longrightarrow> Q s)) (if b then f else g)<\STATESEP>apply (clarsimp split: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (b \<longrightarrow> equiv_valid_rv_inv I A R P f) \<and> (\<not> b \<longrightarrow> equiv_valid_rv_inv I A R Q g)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+b \<Longrightarrow> equiv_valid_rv_inv I A R P f
+\<not> b \<Longrightarrow> equiv_valid_rv_inv I A R Q g
+
+goal (1 subgoal):
+ 1. (b \<longrightarrow> equiv_valid_rv_inv I A R P f) \<and> (\<not> b \<longrightarrow> equiv_valid_rv_inv I A R Q g)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

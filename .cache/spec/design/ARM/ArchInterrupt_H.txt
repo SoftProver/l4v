@@ -1,0 +1,45 @@
+<\STATESEP>theory ArchInterrupt_H
+imports
+  RetypeDecls_H
+  CNode_H
+  InterruptDecls_H
+  ArchInterruptDecls_H
+  ArchHypervisor_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_H<\STATESEP>0<\TRANSEP><\STATESEP>defs decodeIRQControlInvocation_def:
+"decodeIRQControlInvocation label args srcSlot extraCaps \<equiv>
+    (let (label, args, extraCaps) = (invocationType label, args, extraCaps) in
+        case (label, args, extraCaps) of
+        (ArchInvocationLabel ARMIRQIssueIRQHandler,
+        irqW#triggerW#index#depth#_, cnode#_) =>  (doE
+            checkIRQ irqW;
+            irq \<leftarrow> returnOk ( toEnum (fromIntegral irqW) ::irq);
+            irqActive \<leftarrow> withoutFailure $ isIRQActive irq;
+            whenE irqActive $ throw RevokeFirst;
+            destSlot \<leftarrow> lookupTargetSlot cnode
+                (CPtr index) (fromIntegral depth);
+            ensureEmptySlot destSlot;
+            returnOk $ IssueIRQHandler irq destSlot srcSlot (triggerW \<noteq> 0)
+        odE)
+        | (ArchInvocationLabel ARMIRQIssueIRQHandler, _, _) =>  throw TruncatedMessage
+        | _ =>  throw IllegalOperation
+        )"<\STATESEP>0<\TRANSEP><\STATESEP>defs performIRQControl_def:
+"performIRQControl x0\<equiv> (case x0 of 
+  IssueIRQHandler irq destSlot srcSlot trigger =>   withoutPreemption $ (do
+    doMachineOp $ setIRQTrigger irq trigger;
+    setIRQState IRQSignal (IRQ irq);
+    cteInsert (IRQHandlerCap (IRQ irq)) srcSlot destSlot;
+    return ()
+  od)
+  )"<\STATESEP>0<\TRANSEP><\STATESEP>defs invokeIRQHandler_def:
+"invokeIRQHandler x0\<equiv> (case x0 of
+    (AckIRQ irq) \<Rightarrow>    doMachineOp $ maskInterrupt False irq
+  | _ \<Rightarrow>    return ()
+  )"<\STATESEP>0<\TRANSEP><\STATESEP>defs maskIrqSignal_def:
+"maskIrqSignal irq \<equiv> doMachineOp $ maskInterrupt True irq"<\STATESEP>0<\TRANSEP><\STATESEP>defs checkIRQ_def:
+"checkIRQ irq\<equiv> rangeCheck irq (fromEnum minIRQ) (fromEnum maxIRQ)"<\STATESEP>0<\TRANSEP><\STATESEP>defs handleReservedIRQ_def:
+"handleReservedIRQ irq\<equiv> (
+    return ()
+)"<\STATESEP>0<\TRANSEP><\STATESEP>defs initInterruptController_def:
+"initInterruptController\<equiv> (
+    return ()
+)"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

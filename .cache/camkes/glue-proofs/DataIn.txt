@@ -1,0 +1,59 @@
+<\STATESEP>chapter \<open>Shared Memory\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory DataIn imports
+  "CParser.CTranslation"
+  "AutoCorres.AutoCorres"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>declare [[allow_underscore_idents=true]]<\STATESEP>0<\TRANSEP><\STATESEP>external_file "DataIn.c"<\STATESEP>0<\TRANSEP><\STATESEP>install_C_file "DataIn.c"<\STATESEP>0<\TRANSEP><\STATESEP>autocorres [ts_rules = nondet] "DataIn.c"<\STATESEP>0<\TRANSEP><\STATESEP>locale DataIn_glue = DataIn
+  + assumes swi_safe_to_ignore[simplified, simp]:
+    "asm_semantics_ok_to_ignore TYPE(nat) true (''swi '' @ x)"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma DataIn__run_nf: "\<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> DataIn__run' \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> DataIn__run' \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:DataIn__run'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> return 0 \<lbrace>P\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>r. P r s \<Longrightarrow> P 0 s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma DataIn_wrap_ptr_nf:
+  "\<lbrace>\<lambda>s. (\<forall>x\<in>set (array_addrs (Ptr (symbol_table ''DataIn_data'')) 4096).
+          is_valid_w8 s x) \<and>
+         is_valid_dataport_ptr__C s x\<rbrace>
+    DataIn_wrap_ptr' x y
+   \<lbrace>\<lambda>_ s. (\<forall>x\<in>set (array_addrs (Ptr (symbol_table ''DataIn_data'')) 4096).
+           is_valid_w8 s x) \<and>
+          is_valid_dataport_ptr__C s x\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace> DataIn_wrap_ptr' x y \<lbrace>\<lambda>_ s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace>!<\STATESEP>apply (simp add:DataIn_wrap_ptr'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace> do ya <- guard (\<lambda>s. \<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x);
+condition (\<lambda>s. ptr_val y < symbol_table ''DataIn_data'' \<or> symbol_table ''DataIn_data'' + 0x1000 \<le> ptr_val y)
+  (return (- 1))
+  (do ya <- guard (\<lambda>s. is_valid_dataport_ptr__C s x);
+ya <- modify (heap_dataport_ptr__C_update (\<lambda>a. a(x := id_C_update (\<lambda>a. 0) (a x))));
+y <- modify (heap_dataport_ptr__C_update (\<lambda>a. a(x := offset_C_update (\<lambda>a. UCAST(32 \<rightarrow> 64 signed) (ptr_val y - symbol_table ''DataIn_data'')) (a x))));
+return 0
+od)
+od \<lbrace>\<lambda>_ s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x \<Longrightarrow> (if ptr_val y < symbol_table ''DataIn_data'' \<or> symbol_table ''DataIn_data'' + 0x1000 \<le> ptr_val y then (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x else ((\<forall>xa\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 (heap_dataport_ptr__C_update (\<lambda>a. a(x := offset_C_update (\<lambda>a. UCAST(32 \<rightarrow> 64 signed) (ptr_val y - symbol_table ''DataIn_data'')) (a x))) (heap_dataport_ptr__C_update (\<lambda>a. a(x := id_C_update (\<lambda>a. 0) (a x))) s)) xa) \<and> is_valid_dataport_ptr__C (heap_dataport_ptr__C_update (\<lambda>a. a(x := offset_C_update (\<lambda>a. UCAST(32 \<rightarrow> 64 signed) (ptr_val y - symbol_table ''DataIn_data'')) (a x))) (heap_dataport_ptr__C_update (\<lambda>a. a(x := id_C_update (\<lambda>a. 0) (a x))) s)) x) \<and> is_valid_dataport_ptr__C s x) \<and> (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma DataIn_unwrap_ptr_nf:
+  "\<lbrace>\<lambda>s. (\<forall>x\<in>set (array_addrs (Ptr (symbol_table ''DataIn_data'')) 4096).
+          is_valid_w8 s x) \<and>
+         is_valid_dataport_ptr__C s x\<rbrace>
+    DataIn_unwrap_ptr' x
+   \<lbrace>\<lambda>_ s. (\<forall>x\<in>set (array_addrs (Ptr (symbol_table ''DataIn_data'')) 4096).
+           is_valid_w8 s x) \<and>
+          is_valid_dataport_ptr__C s x\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace> DataIn_unwrap_ptr' x \<lbrace>\<lambda>_ s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace>!<\STATESEP>apply (simp add:DataIn_unwrap_ptr'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace> do y <- guard (\<lambda>s. is_valid_dataport_ptr__C s x);
+condition (\<lambda>s. id_C (heap_dataport_ptr__C s x) = 0)
+  (do y <- guard (\<lambda>s. \<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x);
+gets (\<lambda>s. PTR(unit) (symbol_table ''DataIn_data'' + SCAST(64 signed \<rightarrow> 32) (offset_C (heap_dataport_ptr__C s x))))
+od)
+  (return NULL)
+od \<lbrace>\<lambda>_ s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x \<Longrightarrow> (if id_C (heap_dataport_ptr__C s x) = 0 then ((\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x) \<and> (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) else (\<forall>x\<in>set (array_addrs (PTR(8 word) (symbol_table ''DataIn_data'')) 4096). is_valid_w8 s x) \<and> is_valid_dataport_ptr__C s x) \<and> is_valid_dataport_ptr__C s x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

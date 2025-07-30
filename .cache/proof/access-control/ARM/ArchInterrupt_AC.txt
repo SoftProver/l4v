@@ -1,0 +1,132 @@
+<\STATESEP>theory ArchInterrupt_AC
+imports
+  Interrupt_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Interrupt_AC_assms<\STATESEP>0<\TRANSEP><\STATESEP>definition arch_authorised_irq_ctl_inv ::
+  "'a PAS \<Rightarrow> Invocations_A.arch_irq_control_invocation \<Rightarrow> bool" where
+  "arch_authorised_irq_ctl_inv aag cinv \<equiv>
+     case cinv of (ArchIRQControlIssue irq x1 x2 trigger) \<Rightarrow>
+       is_subject aag (fst x1) \<and> is_subject aag (fst x2) \<and>
+       (pasSubject aag, Control, pasIRQAbs aag irq) \<in> pasPolicy aag"<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_invoke_irq_control_pas_refined[Interrupt_AC_assms]:
+  "\<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state
+                    and valid_mdb and arch_irq_control_inv_valid irq_ctl_inv
+                    and K (arch_authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace>
+   arch_invoke_irq_control irq_ctl_inv
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid irq_ctl_inv and K (arch_authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace> arch_invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (cases irq_ctl_inv; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 x4. irq_ctl_inv = ArchIRQControlIssue x1 x2 x3 x4 \<Longrightarrow> \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid (ArchIRQControlIssue x1 x2 x3 x4) and (\<lambda>y. arch_authorised_irq_ctl_inv aag (ArchIRQControlIssue x1 x2 x3 x4))\<rbrace> liftE (do y <- do_machine_op (setIRQTrigger x1 x4);
+y <- set_irq_state IRQSignal x1;
+cap_insert (IRQHandlerCap x1) x3 x2
+od) \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wpsimp wp: cap_insert_pas_refined_not_transferable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 a b aa ba x4 s. \<lbrakk>irq_ctl_inv = ArchIRQControlIssue x1 (a, b) (aa, ba) x4; pas_refined aag s; pspace_aligned s; valid_vspace_objs s; valid_arch_state s; valid_mdb s; arch_irq_control_inv_valid (ArchIRQControlIssue x1 (a, b) (aa, ba) x4) s; arch_authorised_irq_ctl_inv aag (ArchIRQControlIssue x1 (a, b) (aa, ba) x4)\<rbrakk> \<Longrightarrow> \<not> cte_wp_at is_transferable_cap (aa, ba) s \<and> is_subject aag a \<and> is_subject aag aa \<and> pas_cap_cur_auth aag (IRQHandlerCap x1)<\STATESEP>apply (clarsimp simp: cte_wp_at_caps_of_state clas_no_asid cap_links_irq_def
+                        arch_authorised_irq_ctl_inv_def aag_cap_auth_def
+                        arch_irq_control_inv_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_handler_pas_refined[Interrupt_AC_assms]:
+  "\<lbrace>pas_refined aag and invs and (\<lambda>s. interrupt_states s x1 \<noteq> IRQInactive)\<rbrace>
+   arch_invoke_irq_handler (ACKIrq x1)
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and invs and (\<lambda>s. interrupt_states s x1 \<noteq> IRQInactive)\<rbrace> arch_invoke_irq_handler (ACKIrq x1) \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_control_respects[Interrupt_AC_assms]:
+  "\<lbrace>integrity aag X st and pas_refined aag and K (arch_authorised_irq_ctl_inv aag acinv)\<rbrace>
+   arch_invoke_irq_control acinv
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and pas_refined aag and K (arch_authorised_irq_ctl_inv aag acinv)\<rbrace> arch_invoke_irq_control acinv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (case_tac acinv, clarsimp simp add: setIRQTrigger_def arch_authorised_irq_ctl_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 a b aa ba x4. acinv = ArchIRQControlIssue x1 (a, b) (aa, ba) x4 \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and (\<lambda>y. is_subject aag a \<and> is_subject aag aa \<and> (pasSubject aag, Control, pasIRQAbs aag x1) \<in> pasPolicy aag)\<rbrace> liftE (do y <- do_machine_op (machine_op_lift (setIRQTrigger_impl x1 x4));
+y <- set_irq_state IRQSignal x1;
+cap_insert (IRQHandlerCap x1) (aa, ba) (a, b)
+od) \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wpsimp wp: cap_insert_integrity_autarch aag_Control_into_owns_irq
+                    dmo_mol_respects do_machine_op_pas_refined)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma integrity_irq_masks [iff]:
+  "integrity aag X st (s\<lparr>machine_state := machine_state s \<lparr>irq_masks := v \<rparr>\<rparr>) =
+   integrity aag X st s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. integrity aag X st (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) = integrity aag X st s<\STATESEP>unfolding integrity_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (integrity_obj_state aag (pasMayActivate aag) {pasSubject aag} st (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) \<and> (\<forall>x. integrity_eobj aag {pasSubject aag} (pasObjectAbs aag x) (ekheap st x) (ekheap (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) x)) \<and> integrity_cdt_state aag {pasSubject aag} st (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) \<and> (\<forall>x. cdt_list_integrity aag (cdt st) (tcb_states_of_state st) x (cdt_list st x) (cdt_list (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) x)) \<and> (\<forall>x. integrity_interrupts aag {pasSubject aag} x (interrupt_irq_node st x, interrupt_states st x) (interrupt_irq_node (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) x, interrupt_states (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) x)) \<and> (\<forall>d p. integrity_ready_queues aag {pasSubject aag} (pasDomainAbs aag d) (ready_queues st d p) (ready_queues (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>) d p)) \<and> (\<forall>x. memory_integrity X aag x (tcb_states_of_state st) (tcb_states_of_state (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>)) (auth_ipc_buffers st) (underlying_memory (machine_state st) x) (underlying_memory (machine_state (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>)) x)) \<and> (\<forall>x. integrity_device aag {pasSubject aag} x (tcb_states_of_state st) (tcb_states_of_state (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>)) (device_state (machine_state st) x) (device_state (machine_state (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>)) x)) \<and> (\<forall>x a. integrity_asids aag {pasSubject aag} x a st (s\<lparr>machine_state := machine_state s\<lparr>irq_masks := v\<rparr>\<rparr>))) = (integrity_obj_state aag (pasMayActivate aag) {pasSubject aag} st s \<and> (\<forall>x. integrity_eobj aag {pasSubject aag} (pasObjectAbs aag x) (ekheap st x) (ekheap s x)) \<and> integrity_cdt_state aag {pasSubject aag} st s \<and> (\<forall>x. cdt_list_integrity aag (cdt st) (tcb_states_of_state st) x (cdt_list st x) (cdt_list s x)) \<and> (\<forall>x. integrity_interrupts aag {pasSubject aag} x (interrupt_irq_node st x, interrupt_states st x) (interrupt_irq_node s x, interrupt_states s x)) \<and> (\<forall>d p. integrity_ready_queues aag {pasSubject aag} (pasDomainAbs aag d) (ready_queues st d p) (ready_queues s d p)) \<and> (\<forall>x. memory_integrity X aag x (tcb_states_of_state st) (tcb_states_of_state s) (auth_ipc_buffers st) (underlying_memory (machine_state st) x) (underlying_memory (machine_state s) x)) \<and> (\<forall>x. integrity_device aag {pasSubject aag} x (tcb_states_of_state st) (tcb_states_of_state s) (device_state (machine_state st) x) (device_state (machine_state s) x)) \<and> (\<forall>x a. integrity_asids aag {pasSubject aag} x a st s))<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_invoke_irq_handler_respects[Interrupt_AC_assms]:
+  "\<lbrace>integrity aag X st and pas_refined aag and einvs\<rbrace>
+   arch_invoke_irq_handler (ACKIrq x1)
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and pas_refined aag and einvs\<rbrace> arch_invoke_irq_handler (ACKIrq x1) \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by (wpsimp wp: dmo_wp simp: maskInterrupt_def)<\STATESEP>1<\TRANSEP><\STATESEP>crunches arch_check_irq for inv[Interrupt_AC_assms, wp]: P<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts arch_authorised_irq_ctl_inv<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Interrupt_AC_1?: Interrupt_AC_1 "arch_authorised_irq_ctl_inv"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Interrupt_AC_1 arch_authorised_irq_ctl_inv<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Interrupt_AC_1 arch_authorised_irq_ctl_inv<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Interrupt_AC_1 arch_authorised_irq_ctl_inv<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Interrupt_AC_1 arch_authorised_irq_ctl_inv<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Interrupt_AC_1 arch_authorised_irq_ctl_inv<\STATESEP>by (unfold_locales; (fact Interrupt_AC_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Interrupt_AC_1 arch_authorised_irq_ctl_inv
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_decode_irq_control_invocation_authorised[Interrupt_AC_assms]:
+  "\<lbrace>pas_refined aag and
+    K (is_subject aag (fst slot) \<and> (\<forall>cap \<in> set caps. pas_cap_cur_auth aag cap) \<and>
+       (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (ucast (args ! 0))) \<in> pasPolicy aag))\<rbrace>
+   arch_decode_irq_control_invocation info_label args slot caps
+   \<lbrace>\<lambda>x _. arch_authorised_irq_ctl_inv aag x\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and K (is_subject aag (fst slot) \<and> Ball (set caps) (pas_cap_cur_auth aag) \<and> (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag))\<rbrace> arch_decode_irq_control_invocation info_label args slot caps \<lbrace>\<lambda>x _. arch_authorised_irq_ctl_inv aag x\<rbrace>, -<\STATESEP>unfolding decode_irq_control_invocation_def arch_decode_irq_control_invocation_def Let_def
+            authorised_irq_ctl_inv_def arch_authorised_irq_ctl_inv_def arch_check_irq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and K (is_subject aag (fst slot) \<and> Ball (set caps) (pas_cap_cur_auth aag) \<and> (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag))\<rbrace> if invocation_type info_label = ArchInvocationLabel ARMIRQIssueIRQHandler then if 4 \<le> length args \<and> 1 \<le> length caps then doE whenE (UCAST(10 \<rightarrow> 32) maxIRQ < args ! 0) $ throwError (RangeError 0 (UCAST(10 \<rightarrow> 32) maxIRQ));
+irq_active <- liftE $ is_irq_active (UCAST(32 \<rightarrow> 10) (args ! 0));
+whenE irq_active $ throwError RevokeFirst;
+dest_slot <- lookup_target_slot (caps ! 0) (data_to_cptr (args ! 2)) (unat (args ! 3));
+ensure_empty dest_slot;
+returnOk $ ArchIRQControlIssue (UCAST(32 \<rightarrow> 10) (args ! 0)) dest_slot slot (args ! 1 \<noteq> 0)
+odE else throwError TruncatedMessage else throwError IllegalOperation \<lbrace>\<lambda>x _. case x of ArchIRQControlIssue irq x1 x2 trigger \<Rightarrow> is_subject aag (fst x1) \<and> is_subject aag (fst x2) \<and> (pasSubject aag, Control, pasIRQAbs aag irq) \<in> pasPolicy aag\<rbrace>, -<\STATESEP>apply (rule hoare_gen_asmE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_subject aag (fst slot) \<and> Ball (set caps) (pas_cap_cur_auth aag) \<and> (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag) \<Longrightarrow> \<lbrace>pas_refined aag\<rbrace> if invocation_type info_label = ArchInvocationLabel ARMIRQIssueIRQHandler then if 4 \<le> length args \<and> 1 \<le> length caps then doE whenE (UCAST(10 \<rightarrow> 32) maxIRQ < args ! 0) $ throwError (RangeError 0 (UCAST(10 \<rightarrow> 32) maxIRQ));
+irq_active <- liftE $ is_irq_active (UCAST(32 \<rightarrow> 10) (args ! 0));
+whenE irq_active $ throwError RevokeFirst;
+dest_slot <- lookup_target_slot (caps ! 0) (data_to_cptr (args ! 2)) (unat (args ! 3));
+ensure_empty dest_slot;
+returnOk $ ArchIRQControlIssue (UCAST(32 \<rightarrow> 10) (args ! 0)) dest_slot slot (args ! 1 \<noteq> 0)
+odE else throwError TruncatedMessage else throwError IllegalOperation \<lbrace>\<lambda>x _. case x of ArchIRQControlIssue irq x1 x2 trigger \<Rightarrow> is_subject aag (fst x1) \<and> is_subject aag (fst x2) \<and> (pasSubject aag, Control, pasIRQAbs aag irq) \<in> pasPolicy aag\<rbrace>, -<\STATESEP>apply (wpsimp wp: weak_if_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>pas_refined aag s; is_subject aag (fst slot); Ball (set caps) (pas_cap_cur_auth aag); args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag; \<not> UCAST(10 \<rightarrow> 32) maxIRQ < args ! 0; invocation_type info_label = ArchInvocationLabel ARMIRQIssueIRQHandler; 4 \<le> length args; Suc 0 \<le> length caps\<rbrakk> \<Longrightarrow> (is_cnode_cap (caps ! 0) \<longrightarrow> (\<forall>x\<in>obj_refs_ac (caps ! 0). is_subject aag x)) \<and> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag<\STATESEP>apply (cases args, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a list. \<lbrakk>pas_refined aag s; is_subject aag (fst slot); Ball (set caps) (pas_cap_cur_auth aag); (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) a)) \<in> pasPolicy aag; \<not> UCAST(10 \<rightarrow> 32) maxIRQ < a; invocation_type info_label = ArchInvocationLabel ARMIRQIssueIRQHandler; 3 \<le> length list; Suc 0 \<le> length caps; args = a # list\<rbrakk> \<Longrightarrow> is_cnode_cap (caps ! 0) \<longrightarrow> (\<forall>x\<in>obj_refs_ac (caps ! 0). is_subject aag x)<\STATESEP>apply (cases caps, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a list aa lista. \<lbrakk>pas_refined aag s; is_subject aag (fst slot); pas_cap_cur_auth aag aa \<and> Ball (set lista) (pas_cap_cur_auth aag); (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) a)) \<in> pasPolicy aag; \<not> UCAST(10 \<rightarrow> 32) maxIRQ < a; invocation_type info_label = ArchInvocationLabel ARMIRQIssueIRQHandler; 3 \<le> length list; args = a # list; caps = aa # lista\<rbrakk> \<Longrightarrow> is_cnode_cap aa \<longrightarrow> (\<forall>x\<in>obj_refs_ac aa. is_subject aag x)<\STATESEP>apply (auto simp: is_cap_simps cap_auth_conferred_def
+                    pas_refined_wellformed
+                    pas_refined_all_auth_is_owns aag_cap_auth_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Interrupt_AC_2?: Interrupt_AC_2 "arch_authorised_irq_ctl_inv"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Interrupt_AC_2 arch_authorised_irq_ctl_inv<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Interrupt_AC_2 arch_authorised_irq_ctl_inv<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Interrupt_AC_2 arch_authorised_irq_ctl_inv<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Interrupt_AC_2 arch_authorised_irq_ctl_inv<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Interrupt_AC_2 arch_authorised_irq_ctl_inv<\STATESEP>by (unfold_locales; (fact Interrupt_AC_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Interrupt_AC_2 arch_authorised_irq_ctl_inv
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

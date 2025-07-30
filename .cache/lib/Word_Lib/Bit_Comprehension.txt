@@ -1,0 +1,56 @@
+<\STATESEP>section \<open>Comprehension syntax for bit expressions\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Bit_Comprehension
+  imports
+    "HOL-Library.Word"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>class bit_comprehension = ring_bit_operations +
+  fixes set_bits :: \<open>(nat \<Rightarrow> bool) \<Rightarrow> 'a\<close>  (binder \<open>BITS \<close> 10)
+  assumes set_bits_bit_eq: \<open>set_bits (bit a) = a\<close>
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_bits_False_eq [simp]:
+  \<open>(BITS _. False) = 0\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (BITS _. False) = (0::'a)<\STATESEP>using set_bits_bit_eq [of 0]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+set_bits (bit (0::'a)) = (0::'a)
+
+goal (1 subgoal):
+ 1. (BITS _. False) = (0::'a)<\STATESEP>by (simp add: bot_fun_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>instantiation word :: (len) bit_comprehension
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition word_set_bits_def:
+  \<open>(BITS n. P n) = (horner_sum of_bool 2 (map P [0..<LENGTH('a)]) :: 'a word)\<close><\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS('a word, bit_comprehension_class)<\STATESEP>by standard
+  (simp add: word_set_bits_def horner_sum_bit_eq_take_bit)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma bit_set_bits_word_iff [bit_simps]:
+  \<open>bit (set_bits P :: 'a::len word) n \<longleftrightarrow> n < LENGTH('a) \<and> P n\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (set_bits P) n = (n < LENGTH('a) \<and> P n)<\STATESEP>by (auto simp add: word_set_bits_def bit_horner_sum_bit_word_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_of_int_conv_set_bits: "word_of_int i = (BITS n. bit i n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_of_int i = (BITS n. bit i n)<\STATESEP>by (rule bit_eqI) (auto simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bits_K_False:
+  \<open>set_bits (\<lambda>_. False) = (0 :: 'a :: len word)\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (BITS _. False) = 0<\STATESEP>by (fact set_bits_False_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_test_bit_set_bits: "bit (BITS n. f n :: 'a :: len word) n \<longleftrightarrow> n < LENGTH('a) \<and> f n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (BITS n. f n) n = (n < LENGTH('a) \<and> f n)<\STATESEP>by (fact bit_set_bits_word_iff)<\STATESEP>1<\TRANSEP><\STATESEP>context
+  includes bit_operations_syntax
+  fixes f :: \<open>nat \<Rightarrow> bool\<close>
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition set_bits_aux :: \<open>nat \<Rightarrow> 'a word \<Rightarrow> 'a::len word\<close>
+  where \<open>set_bits_aux n w = push_bit n w OR take_bit n (set_bits f)\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bit_set_bit_aux [bit_simps]:
+  \<open>bit (set_bits_aux n w) m \<longleftrightarrow> m < LENGTH('a) \<and>
+    (if m < n then f m else bit w (m - n))\<close> for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (local.set_bits_aux n w) m = (m < LENGTH('a) \<and> (if m < n then f m else bit w (m - n)))<\STATESEP>by (auto simp add: bit_simps set_bits_aux_def)<\STATESEP>1<\TRANSEP><\STATESEP>corollary set_bits_conv_set_bits_aux:
+  \<open>set_bits f = (set_bits_aux LENGTH('a) 0 :: 'a :: len word)\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bits f = local.set_bits_aux LENGTH('a) 0<\STATESEP>by (rule bit_word_eqI) (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bits_aux_0 [simp]:
+  \<open>set_bits_aux 0 w = w\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.set_bits_aux 0 w = w<\STATESEP>by (simp add: set_bits_aux_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bits_aux_Suc [simp]:
+  \<open>set_bits_aux (Suc n) w = set_bits_aux n (push_bit 1 w OR (if f n then 1 else 0))\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.set_bits_aux (Suc n) w = local.set_bits_aux n (push_bit 1 w OR (if f n then 1 else 0))<\STATESEP>by (rule bit_word_eqI) (auto simp add: bit_simps le_less_Suc_eq mult.commute [of _ 2])<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bits_aux_simps [code]:
+  \<open>set_bits_aux 0 w = w\<close>
+  \<open>set_bits_aux (Suc n) w = set_bits_aux n (push_bit 1 w OR (if f n then 1 else 0))\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.set_bits_aux 0 w = w &&& local.set_bits_aux (Suc n) w = local.set_bits_aux n (push_bit 1 w OR (if f n then 1 else 0))<\STATESEP>by simp_all<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bits_aux_rec:
+  \<open>set_bits_aux n w =
+  (if n = 0 then w
+   else let n' = n - 1 in set_bits_aux n' (push_bit 1 w OR (if f n' then 1 else 0)))\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.set_bits_aux n w = (if n = 0 then w else let n' = n - 1 in local.set_bits_aux n' (push_bit 1 w OR (if f n' then 1 else 0)))<\STATESEP>by (cases n) simp_all<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

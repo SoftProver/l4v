@@ -1,0 +1,159 @@
+<\STATESEP>theory DetWPLib
+imports HaskellLemmaBucket
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "det_wp P f \<equiv> \<forall>s. P s \<longrightarrow> (\<exists>r. f s = ({r}, False))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma det_result:
+  "\<lbrakk> det_wp P f; \<And>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. fst (f s) = {(rv, s)}\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>det_wp P f; \<And>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. fst (f s) = {(rv, s)}\<rbrace><\STATESEP>by (fastforce simp: det_wp_def valid_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_use:
+  "det_wp P f \<Longrightarrow> P s \<Longrightarrow> (fst (f s) = {s'}) = (s' \<in> fst (f s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>det_wp P f; P s\<rbrakk> \<Longrightarrow> (fst (f s) = {s'}) = (s' \<in> fst (f s))<\STATESEP>by (fastforce simp: det_wp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_det:
+  "det f \<Longrightarrow> det_wp \<top> f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det f \<Longrightarrow> det_wp (\<lambda>_. True) f<\STATESEP>by (clarsimp simp: det_def det_wp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_no_fail:
+  "det_wp P f \<Longrightarrow> no_fail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P f \<Longrightarrow> no_fail P f<\STATESEP>by (fastforce simp: det_wp_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_bind [wp]:
+  "\<lbrakk> det_wp P f; \<And>rv. det_wp (Q rv) (g rv); \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> det_wp (P and P') (f >>= (\<lambda>rv. g rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>det_wp P f; \<And>rv. det_wp (Q rv) (g rv); \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (P and P') (f >>= g)<\STATESEP>apply (simp add: det_wp_def valid_def split_def bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<exists>a b. f s = ({(a, b)}, False)); \<And>rv. \<forall>s. Q rv s \<longrightarrow> (\<exists>a b. g rv s = ({(a, b)}, False)); \<forall>s. P' s \<longrightarrow> (\<forall>x\<in>fst (f s). Q (fst x) (snd x))\<rbrakk> \<Longrightarrow> \<forall>s. P s \<and> P' s \<longrightarrow> (\<exists>a b. (\<Union>x\<in>fst (f s). fst (g (fst x) (snd x))) = {(a, b)}) \<and> (\<forall>x\<in>fst (f s). \<not> snd (g (fst x) (snd x))) \<and> \<not> snd (f s)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_pre:
+  "det_wp P' f \<Longrightarrow> (\<And>s. P s \<Longrightarrow> P' s) \<Longrightarrow> det_wp P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>det_wp P' f; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> det_wp P f<\STATESEP>by (simp add: det_wp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_return [wp]:
+  "det_wp \<top> (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. True) (return x)<\STATESEP>by (simp add: det_wp_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_case_option [wp]:
+  "\<lbrakk> x = None \<Longrightarrow> det_wp P f;
+     \<And>y. x = Some y \<Longrightarrow> det_wp (Q y) (g y) \<rbrakk> \<Longrightarrow>
+  det_wp (\<lambda>s. (x = None \<longrightarrow> P s) \<and> (\<forall>y. x = Some y \<longrightarrow> Q y s)) (case_option f g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x = None \<Longrightarrow> det_wp P f; \<And>y. x = Some y \<Longrightarrow> det_wp (Q y) (g y)\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. (x = None \<longrightarrow> P s) \<and> (\<forall>y. x = Some y \<longrightarrow> Q y s)) (case x of None \<Rightarrow> f | Some x \<Rightarrow> g x)<\STATESEP>by (cases x) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_mapM [wp]:
+  assumes "\<And>x. x \<in> set xs \<Longrightarrow> det_wp (P x) (f x)"
+  assumes "\<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs \<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>"
+  shows "det_wp (\<lambda>s. \<forall>x \<in> set xs. P x s) (mapM f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set xs \<Longrightarrow> det_wp (P ?x) (f ?x)
+\<lbrakk>?x \<in> set xs; ?y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>P ?x\<rbrace> f ?y \<lbrace>\<lambda>_. P ?x\<rbrace>
+
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs)<\STATESEP>proof (induct xs)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>x. x \<in> set [] \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set []; y \<in> set []\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set []. P x s) (mapM f [])
+ 2. \<And>a xs. \<lbrakk>\<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set (a # xs); y \<in> set (a # xs)\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set (a # xs). P x s) (mapM f (a # xs))<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+?x \<in> set [] \<Longrightarrow> det_wp (P ?x) (f ?x)
+\<lbrakk>?x \<in> set []; ?y \<in> set []\<rbrakk> \<Longrightarrow> \<lbrace>P ?x\<rbrace> f ?y \<lbrace>\<lambda>_. P ?x\<rbrace>
+
+goal (2 subgoals):
+ 1. \<lbrakk>\<And>x. x \<in> set [] \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set []; y \<in> set []\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set []. P x s) (mapM f [])
+ 2. \<And>a xs. \<lbrakk>\<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set (a # xs); y \<in> set (a # xs)\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set (a # xs). P x s) (mapM f (a # xs))<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+?x \<in> set [] \<Longrightarrow> det_wp (P ?x) (f ?x)
+\<lbrakk>?x \<in> set []; ?y \<in> set []\<rbrakk> \<Longrightarrow> \<lbrace>P ?x\<rbrace> f ?y \<lbrace>\<lambda>_. P ?x\<rbrace>
+
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. \<forall>x\<in>set []. P x s) (mapM f [])<\STATESEP>by (simp add: mapM_Nil) (rule det_wp_pre, wp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+det_wp (\<lambda>s. \<forall>x\<in>set []. P x s) (mapM f [])
+
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>\<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set (a # xs); y \<in> set (a # xs)\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set (a # xs). P x s) (mapM f (a # xs))<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>\<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set (a # xs); y \<in> set (a # xs)\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set (a # xs). P x s) (mapM f (a # xs))<\STATESEP>case (Cons z zs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<And>x. x \<in> set zs \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set zs; y \<in> set zs\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set zs. P x s) (mapM f zs)
+?x \<in> set (z # zs) \<Longrightarrow> det_wp (P ?x) (f ?x)
+\<lbrakk>?x \<in> set (z # zs); ?y \<in> set (z # zs)\<rbrakk> \<Longrightarrow> \<lbrace>P ?x\<rbrace> f ?y \<lbrace>\<lambda>_. P ?x\<rbrace>
+
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>\<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set xs. P x s) (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> det_wp (P x) (f x); \<And>x y. \<lbrakk>x \<in> set (a # xs); y \<in> set (a # xs)\<rbrakk> \<Longrightarrow> \<lbrace>P x\<rbrace> f y \<lbrace>\<lambda>_. P x\<rbrace>\<rbrakk> \<Longrightarrow> det_wp (\<lambda>s. \<forall>x\<in>set (a # xs). P x s) (mapM f (a # xs))<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. \<forall>x\<in>set (z # zs). P x s) (mapM f (z # zs))<\STATESEP>apply (simp add: mapM_Cons)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>s. P z s \<and> (\<forall>x\<in>set zs. P x s)) (do y <- f z;
+ys <- mapM f zs;
+return (y # ys)
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp ?P'9 (do y <- f z;
+ys <- mapM f zs;
+return (y # ys)
+od)
+ 2. \<And>s. P z s \<and> (\<forall>x\<in>set zs. P x s) \<Longrightarrow> ?P'9 s<\STATESEP>apply (wp Cons.hyps Cons.prems hoare_vcg_const_Ball_lift|simp)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+det_wp (\<lambda>s. \<forall>x\<in>set (z # zs). P x s) (mapM f (z # zs))
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma det_wp_get [wp]:
+  "det_wp \<top> get"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. True) get<\STATESEP>by (simp add: get_def det_wp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_gets [wp]:
+  "det_wp \<top> (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. True) (gets f)<\STATESEP>by (simp add: simpler_gets_def det_wp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_fail [wp]:
+  "det_wp \<bottom> fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. False) fail<\STATESEP>by (simp add: fail_def det_wp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_assert [wp]:
+  "det_wp (\<lambda>_. P) (assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. P) (assert P)<\STATESEP>by (simp add: assert_def det_wp_fail det_wp_return)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_stateAssert [wp]:
+  "det_wp P (stateAssert P xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P (stateAssert P xs)<\STATESEP>apply (simp add: stateAssert_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P (do s <- get;
+assert (P s)
+od)<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> ((\<lambda>_. True) and P) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_select_f:
+  "det_wp (\<lambda>_. P s) f \<Longrightarrow> det_wp (\<lambda>_. P s) (select_f (f s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. P s) f \<Longrightarrow> det_wp (\<lambda>_. P s) (select_f (f s))<\STATESEP>apply (clarsimp simp: select_f_def det_wp_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; \<forall>s. \<exists>r. f s = ({r}, False)\<rbrakk> \<Longrightarrow> (\<forall>sa. \<exists>a b. fst (f s) \<times> {sa} = {(a, b)}) \<and> \<not> snd (f s)<\STATESEP>apply (erule_tac x=s in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P s; \<exists>r. f s = ({r}, False)\<rbrakk> \<Longrightarrow> (\<forall>sa. \<exists>a b. fst (f s) \<times> {sa} = {(a, b)}) \<and> \<not> snd (f s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_modify [wp]:
+  "det_wp \<top> (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. True) (modify f)<\STATESEP>by (simp add: det_wp_def simpler_modify_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_liftM [wp]:
+  "det_wp P g \<Longrightarrow> det_wp P (liftM f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P g \<Longrightarrow> det_wp P (liftM f g)<\STATESEP>apply (simp add: liftM_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P g \<Longrightarrow> det_wp P (do x <- g;
+return (f x)
+od)<\STATESEP>apply (rule det_wp_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. det_wp P g \<Longrightarrow> det_wp ?P' (do x <- g;
+return (f x)
+od)
+ 2. \<And>s. \<lbrakk>det_wp P g; P s\<rbrakk> \<Longrightarrow> ?P' s<\STATESEP>apply (wp|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_when [wp]:
+  "det_wp P f \<Longrightarrow> det_wp (\<lambda>s. Q \<longrightarrow> P s) (when Q f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P f \<Longrightarrow> det_wp (\<lambda>s. Q \<longrightarrow> P s) (when Q f)<\STATESEP>by (clarsimp simp: when_def det_wp_return)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_unless [wp]:
+  "det_wp P f \<Longrightarrow> det_wp (\<lambda>s. \<not>Q \<longrightarrow> P s) (unless Q f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp P f \<Longrightarrow> det_wp (\<lambda>s. \<not> Q \<longrightarrow> P s) (unless Q f)<\STATESEP>by (simp add: unless_def det_wp_when)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_wp_assert_opt :
+  "det_wp (\<lambda>_. x \<noteq> None) (assert_opt x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. x \<noteq> None) (assert_opt x)<\STATESEP>apply (simp add: assert_opt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det_wp (\<lambda>_. \<exists>y. x = Some y) (case x of None \<Rightarrow> fail | Some v \<Rightarrow> return v)<\STATESEP>apply (rule det_wp_pre, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<exists>y. x = Some y \<Longrightarrow> (x = None \<longrightarrow> False) \<and> (\<forall>y. x = Some y \<longrightarrow> True)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

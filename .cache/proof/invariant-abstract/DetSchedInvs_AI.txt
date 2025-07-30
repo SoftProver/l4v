@@ -1,0 +1,359 @@
+<\STATESEP>theory DetSchedInvs_AI
+imports ArchDeterministic_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma get_etcb_rev:
+  "ekheap s p = Some etcb \<Longrightarrow> get_etcb p s = Some etcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ekheap s p = Some etcb \<Longrightarrow> get_etcb p s = Some etcb<\STATESEP>by (clarsimp simp: get_etcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_etcb_SomeD: "get_etcb ptr s = Some v \<Longrightarrow> ekheap s ptr = Some v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. get_etcb ptr s = Some v \<Longrightarrow> ekheap s ptr = Some v<\STATESEP>apply (case_tac "ekheap s ptr", simp_all add: get_etcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition obj_at_kh where
+"obj_at_kh P ref kh \<equiv> obj_at P ref ((undefined :: det_ext state)\<lparr>kheap := kh\<rparr>)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma obj_at_kh_simp[simp]: "obj_at_kh P ref (kheap st) = obj_at P ref st"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. obj_at_kh P ref (kheap st) = obj_at P ref st<\STATESEP>apply (simp add: obj_at_def obj_at_kh_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition st_tcb_at_kh where
+"st_tcb_at_kh test \<equiv> obj_at_kh (\<lambda>ko. \<exists>tcb. ko = TCB tcb \<and> test (tcb_state tcb))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma st_tcb_at_kh_simp[simp]: "st_tcb_at_kh test t (kheap st) = st_tcb_at test t st"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. st_tcb_at_kh test t (kheap st) = st_tcb_at test t st<\STATESEP>apply (simp add: pred_tcb_at_def st_tcb_at_kh_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition is_etcb_at' where
+"is_etcb_at' ref ekh \<equiv> ekh ref \<noteq> None"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation is_etcb_at:: "obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool" where
+"is_etcb_at ref s \<equiv> is_etcb_at' ref (ekheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas is_etcb_at_def = is_etcb_at'_def<\STATESEP>0<\TRANSEP><\STATESEP>definition etcb_at' :: "(etcb \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> (obj_ref \<Rightarrow> etcb option) \<Rightarrow> bool" where
+"etcb_at' P ref ekh \<equiv> case ekh ref of Some x \<Rightarrow> P x | _ \<Rightarrow> True"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation etcb_at :: "(etcb \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool" where
+"etcb_at P ref s \<equiv> etcb_at' P ref (ekheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas etcb_at_def = etcb_at'_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma etcb_at_taut[simp]: "etcb_at' \<top> ref ekh"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. etcb_at' (\<lambda>_. True) ref ekh<\STATESEP>apply (simp add: etcb_at'_def split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma etcb_at_conj_is_etcb_at:
+  "(is_etcb_at' t ekh \<and> etcb_at' P t ekh)
+     = (case ekh t of None \<Rightarrow> False | Some x \<Rightarrow> P x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (is_etcb_at' t ekh \<and> etcb_at' P t ekh) = (case ekh t of None \<Rightarrow> False | Some x \<Rightarrow> P x)<\STATESEP>by (simp add: is_etcb_at_def etcb_at_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition valid_etcbs_2 :: "(obj_ref \<Rightarrow> etcb option) \<Rightarrow> (obj_ref \<Rightarrow> kernel_object option) \<Rightarrow> bool"where
+"valid_etcbs_2 ekh kh \<equiv> \<forall>ptr. (st_tcb_at_kh \<top> ptr kh) = (is_etcb_at' ptr ekh)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_etcbs :: "det_ext state \<Rightarrow> bool" where
+"valid_etcbs s \<equiv> valid_etcbs_2 (ekheap s) (kheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_etcbs_def = valid_etcbs_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  valid_idle_etcb_2 :: "(obj_ref \<Rightarrow> etcb option) \<Rightarrow> bool"
+where
+  "valid_idle_etcb_2 ekh \<equiv> etcb_at' (\<lambda>etcb. tcb_domain etcb = default_domain) idle_thread_ptr ekh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_idle_etcb :: "det_ext state \<Rightarrow> bool" where
+  "valid_idle_etcb s \<equiv> valid_idle_etcb_2 (ekheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_idle_etcb_def = valid_idle_etcb_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition not_queued_2 where
+  "not_queued_2 qs t \<equiv> \<forall>d p. t \<notin> set (qs d p)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation not_queued :: "obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool" where
+  "not_queued t s \<equiv> not_queued_2 (ready_queues s) t"<\STATESEP>0<\TRANSEP><\STATESEP>definition valid_queues_2 where
+  "valid_queues_2 queues ekh kh \<equiv> (\<forall>d p.
+     (\<forall>t \<in> set (queues d p). is_etcb_at' t ekh
+                           \<and> etcb_at' (\<lambda>t. tcb_priority t = p \<and> tcb_domain t = d) t ekh
+                           \<and> st_tcb_at_kh runnable t kh)
+   \<and> distinct (queues d p))"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_queues :: "det_ext state \<Rightarrow> bool" where
+"valid_queues s \<equiv> valid_queues_2 (ready_queues s) (ekheap s) (kheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_queues_def = valid_queues_2_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_queues_def2:
+  "valid_queues_2 queues ekh kh =
+     (\<forall>d p. (\<forall>t \<in> set (queues d p).
+              is_etcb_at' t ekh \<and>
+              (case ekh t of None \<Rightarrow> False | Some x \<Rightarrow> tcb_priority x = p \<and> tcb_domain x = d) \<and>
+              st_tcb_at_kh runnable t kh) \<and>
+              distinct (queues d p))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_queues_2 queues ekh kh = (\<forall>d p. (\<forall>t\<in>set (queues d p). is_etcb_at' t ekh \<and> (case ekh t of None \<Rightarrow> False | Some x \<Rightarrow> tcb_priority x = p \<and> tcb_domain x = d) \<and> st_tcb_at_kh runnable t kh) \<and> distinct (queues d p))<\STATESEP>by (clarsimp simp: valid_queues_def
+                     conj_assoc[where P="is_etcb_at' t ekh \<and> (case ekh t of
+                                           None \<Rightarrow> False |
+                                           Some x \<Rightarrow> tcb_priority x = p \<and> tcb_domain x = d)"]
+                     etcb_at_conj_is_etcb_at[symmetric])<\STATESEP>1<\TRANSEP><\STATESEP>definition valid_blocked_2 where
+   "valid_blocked_2 queues kh sa ct \<equiv>
+    (\<forall>t st. not_queued_2 queues t \<longrightarrow> st_tcb_at_kh ((=) st) t kh \<longrightarrow>
+            t \<noteq> ct \<longrightarrow> sa \<noteq> switch_thread t \<longrightarrow> (\<not> active st))"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_blocked :: "det_ext state \<Rightarrow> bool" where
+ "valid_blocked s \<equiv> valid_blocked_2 (ready_queues s) (kheap s) (scheduler_action s) (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_blocked_def = valid_blocked_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition valid_blocked_except_2 where
+   "valid_blocked_except_2 thread queues kh sa ct \<equiv>
+    (\<forall>t st. t \<noteq> thread \<longrightarrow> not_queued_2 queues t \<longrightarrow> st_tcb_at_kh ((=) st) t kh \<longrightarrow>
+            t \<noteq> ct \<longrightarrow> sa \<noteq> switch_thread t \<longrightarrow> (\<not> active st))"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_blocked_except :: "obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool" where
+ "valid_blocked_except t s \<equiv> valid_blocked_except_2 t (ready_queues s) (kheap s) (scheduler_action s) (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_blocked_except_def = valid_blocked_except_2_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_blocked_except_cur_thread[simp]:
+  "valid_blocked_except_2 (cur_thread s) queues kh sa (cur_thread s)
+   = valid_blocked_2 queues kh sa (cur_thread s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_blocked_except_2 (cur_thread s) queues kh sa (cur_thread s) = valid_blocked_2 queues kh sa (cur_thread s)<\STATESEP>by (fastforce simp: valid_blocked_except_2_def valid_blocked_2_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition in_cur_domain_2 where
+  "in_cur_domain_2 thread cdom ekh \<equiv> etcb_at' (\<lambda>t. tcb_domain t = cdom) thread ekh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation in_cur_domain :: "obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool" where
+  "in_cur_domain thread s \<equiv> in_cur_domain_2 thread (cur_domain s) (ekheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas in_cur_domain_def = in_cur_domain_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition ct_in_cur_domain_2 where
+  "ct_in_cur_domain_2 thread thread' sa cdom ekh \<equiv>
+     sa = resume_cur_thread \<longrightarrow> thread = thread' \<or> in_cur_domain_2 thread cdom ekh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation ct_in_cur_domain where
+  "ct_in_cur_domain s \<equiv> ct_in_cur_domain_2 (cur_thread s) (idle_thread s) (scheduler_action s) (cur_domain s) (ekheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas ct_in_cur_domain_def = ct_in_cur_domain_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition is_activatable_2 where
+"is_activatable_2 thread sa kh \<equiv> sa = resume_cur_thread \<longrightarrow> st_tcb_at_kh activatable thread kh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation is_activatable :: "obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool"  where
+"is_activatable thread s \<equiv> is_activatable_2 thread (scheduler_action s) (kheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas is_activatable_def = is_activatable_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition weak_valid_sched_action_2 where
+  "weak_valid_sched_action_2 sa ekh kh \<equiv>
+    \<forall>t. sa = switch_thread t \<longrightarrow> st_tcb_at_kh runnable t kh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation weak_valid_sched_action:: "det_ext state \<Rightarrow> bool" where
+  "weak_valid_sched_action s \<equiv> weak_valid_sched_action_2 (scheduler_action s) (ekheap s) (kheap s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas weak_valid_sched_action_def = weak_valid_sched_action_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition switch_in_cur_domain_2 where
+  "switch_in_cur_domain_2 sa ekh cdom \<equiv>
+    \<forall>t. sa = switch_thread t \<longrightarrow> in_cur_domain_2 t cdom ekh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation switch_in_cur_domain:: "det_ext state \<Rightarrow> bool" where
+  "switch_in_cur_domain s \<equiv> switch_in_cur_domain_2 (scheduler_action s) (ekheap s) (cur_domain s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas switch_in_cur_domain_def = switch_in_cur_domain_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition valid_sched_action_2 where
+  "valid_sched_action_2 sa ekh kh ct cdom \<equiv>
+     is_activatable_2 ct sa kh \<and> weak_valid_sched_action_2 sa ekh kh \<and> switch_in_cur_domain_2 sa ekh cdom"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_sched_action :: "det_ext state \<Rightarrow> bool" where
+  "valid_sched_action s \<equiv> valid_sched_action_2 (scheduler_action s) (ekheap s) (kheap s) (cur_thread s) (cur_domain s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_sched_action_def = valid_sched_action_2_def<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation ct_not_queued where
+  "ct_not_queued s \<equiv> not_queued (cur_thread s) s"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "ct_not_in_q_2 queues sa ct \<equiv> sa = resume_cur_thread \<longrightarrow> not_queued_2 queues ct"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation ct_not_in_q :: "det_ext state \<Rightarrow> bool" where
+  "ct_not_in_q s \<equiv> ct_not_in_q_2 (ready_queues s) (scheduler_action s) (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas ct_not_in_q_def = ct_not_in_q_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition valid_sched_2 where
+  "valid_sched_2 queues ekh sa cdom kh ct it \<equiv>
+      valid_etcbs_2 ekh kh \<and> valid_queues_2 queues ekh kh \<and> ct_not_in_q_2 queues sa ct \<and> valid_sched_action_2 sa ekh kh ct cdom \<and> ct_in_cur_domain_2 ct it sa cdom ekh \<and> valid_blocked_2 queues kh sa ct \<and> valid_idle_etcb_2 ekh"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation valid_sched :: "det_ext state \<Rightarrow> bool" where
+  "valid_sched s \<equiv> valid_sched_2 (ready_queues s) (ekheap s) (scheduler_action s) (cur_domain s) (kheap s) (cur_thread s) (idle_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas valid_sched_def = valid_sched_2_def<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation einvs :: "det_ext state \<Rightarrow> bool" where
+  "einvs \<equiv> invs and valid_list and valid_sched"<\STATESEP>0<\TRANSEP><\STATESEP>definition not_cur_thread_2 :: "obj_ref \<Rightarrow> scheduler_action \<Rightarrow> obj_ref \<Rightarrow> bool" where
+  "not_cur_thread_2 thread sa ct \<equiv> sa = resume_cur_thread \<longrightarrow> thread \<noteq> ct"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation not_cur_thread :: "obj_ref \<Rightarrow> det_ext state \<Rightarrow> bool" where
+  "not_cur_thread thread s \<equiv> not_cur_thread_2 thread (scheduler_action s) (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas not_cur_thread_def = not_cur_thread_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition simple_sched_action_2 :: "scheduler_action \<Rightarrow> bool" where
+  "simple_sched_action_2 action \<equiv> (case action of switch_thread t \<Rightarrow> False | _ \<Rightarrow> True)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation simple_sched_action :: "det_state \<Rightarrow> bool" where
+  "simple_sched_action s \<equiv> simple_sched_action_2 (scheduler_action s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas simple_sched_action_def = simple_sched_action_2_def<\STATESEP>0<\TRANSEP><\STATESEP>definition schact_is_rct :: "det_ext state \<Rightarrow> bool" where
+  "schact_is_rct s \<equiv> scheduler_action s = resume_cur_thread"<\STATESEP>0<\TRANSEP><\STATESEP>lemma schact_is_rct[elim!]: "schact_is_rct s \<Longrightarrow> scheduler_action s = resume_cur_thread"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. schact_is_rct s \<Longrightarrow> scheduler_action s = resume_cur_thread<\STATESEP>apply (simp add: schact_is_rct_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma schact_is_rct_simple[elim]: "schact_is_rct s \<Longrightarrow> simple_sched_action s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. schact_is_rct s \<Longrightarrow> simple_sched_action s<\STATESEP>apply (simp add: simple_sched_action_def schact_is_rct_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition scheduler_act_not_2 where
+"scheduler_act_not_2 sa t \<equiv> sa \<noteq> switch_thread t"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation scheduler_act_not :: "obj_ref \<Rightarrow> det_ext state  \<Rightarrow> bool" where
+"scheduler_act_not t s \<equiv> scheduler_act_not_2 (scheduler_action s) t"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation scheduler_act_sane :: "det_ext state \<Rightarrow> bool" where
+"scheduler_act_sane s \<equiv> scheduler_act_not_2 (scheduler_action s) (cur_thread s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas scheduler_act_sane_def = scheduler_act_not_2_def<\STATESEP>0<\TRANSEP><\STATESEP>lemmas scheduler_act_not_def = scheduler_act_not_2_def<\STATESEP>0<\TRANSEP><\STATESEP>lemmas ct_not_queued_lift = hoare_lift_Pf2[where f="cur_thread" and P="not_queued"]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sch_act_sane_lift = hoare_lift_Pf2[where f="cur_thread" and P="scheduler_act_not"]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas not_queued_def = not_queued_2_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_etcbs_lift:
+  assumes a: "\<And>P T t. \<lbrace>\<lambda>s. P (typ_at T t s)\<rbrace> f \<lbrace>\<lambda>rv s. P (typ_at T t s)\<rbrace>"
+      and b: "\<And>P. \<lbrace>\<lambda>s. P (ekheap s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ekheap s)\<rbrace>"
+    shows "\<lbrace>valid_etcbs\<rbrace> f \<lbrace>\<lambda>rv. valid_etcbs\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_etcbs\<rbrace> f \<lbrace>\<lambda>rv. valid_etcbs\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. ekheap s", OF _ b])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. valid_etcbs_2 x (kheap s)\<rbrace> f \<lbrace>\<lambda>_ a. valid_etcbs_2 x (kheap a)\<rbrace><\STATESEP>apply (simp add: valid_etcbs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. \<forall>ptr. st_tcb_at (\<lambda>_. True) ptr s = is_etcb_at' ptr x\<rbrace> f \<lbrace>\<lambda>_ a. \<forall>ptr. st_tcb_at (\<lambda>_. True) ptr a = is_etcb_at' ptr x\<rbrace><\STATESEP>apply (simp add: tcb_at_st_tcb_at[symmetric] tcb_at_typ)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. \<forall>ptr. typ_at ATCB ptr s = is_etcb_at' ptr x\<rbrace> f \<lbrace>\<lambda>_ a. \<forall>ptr. typ_at ATCB ptr a = is_etcb_at' ptr x\<rbrace><\STATESEP>apply (wp hoare_vcg_all_lift a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_queues_lift:
+  assumes a: "\<And>Q t. \<lbrace>\<lambda>s. st_tcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. st_tcb_at Q t s\<rbrace>"
+      and c: "\<And>P. \<lbrace>\<lambda>s. P (ekheap s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ekheap s)\<rbrace>"
+      and d: "\<And>P. \<lbrace>\<lambda>s. P (ready_queues s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ready_queues s)\<rbrace>"
+    shows "\<lbrace>valid_queues\<rbrace> f \<lbrace>\<lambda>rv. valid_queues\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_queues\<rbrace> f \<lbrace>\<lambda>rv. valid_queues\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. ekheap s", OF _ c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. valid_queues_2 (ready_queues s) x (kheap s)\<rbrace> f \<lbrace>\<lambda>_ a. valid_queues_2 (ready_queues a) x (kheap a)\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. ready_queues s", OF _ d])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. valid_queues_2 xa x (kheap s)\<rbrace> f \<lbrace>\<lambda>_ a. valid_queues_2 xa x (kheap a)\<rbrace><\STATESEP>apply (simp add: valid_queues_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. \<forall>d p. (\<forall>t\<in>set (xa d p). is_etcb_at' t x \<and> etcb_at' (\<lambda>t. tcb_priority t = p \<and> tcb_domain t = d) t x \<and> st_tcb_at runnable t s) \<and> distinct (xa d p)\<rbrace> f \<lbrace>\<lambda>_ a. \<forall>d p. (\<forall>t\<in>set (xa d p). is_etcb_at' t x \<and> etcb_at' (\<lambda>t. tcb_priority t = p \<and> tcb_domain t = d) t x \<and> st_tcb_at runnable t a) \<and> distinct (xa d p)\<rbrace><\STATESEP>apply (wp hoare_vcg_ball_lift hoare_vcg_all_lift hoare_vcg_conj_lift a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_sched_valid_queues[elim!]:
+  "valid_sched s \<Longrightarrow> valid_queues s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_sched s \<Longrightarrow> valid_queues s<\STATESEP>by (clarsimp simp: valid_sched_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma typ_at_st_tcb_at_lift:
+  assumes typ_lift: "\<And>P T p. \<lbrace>\<lambda>s. P (typ_at T p s)\<rbrace> f \<lbrace>\<lambda>r s. P (typ_at T p s)\<rbrace>"
+  assumes st_lift: "\<And>P. \<lbrace>st_tcb_at P t\<rbrace> f \<lbrace>\<lambda>_. st_tcb_at P t\<rbrace>"
+  shows "\<lbrace>\<lambda>s. \<not> st_tcb_at P t s\<rbrace> f \<lbrace>\<lambda>r s. \<not> st_tcb_at P t s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<not> st_tcb_at P t s\<rbrace> f \<lbrace>\<lambda>r s. \<not> st_tcb_at P t s\<rbrace><\STATESEP>apply (simp add: valid_def obj_at_def st_tcb_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. (\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<forall>ko. kheap s' t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb)\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (case_tac "kheap s t")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = None\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (cut_tac P="\<lambda>x. \<not> x" and p=t and T="ATCB" in typ_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = None; \<lbrace>\<lambda>s. \<not> typ_at ATCB t s\<rbrace> f \<lbrace>\<lambda>r s. \<not> typ_at ATCB t s\<rbrace>\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (simp add: valid_def obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb. \<lbrakk>(a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = None; \<forall>s. (\<forall>ko. kheap s t = Some ko \<longrightarrow> a_type ko \<noteq> ATCB) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<forall>ko. kheap s' t = Some ko \<longrightarrow> a_type ko \<noteq> ATCB)\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (cut_tac P="\<lambda>x. x" and p=t and T="a_type aa" in typ_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<lbrace>typ_at (a_type aa) t\<rbrace> f \<lbrace>\<lambda>r. typ_at (a_type aa) t\<rbrace>\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (cut_tac P="\<lambda>t. \<not> P t" in st_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>ko. kheap s t = Some ko \<longrightarrow> (\<forall>tcb. ko = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb)); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<lbrace>typ_at (a_type aa) t\<rbrace> f \<lbrace>\<lambda>r. typ_at (a_type aa) t\<rbrace>; \<lbrace>st_tcb_at (\<lambda>t. \<not> P t) t\<rbrace> f \<lbrace>\<lambda>_. st_tcb_at (\<lambda>t. \<not> P t) t\<rbrace>\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (simp add: valid_def obj_at_def st_tcb_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> a_type ko = a_type aa) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> a_type ko = a_type aa); \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb)))\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); (\<exists>ko. kheap s t = Some ko \<and> a_type ko = a_type aa) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> a_type ko = a_type aa)\<rbrakk> \<Longrightarrow> False<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); \<forall>(r, s')\<in>fst (f s). \<exists>ko. kheap s' t = Some ko \<and> a_type ko = a_type aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (drule_tac x="(a,b)" in bspec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb)))\<rbrakk> \<Longrightarrow> (a, b) \<in> fst (f s)
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); case (a, b) of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> a_type ko = a_type aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); case (a, b) of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> a_type ko = a_type aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (subgoal_tac "a_type aa = ATCB")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa; a_type aa = ATCB\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa\<rbrakk> \<Longrightarrow> a_type aa = ATCB<\STATESEP>apply (erule a_type_ATCBE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb aa tcba. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa; aa = TCB tcba\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa\<rbrakk> \<Longrightarrow> a_type aa = ATCB<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b tcb aa tcba. \<lbrakk>\<not> P (tcb_state tcba); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some (TCB tcba); \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); aa = TCB tcba\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa\<rbrakk> \<Longrightarrow> a_type aa = ATCB<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b tcb aa. \<lbrakk>\<forall>tcb. aa = TCB tcb \<longrightarrow> \<not> P (tcb_state tcb); (a, b) \<in> fst (f s); kheap b t = Some (TCB tcb); P (tcb_state tcb); kheap s t = Some aa; \<forall>s. (\<exists>ko. kheap s t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> \<exists>ko. kheap s' t = Some ko \<and> (\<exists>tcb. ko = TCB tcb \<and> \<not> P (tcb_state tcb))); ATCB = a_type aa\<rbrakk> \<Longrightarrow> a_type aa = ATCB<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_blocked_lift:
+  assumes a: "\<And>Q t. \<lbrace>\<lambda>s. st_tcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. st_tcb_at Q t s\<rbrace>"
+  assumes t: "\<And>P T t. \<lbrace>\<lambda>s. P (typ_at T t s)\<rbrace> f \<lbrace>\<lambda>rv s. P (typ_at T t s)\<rbrace>"
+      and c: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+      and e: "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_thread s)\<rbrace>"
+      and d: "\<And>P. \<lbrace>\<lambda>s. P (ready_queues s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ready_queues s)\<rbrace>"
+    shows "\<lbrace>valid_blocked\<rbrace> f \<lbrace>\<lambda>rv. valid_blocked\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_blocked\<rbrace> f \<lbrace>\<lambda>rv. valid_blocked\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>\<lambda>rv. valid_blocked\<rbrace>
+ 2. \<And>s. valid_blocked s \<Longrightarrow> ?Q s<\STATESEP>apply (wps c e d)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>prev_s. \<lbrace>?P3 prev_s\<rbrace> f \<lbrace>\<lambda>rv s'. valid_blocked_2 (ready_queues prev_s) (kheap s') (scheduler_action prev_s) (cur_thread prev_s)\<rbrace>
+ 2. \<And>s. valid_blocked s \<Longrightarrow> ?P3 s s<\STATESEP>apply (simp add: valid_blocked_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>prev_s. \<lbrace>?P3 prev_s\<rbrace> f \<lbrace>\<lambda>rv s'. \<forall>t. not_queued t prev_s \<longrightarrow> (\<forall>st. st_tcb_at ((=) st) t s' \<longrightarrow> t \<noteq> cur_thread prev_s \<longrightarrow> scheduler_action prev_s \<noteq> switch_thread t \<longrightarrow> st \<noteq> Running \<and> st \<noteq> Restart)\<rbrace>
+ 2. \<And>s. valid_blocked s \<Longrightarrow> ?P3 s s<\STATESEP>apply (wp hoare_vcg_ball_lift hoare_vcg_all_lift hoare_vcg_conj_lift hoare_weak_lift_imp a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>prev_s t st. \<lbrace>?P18 prev_s t st\<rbrace> f \<lbrace>\<lambda>rv s. st_tcb_at ((=) st) t s \<longrightarrow> t \<noteq> cur_thread prev_s \<longrightarrow> scheduler_action prev_s \<noteq> switch_thread t \<longrightarrow> st \<noteq> Running \<and> st \<noteq> Restart\<rbrace>
+ 2. \<And>s. valid_blocked s \<Longrightarrow> \<forall>x. not_queued x s \<longrightarrow> (\<forall>xa. ?P18 s x xa s)<\STATESEP>apply (rule hoare_convert_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>prev_s t st. \<lbrace>\<lambda>s. \<not> ?P20 prev_s t st s\<rbrace> f \<lbrace>\<lambda>rv s. \<not> st_tcb_at ((=) st) t s\<rbrace>
+ 2. \<And>prev_s t st. \<lbrace>?R20 prev_s t st\<rbrace> f \<lbrace>\<lambda>rv s. t \<noteq> cur_thread prev_s \<longrightarrow> scheduler_action prev_s \<noteq> switch_thread t \<longrightarrow> st \<noteq> Running \<and> st \<noteq> Restart\<rbrace>
+ 3. \<And>s. valid_blocked s \<Longrightarrow> \<forall>x. not_queued x s \<longrightarrow> (\<forall>xa. ?P20 s x xa s \<longrightarrow> ?R20 s x xa s)<\STATESEP>apply (rule typ_at_st_tcb_at_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>prev_s t st P T p. \<lbrace>\<lambda>s. P (typ_at T p s)\<rbrace> f \<lbrace>\<lambda>rv s. P (typ_at T p s)\<rbrace>
+ 2. \<And>prev_s t st P. \<lbrace>st_tcb_at P t\<rbrace> f \<lbrace>\<lambda>_. st_tcb_at P t\<rbrace>
+ 3. \<And>prev_s t st. \<lbrace>?R20 prev_s t st\<rbrace> f \<lbrace>\<lambda>rv s. t \<noteq> cur_thread prev_s \<longrightarrow> scheduler_action prev_s \<noteq> switch_thread t \<longrightarrow> st \<noteq> Running \<and> st \<noteq> Restart\<rbrace>
+ 4. \<And>s. valid_blocked s \<Longrightarrow> \<forall>x. not_queued x s \<longrightarrow> (\<forall>xa. st_tcb_at ((=) xa) x s \<longrightarrow> ?R20 s x xa s)<\STATESEP>apply (wp a t)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. valid_blocked s \<Longrightarrow> \<forall>x. not_queued x s \<longrightarrow> (\<forall>xa. st_tcb_at ((=) xa) x s \<longrightarrow> x \<noteq> cur_thread s \<longrightarrow> scheduler_action s \<noteq> switch_thread x \<longrightarrow> xa \<noteq> Running \<and> xa \<noteq> Restart)<\STATESEP>apply (simp add: valid_blocked_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ct_not_in_q_lift:
+  assumes a: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+      and b: "\<And>P. \<lbrace>\<lambda>s. P (ready_queues s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ready_queues s)\<rbrace>"
+      and c: "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_thread s)\<rbrace>"
+    shows "\<lbrace>ct_not_in_q\<rbrace> f \<lbrace>\<lambda>rv. ct_not_in_q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>ct_not_in_q\<rbrace> f \<lbrace>\<lambda>rv. ct_not_in_q\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. scheduler_action s", OF _ a])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. ct_not_in_q_2 (ready_queues s) x (cur_thread s)\<rbrace> f \<lbrace>\<lambda>_ a. ct_not_in_q_2 (ready_queues a) x (cur_thread a)\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. ready_queues s", OF _ b])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. ct_not_in_q_2 xa x (cur_thread s)\<rbrace> f \<lbrace>\<lambda>_ a. ct_not_in_q_2 xa x (cur_thread a)\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. cur_thread s", OF _ c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa xb. \<lbrace>\<lambda>s. ct_not_in_q_2 xa x xb\<rbrace> f \<lbrace>\<lambda>_ a. ct_not_in_q_2 xa x xb\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ct_in_cur_domain_lift:
+  assumes a: "\<And>P. \<lbrace>\<lambda>s. P (ekheap s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ekheap s)\<rbrace>"
+      and b: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+      and c: "\<And>P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_domain s)\<rbrace>"
+      and d: "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_thread s)\<rbrace>"
+      and e: "\<And>P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (idle_thread s)\<rbrace>"
+    shows "\<lbrace>ct_in_cur_domain\<rbrace> f \<lbrace>\<lambda>rv. ct_in_cur_domain\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>ct_in_cur_domain\<rbrace> f \<lbrace>\<lambda>rv. ct_in_cur_domain\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. ekheap s", OF _ a])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. ct_in_cur_domain_2 (cur_thread s) (idle_thread s) (scheduler_action s) (cur_domain s) x\<rbrace> f \<lbrace>\<lambda>_ a. ct_in_cur_domain_2 (cur_thread a) (idle_thread a) (scheduler_action a) (cur_domain a) x\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. scheduler_action s", OF _ b])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. ct_in_cur_domain_2 (cur_thread s) (idle_thread s) xa (cur_domain s) x\<rbrace> f \<lbrace>\<lambda>_ a. ct_in_cur_domain_2 (cur_thread a) (idle_thread a) xa (cur_domain a) x\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. cur_domain s", OF _ c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa xb. \<lbrace>\<lambda>s. ct_in_cur_domain_2 (cur_thread s) (idle_thread s) xa xb x\<rbrace> f \<lbrace>\<lambda>_ a. ct_in_cur_domain_2 (cur_thread a) (idle_thread a) xa xb x\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. cur_thread s", OF _ d])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa xb xc. \<lbrace>\<lambda>s. ct_in_cur_domain_2 xc (idle_thread s) xa xb x\<rbrace> f \<lbrace>\<lambda>_ a. ct_in_cur_domain_2 xc (idle_thread a) xa xb x\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. idle_thread s", OF _ e])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa xb xc xd. \<lbrace>\<lambda>s. ct_in_cur_domain_2 xc xd xa xb x\<rbrace> f \<lbrace>\<lambda>_ a. ct_in_cur_domain_2 xc xd xa xb x\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma weak_valid_sched_action_lift:
+  assumes a: "\<And>Q t. \<lbrace>\<lambda>s. st_tcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. st_tcb_at Q t s\<rbrace>"
+  assumes c: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+    shows "\<lbrace>weak_valid_sched_action\<rbrace> f \<lbrace>\<lambda>rv. weak_valid_sched_action\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>weak_valid_sched_action\<rbrace> f \<lbrace>\<lambda>rv. weak_valid_sched_action\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. scheduler_action s", OF _ c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. weak_valid_sched_action_2 x (ekheap s) (kheap s)\<rbrace> f \<lbrace>\<lambda>_ a. weak_valid_sched_action_2 x (ekheap a) (kheap a)\<rbrace><\STATESEP>apply (simp add: weak_valid_sched_action_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. \<forall>t. x = switch_thread t \<longrightarrow> st_tcb_at runnable t s\<rbrace> f \<lbrace>\<lambda>_ a. \<forall>t. x = switch_thread t \<longrightarrow> st_tcb_at runnable t a\<rbrace><\STATESEP>apply (wp hoare_vcg_all_lift hoare_weak_lift_imp a)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma switch_in_cur_domain_lift:
+  assumes a: "\<And>Q t. \<lbrace>\<lambda>s. etcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. etcb_at Q t s\<rbrace>"
+  assumes b: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+  assumes c: "\<And>P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_domain s)\<rbrace>"
+    shows "\<lbrace>switch_in_cur_domain\<rbrace> f \<lbrace>\<lambda>rv. switch_in_cur_domain\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>switch_in_cur_domain\<rbrace> f \<lbrace>\<lambda>rv. switch_in_cur_domain\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. scheduler_action s", OF _ b])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. switch_in_cur_domain_2 x (ekheap s) (cur_domain s)\<rbrace> f \<lbrace>\<lambda>_ a. switch_in_cur_domain_2 x (ekheap a) (cur_domain a)\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. cur_domain s", OF _ c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. switch_in_cur_domain_2 x (ekheap s) xa\<rbrace> f \<lbrace>\<lambda>_ a. switch_in_cur_domain_2 x (ekheap a) xa\<rbrace><\STATESEP>apply (simp add: switch_in_cur_domain_def in_cur_domain_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. \<forall>t. x = switch_thread t \<longrightarrow> etcb_at (\<lambda>t. tcb_domain t = xa) t s\<rbrace> f \<lbrace>\<lambda>_ a. \<forall>t. x = switch_thread t \<longrightarrow> etcb_at (\<lambda>t. tcb_domain t = xa) t a\<rbrace><\STATESEP>apply (wp hoare_vcg_all_lift hoare_weak_lift_imp a c)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_sched_action_lift:
+  assumes a: "\<And>Q t. \<lbrace>\<lambda>s. st_tcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. st_tcb_at Q t s\<rbrace>"
+  assumes b: "\<And>Q t. \<lbrace>\<lambda>s. etcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. etcb_at Q t s\<rbrace>"
+  assumes c: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+  assumes d: "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_thread s)\<rbrace>"
+  assumes e: "\<And>Q t. \<lbrace>\<lambda>s. Q (cur_domain s)\<rbrace> f \<lbrace>\<lambda>rv s. Q (cur_domain s)\<rbrace>"
+    shows "\<lbrace>valid_sched_action\<rbrace> f \<lbrace>\<lambda>rv. valid_sched_action\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_sched_action\<rbrace> f \<lbrace>\<lambda>rv. valid_sched_action\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. cur_thread s", OF _ d])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. valid_sched_action_2 (scheduler_action s) (ekheap s) (kheap s) x (cur_domain s)\<rbrace> f \<lbrace>\<lambda>_ a. valid_sched_action_2 (scheduler_action a) (ekheap a) (kheap a) x (cur_domain a)\<rbrace><\STATESEP>apply (simp add: valid_sched_action_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrace>\<lambda>s. is_activatable x s \<and> weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace> f \<lbrace>\<lambda>_ a. is_activatable x a \<and> weak_valid_sched_action a \<and> switch_in_cur_domain a\<rbrace><\STATESEP>apply (rule hoare_vcg_conj_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrace>is_activatable x\<rbrace> f \<lbrace>\<lambda>rv. is_activatable x\<rbrace>
+ 2. \<And>x. \<lbrace>\<lambda>s. weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace> f \<lbrace>\<lambda>rv s. weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace><\STATESEP>apply (rule hoare_lift_Pf[where f="\<lambda>s. scheduler_action s", OF _ c])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. is_activatable_2 x xa (kheap s)\<rbrace> f \<lbrace>\<lambda>_ a. is_activatable_2 x xa (kheap a)\<rbrace>
+ 2. \<And>x. \<lbrace>\<lambda>s. weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace> f \<lbrace>\<lambda>rv s. weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace><\STATESEP>apply (simp add: is_activatable_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xa. \<lbrace>\<lambda>s. xa = resume_cur_thread \<longrightarrow> st_tcb_at activatable x s\<rbrace> f \<lbrace>\<lambda>_ a. xa = resume_cur_thread \<longrightarrow> st_tcb_at activatable x a\<rbrace>
+ 2. \<And>x. \<lbrace>\<lambda>s. weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace> f \<lbrace>\<lambda>rv s. weak_valid_sched_action s \<and> switch_in_cur_domain s\<rbrace><\STATESEP>apply (wp weak_valid_sched_action_lift switch_in_cur_domain_lift hoare_weak_lift_imp a b c d e)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_sched_lift:
+  assumes a: "\<And>Q t. \<lbrace>\<lambda>s. st_tcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. st_tcb_at Q t s\<rbrace>"
+  assumes b: "\<And>Q t. \<lbrace>\<lambda>s. etcb_at Q t s\<rbrace> f \<lbrace>\<lambda>rv s. etcb_at Q t s\<rbrace>"
+  assumes c: "\<And>P T t. \<lbrace>\<lambda>s. P (typ_at T t s)\<rbrace> f \<lbrace>\<lambda>rv s. P (typ_at T t s)\<rbrace>"
+  assumes d: "\<And>P. \<lbrace>\<lambda>s. P (ekheap s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ekheap s)\<rbrace>"
+  assumes e: "\<And>P. \<lbrace>\<lambda>s. P (scheduler_action s)\<rbrace> f \<lbrace>\<lambda>rv s. P (scheduler_action s)\<rbrace>"
+  assumes f: "\<And>P. \<lbrace>\<lambda>s. P (ready_queues s)\<rbrace> f \<lbrace>\<lambda>rv s. P (ready_queues s)\<rbrace>"
+  assumes g: "\<And>P. \<lbrace>\<lambda>s. P (cur_domain s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_domain s)\<rbrace>"
+  assumes h: "\<And>P. \<lbrace>\<lambda>s. P (cur_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (cur_thread s)\<rbrace>"
+  assumes i: "\<And>P. \<lbrace>\<lambda>s. P (idle_thread s)\<rbrace> f \<lbrace>\<lambda>rv s. P (idle_thread s)\<rbrace>"
+    shows "\<lbrace>valid_sched\<rbrace> f \<lbrace>\<lambda>rv. valid_sched\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_sched\<rbrace> f \<lbrace>\<lambda>rv. valid_sched\<rbrace><\STATESEP>apply (simp add: valid_sched_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. valid_etcbs s \<and> valid_queues s \<and> ct_not_in_q s \<and> valid_sched_action s \<and> ct_in_cur_domain s \<and> valid_blocked s \<and> valid_idle_etcb s\<rbrace> f \<lbrace>\<lambda>rv s. valid_etcbs s \<and> valid_queues s \<and> ct_not_in_q s \<and> valid_sched_action s \<and> ct_in_cur_domain s \<and> valid_blocked s \<and> valid_idle_etcb s\<rbrace><\STATESEP>apply (wp valid_etcbs_lift valid_queues_lift ct_not_in_q_lift ct_in_cur_domain_lift
+            valid_sched_action_lift valid_blocked_lift a b c d e f g h i hoare_vcg_conj_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_sched_valid_etcbs[elim!]:
+  "valid_sched s \<Longrightarrow> valid_etcbs s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_sched s \<Longrightarrow> valid_etcbs s<\STATESEP>by (clarsimp simp: valid_sched_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_etcbs_tcb_etcb:
+  "\<lbrakk> valid_etcbs s; kheap s ptr = Some (TCB tcb) \<rbrakk> \<Longrightarrow> \<exists>etcb. ekheap s ptr = Some etcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>valid_etcbs s; kheap s ptr = Some (TCB tcb)\<rbrakk> \<Longrightarrow> \<exists>etcb. ekheap s ptr = Some etcb<\STATESEP>by (force simp: valid_etcbs_def is_etcb_at_def st_tcb_at_def obj_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_etcbs_get_tcb_get_etcb:
+  "\<lbrakk> valid_etcbs s; get_tcb ptr s = Some tcb \<rbrakk> \<Longrightarrow> \<exists>etcb. get_etcb ptr s = Some etcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>valid_etcbs s; get_tcb ptr s = Some tcb\<rbrakk> \<Longrightarrow> \<exists>etcb. get_etcb ptr s = Some etcb<\STATESEP>apply (clarsimp simp: valid_etcbs_def st_tcb_at_def obj_at_def is_etcb_at_def get_etcb_def get_tcb_def
+                  split: option.splits if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. \<lbrakk>\<forall>ptr. (\<exists>ko. kheap s ptr = Some ko \<and> (\<exists>tcb. ko = TCB tcb)) = (\<exists>y. ekheap s ptr = Some y); kheap s ptr = Some x2; (case x2 of TCB tcb \<Rightarrow> Some tcb | _ \<Rightarrow> None) = Some tcb\<rbrakk> \<Longrightarrow> \<exists>etcb. ekheap s ptr = Some etcb<\STATESEP>apply (erule_tac x=ptr in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. \<lbrakk>kheap s ptr = Some x2; (case x2 of TCB tcb \<Rightarrow> Some tcb | _ \<Rightarrow> None) = Some tcb; (\<exists>ko. kheap s ptr = Some ko \<and> (\<exists>tcb. ko = TCB tcb)) = (\<exists>y. ekheap s ptr = Some y)\<rbrakk> \<Longrightarrow> \<exists>etcb. ekheap s ptr = Some etcb<\STATESEP>apply (clarsimp simp: get_etcb_def split: option.splits kernel_object.splits)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_etcbs_ko_etcb:
+  "\<lbrakk> valid_etcbs s; kheap s ptr = Some ko \<rbrakk> \<Longrightarrow> \<exists>tcb. (ko = TCB tcb = (\<exists>etcb. ekheap s ptr = Some etcb))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>valid_etcbs s; kheap s ptr = Some ko\<rbrakk> \<Longrightarrow> \<exists>tcb. (ko = TCB tcb) = (\<exists>etcb. ekheap s ptr = Some etcb)<\STATESEP>apply (clarsimp simp: valid_etcbs_def st_tcb_at_def obj_at_def is_etcb_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>ptr. (\<exists>ko. kheap s ptr = Some ko \<and> (\<exists>tcb. ko = TCB tcb)) = (\<exists>y. ekheap s ptr = Some y); kheap s ptr = Some ko\<rbrakk> \<Longrightarrow> \<exists>tcb. (ko = TCB tcb) = (\<exists>etcb. ekheap s ptr = Some etcb)<\STATESEP>apply (erule_tac x="ptr" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>kheap s ptr = Some ko; (\<exists>ko. kheap s ptr = Some ko \<and> (\<exists>tcb. ko = TCB tcb)) = (\<exists>y. ekheap s ptr = Some y)\<rbrakk> \<Longrightarrow> \<exists>tcb. (ko = TCB tcb) = (\<exists>etcb. ekheap s ptr = Some etcb)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ekheap_tcb_at:
+  "\<lbrakk>ekheap s x = Some y; valid_etcbs s\<rbrakk> \<Longrightarrow> tcb_at x s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ekheap s x = Some y; valid_etcbs s\<rbrakk> \<Longrightarrow> tcb_at x s<\STATESEP>by (fastforce simp: valid_etcbs_def is_etcb_at_def st_tcb_at_def obj_at_def is_tcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_at_is_etcb_at:
+  "\<lbrakk>tcb_at t s; valid_etcbs s\<rbrakk> \<Longrightarrow> is_etcb_at t s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>tcb_at t s; valid_etcbs s\<rbrakk> \<Longrightarrow> is_etcb_at t s<\STATESEP>by (simp add: valid_etcbs_def tcb_at_st_tcb_at)<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_at_ekheap_dom:
+  "\<lbrakk>tcb_at x s; valid_etcbs s\<rbrakk> \<Longrightarrow> (\<exists>etcb. ekheap s x = Some etcb)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>tcb_at x s; valid_etcbs s\<rbrakk> \<Longrightarrow> \<exists>etcb. ekheap s x = Some etcb<\STATESEP>by (auto simp: is_etcb_at_def dest: tcb_at_is_etcb_at)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ekheap_kheap_dom:
+  "\<lbrakk>ekheap s x = Some etcb; valid_etcbs s\<rbrakk>
+    \<Longrightarrow> \<exists>tcb. kheap s x = Some (TCB tcb)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ekheap s x = Some etcb; valid_etcbs s\<rbrakk> \<Longrightarrow> \<exists>tcb. kheap s x = Some (TCB tcb)<\STATESEP>by (fastforce simp: valid_etcbs_def st_tcb_at_def obj_at_def is_etcb_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

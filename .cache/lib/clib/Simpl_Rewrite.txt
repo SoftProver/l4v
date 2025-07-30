@@ -1,0 +1,532 @@
+<\STATESEP>theory Simpl_Rewrite
+imports
+  "Simpl-VCG.Vcg"
+  "Eisbach_Tools.Eisbach_Methods"
+  "Eisbach_Tools.Apply_Debug"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>datatype ('s,'p,'f) com_ctxt
+  = Seq1C "('s,'p,'f) com" \<comment> \<open>first command of a @{term Seq}\<close>
+  | Seq2C "('s,'p,'f) com" \<comment> \<open>second command of a @{term Seq}\<close>
+  | CondTC "'s bexp" "('s,'p,'f) com" \<comment> \<open>first branch of a @{term Cond}\<close>
+  | CondFC "'s bexp" "('s,'p,'f) com" bool \<comment> \<open>second branch of a @{term Cond}\<close>
+  | WhileC "'s bexp" \<comment> \<open>body of a @{term While}\<close>
+  | WhileAnnoC "'s bexp" "'s assn" "('s \<times> 's) assn" \<comment> \<open>body of a @{term whileAnno}\<close>
+  | GuardC "'f" "'s bexp" \<comment> \<open>body of a @{term Guard}\<close>
+  | TryC "('s,'p,'f) com" \<comment> \<open>body of a @{term Catch}\<close>
+  | HandlerC "('s,'p,'f) com" bool \<comment> \<open>handler of a @{term Catch}\<close><\STATESEP>0<\TRANSEP><\STATESEP>named_theorems C_simp<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems C_simp_pre<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems C_simp_simps<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems C_simp_throws<\STATESEP>0<\TRANSEP><\STATESEP>context
+  fixes \<Gamma> :: "'p \<Rightarrow> ('s,'p,'f) com option"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "com_eq t c c' \<equiv> t \<longrightarrow> (\<forall>s s'. \<Gamma> \<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s' \<longleftrightarrow> \<Gamma> \<turnstile> \<langle>c',s\<rangle> \<Rightarrow> s')"<\STATESEP>0<\TRANSEP><\STATESEP>lemma com_eq_weaken_guard:
+  "com_eq t c c' \<Longrightarrow> (t' \<Longrightarrow> t) \<Longrightarrow> com_eq t' c c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.com_eq t c c'; t' \<Longrightarrow> t\<rbrakk> \<Longrightarrow> local.com_eq t' c c'<\STATESEP>by (simp add: com_eq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_guard_False:
+  "com_eq False c c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq False c c'<\STATESEP>by (simp add: com_eq_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation "com_equiv \<equiv> com_eq True"<\STATESEP>0<\TRANSEP><\STATESEP>notation com_equiv (infix "\<sim>" 10)<\STATESEP>0<\TRANSEP><\STATESEP>lemma com_eq_refl:
+  "c \<sim> c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c \<sim> c<\STATESEP>by (auto simp: com_eq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_sym:
+  "c \<sim> c' \<Longrightarrow> c' \<sim> c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c \<sim> c' \<Longrightarrow> c' \<sim> c<\STATESEP>by (auto simp: com_eq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_trans:
+  "\<lbrakk> c \<sim> c'; c' \<sim> c'' \<rbrakk> \<Longrightarrow> c \<sim> c''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c \<sim> c'; c' \<sim> c''\<rbrakk> \<Longrightarrow> c \<sim> c''<\STATESEP>by (auto simp add: com_eq_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Seq:
+  "\<lbrakk> c1 \<sim> c1'; c2 \<sim> c2' \<rbrakk> \<Longrightarrow> c1;;c2 \<sim> c1';;c2'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c1 \<sim> c1'; c2 \<sim> c2'\<rbrakk> \<Longrightarrow> c1;; c2 \<sim> c1';; c2'<\STATESEP>unfolding com_eq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c1,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c1',s\<rangle> \<Rightarrow> s'); True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c2,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c2',s\<rangle> \<Rightarrow> s')\<rbrakk> \<Longrightarrow> True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c1;; c2,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c1';; c2',s\<rangle> \<Rightarrow> s')<\STATESEP>by (auto intro: exec.Seq elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Cond:
+  "\<lbrakk> c1 \<sim> c1'; c2 \<sim> c2' \<rbrakk> \<Longrightarrow> Cond b c1 c2 \<sim> Cond b c1' c2'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c1 \<sim> c1'; c2 \<sim> c2'\<rbrakk> \<Longrightarrow> Cond b c1 c2 \<sim> Cond b c1' c2'<\STATESEP>unfolding com_eq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c1,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c1',s\<rangle> \<Rightarrow> s'); True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c2,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c2',s\<rangle> \<Rightarrow> s')\<rbrakk> \<Longrightarrow> True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>Cond b c1 c2,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>Cond b c1' c2',s\<rangle> \<Rightarrow> s')<\STATESEP>by (auto intro: exec.CondTrue exec.CondFalse elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_While':
+  assumes eq: "c \<sim> c'"
+  assumes W: "\<Gamma> \<turnstile> \<langle>While b c,s\<rangle> \<Rightarrow> s'"
+  shows "\<Gamma> \<turnstile> \<langle>While b c',s\<rangle> \<Rightarrow> s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<Gamma>\<turnstile> \<langle>While b c',s\<rangle> \<Rightarrow> s'<\STATESEP>using W<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<Gamma>\<turnstile> \<langle>While b c,s\<rangle> \<Rightarrow> s'
+
+goal (1 subgoal):
+ 1. \<Gamma>\<turnstile> \<langle>While b c',s\<rangle> \<Rightarrow> s'<\STATESEP>proof (induct "While b c" s s')<\STATESEP>1<\TRANSEP>proof (state)
+goal (5 subgoals):
+ 1. \<And>f. \<Gamma>\<turnstile> \<langle>While b c',Fault f\<rangle> \<Rightarrow> Fault f
+ 2. \<And>s s' t. \<lbrakk>s \<in> b; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> s'; c = While b c \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>While b c,s'\<rangle> \<Rightarrow> t; \<Gamma>\<turnstile> \<langle>While b c',s'\<rangle> \<Rightarrow> t\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> t
+ 3. \<And>s. s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> Normal s
+ 4. \<Gamma>\<turnstile> \<langle>While b c',Stuck\<rangle> \<Rightarrow> Stuck
+ 5. \<And>s. \<Gamma>\<turnstile> \<langle>While b c',Abrupt s\<rangle> \<Rightarrow> Abrupt s<\STATESEP>case WhileTrue<\STATESEP>2<\TRANSEP>proof (state)
+this:
+s_ \<in> b
+\<Gamma>\<turnstile> \<langle>c,Normal s_\<rangle> \<Rightarrow> s'_
+c = While b c \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> s'_
+\<Gamma>\<turnstile> \<langle>While b c,s'_\<rangle> \<Rightarrow> t_
+\<Gamma>\<turnstile> \<langle>While b c',s'_\<rangle> \<Rightarrow> t_
+
+goal (5 subgoals):
+ 1. \<And>f. \<Gamma>\<turnstile> \<langle>While b c',Fault f\<rangle> \<Rightarrow> Fault f
+ 2. \<And>s s' t. \<lbrakk>s \<in> b; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> s'; c = While b c \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>While b c,s'\<rangle> \<Rightarrow> t; \<Gamma>\<turnstile> \<langle>While b c',s'\<rangle> \<Rightarrow> t\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> t
+ 3. \<And>s. s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> Normal s
+ 4. \<Gamma>\<turnstile> \<langle>While b c',Stuck\<rangle> \<Rightarrow> Stuck
+ 5. \<And>s. \<Gamma>\<turnstile> \<langle>While b c',Abrupt s\<rangle> \<Rightarrow> Abrupt s<\STATESEP>with eq<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+c \<sim> c'
+s_ \<in> b
+\<Gamma>\<turnstile> \<langle>c,Normal s_\<rangle> \<Rightarrow> s'_
+c = While b c \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> s'_
+\<Gamma>\<turnstile> \<langle>While b c,s'_\<rangle> \<Rightarrow> t_
+\<Gamma>\<turnstile> \<langle>While b c',s'_\<rangle> \<Rightarrow> t_<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+c \<sim> c'
+s_ \<in> b
+\<Gamma>\<turnstile> \<langle>c,Normal s_\<rangle> \<Rightarrow> s'_
+c = While b c \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> s'_
+\<Gamma>\<turnstile> \<langle>While b c,s'_\<rangle> \<Rightarrow> t_
+\<Gamma>\<turnstile> \<langle>While b c',s'_\<rangle> \<Rightarrow> t_
+
+goal (1 subgoal):
+ 1. \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> t_<\STATESEP>unfolding com_eq_def<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c',s\<rangle> \<Rightarrow> s')
+s_ \<in> b
+\<Gamma>\<turnstile> \<langle>c,Normal s_\<rangle> \<Rightarrow> s'_
+c = While b c \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> s'_
+\<Gamma>\<turnstile> \<langle>While b c,s'_\<rangle> \<Rightarrow> t_
+\<Gamma>\<turnstile> \<langle>While b c',s'_\<rangle> \<Rightarrow> t_
+
+goal (1 subgoal):
+ 1. \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> t_<\STATESEP>by (auto elim: exec.WhileTrue)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> t_
+
+goal (4 subgoals):
+ 1. \<And>f. \<Gamma>\<turnstile> \<langle>While b c',Fault f\<rangle> \<Rightarrow> Fault f
+ 2. \<And>s. s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> Normal s
+ 3. \<Gamma>\<turnstile> \<langle>While b c',Stuck\<rangle> \<Rightarrow> Stuck
+ 4. \<And>s. \<Gamma>\<turnstile> \<langle>While b c',Abrupt s\<rangle> \<Rightarrow> Abrupt s<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (4 subgoals):
+ 1. \<And>f. \<Gamma>\<turnstile> \<langle>While b c',Fault f\<rangle> \<Rightarrow> Fault f
+ 2. \<And>s. s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> Normal s
+ 3. \<Gamma>\<turnstile> \<langle>While b c',Stuck\<rangle> \<Rightarrow> Stuck
+ 4. \<And>s. \<Gamma>\<turnstile> \<langle>While b c',Abrupt s\<rangle> \<Rightarrow> Abrupt s<\STATESEP>case WhileFalse<\STATESEP>2<\TRANSEP>proof (state)
+this:
+s_ \<notin> b
+
+goal (4 subgoals):
+ 1. \<And>f. \<Gamma>\<turnstile> \<langle>While b c',Fault f\<rangle> \<Rightarrow> Fault f
+ 2. \<And>s. s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>While b c',Normal s\<rangle> \<Rightarrow> Normal s
+ 3. \<Gamma>\<turnstile> \<langle>While b c',Stuck\<rangle> \<Rightarrow> Stuck
+ 4. \<And>s. \<Gamma>\<turnstile> \<langle>While b c',Abrupt s\<rangle> \<Rightarrow> Abrupt s<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+s_ \<notin> b<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+s_ \<notin> b
+
+goal (1 subgoal):
+ 1. \<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> Normal s_<\STATESEP>by (rule exec.WhileFalse)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<Gamma>\<turnstile> \<langle>While b c',Normal s_\<rangle> \<Rightarrow> Normal s_
+
+goal (3 subgoals):
+ 1. \<And>f. \<Gamma>\<turnstile> \<langle>While b c',Fault f\<rangle> \<Rightarrow> Fault f
+ 2. \<Gamma>\<turnstile> \<langle>While b c',Stuck\<rangle> \<Rightarrow> Stuck
+ 3. \<And>s. \<Gamma>\<turnstile> \<langle>While b c',Abrupt s\<rangle> \<Rightarrow> Abrupt s<\STATESEP>qed auto<\STATESEP>2<\TRANSEP><\STATESEP>lemma com_eq_While:
+  "c \<sim> c' \<Longrightarrow> While b c \<sim> While b c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c \<sim> c' \<Longrightarrow> While b c \<sim> While b c'<\STATESEP>by (subst com_eq_def) (auto intro: com_eq_While' com_eq_While' [OF com_eq_sym])<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_whileAnno:
+  "c \<sim> c' \<Longrightarrow> whileAnno b I V c \<sim> whileAnno b I V c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c \<sim> c' \<Longrightarrow> whileAnno b I V c \<sim> whileAnno b I V c'<\STATESEP>by (clarsimp simp: whileAnno_def elim!: com_eq_While)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Guard:
+  "c \<sim> c' \<Longrightarrow> Guard f b c \<sim> Guard f b c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c \<sim> c' \<Longrightarrow> Guard f b c \<sim> Guard f b c'<\STATESEP>by (auto simp: com_eq_def intro: exec.Guard exec.GuardFault elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Catch:
+  "\<lbrakk> c \<sim> c'; h \<sim> h' \<rbrakk> \<Longrightarrow> Catch c h \<sim> Catch c' h'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c \<sim> c'; h \<sim> h'\<rbrakk> \<Longrightarrow> TRY c CATCH h END \<sim> TRY c' CATCH h' END<\STATESEP>by (auto simp: com_eq_def intro: exec.CatchMiss exec.CatchMatch elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas com_eq_intros =
+  com_eq_Seq com_eq_Cond com_eq_While com_eq_whileAnno com_eq_Guard com_eq_Catch<\STATESEP>0<\TRANSEP><\STATESEP>lemma com_eq_Seq_assoc_l:
+  "c1;;(c2;;c3) \<sim> (c1;;c2);;c3"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c1;; (c2;; c3) \<sim> c1;; c2;; c3<\STATESEP>by (clarsimp simp: com_eq_def exec_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Seq_assoc_r:
+  "(c1;;c2);;c3 \<sim> c1;;(c2;;c3)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c1;; c2;; c3 \<sim> c1;; (c2;; c3)<\STATESEP>by (clarsimp simp: com_eq_def exec_assoc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Cond_distrib_r:
+  "Cond b (c1;;c) (c2;;c) \<sim> Cond b c1 c2 ;; c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Cond b (c1;; c) (c2;; c) \<sim> Cond b c1 c2;; c<\STATESEP>by (auto simp: com_eq_def
+          intro: exec.Seq exec.CondTrue exec.CondFalse
+          elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Guard_distrib_r:
+  "Guard f b (c1;;c2) \<sim> Guard f b c1 ;; c2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Guard f b (c1;; c2) \<sim> Guard f b c1;; c2<\STATESEP>by (auto simp: com_eq_def
+          intro: exec.Seq exec.Guard exec.GuardFault
+          elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Skip_Seq [C_simp]:
+  "Skip;;c \<sim> c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. SKIP;; c \<sim> c<\STATESEP>apply (clarsimp simp: com_eq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<Gamma>\<turnstile> \<langle>SKIP;; c,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s'. \<Gamma>\<turnstile> \<langle>SKIP;; c,s\<rangle> \<Rightarrow> s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'
+ 2. \<And>s s'. \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>SKIP;; c,s\<rangle> \<Rightarrow> s'<\STATESEP>apply (fastforce elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>SKIP;; c,s\<rangle> \<Rightarrow> s'<\STATESEP>apply (case_tac s; (simp, (erule exec_elim_cases; simp)?))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' x1. \<lbrakk>\<Gamma>\<turnstile> \<langle>c,Normal x1\<rangle> \<Rightarrow> s'; s = Normal x1\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>SKIP;; c,Normal x1\<rangle> \<Rightarrow> s'<\STATESEP>apply (rule exec.Seq, rule exec.Skip, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Seq_Skip [C_simp]:
+  "c;;Skip \<sim> c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c;; SKIP \<sim> c<\STATESEP>apply (clarsimp simp: com_eq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<Gamma>\<turnstile> \<langle>c;; SKIP,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s'. \<Gamma>\<turnstile> \<langle>c;; SKIP,s\<rangle> \<Rightarrow> s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'
+ 2. \<And>s s'. \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; SKIP,s\<rangle> \<Rightarrow> s'<\STATESEP>apply (fastforce elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; SKIP,s\<rangle> \<Rightarrow> s'<\STATESEP>apply (case_tac s; (simp, (erule exec_elim_cases; simp)?))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' x1. \<lbrakk>\<Gamma>\<turnstile> \<langle>c,Normal x1\<rangle> \<Rightarrow> s'; s = Normal x1\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; SKIP,Normal x1\<rangle> \<Rightarrow> s'<\STATESEP>apply (rule exec.Seq, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' x1. \<lbrakk>\<Gamma>\<turnstile> \<langle>c,Normal x1\<rangle> \<Rightarrow> s'; s = Normal x1\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>SKIP,s'\<rangle> \<Rightarrow> s'<\STATESEP>apply (case_tac s'; (simp, (erule exec_elim_cases; simp)?))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' x1 x1a. \<lbrakk>\<Gamma>\<turnstile> \<langle>c,Normal x1\<rangle> \<Rightarrow> Normal x1a; s = Normal x1; s' = Normal x1a\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>SKIP,Normal x1a\<rangle> \<Rightarrow> Normal x1a<\STATESEP>apply (rule exec.Skip)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Cond_empty [C_simp_pre]:
+  "com_eq (b = {}) (Cond b c1 c2) c2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq (b = {}) (Cond b c1 c2) c2<\STATESEP>by (clarsimp simp: com_eq_def, case_tac s, auto intro: exec.CondFalse elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Cond_UNIV [C_simp_pre]:
+  "com_eq (b = UNIV) (Cond b c1 c2) c1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq (b = UNIV) (Cond b c1 c2) c1<\STATESEP>by (clarsimp simp: com_eq_def, case_tac s, auto intro: exec.CondTrue  elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma exec_Cond_cases:
+  "\<lbrakk>s \<in> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c\<^sub>1,Normal s\<rangle> \<Rightarrow> t; s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c\<^sub>2,Normal s\<rangle> \<Rightarrow> t\<rbrakk> \<Longrightarrow>
+  \<Gamma>\<turnstile> \<langle>Cond b c\<^sub>1 c\<^sub>2,Normal s\<rangle> \<Rightarrow> t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s \<in> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c\<^sub>1,Normal s\<rangle> \<Rightarrow> t; s \<notin> b \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c\<^sub>2,Normal s\<rangle> \<Rightarrow> t\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>Cond b c\<^sub>1 c\<^sub>2,Normal s\<rangle> \<Rightarrow> t<\STATESEP>by (cases "s \<in> b") (auto intro: exec.CondTrue exec.CondFalse)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Cond_both [C_simp]:
+  "Cond b c c \<sim> c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Cond b c c \<sim> c<\STATESEP>by (clarsimp simp: com_eq_def, case_tac s, auto intro: exec_Cond_cases elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_While_empty [C_simp_pre]:
+  "com_eq (b = {}) (While b c) Skip"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq (b = {}) (While b c) SKIP<\STATESEP>by (auto simp: com_eq_def intro: exec.WhileFalse exec.Skip elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_whileAnno_empty [C_simp_pre]:
+  "com_eq (b = {}) (whileAnno b I V c) Skip"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq (b = {}) (whileAnno b I V c) SKIP<\STATESEP>by (simp add: com_eq_While_empty whileAnno_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Guard_UNIV [C_simp_pre]:
+  "com_eq (b = UNIV) (Guard f b c) c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq (b = UNIV) (Guard f b c) c<\STATESEP>by (clarsimp simp: com_eq_def, case_tac s, auto intro: exec.Guard elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Guard_empty [C_simp_pre]:
+  "com_eq (c \<noteq> Skip \<and> b = {}) (Guard f b c) (Guard f {} Skip)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_eq (c \<noteq> SKIP \<and> b = {}) (Guard f b c) (Guard f {} SKIP)<\STATESEP>by (clarsimp simp: com_eq_def, case_tac s, auto intro: exec.GuardFault elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Catch_Skip [C_simp]:
+  "Catch Skip c \<sim> Skip"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. TRY SKIP CATCH c END \<sim> SKIP<\STATESEP>by (auto simp: com_eq_def intro: exec.CatchMiss exec.Skip elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Catch_Throw [C_simp]:
+  "Catch Throw c \<sim> c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. TRY THROW CATCH c END \<sim> c<\STATESEP>by (clarsimp simp: com_eq_def, case_tac s)
+     (auto intro: exec.CatchMatch exec.Throw elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>definition never_continues_if :: "bool \<Rightarrow> ('s,'p,'f) com \<Rightarrow> bool" where
+  never_continues_def: "never_continues_if t c \<equiv> t \<longrightarrow> (\<forall>s s'. \<not> \<Gamma> \<turnstile> \<langle>c, Normal s\<rangle> \<Rightarrow> Normal s')"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "never_continues \<equiv> never_continues_if True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma never_continues_def2:
+  "never_continues_if t c \<equiv> t \<longrightarrow> (\<forall>r. (c;;r) \<sim> c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues_if t c \<equiv> t \<longrightarrow> (\<forall>r. c;; r \<sim> c)<\STATESEP>unfolding atomize_eq never_continues_def com_eq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (t \<longrightarrow> (\<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s')) = (t \<longrightarrow> (\<forall>r. True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s')))<\STATESEP>apply (rule iffI; erule (1) imp_forward; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>r s s'. \<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s' \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'
+ 2. \<And>s s'. \<lbrakk>\<forall>r s s'. \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>r s s'. \<lbrakk>\<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'; \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s'\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'
+ 2. \<And>r s s'. \<lbrakk>\<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'; \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s'
+ 3. \<And>s s'. \<lbrakk>\<forall>r s s'. \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (erule exec_elim_cases; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>r s' sa s'a. \<lbrakk>\<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'; \<Gamma>\<turnstile> \<langle>c,Normal sa\<rangle> \<Rightarrow> s'a; \<Gamma>\<turnstile> \<langle>r,s'a\<rangle> \<Rightarrow> s'\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c,Normal sa\<rangle> \<Rightarrow> s'
+ 2. \<And>r s s'. \<lbrakk>\<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'; \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s'
+ 3. \<And>s s'. \<lbrakk>\<forall>r s s'. \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (match premises in "\<Gamma> \<turnstile> \<langle>c, Normal _\<rangle> \<Rightarrow> s'" for s' \<Rightarrow> \<open>cases s'\<close>;
+           clarsimp elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>r s s'. \<lbrakk>\<forall>s s'. \<not> \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'; \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'\<rbrakk> \<Longrightarrow> \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s'
+ 2. \<And>s s'. \<lbrakk>\<forall>r s s'. \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (match premises in "\<Gamma> \<turnstile> \<langle>c, s\<rangle> \<Rightarrow> s'" for s s' \<Rightarrow> \<open>cases s; cases s'\<close>;
+          clarsimp elim!: exec_elim_cases exec.Seq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>\<forall>r s s'. \<Gamma>\<turnstile> \<langle>c;; r,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>c,s\<rangle> \<Rightarrow> s'; \<Gamma>\<turnstile> \<langle>c,Normal s\<rangle> \<Rightarrow> Normal s'\<rbrakk> \<Longrightarrow> False<\STATESEP>by (fastforce dest!: spec[of _ Throw] elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_weaken_guard:
+  "never_continues_if t c \<Longrightarrow> (t' \<Longrightarrow> t) \<Longrightarrow> never_continues_if t' c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.never_continues_if t c; t' \<Longrightarrow> t\<rbrakk> \<Longrightarrow> local.never_continues_if t' c<\STATESEP>by (simp add: never_continues_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_rewrite_com_eq:
+  "c \<sim> c' \<Longrightarrow> never_continues_if t c \<Longrightarrow> never_continues_if t c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c \<sim> c'; local.never_continues_if t c\<rbrakk> \<Longrightarrow> local.never_continues_if t c'<\STATESEP>apply (simp add: never_continues_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c \<sim> c'; t \<longrightarrow> (\<forall>r. c;; r \<sim> c)\<rbrakk> \<Longrightarrow> t \<longrightarrow> (\<forall>r. c';; r \<sim> c')<\STATESEP>apply (elim imp_forward all_forward, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>c \<sim> c'; c;; r \<sim> c\<rbrakk> \<Longrightarrow> c';; r \<sim> c'<\STATESEP>apply (rule com_eq_trans, rule com_eq_Seq, erule com_eq_sym, rule com_eq_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>c \<sim> c'; c;; r \<sim> c\<rbrakk> \<Longrightarrow> c;; r \<sim> c'<\STATESEP>by (erule com_eq_trans[rotated])<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_Throw [C_simp_throws]:
+  "never_continues Throw"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues THROW<\STATESEP>by (auto simp: never_continues_def elim: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma While_UNIV_helper:
+  "\<Gamma> \<turnstile> \<langle>c',s\<rangle> \<Rightarrow> s'' \<Longrightarrow> c' = While UNIV c \<Longrightarrow> s'' = Normal s' \<Longrightarrow> False"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<Gamma>\<turnstile> \<langle>c',s\<rangle> \<Rightarrow> s''; c' = While UNIV c; s'' = Normal s'\<rbrakk> \<Longrightarrow> False<\STATESEP>by (induct rule: exec.induct) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_While_UNIV [C_simp_throws]:
+  "never_continues (While UNIV c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues (While UNIV c)<\STATESEP>by (auto simp: never_continues_def elim: While_UNIV_helper)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_While_True [C_simp_throws]:
+  "never_continues (WHILE True DO c OD)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues (WHILE True DO c OD)<\STATESEP>by (simp add: whileAnno_def never_continues_While_UNIV)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_Guard_False [C_simp_throws]:
+  "never_continues (Guard f {} c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues (Guard f {} c)<\STATESEP>by (auto simp: never_continues_def elim: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_Seq1:
+  "never_continues_if t c1 \<Longrightarrow> never_continues_if t (c1;;c2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues_if t c1 \<Longrightarrow> local.never_continues_if t (c1;; c2)<\STATESEP>apply (clarsimp simp: never_continues_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>t; \<forall>r. c1;; r \<sim> c1\<rbrakk> \<Longrightarrow> c1;; c2;; r \<sim> c1;; c2<\STATESEP>apply (frule spec[of _ c2], erule com_eq_trans[rotated, OF com_eq_sym])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>t; \<forall>r. c1;; r \<sim> c1\<rbrakk> \<Longrightarrow> c1;; c2;; r \<sim> c1<\STATESEP>apply (rule com_eq_trans[OF com_eq_Seq_assoc_r])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>t; \<forall>r. c1;; r \<sim> c1\<rbrakk> \<Longrightarrow> c1;; (c2;; r) \<sim> c1<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_Seq2:
+  "never_continues_if t c2 \<Longrightarrow> never_continues_if t (c1;;c2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues_if t c2 \<Longrightarrow> local.never_continues_if t (c1;; c2)<\STATESEP>apply (clarsimp simp: never_continues_def2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>t; \<forall>r. c2;; r \<sim> c2\<rbrakk> \<Longrightarrow> c1;; c2;; r \<sim> c1;; c2<\STATESEP>apply (rule com_eq_trans[OF com_eq_Seq_assoc_r])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>t; \<forall>r. c2;; r \<sim> c2\<rbrakk> \<Longrightarrow> c1;; (c2;; r) \<sim> c1;; c2<\STATESEP>apply (rule com_eq_Seq[OF com_eq_refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>r. \<lbrakk>t; \<forall>r. c2;; r \<sim> c2\<rbrakk> \<Longrightarrow> c2;; r \<sim> c2<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas never_continues_Seqs =
+  never_continues_Seq1 never_continues_Seq2<\STATESEP>0<\TRANSEP><\STATESEP>lemma never_continues_Cond:
+  "never_continues_if t1 c1 \<Longrightarrow> never_continues_if t2 c2 \<Longrightarrow> never_continues_if (t1 \<and> t2) (Cond b c1 c2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.never_continues_if t1 c1; local.never_continues_if t2 c2\<rbrakk> \<Longrightarrow> local.never_continues_if (t1 \<and> t2) (Cond b c1 c2)<\STATESEP>by (auto simp: never_continues_def elim: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_Guard:
+  "never_continues_if t c \<Longrightarrow> never_continues_if t (Guard f b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues_if t c \<Longrightarrow> local.never_continues_if t (Guard f b c)<\STATESEP>by (auto simp: never_continues_def elim: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_Catch:
+  "never_continues_if tc c \<Longrightarrow> never_continues_if th h \<Longrightarrow> never_continues_if (tc \<and> th) (Catch c h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.never_continues_if tc c; local.never_continues_if th h\<rbrakk> \<Longrightarrow> local.never_continues_if (tc \<and> th) (TRY c CATCH h END)<\STATESEP>by (auto simp: never_continues_def elim: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma never_continues_False:
+  "never_continues_if False c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues_if False c<\STATESEP>by (simp add: never_continues_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition com_eq_hom :: "(('s,'p,'f) com \<Rightarrow> bool) \<Rightarrow> bool" where
+  "com_eq_hom P \<equiv> \<forall>c c'. (c \<sim> c') \<longrightarrow> P c' \<longrightarrow> P c"<\STATESEP>0<\TRANSEP><\STATESEP>context
+  fixes P :: "('s,'p,'f) com \<Rightarrow> bool"
+  assumes com_eq_hom: "com_eq_hom P"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma com_eq_homD:
+  "c \<sim> c' \<Longrightarrow> P c' \<longrightarrow> P c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c \<sim> c' \<Longrightarrow> P c' \<longrightarrow> P c<\STATESEP>using com_eq_hom<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+local.com_eq_hom P
+
+goal (1 subgoal):
+ 1. c \<sim> c' \<Longrightarrow> P c' \<longrightarrow> P c<\STATESEP>by (simp add: com_eq_hom_def)<\STATESEP>1<\TRANSEP><\STATESEP>fun
+  com_ctxt_P :: "('s,'p,'f) com \<Rightarrow> ('s,'p,'f) com_ctxt list \<Rightarrow> bool"
+where
+    "com_ctxt_P c [] = P c"
+  | "com_ctxt_P c (Seq1C c' # cs) = com_ctxt_P (Seq c c') cs"
+  | "com_ctxt_P c (Seq2C c' # cs) = com_ctxt_P (Seq c' c) cs"
+  | "com_ctxt_P c (CondTC b c' # cs) = com_ctxt_P (Cond b c c') cs"
+  | "com_ctxt_P c (CondFC b c' t # cs) = (never_continues_if t c' \<longrightarrow> com_ctxt_P (Cond b c' c) cs)"
+  | "com_ctxt_P c (WhileC b # cs) = com_ctxt_P (While b c) cs"
+  | "com_ctxt_P c (WhileAnnoC b I V # cs) = com_ctxt_P (whileAnno b I V c) cs"
+  | "com_ctxt_P c (GuardC f b # cs) = com_ctxt_P (Guard f b c) cs"
+  | "com_ctxt_P c (TryC c' # cs) = com_ctxt_P (Catch c c') cs"
+  | "com_ctxt_P c (HandlerC c' t # cs) = (never_continues_if t c' \<longrightarrow> com_ctxt_P (Catch c' c) cs)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "never_continues_opt t \<equiv> never_continues_if (case_option False id t)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "com_ctxt_focus c t cs \<equiv> never_continues_opt t c \<longrightarrow> com_ctxt_P c cs"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas com_ctxt_focus_defs = com_ctxt_focus_def never_continues_opt_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma never_continues_opt_None:
+  "never_continues_opt None t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.never_continues_opt None t<\STATESEP>by (simp add: never_continues_opt_def never_continues_False)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_focus_enter:
+  "com_ctxt_focus c None [] \<Longrightarrow> P c"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_ctxt_focus c None [] \<Longrightarrow> P c<\STATESEP>by (simp add: com_ctxt_focus_defs never_continues_False)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_focus_exit:
+  "P c \<Longrightarrow> com_ctxt_focus c t []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P c \<Longrightarrow> local.com_ctxt_focus c t []<\STATESEP>by (simp add: com_ctxt_focus_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma nc_opt_rewrite_com_eq:
+  "c \<sim> c' \<Longrightarrow> never_continues_opt t c \<Longrightarrow> never_continues_opt t c'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c \<sim> c'; local.never_continues_opt t c\<rbrakk> \<Longrightarrow> local.never_continues_opt t c'<\STATESEP>by (simp add: never_continues_opt_def never_continues_rewrite_com_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ctxt_P_rewrite_com_eq:
+  "c \<sim> c' \<Longrightarrow> com_ctxt_P c' cs \<Longrightarrow> com_ctxt_P c cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P c cs<\STATESEP>proof (induct cs arbitrary: c c')<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' []\<rbrakk> \<Longrightarrow> local.com_ctxt_P c []
+ 2. \<And>a cs c c'. \<lbrakk>\<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P c cs; c \<sim> c'; local.com_ctxt_P c' (a # cs)\<rbrakk> \<Longrightarrow> local.com_ctxt_P c (a # cs)<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+c \<sim> c'
+local.com_ctxt_P c' []
+
+goal (2 subgoals):
+ 1. \<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' []\<rbrakk> \<Longrightarrow> local.com_ctxt_P c []
+ 2. \<And>a cs c c'. \<lbrakk>\<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P c cs; c \<sim> c'; local.com_ctxt_P c' (a # cs)\<rbrakk> \<Longrightarrow> local.com_ctxt_P c (a # cs)<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+c \<sim> c'
+local.com_ctxt_P c' []
+
+goal (1 subgoal):
+ 1. local.com_ctxt_P c []<\STATESEP>by (simp add: com_eq_homD)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+local.com_ctxt_P c []
+
+goal (1 subgoal):
+ 1. \<And>a cs c c'. \<lbrakk>\<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P c cs; c \<sim> c'; local.com_ctxt_P c' (a # cs)\<rbrakk> \<Longrightarrow> local.com_ctxt_P c (a # cs)<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a cs c c'. \<lbrakk>\<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P c cs; c \<sim> c'; local.com_ctxt_P c' (a # cs)\<rbrakk> \<Longrightarrow> local.com_ctxt_P c (a # cs)<\STATESEP>case (Cons c'' cs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>?c \<sim> ?c'; local.com_ctxt_P ?c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P ?c cs
+c \<sim> c'
+local.com_ctxt_P c' (c'' # cs)
+
+goal (1 subgoal):
+ 1. \<And>a cs c c'. \<lbrakk>\<And>c c'. \<lbrakk>c \<sim> c'; local.com_ctxt_P c' cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P c cs; c \<sim> c'; local.com_ctxt_P c' (a # cs)\<rbrakk> \<Longrightarrow> local.com_ctxt_P c (a # cs)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. local.com_ctxt_P c (c'' # cs)<\STATESEP>using Cons.prems(2)<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+local.com_ctxt_P c' (c'' # cs)
+
+goal (1 subgoal):
+ 1. local.com_ctxt_P c (c'' # cs)<\STATESEP>by (cases c''; clarsimp elim!: Cons.hyps[rotated];
+          intro com_eq_intros com_eq_refl Cons.prems(1))<\STATESEP>3<\TRANSEP>proof (state)
+this:
+local.com_ctxt_P c (c'' # cs)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma com_ctxt_focus_rewrite:
+  "com_eq p c c' \<Longrightarrow> p \<Longrightarrow> com_ctxt_focus c' t cs \<Longrightarrow> com_ctxt_focus c t cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.com_eq p c c'; p; local.com_ctxt_focus c' t cs\<rbrakk> \<Longrightarrow> local.com_ctxt_focus c t cs<\STATESEP>by (simp add: com_ctxt_focus_def nc_opt_rewrite_com_eq ctxt_P_rewrite_com_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_focus_set_never_continues:
+  "never_continues_if t c \<Longrightarrow> com_ctxt_focus c (Some t) cs \<Longrightarrow> com_ctxt_focus c None cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.never_continues_if t c; local.com_ctxt_focus c (Some t) cs\<rbrakk> \<Longrightarrow> local.com_ctxt_focus c None cs<\STATESEP>by (simp add: com_ctxt_focus_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_focus_update_never_continues:
+  "never_continues_if t c \<Longrightarrow> com_ctxt_focus c (Some (t \<or> t')) cs \<Longrightarrow> com_ctxt_focus c (Some t') cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.never_continues_if t c; local.com_ctxt_focus c (Some (t \<or> t')) cs\<rbrakk> \<Longrightarrow> local.com_ctxt_focus c (Some t') cs<\STATESEP>by (cases t; cases t'; simp add: com_ctxt_focus_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas com_ctxt_focus_never_continues =
+  com_ctxt_focus_update_never_continues[where t'=True, simplified]
+  com_ctxt_focus_update_never_continues[where t'=False, simplified]
+  com_ctxt_focus_set_never_continues<\STATESEP>0<\TRANSEP><\STATESEP>lemma com_ctxt_focus_left:
+  "com_ctxt_focus c None (Seq1C c' # cs) \<Longrightarrow> com_ctxt_focus (Seq c c') None cs"
+  "com_ctxt_focus c None (CondTC b c' # cs) \<Longrightarrow> com_ctxt_focus (Cond b c c') None cs"
+  "com_ctxt_focus c None (WhileC b # cs) \<Longrightarrow> com_ctxt_focus (While b c) None cs"
+  "com_ctxt_focus c None (WhileAnnoC b I V # cs) \<Longrightarrow> com_ctxt_focus (whileAnno b I V c) None cs"
+  "com_ctxt_focus c None (GuardC f b # cs) \<Longrightarrow> com_ctxt_focus (Guard f b c) None cs"
+  "com_ctxt_focus c None (TryC c' # cs) \<Longrightarrow> com_ctxt_focus (Catch c c') None cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((local.com_ctxt_focus c None (Seq1C c' # cs) \<Longrightarrow> local.com_ctxt_focus (c;; c') None cs) &&& (local.com_ctxt_focus c None (CondTC b c' # cs) \<Longrightarrow> local.com_ctxt_focus (Cond b c c') None cs) &&& (local.com_ctxt_focus c None (WhileC b # cs) \<Longrightarrow> local.com_ctxt_focus (While b c) None cs)) &&& (local.com_ctxt_focus c None (WhileAnnoC b I V # cs) \<Longrightarrow> local.com_ctxt_focus (whileAnno b I V c) None cs) &&& (local.com_ctxt_focus c None (GuardC f b # cs) \<Longrightarrow> local.com_ctxt_focus (Guard f b c) None cs) &&& (local.com_ctxt_focus c None (TryC c' # cs) \<Longrightarrow> local.com_ctxt_focus (TRY c CATCH c' END) None cs)<\STATESEP>by (auto simp: com_ctxt_focus_def never_continues_opt_None)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_focus_right:
+  "com_ctxt_focus c' None (Seq2C c # cs) \<Longrightarrow> com_ctxt_focus c (Some False) (Seq1C c' # cs)"
+  "com_ctxt_focus c' None (CondFC b c t # cs) \<Longrightarrow> com_ctxt_focus c (Some t) (CondTC b c' # cs)"
+  "com_ctxt_focus c' None (HandlerC c t # cs) \<Longrightarrow> com_ctxt_focus c (Some t) (TryC c' # cs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (local.com_ctxt_focus c' None (Seq2C c # cs) \<Longrightarrow> local.com_ctxt_focus c (Some False) (Seq1C c' # cs)) &&& (local.com_ctxt_focus c' None (CondFC b c t # cs) \<Longrightarrow> local.com_ctxt_focus c (Some t) (CondTC b c' # cs)) &&& (local.com_ctxt_focus c' None (HandlerC c t # cs) \<Longrightarrow> local.com_ctxt_focus c (Some t) (TryC c' # cs))<\STATESEP>by (auto simp: com_ctxt_focus_defs never_continues_False)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_P_Seq1:
+  "never_continues c \<Longrightarrow> com_ctxt_P c cs \<Longrightarrow> com_ctxt_P (Seq c c') cs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>local.never_continues c; local.com_ctxt_P c cs\<rbrakk> \<Longrightarrow> local.com_ctxt_P (c;; c') cs<\STATESEP>by (auto simp: never_continues_def2 elim: ctxt_P_rewrite_com_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_unfocus_simple:
+  "com_ctxt_focus c (Some True) cs \<Longrightarrow> com_ctxt_focus c (Some True) (Seq1C c' # cs)"
+  "com_ctxt_focus (Seq c' c) (Some t) cs \<Longrightarrow> com_ctxt_focus c (Some t) (Seq2C c' # cs)"
+  "com_ctxt_focus (While b c) (Some False) cs \<Longrightarrow> com_ctxt_focus c (Some t) (WhileC b # cs)"
+  "com_ctxt_focus (whileAnno b I V c) (Some False) cs \<Longrightarrow> com_ctxt_focus c (Some t) (WhileAnnoC b I V # cs)"
+  "com_ctxt_focus (Guard f b c) (Some t) cs \<Longrightarrow> com_ctxt_focus c (Some t) (GuardC f b # cs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((local.com_ctxt_focus c (Some True) cs \<Longrightarrow> local.com_ctxt_focus c (Some True) (Seq1C c' # cs)) &&& (local.com_ctxt_focus (c';; c) (Some t) cs \<Longrightarrow> local.com_ctxt_focus c (Some t) (Seq2C c' # cs))) &&& (local.com_ctxt_focus (While b c) (Some False) cs \<Longrightarrow> local.com_ctxt_focus c (Some t) (WhileC b # cs)) &&& (local.com_ctxt_focus (whileAnno b I V c) (Some False) cs \<Longrightarrow> local.com_ctxt_focus c (Some t) (WhileAnnoC b I V # cs)) &&& (local.com_ctxt_focus (Guard f b c) (Some t) cs \<Longrightarrow> local.com_ctxt_focus c (Some t) (GuardC f b # cs))<\STATESEP>by (auto simp: com_ctxt_focus_defs never_continues_False com_ctxt_P_Seq1 never_continues_Seq2 never_continues_Guard)<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_ctxt_unfocus_complex:
+  "com_ctxt_focus (Cond b c' c) (Some (t' \<and> t)) cs \<Longrightarrow> com_ctxt_focus c (Some t) (CondFC b c' t' # cs)"
+  "com_ctxt_focus (Catch c' c) (Some (t' \<and> t)) cs \<Longrightarrow> com_ctxt_focus c (Some t) (HandlerC c' t' # cs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (local.com_ctxt_focus (Cond b c' c) (Some (t' \<and> t)) cs \<Longrightarrow> local.com_ctxt_focus c (Some t) (CondFC b c' t' # cs)) &&& (local.com_ctxt_focus (TRY c' CATCH c END) (Some (t' \<and> t)) cs \<Longrightarrow> local.com_ctxt_focus c (Some t) (HandlerC c' t' # cs))<\STATESEP>by (auto simp: com_ctxt_focus_defs never_continues_False never_continues_Cond never_continues_Catch)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas com_ctxt_unfocus =
+  com_ctxt_unfocus_complex[where t=True and t'=True, simplified]
+  com_ctxt_unfocus_complex[where t=False, simplified]
+  com_ctxt_unfocus_complex[where t'=False, simplified]
+  com_ctxt_unfocus_simple<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>method do_rewrite uses hom ruleset declares C_simp_simps =
+  (rule com_ctxt_focus_rewrite[OF hom], rule ruleset,
+   #break "simpl_rewrite_rewrite", (not_visible \<open>simp add: C_simp_simps\<close>; fail))+<\STATESEP>0<\TRANSEP><\STATESEP>method rewrite_pre uses hom declares C_simp_pre C_simp_simps =
+  (do_rewrite hom: hom ruleset: C_simp_pre)<\STATESEP>0<\TRANSEP><\STATESEP>method rewrite_post uses hom declares C_simp C_simp_simps =
+  (do_rewrite hom: hom ruleset: C_simp)<\STATESEP>0<\TRANSEP><\STATESEP>method never_continues_if uses hom declares C_simp_throws =
+  (rule com_ctxt_focus_never_continues[OF hom], rule C_simp_throws never_continues_False)<\STATESEP>0<\TRANSEP><\STATESEP>method children methods do_focus uses hom declares C_simp C_simp_pre C_simp_simps C_simp_throws =
+  (rule com_ctxt_focus_left[OF hom],
+   do_focus, (rule com_ctxt_focus_right[OF hom], do_focus)?,
+   rule com_ctxt_unfocus[OF hom])?<\STATESEP>0<\TRANSEP><\STATESEP>method do_focus uses hom declares C_simp C_simp_pre C_simp_simps C_simp_throws =
+  (#break "simpl_rewrite_step", (rewrite_pre hom: hom)?, children \<open>do_focus hom: hom\<close> hom: hom,
+   #break "simpl_rewrite_step", (rewrite_post hom: hom)?, never_continues_if hom: hom)<\STATESEP>0<\TRANSEP><\STATESEP>method simpl_rewrite uses hom declares C_simp C_simp_pre C_simp_simps C_simp_throws =
+  changed \<open>rule com_ctxt_focus_enter[OF hom], do_focus hom: hom, rule com_ctxt_focus_exit[OF hom]\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment
+  fixes \<Gamma> :: "'p \<Rightarrow> ('s,'p,'f) com option"
+  fixes P :: "('s,'p,'f) com \<Rightarrow> bool"
+  assumes hom: "com_eq_hom \<Gamma> P"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "com_equiv_ex \<equiv> com_equiv \<Gamma>"<\STATESEP>0<\TRANSEP><\STATESEP>notation com_equiv_ex (infix "\<sim>" 10)<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  assumes c3: "c3 \<sim> c"
+  assumes c: "(c;;c) \<sim> c"
+  shows "P (c;; Guard f UNIV (IF X THEN c ELSE c FI);; Cond {} Skip (Skip;;c2);; Skip;;
+            (IF False THEN Skip ELSE SKIP;; TRY THROW CATCH c3 END FI;; SKIP))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; Guard f UNIV (IF X THEN c ELSE c FI);; Cond {} SKIP (SKIP;; c2);; SKIP;; (IF False THEN SKIP ELSE SKIP;; TRY THROW CATCH c3 END FI;; SKIP))<\STATESEP>apply (simpl_rewrite hom: hom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c;; c2;; c3)<\STATESEP>apply (match conclusion in "P (c;;c;;c2;;c3)" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c;; c2;; c3)<\STATESEP>apply (simpl_rewrite hom: hom C_simp: c3)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c;; c2;; c)<\STATESEP>apply (match conclusion in "P (c;;c;;c2;;c)" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c;; c2;; c)<\STATESEP>apply (simpl_rewrite hom: hom C_simp: c)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c2;; c)<\STATESEP>apply (match conclusion in "P (c;;c2;;c)" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c2;; c)<\STATESEP>apply (fails \<open>simpl_rewrite hom: hom\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c;; c2;; c)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "P (WHILE b DO Guard f g c;; IF False THEN c2 FI OD;; SKIP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (WHILE b DO Guard f g c;; IF False THEN c2 FI OD;; SKIP)<\STATESEP>apply (simpl_rewrite hom: hom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (WHILE b DO Guard f g c OD)<\STATESEP>apply (match conclusion in "P (WHILE b DO Guard f g c OD)" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (WHILE b DO Guard f g c OD)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "P (IF b THEN
+        (SKIP ;; c) ;; (SKIP ;; IF True THEN SKIP ELSE c FI)
+      ELSE
+        (SKIP ;; SKIP) ;; (Guard f UNIV c ;; SKIP)
+      FI)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (IF b THEN SKIP;; c;; (SKIP;; IF True THEN SKIP ELSE c FI) ELSE SKIP;; SKIP;; (Guard f UNIV c;; SKIP) FI)<\STATESEP>apply (simpl_rewrite hom: hom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P c<\STATESEP>apply (match conclusion in "P c" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P c<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma com_eq_Cond_redundant:
+  "(IF b THEN c1 ELSE IF b THEN c2 ELSE c3 FI FI) \<sim> (IF b THEN c1 ELSE c3 FI)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. IF b THEN c1 ELSE IF b THEN c2 ELSE c3 FI FI \<sim> IF b THEN c1 ELSE c3 FI<\STATESEP>unfolding com_eq_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<longrightarrow> (\<forall>s s'. \<Gamma>\<turnstile> \<langle>IF b THEN c1 ELSE IF b THEN c2 ELSE c3 FI FI,s\<rangle> \<Rightarrow> s' = \<Gamma>\<turnstile> \<langle>IF b THEN c1 ELSE c3 FI,s\<rangle> \<Rightarrow> s')<\STATESEP>by (auto intro: exec.CondTrue exec.CondFalse elim!: exec_elim_cases)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "P (SKIP ;;
+      IF b THEN
+        (SKIP ;; c1) ;; (SKIP ;; SKIP)
+      ELSE
+        IF b THEN
+          IF b1 THEN c2 ELSE c2 FI
+        ELSE
+          WHILE False DO c4 OD ;; (c3 ;; SKIP)
+        FI
+      FI)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (SKIP;; IF b THEN SKIP;; c1;; (SKIP;; SKIP) ELSE IF b THEN IF b1 THEN c2 ELSE c2 FI ELSE WHILE False DO c4 OD;; (c3;; SKIP) FI FI)<\STATESEP>apply (simpl_rewrite hom: hom C_simp: com_eq_Cond_redundant)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (IF b THEN c1 ELSE c3 FI)<\STATESEP>apply (match conclusion in "P (IF b THEN c1 ELSE c3 FI)" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (IF b THEN c1 ELSE c3 FI)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "P (SKIP ;; Guard f {} (IF b THEN c ELSE c FI) ;; SKIP)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (SKIP;; Guard f {} (IF b THEN c ELSE c FI);; SKIP)<\STATESEP>apply (simpl_rewrite hom: hom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (Guard f {} SKIP)<\STATESEP>apply (match conclusion in "P (Guard f {} SKIP)" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (Guard f {} SKIP)<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  "P (c0;; (c1;; (c2;; (c3;; (c4;; Throw;; c5);; c6);; c7);; c8);; c9)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c0;; (c1;; (c2;; (c3;; (c4;; THROW;; c5);; c6);; c7);; c8);; c9)<\STATESEP>apply (simpl_rewrite hom: hom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c0;; (c1;; (c2;; (c3;; (c4;; THROW)))))<\STATESEP>apply (match conclusion in "P (c0;; (c1;; (c2;; (c3;; (c4;; Throw)))))" \<Rightarrow> \<open>-\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (c0;; (c1;; (c2;; (c3;; (c4;; THROW)))))<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  assumes "\<And>s. A s \<Longrightarrow> C s"
+  shows "\<forall>s. Q s = (A s \<longrightarrow> B s \<longrightarrow> C s) \<Longrightarrow> P (Cond {s. \<not> Q s} c1 c2)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. Q s = (A s \<longrightarrow> B s \<longrightarrow> C s) \<Longrightarrow> P (IF \<not> \<acute>Q THEN c1 ELSE c2 FI)<\STATESEP>apply (simpl_rewrite hom: hom C_simp_simps: assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. Q s = (A s \<longrightarrow> B s \<longrightarrow> C s) \<Longrightarrow> P c2<\STATESEP>apply (match premises in "\<forall>s. Q s = (A s \<longrightarrow> B s \<longrightarrow> C s)" \<Rightarrow> \<open>match conclusion in "P c2" \<Rightarrow> \<open>-\<close>\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. Q s = (A s \<longrightarrow> B s \<longrightarrow> C s) \<Longrightarrow> P c2<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,221 @@
+<\STATESEP>theory ArchDetSchedDomainTime_AI
+imports DetSchedDomainTime_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems DetSchedDomainTime_AI_assms<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv [wp, DetSchedDomainTime_AI_assms]: arch_finalise_cap "\<lambda>s. P (domain_list s)"
+  (wp: hoare_drop_imps mapM_wp subset_refl simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv [wp, DetSchedDomainTime_AI_assms]:
+  arch_activate_idle_thread, arch_switch_to_thread, arch_switch_to_idle_thread,
+  handle_arch_fault_reply,
+  arch_invoke_irq_control, handle_vm_fault, arch_get_sanitise_register_info,
+  prepare_thread_delete, handle_hypervisor_fault, make_arch_fault_msg,
+  arch_post_modify_registers, arch_post_cap_deletion, arch_invoke_irq_handler
+  "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv [wp, DetSchedDomainTime_AI_assms]: arch_finalise_cap "\<lambda>s. P (domain_time s)"
+  (wp: hoare_drop_imps mapM_wp subset_refl simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv [wp, DetSchedDomainTime_AI_assms]:
+  arch_activate_idle_thread, arch_switch_to_thread, arch_switch_to_idle_thread,
+  handle_arch_fault_reply, init_arch_objects,
+  arch_invoke_irq_control, handle_vm_fault, arch_get_sanitise_register_info,
+  prepare_thread_delete, handle_hypervisor_fault,
+  arch_post_modify_registers, arch_post_cap_deletion, arch_invoke_irq_handler
+  "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>declare init_arch_objects_exst[DetSchedDomainTime_AI_assms]
+        make_arch_fault_msg_inv[DetSchedDomainTime_AI_assms]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation DetSchedDomainTime_AI?: DetSchedDomainTime_AI<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI<\STATESEP>by (unfold_locales; (fact DetSchedDomainTime_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+DetSchedDomainTime_AI
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv [wp, DetSchedDomainTime_AI_assms]: arch_mask_irq_signal "\<lambda>s. P (domain_time s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv [wp, DetSchedDomainTime_AI_assms]: arch_mask_irq_signal "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_time_inv [wp, DetSchedDomainTime_AI_assms]: arch_perform_invocation "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps check_cap_inv)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv [wp, DetSchedDomainTime_AI_assms]: arch_perform_invocation "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps check_cap_inv)<\STATESEP>0<\TRANSEP><\STATESEP>lemma timer_tick_valid_domain_time:
+  "\<lbrace> \<lambda>s :: det_ext state. 0 < domain_time s \<rbrace>
+   timer_tick
+   \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>" (is "\<lbrace> ?dtnot0 \<rbrace> _ \<lbrace> _ \<rbrace>")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> timer_tick \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>unfolding timer_tick_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> do cur <- gets cur_thread;
+state <- get_thread_state cur;
+case state of Running \<Rightarrow> do ts <- ethread_get tcb_time_slice cur;
+let ts' = ts - 1 in if 0 < ts' then thread_set_time_slice cur ts' else do thread_set_time_slice cur timeSlice;
+tcb_sched_action tcb_sched_append cur;
+reschedule_required
+od
+od | _ \<Rightarrow> return ();
+when (1 < numDomains) (do dec_domain_time;
+dom_time <- gets domain_time;
+when (dom_time = 0) reschedule_required
+od)
+od \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>supply if_split[split del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> do cur <- gets cur_thread;
+state <- get_thread_state cur;
+case state of Running \<Rightarrow> do ts <- ethread_get tcb_time_slice cur;
+let ts' = ts - 1 in if 0 < ts' then thread_set_time_slice cur ts' else do thread_set_time_slice cur timeSlice;
+tcb_sched_action tcb_sched_append cur;
+reschedule_required
+od
+od | _ \<Rightarrow> return ();
+when (1 < numDomains) (do dec_domain_time;
+dom_time <- gets domain_time;
+when (dom_time = 0) reschedule_required
+od)
+od \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>supply ethread_get_wp[wp del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> do cur <- gets cur_thread;
+state <- get_thread_state cur;
+case state of Running \<Rightarrow> do ts <- ethread_get tcb_time_slice cur;
+let ts' = ts - 1 in if 0 < ts' then thread_set_time_slice cur ts' else do thread_set_time_slice cur timeSlice;
+tcb_sched_action tcb_sched_append cur;
+reschedule_required
+od
+od | _ \<Rightarrow> return ();
+when (1 < numDomains) (do dec_domain_time;
+dom_time <- gets domain_time;
+when (dom_time = 0) reschedule_required
+od)
+od \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>supply if_apply_def2[simp]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> do cur <- gets cur_thread;
+state <- get_thread_state cur;
+case state of Running \<Rightarrow> do ts <- ethread_get tcb_time_slice cur;
+let ts' = ts - 1 in if 0 < ts' then thread_set_time_slice cur ts' else do thread_set_time_slice cur timeSlice;
+tcb_sched_action tcb_sched_append cur;
+reschedule_required
+od
+od | _ \<Rightarrow> return ();
+when (1 < numDomains) (do dec_domain_time;
+dom_time <- gets domain_time;
+when (dom_time = 0) reschedule_required
+od)
+od \<lbrace>\<lambda>x s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>apply (wpsimp
+           wp: reschedule_required_valid_domain_time hoare_vcg_const_imp_lift gts_wp
+               (* unless we hit dec_domain_time we know ?dtnot0 holds on the state, so clean up the
+                  postcondition once we hit thread_set_time_slice *)
+               hoare_post_imp[where Q="\<lambda>_. ?dtnot0" and R="\<lambda>_ s. domain_time s = 0 \<longrightarrow> X s"
+                                and a="thread_set_time_slice t ts" for X t ts]
+               hoare_drop_imp[where f="ethread_get t f" for t f])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s st. \<lbrakk>0 < domain_time s; st_tcb_at ((=) st) (cur_thread s) s\<rbrakk> \<Longrightarrow> (inactive st \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<and> (st = Restart \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<and> ((\<exists>x xa. st = BlockedOnReceive x xa) \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<and> ((\<exists>x xa. st = BlockedOnSend x xa) \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<and> (awaiting_reply st \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<and> ((\<exists>x. st = BlockedOnNotification x) \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread) \<and> (idle st \<longrightarrow> \<not> Suc 0 < numDomains \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma handle_interrupt_valid_domain_time [DetSchedDomainTime_AI_assms]:
+  "\<lbrace>\<lambda>s :: det_ext state. 0 < domain_time s \<rbrace>
+   handle_interrupt i
+   \<lbrace>\<lambda>rv s.  domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread \<rbrace>" (is "\<lbrace> ?dtnot0 \<rbrace> _ \<lbrace> _ \<rbrace>")<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> handle_interrupt i \<lbrace>\<lambda>rv s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>unfolding handle_interrupt_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> if maxIRQ < i then do_machine_op $ do maskInterrupt True i;
+ackInterrupt i
+od else do st <- get_irq_state i;
+case st of IRQInactive \<Rightarrow> fail | IRQSignal \<Rightarrow> do slot <- get_irq_slot i;
+cap <- get_cap slot;
+when (is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap) $ send_signal (obj_ref_of cap) (cap_ep_badge cap);
+arch_mask_irq_signal i
+od | IRQTimer \<Rightarrow> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od | IRQReserved \<Rightarrow> handle_reserved_irq i;
+do_machine_op $ ackInterrupt i
+od \<lbrace>\<lambda>rv s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>apply (case_tac "maxIRQ < i", solves \<open>wpsimp wp: hoare_false_imp\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> if maxIRQ < i then do_machine_op $ do maskInterrupt True i;
+ackInterrupt i
+od else do st <- get_irq_state i;
+case st of IRQInactive \<Rightarrow> fail | IRQSignal \<Rightarrow> do slot <- get_irq_slot i;
+cap <- get_cap slot;
+when (is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap) $ send_signal (obj_ref_of cap) (cap_ep_badge cap);
+arch_mask_irq_signal i
+od | IRQTimer \<Rightarrow> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od | IRQReserved \<Rightarrow> handle_reserved_irq i;
+do_machine_op $ ackInterrupt i
+od \<lbrace>\<lambda>rv s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>\<lambda>s. 0 < domain_time s\<rbrace> do st <- get_irq_state i;
+y <- case st of IRQInactive \<Rightarrow> fail | IRQSignal \<Rightarrow> do slot <- get_irq_slot i;
+cap <- get_cap slot;
+when (is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap) $ send_signal (obj_ref_of cap) (cap_ep_badge cap);
+arch_mask_irq_signal i
+od | IRQTimer \<Rightarrow> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od | IRQReserved \<Rightarrow> handle_reserved_irq i;
+do_machine_op (ackInterrupt i)
+od \<lbrace>\<lambda>rv s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace><\STATESEP>apply (wpsimp simp: arch_mask_irq_signal_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>a b cap. \<lbrakk>\<not> maxIRQ < i; is_ntfn_cap cap; AllowSend \<in> cap_rights cap\<rbrakk> \<Longrightarrow> \<lbrace>?Q233 a b (ds_id IRQSignal) (a, b) cap\<rbrace> send_signal (obj_ref_of cap) (cap_ep_badge cap) \<lbrace>\<lambda>x4 x5. domain_time x5 = 0 \<longrightarrow> scheduler_action x5 = choose_new_thread\<rbrace>
+ 2. \<And>st slot. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?Q'211 st slot\<rbrace> get_cap slot \<lbrace>\<lambda>cap. if is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap then ?Q233 (fst slot) (snd slot) st slot cap else (\<lambda>x5. domain_time x5 = 0 \<longrightarrow> scheduler_action x5 = choose_new_thread)\<rbrace>
+ 3. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?R201 st\<rbrace> get_irq_slot i \<lbrace>?Q'211 st\<rbrace>
+ 4. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQTimer\<rbrakk> \<Longrightarrow> \<lbrace>?R200 st\<rbrace> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 5. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQReserved\<rbrakk> \<Longrightarrow> \<lbrace>?R199 st\<rbrace> handle_reserved_irq i \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 6. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>?Q189\<rbrace> get_irq_state i \<lbrace>\<lambda>st s. (st = IRQInactive \<longrightarrow> True) \<and> (st = IRQSignal \<longrightarrow> ?R201 st s) \<and> (st = IRQTimer \<longrightarrow> ?R200 st s) \<and> (st = IRQReserved \<longrightarrow> ?R199 st s)\<rbrace>
+ 7. \<And>s. \<lbrakk>\<not> maxIRQ < i; 0 < domain_time s\<rbrakk> \<Longrightarrow> ?Q189 s<\STATESEP>apply (rule hoare_post_imp[where Q="\<lambda>_. ?dtnot0" and a="send_signal p c" for p c], fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>a b cap. \<lbrakk>\<not> maxIRQ < i; is_ntfn_cap cap; AllowSend \<in> cap_rights cap\<rbrakk> \<Longrightarrow> \<lbrace>?Q233 a b (ds_id IRQSignal) (a, b) cap\<rbrace> send_signal (obj_ref_of cap) (cap_ep_badge cap) \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. \<And>st slot. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?Q'211 st slot\<rbrace> get_cap slot \<lbrace>\<lambda>cap. if is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap then ?Q233 (fst slot) (snd slot) st slot cap else (\<lambda>x5. domain_time x5 = 0 \<longrightarrow> scheduler_action x5 = choose_new_thread)\<rbrace>
+ 3. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?R201 st\<rbrace> get_irq_slot i \<lbrace>?Q'211 st\<rbrace>
+ 4. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQTimer\<rbrakk> \<Longrightarrow> \<lbrace>?R200 st\<rbrace> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 5. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQReserved\<rbrakk> \<Longrightarrow> \<lbrace>?R199 st\<rbrace> handle_reserved_irq i \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 6. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>?Q189\<rbrace> get_irq_state i \<lbrace>\<lambda>st s. (st = IRQInactive \<longrightarrow> True) \<and> (st = IRQSignal \<longrightarrow> ?R201 st s) \<and> (st = IRQTimer \<longrightarrow> ?R200 st s) \<and> (st = IRQReserved \<longrightarrow> ?R199 st s)\<rbrace>
+ 7. \<And>s. \<lbrakk>\<not> maxIRQ < i; 0 < domain_time s\<rbrakk> \<Longrightarrow> ?Q189 s<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>st slot. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?Q'211 st slot\<rbrace> get_cap slot \<lbrace>\<lambda>cap. if is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap then \<lambda>x4. 0 < domain_time x4 else (\<lambda>x5. domain_time x5 = 0 \<longrightarrow> scheduler_action x5 = choose_new_thread)\<rbrace>
+ 2. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?R201 st\<rbrace> get_irq_slot i \<lbrace>?Q'211 st\<rbrace>
+ 3. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQTimer\<rbrakk> \<Longrightarrow> \<lbrace>?R200 st\<rbrace> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 4. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQReserved\<rbrakk> \<Longrightarrow> \<lbrace>?R199 st\<rbrace> handle_reserved_irq i \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 5. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>?Q189\<rbrace> get_irq_state i \<lbrace>\<lambda>st s. (st = IRQInactive \<longrightarrow> True) \<and> (st = IRQSignal \<longrightarrow> ?R201 st s) \<and> (st = IRQTimer \<longrightarrow> ?R200 st s) \<and> (st = IRQReserved \<longrightarrow> ?R199 st s)\<rbrace>
+ 6. \<And>s. \<lbrakk>\<not> maxIRQ < i; 0 < domain_time s\<rbrakk> \<Longrightarrow> ?Q189 s<\STATESEP>apply (rule hoare_post_imp[where Q="\<lambda>_. ?dtnot0" and a="get_cap p" for p], fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>st slot. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?Q'211 st slot\<rbrace> get_cap slot \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQSignal\<rbrakk> \<Longrightarrow> \<lbrace>?R201 st\<rbrace> get_irq_slot i \<lbrace>?Q'211 st\<rbrace>
+ 3. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQTimer\<rbrakk> \<Longrightarrow> \<lbrace>?R200 st\<rbrace> do do_extended_op timer_tick;
+do_machine_op resetTimer
+od \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 4. \<And>st. \<lbrakk>\<not> maxIRQ < i; st = IRQReserved\<rbrakk> \<Longrightarrow> \<lbrace>?R199 st\<rbrace> handle_reserved_irq i \<lbrace>\<lambda>y s. domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread\<rbrace>
+ 5. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>?Q189\<rbrace> get_irq_state i \<lbrace>\<lambda>st s. (st = IRQInactive \<longrightarrow> True) \<and> (st = IRQSignal \<longrightarrow> ?R201 st s) \<and> (st = IRQTimer \<longrightarrow> ?R200 st s) \<and> (st = IRQReserved \<longrightarrow> ?R199 st s)\<rbrace>
+ 6. \<And>s. \<lbrakk>\<not> maxIRQ < i; 0 < domain_time s\<rbrakk> \<Longrightarrow> ?Q189 s<\STATESEP>apply (wpsimp wp: timer_tick_valid_domain_time simp: handle_reserved_irq_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>?Q189\<rbrace> get_irq_state i \<lbrace>\<lambda>st s. (st = IRQSignal \<longrightarrow> 0 < domain_time s) \<and> (st = IRQTimer \<longrightarrow> 0 < domain_time s) \<and> (st = IRQReserved \<longrightarrow> domain_time s = 0 \<longrightarrow> scheduler_action s = choose_new_thread)\<rbrace>
+ 2. \<And>s. \<lbrakk>\<not> maxIRQ < i; 0 < domain_time s\<rbrakk> \<Longrightarrow> ?Q189 s<\STATESEP>apply (rule hoare_post_imp[where Q="\<lambda>_. ?dtnot0" and a="get_irq_state i" for i], fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<not> maxIRQ < i \<Longrightarrow> \<lbrace>?Q189\<rbrace> get_irq_state i \<lbrace>\<lambda>_ s. 0 < domain_time s\<rbrace>
+ 2. \<And>s. \<lbrakk>\<not> maxIRQ < i; 0 < domain_time s\<rbrakk> \<Longrightarrow> ?Q189 s<\STATESEP>apply wpsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch domain_time_inv [wp, DetSchedDomainTime_AI_assms]: handle_reserved_irq "\<lambda>s. P (domain_time s)"
+  (wp: crunch_wps mapM_wp subset_refl simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>crunch domain_list_inv [wp, DetSchedDomainTime_AI_assms]: handle_reserved_irq "\<lambda>s. P (domain_list s)"
+  (wp: crunch_wps mapM_wp subset_refl simp: crunch_simps)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation DetSchedDomainTime_AI_2?: DetSchedDomainTime_AI_2<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI_2<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI_2<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI_2<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI_2<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. DetSchedDomainTime_AI_2<\STATESEP>by (unfold_locales; (fact DetSchedDomainTime_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+DetSchedDomainTime_AI_2
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

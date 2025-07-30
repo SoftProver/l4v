@@ -1,0 +1,638 @@
+<\STATESEP>chapter "Deleting Capabilities"<\STATESEP>0<\TRANSEP><\STATESEP>theory Delete_H
+imports
+  CNode_H
+  Interrupt_H
+  Endpoint_H
+  Thread_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  slotsPointed :: "capability \<Rightarrow> machine_word set"
+where
+ "slotsPointed cap \<equiv> case cap of
+   CNodeCap ptr a b c   \<Rightarrow> {ptr}
+ | ThreadCap ptr        \<Rightarrow> {ptr}
+ | Zombie ptr bits num  \<Rightarrow> {ptr}
+ | _                    \<Rightarrow> {}"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  sethelper :: "bool \<Rightarrow> 'a set \<Rightarrow> 'a set"
+where
+  "sethelper True  s = {}"
+| "sethelper False s = s"<\STATESEP>0<\TRANSEP><\STATESEP>function
+  finaliseSlot' :: "machine_word \<Rightarrow> bool \<Rightarrow> (bool * capability) kernel_p"
+where
+ "finaliseSlot' x b s =
+(\<lambda> finaliseSlot.
+(\<lambda> cteDelete.
+(\<lambda> reduceZombie.
+(\<lambda>slot exposed.  (doE
+    cte \<leftarrow> withoutPreemption $ getCTE slot;
+    if isNullCap $ cteCap cte then returnOk (True, NullCap) else (doE
+        final \<leftarrow> withoutPreemption $ isFinalCapability cte;
+        (remainder, info) \<leftarrow> withoutPreemption $
+                                finaliseCap (cteCap cte) final False;
+        if capRemovable remainder slot then returnOk (True, info) else
+            if Not exposed \<and> capCyclicZombie remainder slot
+            then (doE
+                withoutPreemption $ updateCap slot remainder;
+                returnOk (False, NullCap)
+            odE)
+            else (doE
+                withoutPreemption $ updateCap slot remainder;
+                reduceZombie remainder slot exposed;
+                preemptionPoint;
+                finaliseSlot slot exposed
+            odE)
+    odE)
+odE))
+
+)
+(
+(\<lambda>x0 slot x2.  (let (v33, v34) = (x0, x2) in
+  if isZombie v33 \<and> capZombieNumber v33 = 0
+  then  
+    haskell_fail []
+  else if isZombie v33 \<and> \<not> v34
+  then let ptr = capZombiePtr v33
+  in   (doE
+    haskell_assertE (ptr \<noteq> slot) [];
+    capAtPtr \<leftarrow> withoutPreemption $ liftM cteCap $ getCTE ptr;
+    (case capAtPtr of
+          (Zombie ptr2 _ _) \<Rightarrow>   haskell_assertE (ptr2 \<noteq> ptr)
+                []
+        | _ \<Rightarrow>   returnOk ()
+        );
+    withoutPreemption $ capSwapForDelete ptr slot
+  odE)
+  else if isZombie v33 \<and> v34
+  then let z = v33; ptr = capZombiePtr z; n = capZombieNumber z
+  in   (doE
+    endSlot \<leftarrow> withoutPreemption $ locateSlotCap z (fromIntegral (n - 1));
+    cteDelete endSlot False;
+    ourCTE  \<leftarrow> withoutPreemption $ getCTE slot;
+    (let c2 = (cteCap ourCTE) in
+        if isNullCap c2
+        then  returnOk ()
+        else if isZombie c2
+        then let ptr2 = capZombiePtr c2
+        in 
+            if (ptr = ptr2 \<and> capZombieNumber c2 = n
+                    \<and> capZombieType z = capZombieType c2)
+            then withoutPreemption $ (do
+                endCTE \<leftarrow> getCTE endSlot;
+                haskell_assert (isNullCap $ cteCap endCTE)
+                    [];
+                newCap \<leftarrow> return ( z \<lparr> capZombieNumber := n- 1 \<rparr>);
+                updateCap slot newCap
+            od)
+            else haskell_assertE (ptr2 = slot \<and> ptr \<noteq> slot)
+                    []
+        else  haskell_fail []
+        )
+  odE)
+  else   haskell_fail []
+  ))
+
+)
+)
+(
+(\<lambda>slot exposed.  (doE
+    (success, info) \<leftarrow> finaliseSlot slot exposed;
+    whenE (exposed \<or> success) $ withoutPreemption $ emptySlot slot info
+odE))
+
+)
+)
+finaliseSlot' x b s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. (\<And>xa b s. x = (xa, b, s) \<Longrightarrow> P) \<Longrightarrow> P
+ 2. \<And>x b s xa ba sa. (x, b, s) = (xa, ba, sa) \<Longrightarrow> (doE cte <- withoutPreemption $ getCTE x;
+if isNullCap $ cteCap cte then returnOk (True, NullCap) else doE final <- withoutPreemption $ isFinalCapability cte;
+(remainder, info) <- withoutPreemption $ global.finaliseCap (cteCap cte) final False;
+if capRemovable remainder x then returnOk (True, info) else if \<not> b \<and> capCyclicZombie remainder x then doE withoutPreemption $ updateCap x remainder;
+returnOk (False, NullCap)
+odE else doE withoutPreemption $ updateCap x remainder;
+let (v33, v34) = (remainder, b) in if isZombie v33 \<and> capZombieNumber v33 = 0 then haskell_fail [] else if isZombie v33 \<and> \<not> v34 then let ptr = capZombiePtr v33 in doE haskell_assertE (ptr \<noteq> x) [];
+capAtPtr <- withoutPreemption $ liftM cteCap $ getCTE ptr;
+case capAtPtr of Zombie ptr2 x xa \<Rightarrow> haskell_assertE (ptr2 \<noteq> ptr) [] | _ \<Rightarrow> returnOk ();
+withoutPreemption $ capSwapForDelete ptr x
+odE else if isZombie v33 \<and> v34 then let z = v33; ptr = capZombiePtr z; n = capZombieNumber z in doE endSlot <- withoutPreemption $ locateSlotCap z (fromIntegral (n - 1));
+doE (success, info) <- \<lambda>x2. finaliseSlot'_sumC (endSlot, False, x2);
+whenE (False \<or> success) $ withoutPreemption $ emptySlot endSlot info
+odE;
+ourCTE <- withoutPreemption $ getCTE x;
+let c2 = cteCap ourCTE in if isNullCap c2 then returnOk () else if isZombie c2 then let ptr2 = capZombiePtr c2 in if ptr = ptr2 \<and> capZombieNumber c2 = n \<and> capZombieType z = capZombieType c2 then withoutPreemption $ do endCTE <- getCTE endSlot;
+haskell_assert (isNullCap $ cteCap endCTE) [];
+return (capZombieNumber_update (\<lambda>_. n - 1) z) >>= updateCap x
+od else haskell_assertE (ptr2 = x \<and> ptr \<noteq> x) [] else haskell_fail []
+odE else haskell_fail [];
+preemptionPoint;
+\<lambda>x2. finaliseSlot'_sumC (x, b, x2)
+odE
+odE
+odE) s = (doE cte <- withoutPreemption $ getCTE xa;
+if isNullCap $ cteCap cte then returnOk (True, NullCap) else doE final <- withoutPreemption $ isFinalCapability cte;
+(remainder, info) <- withoutPreemption $ global.finaliseCap (cteCap cte) final False;
+if capRemovable remainder xa then returnOk (True, info) else if \<not> ba \<and> capCyclicZombie remainder xa then doE withoutPreemption $ updateCap xa remainder;
+returnOk (False, NullCap)
+odE else doE withoutPreemption $ updateCap xa remainder;
+let (v33, v34) = (remainder, ba) in if isZombie v33 \<and> capZombieNumber v33 = 0 then haskell_fail [] else if isZombie v33 \<and> \<not> v34 then let ptr = capZombiePtr v33 in doE haskell_assertE (ptr \<noteq> xa) [];
+capAtPtr <- withoutPreemption $ liftM cteCap $ getCTE ptr;
+case capAtPtr of Zombie ptr2 x xa \<Rightarrow> haskell_assertE (ptr2 \<noteq> ptr) [] | _ \<Rightarrow> returnOk ();
+withoutPreemption $ capSwapForDelete ptr xa
+odE else if isZombie v33 \<and> v34 then let z = v33; ptr = capZombiePtr z; n = capZombieNumber z in doE endSlot <- withoutPreemption $ locateSlotCap z (fromIntegral (n - 1));
+doE (success, info) <- \<lambda>x2. finaliseSlot'_sumC (endSlot, False, x2);
+whenE (False \<or> success) $ withoutPreemption $ emptySlot endSlot info
+odE;
+ourCTE <- withoutPreemption $ getCTE xa;
+let c2 = cteCap ourCTE in if isNullCap c2 then returnOk () else if isZombie c2 then let ptr2 = capZombiePtr c2 in if ptr = ptr2 \<and> capZombieNumber c2 = n \<and> capZombieType z = capZombieType c2 then withoutPreemption $ do endCTE <- getCTE endSlot;
+haskell_assert (isNullCap $ cteCap endCTE) [];
+return (capZombieNumber_update (\<lambda>_. n - 1) z) >>= updateCap xa
+od else haskell_assertE (ptr2 = xa \<and> ptr \<noteq> xa) [] else haskell_fail []
+odE else haskell_fail [];
+preemptionPoint;
+\<lambda>x2. finaliseSlot'_sumC (xa, ba, x2)
+odE
+odE
+odE) sa<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>defs
+  finaliseSlot_def:
+ "finaliseSlot \<equiv> finaliseSlot'"<\STATESEP>0<\TRANSEP><\STATESEP>function
+  cteDeleteOne' :: "machine_word \<Rightarrow> unit kernel"
+where
+ "cteDeleteOne' x s =
+(\<lambda> cteDeleteOne.
+(\<lambda> deletingIRQHandler.
+(\<lambda> cancelIPC.
+(\<lambda> suspend.
+(\<lambda> finaliseCap.
+(\<lambda>slot.  (do
+    cte \<leftarrow> getCTE slot;
+    unless (isNullCap $ cteCap cte) $ (do
+        final \<leftarrow> isFinalCapability cte;
+        (remainder, info) \<leftarrow> finaliseCap (cteCap cte) final True;
+        haskell_assert (capRemovable remainder slot \<and> isNullCap info) $
+            [];
+        emptySlot slot NullCap
+    od)
+od))
+
+)
+(
+(\<lambda>x0 x1 x2.  (let (v1, v2, v3) = (x0, x1, x2) in
+  if isEndpointCap v1
+  then let ptr = capEPPtr v1; final = v2
+  in   (do
+    when final $ cancelAllIPC ptr;
+    return (NullCap, NullCap)
+  od)
+  else if isNotificationCap v1
+  then let ptr = capNtfnPtr v1; final = v2
+  in   (do
+    when final $ (do
+        unbindMaybeNotification ptr;
+        cancelAllSignals ptr
+    od);
+    return (NullCap, NullCap)
+  od)
+  else if isReplyCap v1
+  then   return (NullCap, NullCap)
+  else if isNullCap v1
+  then   return (NullCap, NullCap)
+  else if isDomainCap v1
+  then   return (NullCap, NullCap)
+  else if v3
+  then   haskell_fail []
+  else if isCNodeCap v1 \<and> v2
+  then let ptr = capCNodePtr v1; bits = capCNodeBits v1
+  in  
+    return (Zombie ptr (ZombieCNode bits) (bit bits), NullCap)
+  else if isThreadCap v1 \<and> v2
+  then let tcb = capTCBPtr v1
+  in   (do
+    cte_ptr \<leftarrow> getThreadCSpaceRoot tcb;
+    unbindNotification tcb;
+    suspend tcb;
+    Arch.prepareThreadDelete tcb;
+    return (Zombie cte_ptr ZombieTCB 5, NullCap)
+  od)
+  else if isZombie v1 \<and> v2
+  then let z = v1
+  in  
+    return (z, NullCap)
+  else if isArchObjectCap v1
+  then let cap = capCap v1; final = v2
+  in  
+    Arch.finaliseCap cap final
+  else if isIRQHandlerCap v1 \<and> v2
+  then let irq = capIRQ v1; cap = v1
+  in   (do
+    deletingIRQHandler irq;
+    return (NullCap, cap)
+  od)
+  else if isZombie v1 \<and> \<not> v2
+  then   haskell_fail []
+  else   return (NullCap, NullCap)
+  ))
+
+)
+)
+(
+(\<lambda>target.  (do
+    cancelIPC target;
+    state \<leftarrow> getThreadState target;
+    if state = Running then updateRestartPC target else return ();
+    setThreadState Inactive target;
+    tcbSchedDequeue target
+od))
+
+)
+)
+(
+(\<lambda>tptr. 
+        let
+            replyIPCCancel = (do
+                threadSet (\<lambda> tcb. tcb \<lparr>tcbFault := Nothing\<rparr>) tptr;
+                slot \<leftarrow> getThreadReplySlot tptr;
+                callerCap \<leftarrow> liftM (mdbNext \<circ> cteMDBNode) $ getCTE slot;
+                when (callerCap \<noteq> nullPointer) $ (do
+                    stateAssert (capHasProperty callerCap (\<lambda> cap. isReplyCap cap \<and>
+                                                                 Not (capReplyMaster cap)))
+                        [];
+                    cteDeleteOne callerCap
+                od)
+            od);
+            isIdle = (\<lambda>  ep. (case ep of
+                  IdleEP \<Rightarrow>   True
+                | _ \<Rightarrow>   False
+                ));
+            blockedIPCCancel = (\<lambda>  state. (do
+                epptr \<leftarrow> return ( blockingObject state);
+                ep \<leftarrow> getEndpoint epptr;
+                haskell_assert (Not $ isIdle ep)
+                    [];
+                queue' \<leftarrow> return ( delete tptr $ epQueue ep);
+                ep' \<leftarrow> (case queue' of
+                      [] \<Rightarrow>   return IdleEP
+                    | _ \<Rightarrow>   return $ ep \<lparr> epQueue := queue' \<rparr>
+                    );
+                setEndpoint epptr ep';
+                setThreadState Inactive tptr
+            od))
+        in
+                        (do
+        state \<leftarrow> getThreadState tptr;
+        (case state of
+              BlockedOnSend _ _ _ _ _ \<Rightarrow>   blockedIPCCancel state
+            | BlockedOnReceive _ _ \<Rightarrow>   blockedIPCCancel state
+            | BlockedOnNotification _ \<Rightarrow>   cancelSignal tptr (waitingOnNotification state)
+            | BlockedOnReply  \<Rightarrow>   replyIPCCancel
+            | _ \<Rightarrow>   return ()
+            )
+                        od))
+
+)
+)
+(
+(\<lambda>irq.  (do
+    slot \<leftarrow> getIRQSlot irq;
+    cap \<leftarrow> getSlotCap slot;
+    haskell_assert (isNotificationCap cap \<or> isNullCap cap)
+        [];
+    cteDeleteOne slot
+od))
+
+)
+)
+cteDeleteOne' x s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. (\<And>xa s. x = (xa, s) \<Longrightarrow> P) \<Longrightarrow> P
+ 2. \<And>x s xa sa. (x, s) = (xa, sa) \<Longrightarrow> (do cte <- getCTE x;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- let (v1, v2, v3) = (cteCap cte, final, True) in if isEndpointCap v1 then let ptr = capEPPtr v1; final = v2 in do when final $ cancelAllIPC ptr;
+return (NullCap, NullCap)
+od else if isNotificationCap v1 then let ptr = capNtfnPtr v1; final = v2 in do when final $ do unbindMaybeNotification ptr;
+cancelAllSignals ptr
+od;
+return (NullCap, NullCap)
+od else if isReplyCap v1 then return (NullCap, NullCap) else if isNullCap v1 then return (NullCap, NullCap) else if isDomainCap v1 then return (NullCap, NullCap) else if v3 then haskell_fail [] else if isCNodeCap v1 \<and> v2 then let ptr = capCNodePtr v1; bits = capCNodeBits v1 in return (Zombie ptr (ZombieCNode bits) (HaskellLib_H.bit bits), NullCap) else if isThreadCap v1 \<and> v2 then let tcb = capTCBPtr v1 in do cte_ptr <- getThreadCSpaceRoot tcb;
+unbindNotification tcb;
+do let replyIPCCancel = do threadSet (tcbFault_update (\<lambda>_. Nothing)) tcb;
+slot <- getThreadReplySlot tcb;
+callerCap <- liftM (mdbNext \<circ> cteMDBNode) $ getCTE slot;
+when (callerCap \<noteq> nullPointer) $ do stateAssert (capHasProperty callerCap (\<lambda>cap. isReplyCap cap \<and> \<not> capReplyMaster cap)) [];
+\<lambda>x1. cteDeleteOne'_sumC (callerCap, x1)
+od
+od; isIdle = case_endpoint (\<lambda>list. False) True (\<lambda>list. False); blockedIPCCancel = \<lambda>state. do epptr <- return (blockingObject state);
+ep <- getEndpoint epptr;
+haskell_assert (Not $ isIdle ep) [];
+queue' <- return (delete tcb $ epQueue ep);
+ep' <- case queue' of [] \<Rightarrow> return IdleEP | a # list \<Rightarrow> return $ epQueue_update (\<lambda>_. queue') ep;
+setEndpoint epptr ep';
+setThreadState Inactive tcb
+od in do state <- getThreadState tcb;
+case state of BlockedOnReceive x xa \<Rightarrow> blockedIPCCancel state | BlockedOnReply \<Rightarrow> replyIPCCancel | BlockedOnNotification x \<Rightarrow> cancelSignal tcb (waitingOnNotification state) | BlockedOnSend x xa xb xc xd \<Rightarrow> blockedIPCCancel state | _ \<Rightarrow> return ()
+od;
+state <- getThreadState tcb;
+if state = Running then updateRestartPC tcb else return ();
+setThreadState Inactive tcb;
+tcbSchedDequeue tcb
+od;
+Arch.prepareThreadDelete tcb;
+return (Zombie cte_ptr ZombieTCB 5, NullCap)
+od else if isZombie v1 \<and> v2 then let z = v1 in return (z, NullCap) else if isArchObjectCap v1 then let cap = capCap v1 in Let v2 (Arch.finaliseCap cap) else if isIRQHandlerCap v1 \<and> v2 then let irq = capIRQ v1; cap = v1 in do do slot <- getIRQSlot irq;
+cap <- getSlotCap slot;
+haskell_assert (isNotificationCap cap \<or> isNullCap cap) [];
+\<lambda>x1. cteDeleteOne'_sumC (slot, x1)
+od;
+return (NullCap, cap)
+od else if isZombie v1 \<and> \<not> v2 then haskell_fail [] else return (NullCap, NullCap);
+haskell_assert (capRemovable remainder x \<and> isNullCap info) $ [];
+emptySlot x NullCap
+od
+od) s = (do cte <- getCTE xa;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- let (v1, v2, v3) = (cteCap cte, final, True) in if isEndpointCap v1 then let ptr = capEPPtr v1; final = v2 in do when final $ cancelAllIPC ptr;
+return (NullCap, NullCap)
+od else if isNotificationCap v1 then let ptr = capNtfnPtr v1; final = v2 in do when final $ do unbindMaybeNotification ptr;
+cancelAllSignals ptr
+od;
+return (NullCap, NullCap)
+od else if isReplyCap v1 then return (NullCap, NullCap) else if isNullCap v1 then return (NullCap, NullCap) else if isDomainCap v1 then return (NullCap, NullCap) else if v3 then haskell_fail [] else if isCNodeCap v1 \<and> v2 then let ptr = capCNodePtr v1; bits = capCNodeBits v1 in return (Zombie ptr (ZombieCNode bits) (HaskellLib_H.bit bits), NullCap) else if isThreadCap v1 \<and> v2 then let tcb = capTCBPtr v1 in do cte_ptr <- getThreadCSpaceRoot tcb;
+unbindNotification tcb;
+do let replyIPCCancel = do threadSet (tcbFault_update (\<lambda>_. Nothing)) tcb;
+slot <- getThreadReplySlot tcb;
+callerCap <- liftM (mdbNext \<circ> cteMDBNode) $ getCTE slot;
+when (callerCap \<noteq> nullPointer) $ do stateAssert (capHasProperty callerCap (\<lambda>cap. isReplyCap cap \<and> \<not> capReplyMaster cap)) [];
+\<lambda>x1. cteDeleteOne'_sumC (callerCap, x1)
+od
+od; isIdle = case_endpoint (\<lambda>list. False) True (\<lambda>list. False); blockedIPCCancel = \<lambda>state. do epptr <- return (blockingObject state);
+ep <- getEndpoint epptr;
+haskell_assert (Not $ isIdle ep) [];
+queue' <- return (delete tcb $ epQueue ep);
+ep' <- case queue' of [] \<Rightarrow> return IdleEP | a # list \<Rightarrow> return $ epQueue_update (\<lambda>_. queue') ep;
+setEndpoint epptr ep';
+setThreadState Inactive tcb
+od in do state <- getThreadState tcb;
+case state of BlockedOnReceive x xa \<Rightarrow> blockedIPCCancel state | BlockedOnReply \<Rightarrow> replyIPCCancel | BlockedOnNotification x \<Rightarrow> cancelSignal tcb (waitingOnNotification state) | BlockedOnSend x xa xb xc xd \<Rightarrow> blockedIPCCancel state | _ \<Rightarrow> return ()
+od;
+state <- getThreadState tcb;
+if state = Running then updateRestartPC tcb else return ();
+setThreadState Inactive tcb;
+tcbSchedDequeue tcb
+od;
+Arch.prepareThreadDelete tcb;
+return (Zombie cte_ptr ZombieTCB 5, NullCap)
+od else if isZombie v1 \<and> v2 then let z = v1 in return (z, NullCap) else if isArchObjectCap v1 then let cap = capCap v1 in Let v2 (Arch.finaliseCap cap) else if isIRQHandlerCap v1 \<and> v2 then let irq = capIRQ v1; cap = v1 in do do slot <- getIRQSlot irq;
+cap <- getSlotCap slot;
+haskell_assert (isNotificationCap cap \<or> isNullCap cap) [];
+\<lambda>x1. cteDeleteOne'_sumC (slot, x1)
+od;
+return (NullCap, cap)
+od else if isZombie v1 \<and> \<not> v2 then haskell_fail [] else return (NullCap, NullCap);
+haskell_assert (capRemovable remainder xa \<and> isNullCap info) $ [];
+emptySlot xa NullCap
+od
+od) sa<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>defs
+  cteDeleteOne_def1:
+ "cteDeleteOne \<equiv> cteDeleteOne'"<\STATESEP>0<\TRANSEP><\STATESEP>termination cteDeleteOne'<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. All cteDeleteOne'_dom<\STATESEP>by (rule cteDeleteOne'.termination[OF wf_empty], simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cteDeleteOne_def:
+ "cteDeleteOne =
+(
+(\<lambda>slot.  (do
+    cte \<leftarrow> getCTE slot;
+    unless (isNullCap $ cteCap cte) $ (do
+        final \<leftarrow> isFinalCapability cte;
+        (remainder, info) \<leftarrow> finaliseCap (cteCap cte) final True;
+        haskell_assert (capRemovable remainder slot \<and> isNullCap info) $
+            [];
+        emptySlot slot NullCap
+    od)
+od))
+
+)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cteDeleteOne = (\<lambda>slot. do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- global.finaliseCap (cteCap cte) final True;
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od)<\STATESEP>apply (rule ext)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot x. cteDeleteOne slot x = (do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- global.finaliseCap (cteCap cte) final True;
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od) x<\STATESEP>apply (subst cteDeleteOne_def1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot x. cteDeleteOne' slot x = (do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- global.finaliseCap (cteCap cte) final True;
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od) x<\STATESEP>apply (subst cteDeleteOne'.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot x. (do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- let (v1, v2, v3) = (cteCap cte, final, True) in if isEndpointCap v1 then let ptr = capEPPtr v1; final = v2 in do when final $ cancelAllIPC ptr;
+return (NullCap, NullCap)
+od else if isNotificationCap v1 then let ptr = capNtfnPtr v1; final = v2 in do when final $ do unbindMaybeNotification ptr;
+cancelAllSignals ptr
+od;
+return (NullCap, NullCap)
+od else if isReplyCap v1 then return (NullCap, NullCap) else if isNullCap v1 then return (NullCap, NullCap) else if isDomainCap v1 then return (NullCap, NullCap) else if v3 then haskell_fail [] else if isCNodeCap v1 \<and> v2 then let ptr = capCNodePtr v1; bits = capCNodeBits v1 in return (Zombie ptr (ZombieCNode bits) (HaskellLib_H.bit bits), NullCap) else if isThreadCap v1 \<and> v2 then let tcb = capTCBPtr v1 in do cte_ptr <- getThreadCSpaceRoot tcb;
+unbindNotification tcb;
+do let replyIPCCancel = do threadSet (tcbFault_update (\<lambda>_. Nothing)) tcb;
+slot <- getThreadReplySlot tcb;
+callerCap <- liftM (mdbNext \<circ> cteMDBNode) $ getCTE slot;
+when (callerCap \<noteq> nullPointer) $ do stateAssert (capHasProperty callerCap (\<lambda>cap. isReplyCap cap \<and> \<not> capReplyMaster cap)) [];
+cteDeleteOne' callerCap
+od
+od; isIdle = case_endpoint (\<lambda>list. False) True (\<lambda>list. False); blockedIPCCancel = \<lambda>state. do epptr <- return (blockingObject state);
+ep <- getEndpoint epptr;
+haskell_assert (Not $ isIdle ep) [];
+queue' <- return (delete tcb $ epQueue ep);
+ep' <- case queue' of [] \<Rightarrow> return IdleEP | a # list \<Rightarrow> return $ epQueue_update (\<lambda>_. queue') ep;
+setEndpoint epptr ep';
+setThreadState Inactive tcb
+od in do state <- getThreadState tcb;
+case state of BlockedOnReceive x xa \<Rightarrow> blockedIPCCancel state | BlockedOnReply \<Rightarrow> replyIPCCancel | BlockedOnNotification x \<Rightarrow> cancelSignal tcb (waitingOnNotification state) | BlockedOnSend x xa xb xc xd \<Rightarrow> blockedIPCCancel state | _ \<Rightarrow> return ()
+od;
+state <- getThreadState tcb;
+if state = Running then updateRestartPC tcb else return ();
+setThreadState Inactive tcb;
+tcbSchedDequeue tcb
+od;
+Arch.prepareThreadDelete tcb;
+return (Zombie cte_ptr ZombieTCB 5, NullCap)
+od else if isZombie v1 \<and> v2 then let z = v1 in return (z, NullCap) else if isArchObjectCap v1 then let cap = capCap v1 in Let v2 (Arch.finaliseCap cap) else if isIRQHandlerCap v1 \<and> v2 then let irq = capIRQ v1; cap = v1 in do do slot <- getIRQSlot irq;
+cap <- getSlotCap slot;
+haskell_assert (isNotificationCap cap \<or> isNullCap cap) [];
+cteDeleteOne' slot
+od;
+return (NullCap, cap)
+od else if isZombie v1 \<and> \<not> v2 then haskell_fail [] else return (NullCap, NullCap);
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od) x = (do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- global.finaliseCap (cteCap cte) final True;
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od) x<\STATESEP>apply (unfold finaliseCap_def suspend_def cancelIPC_def
+                deletingIRQHandler_def cteDeleteOne_def1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>slot x. (do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- let (v1, v2, v3) = (cteCap cte, final, True) in if isEndpointCap v1 then let ptr = capEPPtr v1; final = v2 in do when final $ cancelAllIPC ptr;
+return (NullCap, NullCap)
+od else if isNotificationCap v1 then let ptr = capNtfnPtr v1; final = v2 in do when final $ do unbindMaybeNotification ptr;
+cancelAllSignals ptr
+od;
+return (NullCap, NullCap)
+od else if isReplyCap v1 then return (NullCap, NullCap) else if isNullCap v1 then return (NullCap, NullCap) else if isDomainCap v1 then return (NullCap, NullCap) else if v3 then haskell_fail [] else if isCNodeCap v1 \<and> v2 then let ptr = capCNodePtr v1; bits = capCNodeBits v1 in return (Zombie ptr (ZombieCNode bits) (HaskellLib_H.bit bits), NullCap) else if isThreadCap v1 \<and> v2 then let tcb = capTCBPtr v1 in do cte_ptr <- getThreadCSpaceRoot tcb;
+unbindNotification tcb;
+do let replyIPCCancel = do threadSet (tcbFault_update (\<lambda>_. Nothing)) tcb;
+slot <- getThreadReplySlot tcb;
+callerCap <- liftM (mdbNext \<circ> cteMDBNode) $ getCTE slot;
+when (callerCap \<noteq> nullPointer) $ do stateAssert (capHasProperty callerCap (\<lambda>cap. isReplyCap cap \<and> \<not> capReplyMaster cap)) [];
+cteDeleteOne' callerCap
+od
+od; isIdle = case_endpoint (\<lambda>list. False) True (\<lambda>list. False); blockedIPCCancel = \<lambda>state. do epptr <- return (blockingObject state);
+ep <- getEndpoint epptr;
+haskell_assert (Not $ isIdle ep) [];
+queue' <- return (delete tcb $ epQueue ep);
+ep' <- case queue' of [] \<Rightarrow> return IdleEP | a # list \<Rightarrow> return $ epQueue_update (\<lambda>_. queue') ep;
+setEndpoint epptr ep';
+setThreadState Inactive tcb
+od in do state <- getThreadState tcb;
+case state of BlockedOnReceive x xa \<Rightarrow> blockedIPCCancel state | BlockedOnReply \<Rightarrow> replyIPCCancel | BlockedOnNotification x \<Rightarrow> cancelSignal tcb (waitingOnNotification state) | BlockedOnSend x xa xb xc xd \<Rightarrow> blockedIPCCancel state | _ \<Rightarrow> return ()
+od;
+state <- getThreadState tcb;
+if state = Running then updateRestartPC tcb else return ();
+setThreadState Inactive tcb;
+tcbSchedDequeue tcb
+od;
+Arch.prepareThreadDelete tcb;
+return (Zombie cte_ptr ZombieTCB 5, NullCap)
+od else if isZombie v1 \<and> v2 then let z = v1 in return (z, NullCap) else if isArchObjectCap v1 then let cap = capCap v1 in Let v2 (Arch.finaliseCap cap) else if isIRQHandlerCap v1 \<and> v2 then let irq = capIRQ v1; cap = v1 in do do slot <- getIRQSlot irq;
+cap <- getSlotCap slot;
+haskell_assert (isNotificationCap cap \<or> isNullCap cap) [];
+cteDeleteOne' slot
+od;
+return (NullCap, cap)
+od else if isZombie v1 \<and> \<not> v2 then haskell_fail [] else return (NullCap, NullCap);
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od) x = (do cte <- getCTE slot;
+unless (isNullCap $ cteCap cte) $ do final <- isFinalCapability cte;
+(remainder, info) <- let (v13, v14, v15) = (cteCap cte, final, True) in if isEndpointCap v13 then let ptr = capEPPtr v13; final = v14 in do when final $ cancelAllIPC ptr;
+return (NullCap, NullCap)
+od else if isNotificationCap v13 then let ptr = capNtfnPtr v13; final = v14 in do when final $ do unbindMaybeNotification ptr;
+cancelAllSignals ptr
+od;
+return (NullCap, NullCap)
+od else if isReplyCap v13 then return (NullCap, NullCap) else if isNullCap v13 then return (NullCap, NullCap) else if isDomainCap v13 then return (NullCap, NullCap) else if v15 then haskell_fail [] else if isCNodeCap v13 \<and> v14 then let ptr = capCNodePtr v13; bits = capCNodeBits v13 in return (Zombie ptr (ZombieCNode bits) (HaskellLib_H.bit bits), NullCap) else if isThreadCap v13 \<and> v14 then let tcb = capTCBPtr v13 in do cte_ptr <- getThreadCSpaceRoot tcb;
+unbindNotification tcb;
+do let replyIPCCancel = do threadSet (tcbFault_update (\<lambda>_. Nothing)) tcb;
+slot <- getThreadReplySlot tcb;
+callerCap <- liftM (mdbNext \<circ> cteMDBNode) $ getCTE slot;
+when (callerCap \<noteq> nullPointer) $ do stateAssert (capHasProperty callerCap (\<lambda>cap. isReplyCap cap \<and> \<not> capReplyMaster cap)) [];
+cteDeleteOne' callerCap
+od
+od; isIdle = \<lambda>ep. case ep of IdleEP \<Rightarrow> True | _ \<Rightarrow> False; blockedIPCCancel = \<lambda>state. do epptr <- return (blockingObject state);
+ep <- getEndpoint epptr;
+haskell_assert (Not $ isIdle ep) [];
+queue' <- return (delete tcb $ epQueue ep);
+ep' <- case queue' of [] \<Rightarrow> return IdleEP | a # list \<Rightarrow> return $ epQueue_update (\<lambda>_. queue') ep;
+setEndpoint epptr ep';
+setThreadState Inactive tcb
+od in do state <- getThreadState tcb;
+case state of BlockedOnReceive x xa \<Rightarrow> blockedIPCCancel state | BlockedOnReply \<Rightarrow> replyIPCCancel | BlockedOnNotification x \<Rightarrow> cancelSignal tcb (waitingOnNotification state) | BlockedOnSend x xa xb xc xd \<Rightarrow> blockedIPCCancel state | _ \<Rightarrow> return ()
+od;
+state <- getThreadState tcb;
+if state = Running then updateRestartPC tcb else return ();
+setThreadState Inactive tcb;
+tcbSchedDequeue tcb
+od;
+Arch.prepareThreadDelete tcb;
+return (Zombie cte_ptr ZombieTCB 5, NullCap)
+od else if isZombie v13 \<and> v14 then let z = v13 in return (z, NullCap) else if isArchObjectCap v13 then let cap = capCap v13 in Let v14 (Arch.finaliseCap cap) else if isIRQHandlerCap v13 \<and> v14 then let irq = capIRQ v13; cap = v13 in do do slot <- getIRQSlot irq;
+cap <- getSlotCap slot;
+haskell_assert (isNotificationCap cap \<or> isNullCap cap) [];
+cteDeleteOne' slot
+od;
+return (NullCap, cap)
+od else if isZombie v13 \<and> \<not> v14 then haskell_fail [] else return (NullCap, NullCap);
+haskell_assert (capRemovable remainder slot \<and> isNullCap info) $ [];
+emptySlot slot NullCap
+od
+od) x<\STATESEP>apply (rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma card_reduce:
+  "(s :: ('a :: finite) set) \<inter> s' = {} \<Longrightarrow> card (UNIV - (s \<union> s')) < card (UNIV - s) = (s' \<noteq> {})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<inter> s' = {} \<Longrightarrow> (card (UNIV - (s \<union> s')) < card (UNIV - s)) = (s' \<noteq> {})<\STATESEP>apply (case_tac "s' \<subseteq> s")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>s \<inter> s' = {}; s' \<subseteq> s\<rbrakk> \<Longrightarrow> (card (UNIV - (s \<union> s')) < card (UNIV - s)) = (s' \<noteq> {})
+ 2. \<lbrakk>s \<inter> s' = {}; \<not> s' \<subseteq> s\<rbrakk> \<Longrightarrow> (card (UNIV - (s \<union> s')) < card (UNIV - s)) = (s' \<noteq> {})<\STATESEP>apply (simp add: Un_absorb2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>s \<inter> s' = {}; s' \<subseteq> s\<rbrakk> \<Longrightarrow> s' = {}
+ 2. \<lbrakk>s \<inter> s' = {}; \<not> s' \<subseteq> s\<rbrakk> \<Longrightarrow> (card (UNIV - (s \<union> s')) < card (UNIV - s)) = (s' \<noteq> {})<\STATESEP>apply (simp add: Int_absorb1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s \<inter> s' = {}; \<not> s' \<subseteq> s\<rbrakk> \<Longrightarrow> (card (UNIV - (s \<union> s')) < card (UNIV - s)) = (s' \<noteq> {})<\STATESEP>apply (clarsimp simp: subset_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> (card (UNIV - (s \<union> s')) < card (UNIV - s)) = (s' \<noteq> {})<\STATESEP>apply (subst psubset_card_mono)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> finite (UNIV - s)
+ 2. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> UNIV - (s \<union> s') \<subset> UNIV - s
+ 3. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> True = (s' \<noteq> {})<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> UNIV - (s \<union> s') \<subset> UNIV - s
+ 2. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> True = (s' \<noteq> {})<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>t. \<lbrakk>s \<inter> s' = {}; t \<in> s'; t \<notin> s\<rbrakk> \<Longrightarrow> True = (s' \<noteq> {})<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma isCapDs:
+  "isUntypedCap cap \<Longrightarrow> \<exists>dev ptr size freeIndex. cap = UntypedCap dev ptr size freeIndex"
+  "isEndpointCap cap \<Longrightarrow> \<exists>ptr bdg cans canr cang cangr. cap = EndpointCap ptr bdg cans canr cang cangr"
+  "isNotificationCap cap \<Longrightarrow> \<exists>ptr bdg cans canr. cap = NotificationCap ptr bdg cans canr"
+  "isCNodeCap cap \<Longrightarrow> \<exists>ptr bits grd gsize. cap = CNodeCap ptr bits grd gsize"
+  "isThreadCap cap \<Longrightarrow> \<exists>ptr. cap = ThreadCap ptr"
+  "isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap"
+  "isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((isUntypedCap cap \<Longrightarrow> \<exists>dev ptr size freeIndex. cap = UntypedCap dev ptr size freeIndex) &&& (isEndpointCap cap \<Longrightarrow> \<exists>ptr bdg cans canr cang cangr. cap = EndpointCap ptr bdg cans canr cang cangr) &&& (isNotificationCap cap \<Longrightarrow> \<exists>ptr bdg cans canr. cap = NotificationCap ptr bdg cans canr)) &&& ((isCNodeCap cap \<Longrightarrow> \<exists>ptr bits grd gsize. cap = CNodeCap ptr bits grd gsize) &&& (isThreadCap cap \<Longrightarrow> \<exists>ptr. cap = ThreadCap ptr)) &&& (isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap) &&& (isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num)<\STATESEP>apply (case_tac cap, simp_all add: isUntypedCap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. isEndpointCap cap \<Longrightarrow> \<exists>ptr bdg cans canr cang cangr. cap = EndpointCap ptr bdg cans canr cang cangr
+ 2. isNotificationCap cap \<Longrightarrow> \<exists>ptr bdg cans canr. cap = NotificationCap ptr bdg cans canr
+ 3. isCNodeCap cap \<Longrightarrow> \<exists>ptr bits grd gsize. cap = CNodeCap ptr bits grd gsize
+ 4. isThreadCap cap \<Longrightarrow> \<exists>ptr. cap = ThreadCap ptr
+ 5. isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap
+ 6. isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num<\STATESEP>apply (case_tac cap, simp_all add: isEndpointCap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. isNotificationCap cap \<Longrightarrow> \<exists>ptr bdg cans canr. cap = NotificationCap ptr bdg cans canr
+ 2. isCNodeCap cap \<Longrightarrow> \<exists>ptr bits grd gsize. cap = CNodeCap ptr bits grd gsize
+ 3. isThreadCap cap \<Longrightarrow> \<exists>ptr. cap = ThreadCap ptr
+ 4. isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap
+ 5. isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num<\STATESEP>apply (case_tac cap, simp_all add: isNotificationCap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. isCNodeCap cap \<Longrightarrow> \<exists>ptr bits grd gsize. cap = CNodeCap ptr bits grd gsize
+ 2. isThreadCap cap \<Longrightarrow> \<exists>ptr. cap = ThreadCap ptr
+ 3. isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap
+ 4. isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num<\STATESEP>apply (case_tac cap, simp_all add: isCNodeCap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. isThreadCap cap \<Longrightarrow> \<exists>ptr. cap = ThreadCap ptr
+ 2. isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap
+ 3. isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num<\STATESEP>apply (case_tac cap, simp_all add: isThreadCap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. isArchObjectCap cap \<Longrightarrow> \<exists>archcap. cap = ArchObjectCap archcap
+ 2. isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num<\STATESEP>apply (case_tac cap, simp_all add: isArchObjectCap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. isZombie cap \<Longrightarrow> \<exists>ptr bits num. cap = Zombie ptr bits num<\STATESEP>apply (case_tac cap, simp_all add: isZombie_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,260 @@
+<\STATESEP>theory Trace_Total
+  imports Trace_No_Fail
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Total correctness for @{text Trace_Monad} and @{text Trace_Monad} with exceptions\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection Definitions<\STATESEP>0<\TRANSEP><\STATESEP>definition validNF ::
+  "('s \<Rightarrow> bool) \<Rightarrow> ('s,'a) tmonad \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+  ("\<lbrace>_\<rbrace>/ _ /\<lbrace>_\<rbrace>!") where
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! \<equiv> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<and> no_fail P f"<\STATESEP>0<\TRANSEP><\STATESEP>lemma validNF_alt_def:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! = (\<forall>s. P s \<longrightarrow> ((\<forall>(r', s') \<in> mres (f s). Q r' s') \<and> \<not> failed (f s)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! = (\<forall>s. P s \<longrightarrow> (\<forall>(r', s')\<in>mres (f s). Q r' s') \<and> \<not> failed (f s))<\STATESEP>by (auto simp: validNF_def valid_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition validE_NF ::
+  "('s \<Rightarrow> bool) \<Rightarrow> ('s, 'a + 'b) tmonad \<Rightarrow> ('b \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+  ("\<lbrace>_\<rbrace>/ _ /(\<lbrace>_\<rbrace>,/ \<lbrace>_\<rbrace>!)") where
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! \<equiv> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<and> no_fail P f"<\STATESEP>0<\TRANSEP><\STATESEP>lemma validE_NF_alt_def:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! = \<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! = \<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!<\STATESEP>by (clarsimp simp: validE_NF_def validE_def validNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>@{method wpc} setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma wpc_helper_validNF:
+  "\<lbrace>Q\<rbrace> g \<lbrace>S\<rbrace>! \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> g \<lbrace>S\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> g \<lbrace>S\<rbrace>! \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> g \<lbrace>S\<rbrace>!<\STATESEP>unfolding wpc_helper_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> g \<lbrace>S\<rbrace>! \<Longrightarrow> (case (P, P', P'') of (P, P', P'') \<Rightarrow> \<lambda>(Q, Q', Q''). (\<longrightarrow>) ((\<forall>s. P s \<longrightarrow> Q s) \<and> (\<forall>s. P' s \<longrightarrow> Q' s) \<and> P'' \<subseteq> Q'')) (Q, Q', Q'') \<lbrace>P\<rbrace> g \<lbrace>S\<rbrace>!<\STATESEP>by clarsimp (metis hoare_weaken_pre no_fail_pre validNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>!" wpc_helper_validNF<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Basic @{const validNF} theorems\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma validNF_make_schematic_post:
+  "(\<forall>s0. \<lbrace> \<lambda>s. P s0 s \<rbrace> f \<lbrace> \<lambda>rv s. Q s0 rv s \<rbrace>!) \<Longrightarrow>
+   \<lbrace> \<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s') \<rbrace> f \<lbrace> Q' \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s0. \<lbrace>P s0\<rbrace> f \<lbrace>Q s0\<rbrace>! \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s')\<rbrace> f \<lbrace>Q'\<rbrace>!<\STATESEP>by (fastforce simp: valid_def validNF_def no_fail_def mres_def image_def
+               split: prod.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_make_schematic_post:
+  "(\<forall>s0. \<lbrace> \<lambda>s. P s0 s \<rbrace> f \<lbrace> \<lambda>rv s. Q s0 rv s \<rbrace>, \<lbrace> \<lambda>rv s. E s0 rv s \<rbrace>!) \<Longrightarrow>
+   \<lbrace> \<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s')
+        \<and> (\<forall>rv s'. E s0 rv s' \<longrightarrow> E' rv s') \<rbrace> f \<lbrace> Q' \<rbrace>, \<lbrace> E' \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s0. \<lbrace>P s0\<rbrace> f \<lbrace>Q s0\<rbrace>, \<lbrace>E s0\<rbrace>! \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s') \<and> (\<forall>rv s'. E s0 rv s' \<longrightarrow> E' rv s')\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E'\<rbrace>!<\STATESEP>by (fastforce simp: validE_NF_def validE_def valid_def no_fail_def mres_def image_def
+               split: prod.splits sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_conjD1:
+  "\<lbrace> P \<rbrace> f \<lbrace> \<lambda>rv s. Q rv s \<and> Q' rv s \<rbrace>! \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_conjD2:
+  "\<lbrace> P \<rbrace> f \<lbrace> \<lambda>rv s. Q rv s \<and> Q' rv s \<rbrace>! \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace> Q' \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF[intro?]: (* FIXME lib: should be validNFI *)
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>; no_fail P f \<rbrakk> \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; no_fail P f\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!<\STATESEP>by (clarsimp simp: validNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNFE:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>!; \<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>; no_fail P f \<rbrakk> \<Longrightarrow> R \<rbrakk> \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; no_fail P f\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (clarsimp simp: validNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_valid:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (erule validNFE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_no_fail:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>! \<rbrakk> \<Longrightarrow> no_fail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! \<Longrightarrow> no_fail P f<\STATESEP>by (erule validNFE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_not_failed:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>!; P s \<rbrakk> \<Longrightarrow> \<not> failed (f s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; P s\<rbrakk> \<Longrightarrow> \<not> failed (f s)<\STATESEP>by (clarsimp simp: validNF_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_validNF:
+  "\<lbrakk> (r', s') \<in> mres (f s); \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>!; P s \<rbrakk> \<Longrightarrow> Q r' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(r', s') \<in> mres (f s); \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; P s\<rbrakk> \<Longrightarrow> Q r' s'<\STATESEP>by (fastforce simp: validNF_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>@{const validNF} weakest precondition rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma validNF_return[wp]:
+  "\<lbrace> P x \<rbrace> return x \<lbrace> P \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P x\<rbrace> return x \<lbrace>P\<rbrace>!<\STATESEP>by (wp validNF)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_get[wp]:
+  "\<lbrace> \<lambda>s. P s s  \<rbrace> get \<lbrace> P \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s s\<rbrace> get \<lbrace>P\<rbrace>!<\STATESEP>by (wp validNF)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_put[wp]:
+  "\<lbrace> \<lambda>s. P () x  \<rbrace> put x \<lbrace> P \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P () x\<rbrace> put x \<lbrace>P\<rbrace>!<\STATESEP>by (wp validNF)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_K_bind[wp]:
+  "\<lbrace> P \<rbrace> x \<lbrace> Q \<rbrace>! \<Longrightarrow> \<lbrace> P \<rbrace> K_bind x f \<lbrace> Q \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> x \<lbrace>Q\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> K_bind x f \<lbrace>Q\<rbrace>!<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_fail[wp]:
+  "\<lbrace> \<lambda>s. False \<rbrace> fail \<lbrace> Q \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. False\<rbrace> fail \<lbrace>Q\<rbrace>!<\STATESEP>by (clarsimp simp: validNF_def fail_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_prop[wp_unsafe]:
+  "\<lbrakk> no_fail (\<lambda>s. P) f \<rbrakk> \<Longrightarrow> \<lbrace> \<lambda>s. P \<rbrace> f \<lbrace> \<lambda>rv s. P \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>s. P) f \<Longrightarrow> \<lbrace>\<lambda>s. P\<rbrace> f \<lbrace>\<lambda>rv s. P\<rbrace>!<\STATESEP>by (wp validNF)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_post_conj[intro!]:
+  "\<lbrakk> \<lbrace> P \<rbrace> a \<lbrace> Q \<rbrace>!; \<lbrace> P \<rbrace> a \<lbrace> R \<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace> P \<rbrace> a \<lbrace> Q and R \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>Q and R\<rbrace>!<\STATESEP>by (auto simp: validNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_pre_disj[intro!]:
+  "\<lbrakk> \<lbrace> P \<rbrace> a \<lbrace> R \<rbrace>!; \<lbrace> Q \<rbrace> a \<lbrace> R \<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace> P or Q \<rbrace> a \<lbrace> R \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>!; \<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P or Q\<rbrace> a \<lbrace>R\<rbrace>!<\STATESEP>by (rule validNF) (auto dest: validNF_valid validNF_no_fail intro: no_fail_or)<\STATESEP>1<\TRANSEP><\STATESEP>definition validNF_property :: "('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 's \<Rightarrow> ('s,'a) tmonad \<Rightarrow> bool" where
+  "validNF_property Q s b \<equiv> \<not> failed (b s) \<and> (\<forall>(r', s') \<in> mres (b s). Q r' s')"<\STATESEP>0<\TRANSEP><\STATESEP>lemma validNF_is_triple[wp_trip]:
+  "validNF P f Q = triple_judgement P f (validNF_property Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! = triple_judgement P f (validNF_property Q)<\STATESEP>by (auto simp: validNF_def triple_judgement_def validNF_property_def no_fail_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_weaken_pre[wp_pre]:
+  "\<lbrakk>\<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>!; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>!; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>!<\STATESEP>by (metis hoare_pre_imp no_fail_pre validNF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_post_comb_imp_conj:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>!; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>!; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_post_comb_conj_L:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s \<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_post_comb_conj_R:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s \<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_post_comb_conj:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s \<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def no_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_if_split[wp_split]:
+  "\<lbrakk>P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>!; \<not> P \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>S\<rbrace>!\<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)\<rbrace> if P then f else g \<lbrace>S\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>!; \<not> P \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>S\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)\<rbrace> if P then f else g \<lbrace>S\<rbrace>!<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_vcg_conj_lift:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>!<\STATESEP>by (fastforce intro!: validNF_post_conj[unfolded pred_conj_def] intro: validNF_weaken_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_vcg_disj_lift:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace>!<\STATESEP>by (auto  simp: validNF_def no_fail_def intro!: hoare_vcg_disj_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_vcg_all_lift[wp]:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>!) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>!<\STATESEP>by (auto simp: validNF_def no_fail_def intro!: hoare_vcg_all_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_bind_wp[wp_split]:
+  "\<lbrakk> \<And>x. \<lbrace>B x\<rbrace> g x \<lbrace>C\<rbrace>!; \<lbrace>A\<rbrace> f \<lbrace>B\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> do x \<leftarrow> f; g x od \<lbrace>C\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>B x\<rbrace> g x \<lbrace>C\<rbrace>!; \<lbrace>A\<rbrace> f \<lbrace>B\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> f >>= g \<lbrace>C\<rbrace>!<\STATESEP>unfolding validNF_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>B x\<rbrace> g x \<lbrace>C\<rbrace> \<and> no_fail (B x) (g x); \<lbrace>A\<rbrace> f \<lbrace>B\<rbrace> \<and> no_fail A f\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> f >>= g \<lbrace>C\<rbrace> \<and> no_fail A (f >>= g)<\STATESEP>by (auto intro: bind_wp no_fail_bind[where P=Q and Q=Q for Q, simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemmas validNF_bind_wp_fwd = validNF_bind_wp[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>subsection "validNF compound rules"<\STATESEP>0<\TRANSEP><\STATESEP>lemma validNF_state_assert[wp]:
+  "\<lbrace> \<lambda>s. P () s \<and> G s  \<rbrace> state_assert G \<lbrace> P \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P () s \<and> G s\<rbrace> state_assert G \<lbrace>P\<rbrace>!<\STATESEP>by (rule validNF; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_modify[wp]:
+  "\<lbrace> \<lambda>s. P () (f s) \<rbrace> modify f \<lbrace> P \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P () (f s)\<rbrace> modify f \<lbrace>P\<rbrace>!<\STATESEP>by (rule validNF; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_gets[wp]:
+  "\<lbrace>\<lambda>s. P (f s) s\<rbrace> gets f \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (f s) s\<rbrace> gets f \<lbrace>P\<rbrace>!<\STATESEP>by (rule validNF; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_condition[wp]:
+  "\<lbrakk> \<lbrace> Q \<rbrace> A \<lbrace>P\<rbrace>!; \<lbrace> R \<rbrace> B \<lbrace>P\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then Q s else R s\<rbrace> condition C A B \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q\<rbrace> A \<lbrace>P\<rbrace>!; \<lbrace>R\<rbrace> B \<lbrace>P\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then Q s else R s\<rbrace> condition C
+  A
+  B \<lbrace>P\<rbrace>!<\STATESEP>by (erule validNFE)+
+     (rule validNF; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_assert[wp]:
+  "\<lbrace> (\<lambda>s. P) and (R ()) \<rbrace> assert P \<lbrace> R \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>(\<lambda>s. P) and R ()\<rbrace> assert P \<lbrace>R\<rbrace>!<\STATESEP>by (rule validNF; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_false_pre:
+  "\<lbrace> \<lambda>_. False \<rbrace> P \<lbrace> Q \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. False\<rbrace> P \<lbrace>Q\<rbrace>!<\STATESEP>by (rule validNF; wpsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_chain:
+   "\<lbrakk>\<lbrace>P'\<rbrace> a \<lbrace>R'\<rbrace>!; \<And>s. P s \<Longrightarrow> P' s; \<And>r s. R' r s \<Longrightarrow> R r s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> a \<lbrace>R'\<rbrace>!; \<And>s. P s \<Longrightarrow> P' s; \<And>r s. R' r s \<Longrightarrow> R r s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>!<\STATESEP>by (fastforce simp: validNF_def valid_def no_fail_def Ball_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_case_prod[wp]:
+  "\<lbrakk>\<And>x y. \<lbrace>P x y\<rbrace> B x y \<lbrace>Q\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>case v of (x, y) \<Rightarrow> P x y\<rbrace> case v of (x, y) \<Rightarrow> B x y \<lbrace>Q\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. \<lbrace>P x y\<rbrace> B x y \<lbrace>Q\<rbrace>!) \<Longrightarrow> \<lbrace>case v of (x, y) \<Rightarrow> P x y\<rbrace> case v of (x, y) \<Rightarrow> B x y \<lbrace>Q\<rbrace>!<\STATESEP>by (metis prod.exhaust split_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_case_prod[wp]:
+  "\<lbrakk> \<And>a b. \<lbrace>P a b\<rbrace> f a b \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! \<rbrakk> \<Longrightarrow>
+   \<lbrace>case x of (a, b) \<Rightarrow> P a b\<rbrace> case x of (a, b) \<Rightarrow> f a b \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>a b. \<lbrace>P a b\<rbrace> f a b \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!) \<Longrightarrow> \<lbrace>case x of (a, b) \<Rightarrow> P a b\<rbrace> case x of (a, b) \<Rightarrow> f a b \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding validE_NF_alt_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>a b. \<lbrace>P a b\<rbrace> f a b \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!) \<Longrightarrow> \<lbrace>case x of (x, xa) \<Rightarrow> P x xa\<rbrace> case x of (x, xa) \<Rightarrow> f x xa \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!<\STATESEP>by (erule validNF_case_prod)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_is_validNF_True:
+  "no_fail P s = (\<lbrace> P \<rbrace> s \<lbrace> \<lambda>_ _. True \<rbrace>!)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P s = \<lbrace>P\<rbrace> s \<lbrace>\<lambda>_ _. True\<rbrace>!<\STATESEP>by (clarsimp simp: no_fail_def validNF_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>@{const validNF} reasoning in the exception monad\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma validE_NF[intro?]:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>; no_fail P f \<rbrakk> \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; no_fail P f\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (clarsimp simp: validE_NF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NFE:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>!; \<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>; no_fail P f \<rbrakk> \<Longrightarrow> R \<rbrakk> \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; no_fail P f\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (clarsimp simp: validE_NF_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_valid:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (rule validE_NFE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_no_fail:
+  "\<lbrakk> \<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>! \<rbrakk> \<Longrightarrow> no_fail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! \<Longrightarrow> no_fail P f<\STATESEP>by (rule validE_NFE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_weaken_pre[wp_pre]:
+  "\<lbrakk>\<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace>!; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (simp add: validE_NF_alt_def validNF_weaken_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_post_comb_conj_L:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding validE_NF_alt_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s \<and> Q' r s\<rbrace>!<\STATESEP>by (fastforce simp: validE_def validNF_def valid_def no_fail_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_post_comb_conj_R:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>! \<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding validE_NF_alt_def validE_def validNF_def valid_def no_fail_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>mres (f s). case r of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s'); (\<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>mres (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q' r s')) \<and> (\<forall>s. P' s \<longrightarrow> \<not> failed (f s))\<rbrakk> \<Longrightarrow> (\<forall>s. P s \<and> P' s \<longrightarrow> (\<forall>(r, s')\<in>mres (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s' \<and> Q' r s')) \<and> (\<forall>s. P s \<and> P' s \<longrightarrow> \<not> failed (f s))<\STATESEP>by (force split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_post_comb_conj:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding validE_NF_alt_def validE_def validNF_def valid_def no_fail_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>mres (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s')) \<and> (\<forall>s. P s \<longrightarrow> \<not> failed (f s)); (\<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>mres (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q' r s')) \<and> (\<forall>s. P' s \<longrightarrow> \<not> failed (f s))\<rbrakk> \<Longrightarrow> (\<forall>s. P s \<and> P' s \<longrightarrow> (\<forall>(r, s')\<in>mres (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s' \<and> Q' r s')) \<and> (\<forall>s. P s \<and> P' s \<longrightarrow> \<not> failed (f s))<\STATESEP>by (force split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_chain:
+  "\<lbrakk> \<lbrace>P'\<rbrace> a \<lbrace>R'\<rbrace>,\<lbrace>E'\<rbrace>!; \<And>s. P s \<Longrightarrow> P' s; \<And>r' s'. R' r' s' \<Longrightarrow> R r' s';
+     \<And>r'' s''. E' r'' s'' \<Longrightarrow> E r'' s''\<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. P s \<rbrace> a \<lbrace>\<lambda>r' s'. R r' s'\<rbrace>,\<lbrace>\<lambda>r'' s''. E r'' s''\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> a \<lbrace>R'\<rbrace>, \<lbrace>E'\<rbrace>!; \<And>s. P s \<Longrightarrow> P' s; \<And>r' s'. R' r' s' \<Longrightarrow> R r' s'; \<And>r'' s''. E' r'' s'' \<Longrightarrow> E r'' s''\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (fastforce simp: validE_NF_def validE_def2 no_fail_def Ball_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_bind_wp[wp]:
+  "\<lbrakk>\<And>x. \<lbrace>B x\<rbrace> g x \<lbrace>C\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>A\<rbrace> f \<lbrace>B\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> f >>=E (\<lambda>x. g x) \<lbrace>C\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>B x\<rbrace> g x \<lbrace>C\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>A\<rbrace> f \<lbrace>B\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> f >>=E g \<lbrace>C\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (blast intro: validE_NF bindE_wp no_fail_pre no_fail_bindE validE_validE_R hoare_chainE
+            elim!: validE_NFE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_catch[wp]:
+  "\<lbrakk>\<And>x. \<lbrace>E x\<rbrace> handler x \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <catch> (\<lambda>x. handler x) \<lbrace>Q\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>E x\<rbrace> handler x \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <catch> handler \<lbrace>Q\<rbrace>!<\STATESEP>unfolding validE_NF_alt_def catch_def lift_def throwError_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>E x\<rbrace> handler x \<lbrace>Q\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> do x <- f;
+case x of Inl e \<Rightarrow> handler e | Inr b \<Rightarrow> return b
+od \<lbrace>Q\<rbrace>!<\STATESEP>by (clarsimp simp: validNF_return split: sum.splits elim!: validNF_bind_wp_fwd)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_throwError[wp]:
+  "\<lbrace>E e\<rbrace> throwError e \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>E e\<rbrace> throwError e \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (unfold validE_NF_alt_def throwError_def o_def) wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_returnOk[wp]:
+  "\<lbrace>P e\<rbrace> returnOk e \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P e\<rbrace> returnOk e \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (clarsimp simp: validE_NF_alt_def returnOk_def) wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_whenE[wp]:
+  "(P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> whenE P f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> whenE P f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding whenE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> if P then f else returnOk () \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_nobindE[wp]:
+  "\<lbrakk> \<lbrace>B\<rbrace> g \<lbrace>C\<rbrace>,\<lbrace>E\<rbrace>!; \<lbrace>A\<rbrace> f \<lbrace>\<lambda>r s. B s\<rbrace>,\<lbrace>E\<rbrace>! \<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> doE f; g odE \<lbrace>C\<rbrace>,\<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>B\<rbrace> g \<lbrace>C\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>A\<rbrace> f \<lbrace>\<lambda>r. B\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> doE f;
+g
+odE \<lbrace>C\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>definition validE_NF_property ::
+  "('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('c \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> 's \<Rightarrow> ('s, 'c+'a) tmonad \<Rightarrow> bool"
+  where
+  "validE_NF_property Q E s b \<equiv>
+   \<not> failed (b s) \<and> (\<forall>(r', s') \<in> mres (b s). case r' of Inl x \<Rightarrow> E x s' | Inr x \<Rightarrow> Q x s')"<\STATESEP>0<\TRANSEP><\STATESEP>lemma validE_NF_is_triple[wp_trip]:
+  "validE_NF P f Q E = triple_judgement P f (validE_NF_property Q E)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>! = triple_judgement P f (validE_NF_property Q E)<\STATESEP>by (fastforce simp: validE_NF_def validE_def2 no_fail_def triple_judgement_def
+                      validE_NF_property_def
+                split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validNF_cong:
+  "\<lbrakk> \<And>s. P s = P' s; \<And>s. P s \<Longrightarrow> m s = m' s;
+     \<And>r' s' s. \<lbrakk> P s; (r', s') \<in> mres (m s) \<rbrakk> \<Longrightarrow> Q r' s' = Q' r' s' \<rbrakk> \<Longrightarrow>
+   (\<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>!) = (\<lbrace>P'\<rbrace> m' \<lbrace>Q'\<rbrace>!)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. P s = P' s; \<And>s. P s \<Longrightarrow> m s = m' s; \<And>r' s' s. \<lbrakk>P s; (r', s') \<in> mres (m s)\<rbrakk> \<Longrightarrow> Q r' s' = Q' r' s'\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>! = \<lbrace>P'\<rbrace> m' \<lbrace>Q'\<rbrace>!<\STATESEP>by (fastforce simp: validNF_alt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_liftE[wp]:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> liftE f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>! \<Longrightarrow> \<lbrace>P\<rbrace> liftE f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (wpsimp simp: validE_NF_alt_def liftE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_handleE'[wp]:
+  "\<lbrakk> \<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>F\<rbrace>! \<rbrakk> \<Longrightarrow>
+   \<lbrace>P\<rbrace> f <handle2> (\<lambda>x. handler x) \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>F\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <handle2> handler \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding validE_NF_alt_def handleE'_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> F e s | Inr r \<Rightarrow> Q r s\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= case_sum handler (\<lambda>v'. return (Inr v')) \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!<\STATESEP>apply (erule validNF_bind_wp_fwd)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!) \<Longrightarrow> \<lbrace>\<lambda>s. case x of Inl e \<Rightarrow> F e s | Inr r \<Rightarrow> Q r s\<rbrace> case x of Inl x \<Rightarrow> handler x | Inr v' \<Rightarrow> return (Inr v') \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!<\STATESEP>apply (clarsimp split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. (\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>!) \<Longrightarrow> \<lbrace>Q x2\<rbrace> return (Inr x2) \<lbrace>\<lambda>v s. (\<forall>x1. v = Inl x1 \<longrightarrow> E x1 s) \<and> (\<forall>x2. v = Inr x2 \<longrightarrow> Q x2 s)\<rbrace>!<\STATESEP>apply wpsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_handleE[wp]:
+  "\<lbrakk> \<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>F\<rbrace>! \<rbrakk> \<Longrightarrow>
+   \<lbrace>P\<rbrace> f <handle> handler \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>F\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <handle> handler \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>unfolding handleE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>F\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <handle2> handler \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (metis validE_NF_handleE')<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_NF_condition[wp]:
+  "\<lbrakk> \<lbrace> Q \<rbrace> A \<lbrace>P\<rbrace>,\<lbrace> E \<rbrace>!; \<lbrace> R \<rbrace> B \<lbrace>P\<rbrace>,\<lbrace> E \<rbrace>!\<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. if C s then Q s else R s\<rbrace> condition C A B \<lbrace>P\<rbrace>,\<lbrace> E \<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q\<rbrace> A \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!; \<lbrace>R\<rbrace> B \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then Q s else R s\<rbrace> condition C
+  A
+  B \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!<\STATESEP>by (erule validE_NFE)+ (wpsimp wp: validE_NF)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_assume_preNF:
+  "(\<And>s. P s \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>!<\STATESEP>by (simp add: validNF_alt_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,382 @@
+<\STATESEP>theory Trace_Empty_Fail
+  imports
+    Trace_Monad
+    WPSimp
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Monads that are wellformed w.r.t. failure\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition empty_fail :: "('s,'a) tmonad \<Rightarrow> bool" where
+  "empty_fail m \<equiv> \<forall>s. mres (m s) = {} \<longrightarrow> failed (m s)"<\STATESEP>0<\TRANSEP><\STATESEP>definition mk_ef ::
+  "((tmid \<times> 's) list \<times> ('s, 'a) tmres) set \<Rightarrow> ((tmid \<times> 's) list \<times> ('s, 'a) tmres) set" where
+  "mk_ef S \<equiv> if mres S = {} then S \<union> {([], Failed)} else S"<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>WPC setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma wpc_helper_empty_fail_final:
+  "empty_fail f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (empty_fail f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') (empty_fail f)<\STATESEP>by (clarsimp simp: wpc_helper_def)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. empty_fail m" wpc_helper_empty_fail_final<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>@{const empty_fail} intro/dest rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_failI:
+  "(\<And>s. mres (m s) = {} \<Longrightarrow> failed (m s)) \<Longrightarrow> empty_fail m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. mres (m s) = {} \<Longrightarrow> failed (m s)) \<Longrightarrow> empty_fail m<\STATESEP>by (simp add: empty_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_failD:
+  "\<lbrakk> empty_fail m; mres (m s) = {} \<rbrakk> \<Longrightarrow> failed (m s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail m; mres (m s) = {}\<rbrakk> \<Longrightarrow> failed (m s)<\STATESEP>by (simp add: empty_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_not_snd:
+  "\<lbrakk> \<not> failed (m s); empty_fail m \<rbrakk> \<Longrightarrow> \<exists>v. v \<in> mres (m s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> failed (m s); empty_fail m\<rbrakk> \<Longrightarrow> \<exists>v. v \<in> mres (m s)<\STATESEP>by (fastforce simp: empty_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas empty_failD2 = empty_fail_not_snd[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_failD3:
+  "\<lbrakk> empty_fail f; \<not> failed (f s) \<rbrakk> \<Longrightarrow> mres (f s) \<noteq> {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail f; \<not> failed (f s)\<rbrakk> \<Longrightarrow> mres (f s) \<noteq> {}<\STATESEP>by (drule(1) empty_failD2, clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_not_empty:
+  "empty_fail f \<Longrightarrow> \<forall>s. f s \<noteq> {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> \<forall>s. f s \<noteq> {}<\STATESEP>by (auto simp: empty_fail_def mres_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_bindD1:
+  "empty_fail (a >>= b) \<Longrightarrow> empty_fail a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (a >>= b) \<Longrightarrow> empty_fail a<\STATESEP>unfolding empty_fail_def bind_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. mres (\<Union>(xs, y)\<in>a s. case_tmres {(xs, Failed)} {(xs, Incomplete)} (\<lambda>(rv, s). (\<lambda>(a, y). (a @ xs, y)) ` b rv s) y) = {} \<longrightarrow> failed (\<Union>(xs, y)\<in>a s. case_tmres {(xs, Failed)} {(xs, Incomplete)} (\<lambda>(rv, s). (\<lambda>(a, y). (a @ xs, y)) ` b rv s) y) \<Longrightarrow> \<forall>s. mres (a s) = {} \<longrightarrow> failed (a s)<\STATESEP>apply (erule all_reg[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. (mres (\<Union>(xs, y)\<in>a x. case_tmres {(xs, Failed)} {(xs, Incomplete)} (\<lambda>(rv, s). (\<lambda>(a, y). (a @ xs, y)) ` b rv s) y) = {} \<longrightarrow> failed (\<Union>(xs, y)\<in>a x. case_tmres {(xs, Failed)} {(xs, Incomplete)} (\<lambda>(rv, s). (\<lambda>(a, y). (a @ xs, y)) ` b rv s) y)) \<longrightarrow> mres (a x) = {} \<longrightarrow> failed (a x)<\STATESEP>by (force simp: split_def mres_def vimage_def failed_def split: tmres.splits)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Wellformed monads\<close><\STATESEP>0<\TRANSEP><\STATESEP>named_theorems empty_fail_term<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems empty_fail_cond<\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_fail_K_bind[empty_fail_cond]:
+  "empty_fail f \<Longrightarrow> empty_fail (K_bind f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> empty_fail (K_bind f x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_fun_app[empty_fail_cond]:
+  "empty_fail (f x) \<Longrightarrow> empty_fail (f $ x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (f x) \<Longrightarrow> empty_fail (f $ x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_If[empty_fail_cond]:
+  "\<lbrakk> P \<Longrightarrow> empty_fail f; \<not>P \<Longrightarrow> empty_fail g \<rbrakk> \<Longrightarrow> empty_fail (if P then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> empty_fail f; \<not> P \<Longrightarrow> empty_fail g\<rbrakk> \<Longrightarrow> empty_fail (if P then f else g)<\STATESEP>by (simp split: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_If_applied[empty_fail_cond]:
+  "\<lbrakk> P \<Longrightarrow> empty_fail (f x); \<not>P \<Longrightarrow> empty_fail (g x) \<rbrakk> \<Longrightarrow> empty_fail ((if P then f else g) x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> empty_fail (f x); \<not> P \<Longrightarrow> empty_fail (g x)\<rbrakk> \<Longrightarrow> empty_fail ((if P then f else g) x)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_put[empty_fail_term]:
+  "empty_fail (put f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (put f)<\STATESEP>by (simp add: put_def empty_fail_def mres_def vimage_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_modify[empty_fail_term]:
+  "empty_fail (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (modify f)<\STATESEP>by (simp add: empty_fail_def simpler_modify_def mres_def vimage_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_gets[empty_fail_term]:
+  "empty_fail (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (gets f)<\STATESEP>by (simp add: empty_fail_def simpler_gets_def mres_def vimage_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_select[empty_fail_cond]:
+  "S \<noteq> {} \<Longrightarrow> empty_fail (select S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. S \<noteq> {} \<Longrightarrow> empty_fail (select S)<\STATESEP>by (simp add: empty_fail_def select_def mres_def image_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mres_bind_empty:
+  "mres ((f >>= g) s) = {}
+   \<Longrightarrow> mres (f s) = {} \<or> (\<forall>res\<in>mres (f s). mres (g (fst res) (snd res)) = {})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mres ((f >>= g) s) = {} \<Longrightarrow> mres (f s) = {} \<or> (\<forall>res\<in>mres (f s). mres (g (fst res) (snd res)) = {})<\STATESEP>apply (clarsimp simp: bind_def mres_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa. \<lbrakk>Result -` snd ` (\<Union>x\<in>f s. case snd x of Failed \<Rightarrow> {(fst x, Failed)} | Incomplete \<Rightarrow> {(fst x, Incomplete)} | Result p \<Rightarrow> (\<lambda>xa. (fst xa @ fst x, snd xa)) ` g (fst p) (snd p)) = {}; Result -` snd ` f s \<noteq> {}; (aa, Result (a, b)) \<in> f s\<rbrakk> \<Longrightarrow> Result -` snd ` g a b = {}<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa ab ba ac ad bc ae. \<lbrakk>\<forall>a b y. (\<forall>x\<in>f s. y \<noteq> (case snd x of Failed \<Rightarrow> {(fst x, Failed)} | Incomplete \<Rightarrow> {(fst x, Incomplete)} | Result p \<Rightarrow> (\<lambda>xa. (fst xa @ fst x, snd xa)) ` g (fst p) (snd p))) \<or> (\<forall>x\<in>y. Result (a, b) \<noteq> snd x); (aa, Result (a, b)) \<in> f s; (ac, Result (ab, ba)) \<in> f s; (ae, Result (ad, bc)) \<in> g a b\<rbrakk> \<Longrightarrow> False<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_failedI1:
+  "failed (f s) \<Longrightarrow> failed ((f >>= g) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. failed (f s) \<Longrightarrow> failed ((f >>= g) s)<\STATESEP>by (force simp: bind_def vimage_def failed_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_failedI2:
+  "\<lbrakk>\<forall>res\<in>mres (f s). failed (g (fst res) (snd res)); mres (f s) \<noteq> {}\<rbrakk>
+   \<Longrightarrow> failed ((f >>= g) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>res\<in>mres (f s). failed (g (fst res) (snd res)); mres (f s) \<noteq> {}\<rbrakk> \<Longrightarrow> failed ((f >>= g) s)<\STATESEP>by (force simp: bind_def mres_def image_def split_def failed_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_bind[empty_fail_cond]:
+  "\<lbrakk> empty_fail a; \<And>x. empty_fail (b x) \<rbrakk> \<Longrightarrow> empty_fail (a >>= b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail a; \<And>x. empty_fail (b x)\<rbrakk> \<Longrightarrow> empty_fail (a >>= b)<\STATESEP>unfolding empty_fail_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. mres (a s) = {} \<longrightarrow> failed (a s); \<And>x. \<forall>s. mres (b x s) = {} \<longrightarrow> failed (b x s)\<rbrakk> \<Longrightarrow> \<forall>s. mres ((a >>= b) s) = {} \<longrightarrow> failed ((a >>= b) s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. mres (a s) = {} \<longrightarrow> failed (a s); \<And>x. \<forall>s. mres (b x s) = {} \<longrightarrow> failed (b x s); mres ((a >>= b) s) = {}\<rbrakk> \<Longrightarrow> failed ((a >>= b) s)<\STATESEP>apply (drule mres_bind_empty)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. mres (a s) = {} \<longrightarrow> failed (a s); \<And>x. \<forall>s. mres (b x s) = {} \<longrightarrow> failed (b x s); mres (a s) = {} \<or> (\<forall>res\<in>mres (a s). mres (b (fst res) (snd res)) = {})\<rbrakk> \<Longrightarrow> failed ((a >>= b) s)<\STATESEP>apply (erule context_disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<forall>s. mres (a s) = {} \<longrightarrow> failed (a s); \<And>x. \<forall>s. mres (b x s) = {} \<longrightarrow> failed (b x s); mres (a s) = {}\<rbrakk> \<Longrightarrow> failed ((a >>= b) s)
+ 2. \<And>s. \<lbrakk>\<forall>s. mres (a s) = {} \<longrightarrow> failed (a s); \<And>x. \<forall>s. mres (b x s) = {} \<longrightarrow> failed (b x s); mres (a s) \<noteq> {}; \<forall>res\<in>mres (a s). mres (b (fst res) (snd res)) = {}\<rbrakk> \<Longrightarrow> failed ((a >>= b) s)<\STATESEP>apply (fastforce intro: bind_failedI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. mres (a s) = {} \<longrightarrow> failed (a s); \<And>x. \<forall>s. mres (b x s) = {} \<longrightarrow> failed (b x s); mres (a s) \<noteq> {}; \<forall>res\<in>mres (a s). mres (b (fst res) (snd res)) = {}\<rbrakk> \<Longrightarrow> failed ((a >>= b) s)<\STATESEP>apply (fastforce intro!: bind_failedI2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_return[empty_fail_term]:
+  "empty_fail (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (return x)<\STATESEP>by (simp add: empty_fail_def return_def mres_def vimage_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_returnOk[empty_fail_term]:
+  "empty_fail (returnOk v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (returnOk v)<\STATESEP>by (fastforce simp: returnOk_def empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_throwError[empty_fail_term]:
+  "empty_fail (throwError v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (throwError v)<\STATESEP>by (fastforce simp: throwError_def empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_lift[empty_fail_cond]:
+  "\<lbrakk> \<And>x. empty_fail (f x) \<rbrakk> \<Longrightarrow> empty_fail (lift f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. empty_fail (f x)) \<Longrightarrow> empty_fail (lift f x)<\STATESEP>unfolding lift_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. empty_fail (f x)) \<Longrightarrow> empty_fail (case x of Inl e \<Rightarrow> throwError e | Inr v' \<Rightarrow> f v')<\STATESEP>by (auto simp: empty_fail_term split: sum.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_liftE[empty_fail_cond]:
+  "empty_fail f \<Longrightarrow> empty_fail (liftE f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> empty_fail (liftE f)<\STATESEP>by (simp add: liftE_def empty_fail_cond empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_bindE[empty_fail_cond]:
+  "\<lbrakk> empty_fail f; \<And>rv. empty_fail (g rv) \<rbrakk> \<Longrightarrow> empty_fail (f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail f; \<And>rv. empty_fail (g rv)\<rbrakk> \<Longrightarrow> empty_fail (f >>=E g)<\STATESEP>by (simp add: bindE_def empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_mapM[empty_fail_cond]:
+  assumes m: "\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)"
+  shows "empty_fail (mapM m xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (mapM m xs)<\STATESEP>using m<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<in> set xs \<Longrightarrow> empty_fail (m ?x)
+
+goal (1 subgoal):
+ 1. empty_fail (mapM m xs)<\STATESEP>proof (induct xs)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. (\<And>x. x \<in> set [] \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m [])
+ 2. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> empty_fail (m x)\<rbrakk> \<Longrightarrow> empty_fail (mapM m (a # xs))<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+?x \<in> set [] \<Longrightarrow> empty_fail (m ?x)
+
+goal (2 subgoals):
+ 1. (\<And>x. x \<in> set [] \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m [])
+ 2. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> empty_fail (m x)\<rbrakk> \<Longrightarrow> empty_fail (mapM m (a # xs))<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+?x \<in> set [] \<Longrightarrow> empty_fail (m ?x)
+
+goal (1 subgoal):
+ 1. empty_fail (mapM m [])<\STATESEP>by (simp add: mapM_def sequence_def empty_fail_term)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+empty_fail (mapM m [])
+
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> empty_fail (m x)\<rbrakk> \<Longrightarrow> empty_fail (mapM m (a # xs))<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> empty_fail (m x)\<rbrakk> \<Longrightarrow> empty_fail (mapM m (a # xs))<\STATESEP>case Cons<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(\<And>x. x \<in> set xs_ \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs_)
+?x \<in> set (a_ # xs_) \<Longrightarrow> empty_fail (m ?x)
+
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> empty_fail (m x)\<rbrakk> \<Longrightarrow> empty_fail (mapM m (a # xs))<\STATESEP>have P: "\<And>m x xs. mapM m (x # xs) = (do y \<leftarrow> m x; ys \<leftarrow> (mapM m xs); return (y # ys) od)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>m x xs. mapM m (x # xs) = do y <- m x;
+ys <- mapM m xs;
+return (y # ys)
+od<\STATESEP>by (simp add: mapM_def sequence_def Let_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+mapM ?m (?x # ?xs) = do y <- ?m ?x;
+ys <- mapM ?m ?xs;
+return (y # ys)
+od
+
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> empty_fail (m x)\<rbrakk> \<Longrightarrow> empty_fail (mapM m (a # xs))<\STATESEP>from Cons<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(\<And>x. x \<in> set xs_ \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs_)
+?x \<in> set (a_ # xs_) \<Longrightarrow> empty_fail (m ?x)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(\<And>x. x \<in> set xs_ \<Longrightarrow> empty_fail (m x)) \<Longrightarrow> empty_fail (mapM m xs_)
+?x \<in> set (a_ # xs_) \<Longrightarrow> empty_fail (m ?x)
+
+goal (1 subgoal):
+ 1. empty_fail (mapM m (a_ # xs_))<\STATESEP>by (simp add: P m empty_fail_cond empty_fail_term)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+empty_fail (mapM m (a_ # xs_))
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma empty_fail_fail[empty_fail_term]:
+  "empty_fail fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail fail<\STATESEP>by (simp add: fail_def empty_fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_assert[empty_fail_term]:
+  "empty_fail (assert P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (assert P)<\STATESEP>unfolding assert_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (if P then return () else fail)<\STATESEP>by (simp add: empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_assert_opt[empty_fail_term]:
+  "empty_fail (assert_opt x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (assert_opt x)<\STATESEP>by (simp add: assert_opt_def empty_fail_term split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_mk_ef[empty_fail_term]:
+  "empty_fail (mk_ef o m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (mk_ef \<circ> m)<\STATESEP>by (simp add: empty_fail_def mk_ef_def failed_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_gets_the[empty_fail_term]:
+  "empty_fail (gets_the f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (gets_the f)<\STATESEP>unfolding gets_the_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (gets f >>= assert_opt)<\STATESEP>by (simp add: empty_fail_cond empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_gets_map[empty_fail_term]:
+  "empty_fail (gets_map f p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (gets_map f p)<\STATESEP>unfolding gets_map_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do m <- gets f;
+assert_opt (m p)
+od)<\STATESEP>by (simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_whenEs[empty_fail_cond]:
+  "(P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (whenE P f)"
+  "(\<not>P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (unlessE P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (whenE P f)) &&& ((\<not> P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (unlessE P f))<\STATESEP>by (auto simp add: whenE_def unlessE_def empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_assertE[empty_fail_term]:
+  "empty_fail (assertE P)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (assertE P)<\STATESEP>by (simp add: assertE_def empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_get[empty_fail_term]:
+  "empty_fail get"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail get<\STATESEP>by (simp add: empty_fail_def get_def mres_def vimage_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_catch[empty_fail_cond]:
+  "\<lbrakk> empty_fail f; \<And>x. empty_fail (g x) \<rbrakk> \<Longrightarrow> empty_fail (catch f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail f; \<And>x. empty_fail (g x)\<rbrakk> \<Longrightarrow> empty_fail (f <catch> g)<\STATESEP>by (simp add: catch_def empty_fail_cond empty_fail_term split: sum.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_guard[empty_fail_term]:
+  "empty_fail (state_assert G)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (state_assert G)<\STATESEP>by (clarsimp simp: state_assert_def empty_fail_cond empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_spec[empty_fail_term]:
+  "empty_fail (state_select F)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (state_select F)<\STATESEP>by (clarsimp simp: state_select_def empty_fail_def default_elem_def mres_def image_def failed_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_when[empty_fail_cond]:
+  "(P \<Longrightarrow> empty_fail x) \<Longrightarrow> empty_fail (when P x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> empty_fail x) \<Longrightarrow> empty_fail (when P x)<\STATESEP>unfolding when_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> empty_fail x) \<Longrightarrow> empty_fail (if P then x else return ())<\STATESEP>by (simp add: empty_fail_term)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_unless[empty_fail_cond]:
+  "(\<not>P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (unless P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (unless P f)<\STATESEP>unfolding unless_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> empty_fail f) \<Longrightarrow> empty_fail (when (\<not> P) f)<\STATESEP>by (simp add: empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_liftM[empty_fail_cond]:
+  "empty_fail m \<Longrightarrow> empty_fail (liftM f m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail m \<Longrightarrow> empty_fail (liftM f m)<\STATESEP>unfolding liftM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail m \<Longrightarrow> empty_fail (do x <- m;
+return (f x)
+od)<\STATESEP>by (fastforce simp: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_liftME[empty_fail_cond]:
+  "empty_fail m \<Longrightarrow> empty_fail (liftME f m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail m \<Longrightarrow> empty_fail (liftME f m)<\STATESEP>unfolding liftME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail m \<Longrightarrow> empty_fail (doE x <- m;
+returnOk (f x)
+odE)<\STATESEP>by (simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_handleE[empty_fail_cond]:
+  "\<lbrakk> empty_fail L; \<And>r. empty_fail (R r) \<rbrakk> \<Longrightarrow> empty_fail (L <handle> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail L; \<And>r. empty_fail (R r)\<rbrakk> \<Longrightarrow> empty_fail (L <handle> R)<\STATESEP>by (clarsimp simp: handleE_def handleE'_def empty_fail_term empty_fail_cond split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_handle'[empty_fail_cond]:
+  "\<lbrakk>empty_fail f; \<And>e. empty_fail (handler e)\<rbrakk> \<Longrightarrow> empty_fail (f <handle2> handler)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail f; \<And>e. empty_fail (handler e)\<rbrakk> \<Longrightarrow> empty_fail (f <handle2> handler)<\STATESEP>unfolding handleE'_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail f; \<And>e. empty_fail (handler e)\<rbrakk> \<Longrightarrow> empty_fail (do v <- f;
+case v of Inl e \<Rightarrow> handler e | Inr v' \<Rightarrow> return (Inr v')
+od)<\STATESEP>by (fastforce simp: empty_fail_term empty_fail_cond split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_sequence[empty_fail_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequence ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequence ms)<\STATESEP>unfolding sequence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (let mcons = \<lambda>p q. do x <- p;
+y <- q;
+return (x # y)
+od in foldr mcons ms (return []))<\STATESEP>by (induct ms; simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_sequence_x[empty_fail_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequence_x ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequence_x ms)<\STATESEP>unfolding sequence_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (foldr (\<lambda>x y. do _ <- x;
+y
+od) ms (return ()))<\STATESEP>by (induct ms; simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_sequenceE[empty_fail_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequenceE ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequenceE ms)<\STATESEP>unfolding sequenceE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (let mcons = \<lambda>p q. doE x <- p;
+y <- q;
+returnOk (x # y)
+odE in foldr mcons ms (returnOk []))<\STATESEP>by (induct ms; simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_sequenceE_x[empty_fail_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequenceE_x ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequenceE_x ms)<\STATESEP>unfolding sequenceE_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (foldr (\<lambda>x y. doE _ <- x;
+y
+odE) ms (returnOk ()))<\STATESEP>by (induct ms; simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_mapM_x[empty_fail_cond]:
+  "(\<And>m. m \<in> f ` set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (mapM_x f ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (mapM_x f ms)<\STATESEP>unfolding mapM_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set ms \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequence_x (map f ms))<\STATESEP>by (fastforce intro: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_mapME[empty_fail_cond]:
+  "(\<And>m. m \<in> f ` set xs \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (mapME f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set xs \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (mapME f xs)<\STATESEP>unfolding mapME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set xs \<Longrightarrow> empty_fail m) \<Longrightarrow> empty_fail (sequenceE (map f xs))<\STATESEP>by (fastforce intro: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_mapME_x[empty_fail_cond]:
+  "(\<And>m'. m' \<in> f ` set xs \<Longrightarrow> empty_fail m') \<Longrightarrow> empty_fail (mapME_x f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m'. m' \<in> f ` set xs \<Longrightarrow> empty_fail m') \<Longrightarrow> empty_fail (mapME_x f xs)<\STATESEP>unfolding mapME_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m'. m' \<in> f ` set xs \<Longrightarrow> empty_fail m') \<Longrightarrow> empty_fail (sequenceE_x (map f xs))<\STATESEP>by (fastforce intro: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_filterM[empty_fail_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> empty_fail (P m)) \<Longrightarrow> empty_fail (filterM P ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> empty_fail (P m)) \<Longrightarrow> empty_fail (filterM P ms)<\STATESEP>by (induct ms; simp add: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_zipWithM_x[empty_fail_cond]:
+  "(\<And>x y. empty_fail (f x y)) \<Longrightarrow> empty_fail (zipWithM_x f xs ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. empty_fail (f x y)) \<Longrightarrow> empty_fail (zipWithM_x f xs ys)<\STATESEP>unfolding zipWithM_x_def zipWith_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. empty_fail (f x y)) \<Longrightarrow> empty_fail (sequence_x (map2 f xs ys))<\STATESEP>by (fastforce intro: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_zipWithM[empty_fail_cond]:
+  "(\<And>x y. empty_fail (f x y)) \<Longrightarrow> empty_fail (zipWithM f xs ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. empty_fail (f x y)) \<Longrightarrow> empty_fail (zipWithM f xs ys)<\STATESEP>unfolding zipWithM_def zipWith_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. empty_fail (f x y)) \<Longrightarrow> empty_fail (sequence (map2 f xs ys))<\STATESEP>by (fastforce intro: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_maybeM[empty_fail_cond]:
+  "\<forall>x. empty_fail (f x) \<Longrightarrow> empty_fail (maybeM f t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. empty_fail (f x) \<Longrightarrow> empty_fail (maybeM f t)<\STATESEP>unfolding maybeM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. empty_fail (f x) \<Longrightarrow> empty_fail (case t of None \<Rightarrow> return () | Some x \<Rightarrow> f x)<\STATESEP>by (fastforce intro: empty_fail_term split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_ifM[empty_fail_cond]:
+  "\<lbrakk> empty_fail P; empty_fail a; empty_fail b \<rbrakk> \<Longrightarrow> empty_fail (ifM P a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail P; empty_fail a; empty_fail b\<rbrakk> \<Longrightarrow> empty_fail (ifM P a b)<\STATESEP>by (simp add: ifM_def empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_ifME[empty_fail_cond]:
+  "\<lbrakk> empty_fail P; empty_fail a; empty_fail b \<rbrakk> \<Longrightarrow> empty_fail (ifME P a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail P; empty_fail a; empty_fail b\<rbrakk> \<Longrightarrow> empty_fail (ifME P a b)<\STATESEP>by (simp add: ifME_def empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_whenM[empty_fail_cond]:
+  "\<lbrakk> empty_fail P; empty_fail f \<rbrakk> \<Longrightarrow> empty_fail (whenM P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail P; empty_fail f\<rbrakk> \<Longrightarrow> empty_fail (whenM P f)<\STATESEP>by (simp add: whenM_def empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_andM[empty_fail_cond]:
+  "\<lbrakk> empty_fail A; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (andM A B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail A; empty_fail B\<rbrakk> \<Longrightarrow> empty_fail (andM A B)<\STATESEP>by (simp add: andM_def empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_orM[empty_fail_cond]:
+  "\<lbrakk> empty_fail A; empty_fail B \<rbrakk> \<Longrightarrow> empty_fail (orM A B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail A; empty_fail B\<rbrakk> \<Longrightarrow> empty_fail (orM A B)<\STATESEP>by (simp add: orM_def empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_notM[empty_fail_cond]:
+  "empty_fail A \<Longrightarrow> empty_fail (notM A)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail A \<Longrightarrow> empty_fail (notM A)<\STATESEP>by (simp add: notM_def empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_put_trace_elem[empty_fail_term]:
+  "empty_fail (put_trace_elem x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (put_trace_elem x)<\STATESEP>by (clarsimp simp: put_trace_elem_def empty_fail_def mres_def vimage_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_put_trace[empty_fail_term]:
+  "empty_fail (put_trace xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (put_trace xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. empty_fail (put_trace [])
+ 2. \<And>a xs. empty_fail (put_trace xs) \<Longrightarrow> empty_fail (put_trace (a # xs))<\STATESEP>apply (clarsimp simp: empty_fail_term)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. empty_fail (put_trace xs) \<Longrightarrow> empty_fail (put_trace (a # xs))<\STATESEP>apply (clarsimp simp: empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_env_steps[empty_fail_term]:
+  "empty_fail env_steps"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail env_steps<\STATESEP>by (simp add: env_steps_def empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_interference[empty_fail_term]:
+  "empty_fail interference"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail interference<\STATESEP>by (simp add: interference_def commit_step_def empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma last_st_tr_not_empty:
+  "P s \<Longrightarrow> \<exists>xs. P (last_st_tr (map (Pair Env) xs) s')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P s \<Longrightarrow> \<exists>xs. P (last_st_tr (map (Pair Env) xs) s')<\STATESEP>apply (rule exI[where x="[s]"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P s \<Longrightarrow> P (last_st_tr (map (Pair Env) [s]) s')<\STATESEP>apply (auto simp: last_st_tr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_Await[empty_fail_term]:
+  "\<exists>s. c s \<Longrightarrow> empty_fail (Await c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>s. c s \<Longrightarrow> empty_fail (Await c)<\STATESEP>by (clarsimp simp: Await_def last_st_tr_not_empty empty_fail_term empty_fail_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas empty_fail[wp, intro!] = empty_fail_term empty_fail_cond<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [simp] = empty_fail_term<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Equations and legacy names\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_fail_select_eq[simp]:
+  "empty_fail (select V) = (V \<noteq> {})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (select V) = (V \<noteq> {})<\STATESEP>by (clarsimp simp: select_def empty_fail_def mres_def image_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_liftM_eq[simp]:
+  "empty_fail (liftM f m) = empty_fail m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (liftM f m) = empty_fail m<\STATESEP>unfolding liftM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do x <- m;
+return (f x)
+od) = empty_fail m<\STATESEP>by (fastforce dest: empty_fail_bindD1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_liftE_eq[simp]:
+  "empty_fail (liftE f) = empty_fail f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (liftE f) = empty_fail f<\STATESEP>by (auto simp: liftE_def empty_fail_bindD1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftME_empty_fail_eq[simp]:
+  "empty_fail (liftME f m) = empty_fail m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (liftME f m) = empty_fail m<\STATESEP>unfolding liftME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (doE x <- m;
+returnOk (f x)
+odE) = empty_fail m<\STATESEP>by (fastforce dest: empty_fail_bindD1 simp: bindE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas empty_fail_error_bits = empty_fail_returnOk empty_fail_throwError empty_fail_liftE_eq<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

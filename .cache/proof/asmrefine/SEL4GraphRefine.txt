@@ -1,0 +1,56 @@
+<\STATESEP>theory SEL4GraphRefine
+imports
+  "AsmRefine.ProveGraphRefine"
+  "CSpec.Substitute"
+  "SEL4GlobalsSwap"
+  "SimplExport.SEL4SimplExport"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>declare ptr_add_assertion_uint [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+val funs = ParseGraph.funs @{theory} CFunDump_filename
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun define_all funs = fold (fn s => let val s' = Long_Name.base_name s
+    val _ = tracing ("defining " ^ s) in
+  ParseGraph.define_graph_fun funs (s' ^ "_graph") (Binding.name (s' ^ "_graph_fun")) s end)
+  (Symtab.dest funs |> filter (fn (_, v) => #3 v <> NONE) |> map fst)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+val csenv = let
+    val the_csenv = CalculateState.get_csenv @{theory} "./kernel_all.c_pp" |> the
+  in fn () => the_csenv end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>consts
+  encode_machine_state :: "machine_state \<Rightarrow> unit \<times> nat"<\STATESEP>0<\TRANSEP><\STATESEP>context graph_refine_locale begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+  add_field_h_val_rewrites
+  #> add_field_to_bytes_rewrites
+  #> add_field_offset_rewrites
+  #> add_globals_swap_rewrites @{thms kernel_all_global_addresses.global_data_mems}
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  simpl_invariant :: "globals myvars set"
+where
+  "simpl_invariant = {s. const_globals_in_memory symbol_table globals_list
+            (hrs_mem (t_hrs_' (globals s)))
+        \<and> htd_safe domain (hrs_htd (t_hrs_' (globals s)))}"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation(input) "ghost_assns_from_globals
+    \<equiv> (snd o snd o ghost'state_' :: globals \<Rightarrow> _)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma snd_snd_gs_new_frames_new_cnodes[simp]:
+  "snd (snd (gs_new_frames sz ptr bits gs)) = snd (snd gs)"
+  "snd (snd (gs_new_cnodes sz' ptr bits gs)) = snd (snd gs)"
+  "snd (snd (gs_clear_region ptr sz' gs)) = snd (snd gs)"
+  "snd (snd ((if P then f else g) gs)) = (if P then snd (snd (f gs)) else snd (snd (g gs)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (snd (snd (gs_new_frames sz ptr bits gs)) = snd (snd gs) &&& snd (snd (gs_new_cnodes sz' ptr bits gs)) = snd (snd gs)) &&& snd (snd (gs_clear_region ptr sz' gs)) = snd (snd gs) &&& snd (snd ((if P then f else g) gs)) = (if P then snd (snd (f gs)) else snd (snd (g gs)))<\STATESEP>by (simp_all add: gs_new_frames_def gs_new_cnodes_def gs_clear_region_def)<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+val broken = ["Kernel_C.reserve_region", "Kernel_C.merge_regions", "Kernel_C.arch_init_freemem"];
+val slow = ["Kernel_C.init_freemem"];
+
+val dbg = ProveSimplToGraphGoals.new_debug
+  {
+    \<comment>\<open> VER-1166 \<close>
+    skips = broken @ slow,
+    only = [],
+    timeout = NONE
+  };
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+ProveSimplToGraphGoals.test_all_graph_refine_proofs_parallel
+    funs (csenv ()) @{context} dbg;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+val _ = ProveSimplToGraphGoals.print dbg "failures:" #failures;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+val _ = ProveSimplToGraphGoals.print dbg "timeouts:" #timeouts;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+val _ = ProveSimplToGraphGoals.print dbg "successes:" #successes;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

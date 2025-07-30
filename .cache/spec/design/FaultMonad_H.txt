@@ -1,0 +1,72 @@
+<\STATESEP>chapter "The Fault Monad"<\STATESEP>0<\TRANSEP><\STATESEP>theory FaultMonad_H
+imports KernelStateData_H Fault_H
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts
+  getActiveIRQ<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym ('f, 'a) kernel_f = "('f + 'a) kernel"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "('f,'a) kernel_f" <= (type) "('f + 'a) kernel"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection "Error Handling"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  withoutFailure :: "'a kernel \<Rightarrow> ('f, 'a) kernel_f"
+where
+  withoutFailure_def[simp]:
+  "withoutFailure \<equiv> liftE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  throw :: "'f \<Rightarrow> ('f, 'a) kernel_f"
+where
+  throw_def[simp]:
+  "throw \<equiv> throwError"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  catchFailure :: "('f, 'a) kernel_f \<Rightarrow> ('f \<Rightarrow> 'a kernel) \<Rightarrow> 'a kernel"
+where
+  catchFailure_def[simp]:
+ "catchFailure \<equiv> catch"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  rethrowFailure :: "('f1 \<Rightarrow> 'f2) \<Rightarrow> ('f1, 'a) kernel_f \<Rightarrow> ('f2, 'a) kernel_f"
+where
+ "rethrowFailure f m \<equiv> m <handle2> (throwError \<circ> f)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ignoreFailure :: "( 'f , unit ) kernel_f \<Rightarrow> unit kernel"
+where
+  "ignoreFailure x \<equiv> (catchFailure x (const (return ())))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+capFaultOnFailure :: "cptr \<Rightarrow> bool \<Rightarrow> ( lookup_failure , 'a ) kernel_f \<Rightarrow> ( fault , 'a ) kernel_f"
+where
+"capFaultOnFailure cptr rp \<equiv> rethrowFailure $ CapFault cptr rp"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+lookupErrorOnFailure :: "bool \<Rightarrow> ( lookup_failure , 'a ) kernel_f \<Rightarrow> ( syscall_error , 'a ) kernel_f"
+where
+"lookupErrorOnFailure isSource \<equiv> rethrowFailure $ FailedLookup isSource"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+constOnFailure :: "'a \<Rightarrow> ( 'f , 'a ) kernel_f \<Rightarrow> 'a kernel"
+where
+"constOnFailure x m\<equiv> m `~catchFailure~` (const $ return x)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+unifyFailure :: "( 'f , 'a ) kernel_f \<Rightarrow> ( unit , 'a ) kernel_f"
+where
+"unifyFailure\<equiv> rethrowFailure $ const ()"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+rangeCheck :: "('a :: integral) \<Rightarrow> ('b :: integral) \<Rightarrow> 'b \<Rightarrow> ( syscall_error , unit ) kernel_f"
+where
+"rangeCheck value minV maxV \<equiv>
+    unlessE (value \<ge> fromIntegral minV \<and> value \<le> fromIntegral maxV) $
+        throw $ RangeError (fromIntegral minV) (fromIntegral maxV)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  nullCapOnFailure :: "('f, capability) kernel_f \<Rightarrow> capability kernel"
+where
+ "nullCapOnFailure m \<equiv> m <catch> (\<lambda>x. return NullCap)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  emptyOnFailure :: "('f, 'a list) kernel_f \<Rightarrow> 'a list kernel"
+where
+ "emptyOnFailure m \<equiv> m <catch> (\<lambda>x. return [])"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  nothingOnFailure :: "('f, 'a option) kernel_f \<Rightarrow> 'a option kernel"
+where
+ "nothingOnFailure m \<equiv> m <catch> (\<lambda>x. return Nothing)"<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Preemption"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a kernel_p = "(irq + 'a) kernel"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "'a kernel_p" <= (type) "(irq + 'a) kernel"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  withoutPreemption :: "'a kernel \<Rightarrow> 'a kernel_p"
+where
+  withoutPreemption_def[simp]:
+ "withoutPreemption \<equiv> liftE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  workUnitsLimit :: machine_word
+where
+  "workUnitsLimit \<equiv> 0x64"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  preemptionPoint :: "unit kernel_p"
+where
+  "preemptionPoint \<equiv> doE
+     liftE $ modifyWorkUnits (\<lambda>u. u + 1);
+     workUnits <- liftE $ getWorkUnits;
+     whenE (workUnitsLimit <= workUnits) $ doE
+       liftE $ setWorkUnits 0;
+       preempt <- liftE $ doMachineOp (getActiveIRQ True);
+       case preempt of
+           Some irq => throwError irq
+           | None => returnOk ()
+     odE
+   odE"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

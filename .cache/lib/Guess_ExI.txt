@@ -1,0 +1,57 @@
+<\STATESEP>theory Guess_ExI
+imports
+  Eisbach_Tools.Eisbach_Methods
+  Eisbach_Tools.Apply_Debug
+begin<\STATESEP>0<\TRANSEP><\STATESEP>method abs_used for P = (match (P) in "\<lambda>s. ?P" \<Rightarrow> \<open>fail\<close> \<bar> _ \<Rightarrow> \<open>-\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method in_conj for P Q = (
+      match (Q) in "P" \<Rightarrow> \<open>-\<close>
+    | match (Q) in "\<lambda>y. A y \<and> B y"  for A B  \<Rightarrow>
+            \<open> match (A) in "(Q' :: 'b)" for Q' \<Rightarrow> \<open>match (B) in "(Q'' :: 'b)"  for Q'' \<Rightarrow>
+             \<open> in_conj P Q' | in_conj P Q''\<close>\<close>\<close>
+    )<\STATESEP>0<\TRANSEP><\STATESEP>method guess_exI =
+    (require_determ \<open>(match conclusion in "\<exists>x. Q x" for Q \<Rightarrow>
+                            \<open>match premises in "P y" for P y \<Rightarrow>
+                             \<open>abs_used P, in_conj P Q, rule exI[where x=y]\<close>\<close>)\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>lemma fun_uncurry:
+  "(P \<longrightarrow> Q \<longrightarrow> R) \<longleftrightarrow> (P \<and> Q) \<longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<longrightarrow> Q \<longrightarrow> R) = (P \<and> Q \<longrightarrow> R)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>method guess_spec_inner for P uses I =
+    ((match I in "\<forall>x. C x \<longrightarrow> _ x" for C \<Rightarrow> \<open>in_conj P C\<close> ))<\STATESEP>0<\TRANSEP><\STATESEP>method guess_spec =
+    (require_determ \<open>(match premises in I:"\<forall>x. _ x \<longrightarrow> _ x" \<Rightarrow>
+                            \<open>match premises in "P y" for P y \<Rightarrow>
+                            \<open>abs_used P, guess_spec_inner P I:I[simplified fun_uncurry],
+                                         insert I, drule spec[where x=y]\<close>\<close>)\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+    assumes Q: "Q x"
+    shows  "P x \<Longrightarrow> \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R  \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (guess_spec, blast intro: Q)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    assumes Q: "Q x"
+    shows "\<lbrakk> P x; P y \<rbrakk> \<Longrightarrow>  \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; P y; \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>apply (fails \<open>guess_spec\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; P y; \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (blast intro: Q)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    assumes Q: "Q x"
+    shows "\<lbrakk> P x; Q y \<rbrakk> \<Longrightarrow> \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; Q y; \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>apply (fails \<open>guess_spec\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; Q y; \<forall>x. Q x \<longrightarrow> P x \<longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (blast intro: Q)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma "P x \<Longrightarrow> \<exists>x. P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P x \<Longrightarrow> \<exists>x. P x<\STATESEP>by guess_exI<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    assumes Q: "Q x"
+    shows "P x \<Longrightarrow> \<exists>x. Q x \<and> P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P x \<Longrightarrow> \<exists>x. Q x \<and> P x<\STATESEP>apply guess_exI<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P x \<Longrightarrow> Q x \<and> P x<\STATESEP>by (blast intro: Q)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    assumes Q: "Q x"
+    shows "\<lbrakk> P x; P y \<rbrakk> \<Longrightarrow> \<exists>x. Q x \<and> P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; P y\<rbrakk> \<Longrightarrow> \<exists>x. Q x \<and> P x<\STATESEP>apply (fails \<open>guess_exI\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; P y\<rbrakk> \<Longrightarrow> \<exists>x. Q x \<and> P x<\STATESEP>by (blast intro: Q)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    assumes Q: "Q x"
+    shows "\<lbrakk> P x; Q y \<rbrakk> \<Longrightarrow> \<exists>x. Q x \<and> P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; Q y\<rbrakk> \<Longrightarrow> \<exists>x. Q x \<and> P x<\STATESEP>apply (fails \<open>guess_exI\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P x; Q y\<rbrakk> \<Longrightarrow> \<exists>x. Q x \<and> P x<\STATESEP>by (blast intro: Q)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

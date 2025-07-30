@@ -1,0 +1,416 @@
+<\STATESEP>chapter "Basic Data Structures"<\STATESEP>0<\TRANSEP><\STATESEP>theory Structures_A
+imports
+  Arch_Structs_A
+  "ExecSpec.MachineExports"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_types
+  aobject_type
+  arch_cap
+  vm_rights
+  arch_kernel_obj
+  arch_state
+  arch_tcb
+  aa_type<\STATESEP>0<\TRANSEP><\STATESEP>requalify_consts
+  acap_rights
+  acap_rights_update
+  arch_kobj_size
+  arch_obj_size
+  aobj_ref
+  asid_high_bits
+  asid_low_bits
+  arch_is_frame_type
+  badge_bits
+  default_arch_tcb
+  arch_tcb_context_get
+  arch_tcb_context_set
+  arch_tcb_set_registers
+  arch_tcb_get_registers
+  cte_level_bits
+  tcb_bits
+  endpoint_bits
+  ntfn_bits
+  aa_type
+  untyped_min_bits
+  untyped_max_bits
+  msg_label_bits<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>datatype apiobject_type =
+    Untyped
+  | TCBObject
+  | EndpointObject
+  | NotificationObject
+  | CapTableObject
+  | ArchObject aobject_type<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_frame_type :: "apiobject_type \<Rightarrow> bool"
+where
+  "is_frame_type obj \<equiv> case obj of
+        ArchObject aobj \<Rightarrow> arch_is_frame_type aobj
+      | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym badge = data<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym msg_label = data<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym message = data<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cnode_index = "bool list"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cslot_ptr = "obj_ref \<times> cnode_index"<\STATESEP>0<\TRANSEP><\STATESEP>datatype cap
+         = NullCap
+         | UntypedCap bool obj_ref nat nat
+           \<comment> \<open>device flag, pointer, size in bits (i.e. @{text "size = 2^bits"}) and freeIndex (i.e. @{text "freeRef = obj_ref + (freeIndex * 2^4)"})\<close>
+         | EndpointCap obj_ref badge cap_rights
+         | NotificationCap obj_ref badge cap_rights
+         | ReplyCap obj_ref bool cap_rights
+         | CNodeCap obj_ref nat "bool list"
+           \<comment> \<open>CNode ptr, number of bits translated, guard\<close>
+         | ThreadCap obj_ref
+         | DomainCap
+         | IRQControlCap
+         | IRQHandlerCap irq
+         | Zombie obj_ref "nat option" nat
+           \<comment> \<open>@{text "cnode ptr * nat + tcb or cspace ptr"}\<close>
+         | ArchObjectCap (the_arch_cap: arch_cap)<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_cases =
+  cap.induct[where cap=cap and P="\<lambda>cap'. cap' = cap \<longrightarrow> P cap'" for cap P, simplified, rule_format]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_cases_asm =
+cap.induct[where cap=cap and P="\<lambda>cap'. cap = cap' \<longrightarrow> P cap' \<longrightarrow> R" for P R cap,
+  simplified, rule_format, rotated -1]<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cnode_contents = "cnode_index \<Rightarrow> cap option"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  the_cnode_cap :: "cap \<Rightarrow> obj_ref \<times> nat \<times> bool list" where
+  "the_cnode_cap cap \<equiv>
+  case cap of
+    CNodeCap oref bits guard \<Rightarrow> (oref, bits, guard)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  cap_ep_badge :: "cap \<Rightarrow> badge"
+where
+  "cap_ep_badge (EndpointCap _ badge _) = badge"
+| "cap_ep_badge (NotificationCap _ badge _) = badge"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  cap_ep_ptr :: "cap \<Rightarrow> badge"
+where
+  "cap_ep_ptr (EndpointCap obj_ref _ _) = obj_ref"
+| "cap_ep_ptr (NotificationCap obj_ref _ _) = obj_ref"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  bits_of :: "cap \<Rightarrow> nat" where
+  "bits_of cap \<equiv> case cap of
+    UntypedCap _ _ bits _ \<Rightarrow> bits
+  | CNodeCap _ radix_bits _ \<Rightarrow> radix_bits"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  free_index_of :: "cap \<Rightarrow> nat" where
+  "free_index_of cap \<equiv> case cap of
+    UntypedCap _ _ _ free_index \<Rightarrow> free_index"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_reply_cap :: "cap \<Rightarrow> bool" where
+  "is_reply_cap cap \<equiv> case cap of ReplyCap _ m _ \<Rightarrow> \<not> m | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_master_reply_cap :: "cap \<Rightarrow> bool" where
+  "is_master_reply_cap cap \<equiv> case cap of ReplyCap _ m _ \<Rightarrow> m | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_zombie :: "cap \<Rightarrow> bool" where
+  "is_zombie cap \<equiv> case cap of Zombie _ _ _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_arch_cap :: "cap \<Rightarrow> bool" where
+  "is_arch_cap cap \<equiv> case cap of ArchObjectCap _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>context
+notes [[function_internals =true]]
+begin<\STATESEP>0<\TRANSEP><\STATESEP>fun is_cnode_cap :: "cap \<Rightarrow> bool"
+where
+  "is_cnode_cap (CNodeCap _ _ _) = True"
+| "is_cnode_cap _                = False"<\STATESEP>0<\TRANSEP><\STATESEP>fun is_thread_cap :: "cap \<Rightarrow> bool"
+where
+  "is_thread_cap (ThreadCap _) = True"
+| "is_thread_cap _             = False"<\STATESEP>0<\TRANSEP><\STATESEP>fun is_domain_cap :: "cap \<Rightarrow> bool"
+where
+  "is_domain_cap DomainCap = True"
+| "is_domain_cap _ = False"<\STATESEP>0<\TRANSEP><\STATESEP>fun is_untyped_cap :: "cap \<Rightarrow> bool"
+where
+  "is_untyped_cap (UntypedCap _ _ _ _) = True"
+| "is_untyped_cap _                  = False"<\STATESEP>0<\TRANSEP><\STATESEP>fun is_ep_cap :: "cap \<Rightarrow> bool"
+where
+  "is_ep_cap (EndpointCap _ _ _) = True"
+| "is_ep_cap _                   = False"<\STATESEP>0<\TRANSEP><\STATESEP>fun is_ntfn_cap :: "cap \<Rightarrow> bool"
+where
+  "is_ntfn_cap (NotificationCap _ _ _) = True"
+| "is_ntfn_cap _                        = False"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  cap_rights :: "cap \<Rightarrow> cap_rights"
+where
+  "cap_rights (EndpointCap _ _ cr) = cr"
+| "cap_rights (NotificationCap _ _ cr) = cr"
+| "cap_rights (ReplyCap _ _ cr) = cr"
+| "cap_rights (ArchObjectCap acap) = acap_rights acap"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_rights_update :: "cap_rights \<Rightarrow> cap \<Rightarrow> cap" where
+  "cap_rights_update cr' cap \<equiv>
+   case cap of
+     EndpointCap oref badge cr \<Rightarrow> EndpointCap oref badge cr'
+   | NotificationCap oref badge cr
+     \<Rightarrow> NotificationCap oref badge (cr' - {AllowGrant, AllowGrantReply})
+   | ReplyCap t m cr \<Rightarrow> ReplyCap t m (cr' - {AllowRead, AllowGrantReply} \<union> {AllowWrite})
+   | ArchObjectCap acap \<Rightarrow> ArchObjectCap (acap_rights_update cr' acap)
+   | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  badge_update :: "badge \<Rightarrow> cap \<Rightarrow> cap" where
+  "badge_update data cap \<equiv>
+   case cap of
+     EndpointCap oref badge cr \<Rightarrow> EndpointCap oref (data && mask badge_bits) cr
+   | NotificationCap oref badge cr \<Rightarrow> NotificationCap oref (data && mask badge_bits) cr
+   | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  mask_cap :: "cap_rights \<Rightarrow> cap \<Rightarrow> cap" where
+  "mask_cap rights cap \<equiv> cap_rights_update (cap_rights cap \<inter> rights) cap"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Message Info\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype message_info =
+  MI (mi_length: length_type)
+     (mi_extra_caps: length_type)
+     (mi_caps_unwrapped: data)
+     (mi_label: msg_label)<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  message_info_to_data :: "message_info \<Rightarrow> data"
+where
+  "message_info_to_data (MI len exc unw mlabel) =
+   (let
+        extra = exc << 7;
+        unwrapped = unw << 9;
+        label = mlabel << 12
+    in
+       label || extra || unwrapped || len)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  data_to_message_info :: "data \<Rightarrow> message_info"
+where
+  "data_to_message_info w \<equiv>
+   MI (let v = w && mask 7 in if v > 120 then 120 else v)
+      ((w >> 7) && mask 2)
+      ((w >> 9) && mask 3)
+      ((w >> 12) && mask msg_label_bits)"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Kernel Objects\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype endpoint
+           = IdleEP
+           | SendEP "obj_ref list"
+           | RecvEP "obj_ref list"<\STATESEP>0<\TRANSEP><\STATESEP>datatype ntfn
+           = IdleNtfn
+           | WaitingNtfn "obj_ref list"
+           | ActiveNtfn badge<\STATESEP>0<\TRANSEP><\STATESEP>record notification =
+  ntfn_obj :: ntfn
+  ntfn_bound_tcb :: "obj_ref option"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  default_ep :: endpoint where
+  "default_ep \<equiv> IdleEP"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  default_ntfn :: ntfn where
+  "default_ntfn \<equiv> IdleNtfn"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  default_notification :: notification where
+  "default_notification \<equiv> \<lparr>
+     ntfn_obj = default_ntfn,
+     ntfn_bound_tcb = None \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>record sender_payload =
+ sender_badge           :: badge
+ sender_can_grant       :: bool
+ sender_can_grant_reply :: bool
+ sender_is_call         :: bool<\STATESEP>0<\TRANSEP><\STATESEP>record receiver_payload =
+ receiver_can_grant :: bool<\STATESEP>0<\TRANSEP><\STATESEP>datatype thread_state
+  = Running
+  | Inactive
+  | Restart
+  | BlockedOnReceive obj_ref receiver_payload
+  | BlockedOnSend obj_ref sender_payload
+  | BlockedOnReply
+  | BlockedOnNotification obj_ref
+  | IdleThreadState<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym priority = word8<\STATESEP>0<\TRANSEP><\STATESEP>record tcb =
+ tcb_ctable        :: cap
+ tcb_vtable        :: cap
+ tcb_reply         :: cap
+ tcb_caller        :: cap
+ tcb_ipcframe      :: cap
+ tcb_state         :: thread_state
+ tcb_fault_handler :: cap_ref
+ tcb_ipc_buffer    :: vspace_ref
+ tcb_fault         :: "fault option"
+ tcb_bound_notification     :: "obj_ref option"
+ tcb_mcpriority    :: priority
+ tcb_arch          :: arch_tcb<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  runnable :: "Structures_A.thread_state \<Rightarrow> bool"
+where
+  "runnable (Running)               = True"
+| "runnable (Inactive)              = False"
+| "runnable (Restart)               = True"
+| "runnable (BlockedOnReceive x y)  = False"
+| "runnable (BlockedOnSend x y)     = False"
+| "runnable (BlockedOnNotification x) = False"
+| "runnable (IdleThreadState)       = False"
+| "runnable (BlockedOnReply)        = False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  default_tcb :: tcb where
+  "default_tcb \<equiv> \<lparr>
+      tcb_ctable   = NullCap,
+      tcb_vtable   = NullCap,
+      tcb_reply    = NullCap,
+      tcb_caller   = NullCap,
+      tcb_ipcframe = NullCap,
+      tcb_state    = Inactive,
+      tcb_fault_handler = to_bl (0::machine_word),
+      tcb_ipc_buffer = 0,
+      tcb_fault      = None,
+      tcb_bound_notification  = None,
+      tcb_mcpriority = minBound,
+      tcb_arch       = default_arch_tcb\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>datatype kernel_object
+         = CNode nat cnode_contents \<comment> \<open>size in bits, and contents\<close>
+         | TCB tcb
+         | Endpoint endpoint
+         | Notification notification
+         | ArchObj (the_arch_obj: arch_kernel_obj)<\STATESEP>0<\TRANSEP><\STATESEP>lemmas kernel_object_cases =
+  kernel_object.induct[where kernel_object=x and P="\<lambda>x'. x = x' \<longrightarrow> P x'" for x P, simplified, rule_format]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas kernel_object_cases_asm =
+kernel_object.induct[where kernel_object=x and P="\<lambda>x'. x = x' \<longrightarrow> P x' \<longrightarrow> R" for P R x,
+  simplified, rule_format, rotated -1]<\STATESEP>0<\TRANSEP><\STATESEP>definition aobj_of :: "kernel_object \<Rightarrow> arch_kernel_obj option"
+  where
+  "aobj_of ko \<equiv> case ko of ArchObj aobj \<Rightarrow> Some aobj | _ \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  well_formed_cnode_n :: "nat \<Rightarrow> cnode_contents \<Rightarrow> bool" where
+ "well_formed_cnode_n n \<equiv> \<lambda>cs. dom cs = {x. length x = n}"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  obj_bits :: "kernel_object \<Rightarrow> nat"
+where
+  "obj_bits (CNode sz cs) = cte_level_bits + sz"
+| "obj_bits (TCB t) = tcb_bits"
+| "obj_bits (Endpoint ep) = endpoint_bits"
+| "obj_bits (Notification ntfn) = ntfn_bits"
+| "obj_bits (ArchObj ao) = arch_kobj_size ao"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  obj_size :: "cap \<Rightarrow> machine_word"
+where
+  "obj_size NullCap = 0"
+| "obj_size (UntypedCap dev r bits f) = 1 << bits"
+| "obj_size (EndpointCap r b R) = 1 << obj_bits (Endpoint undefined)"
+| "obj_size (NotificationCap r b R) = 1 << obj_bits (Notification undefined)"
+| "obj_size (CNodeCap r bits g) = 1 << (cte_level_bits + bits)"
+| "obj_size (ThreadCap r) = 1 << obj_bits (TCB undefined)"
+| "obj_size (Zombie r zb n) = (case zb of None \<Rightarrow> 1 << obj_bits (TCB undefined)
+                                        | Some n \<Rightarrow> 1 << (cte_level_bits + n))"
+| "obj_size (ArchObjectCap a) = 1 << arch_obj_size a"<\STATESEP>0<\TRANSEP><\STATESEP>datatype a_type =
+    ATCB
+  | AEndpoint
+  | ANTFN
+  | ACapTable nat
+  | AGarbage nat \<comment> \<open>number of bytes of garbage\<close>
+  | AArch aa_type<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  a_type :: "kernel_object \<Rightarrow> a_type"
+where
+ "a_type ob \<equiv> case ob of
+           CNode sz cspace           \<Rightarrow> if well_formed_cnode_n sz cspace
+                                        then ACapTable sz else AGarbage (cte_level_bits + sz)
+         | TCB tcb                   \<Rightarrow> ATCB
+         | Endpoint endpoint         \<Rightarrow> AEndpoint
+         | Notification notification \<Rightarrow> ANTFN
+         | ArchObj ao                \<Rightarrow> AArch (aa_type ao)"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Kernel State\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym kheap = "obj_ref \<Rightarrow> kernel_object option"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdt = "cslot_ptr \<Rightarrow> cslot_ptr option"<\STATESEP>0<\TRANSEP><\STATESEP>datatype irq_state =
+   IRQInactive
+ | IRQSignal
+ | IRQTimer
+ | IRQReserved<\STATESEP>0<\TRANSEP><\STATESEP>record abstract_state =
+  kheap              :: kheap
+  cdt                :: cdt
+  is_original_cap    :: "cslot_ptr \<Rightarrow> bool"
+  cur_thread         :: obj_ref
+  idle_thread        :: obj_ref
+  machine_state      :: machine_state
+  interrupt_irq_node :: "irq \<Rightarrow> obj_ref"
+  interrupt_states   :: "irq \<Rightarrow> irq_state"
+  arch_state         :: arch_state<\STATESEP>0<\TRANSEP><\STATESEP>record 'a state = abstract_state + exst :: 'a<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Helper functions\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  do_machine_op :: "(machine_state, 'a) nondet_monad \<Rightarrow> ('z state, 'a) nondet_monad"
+where
+ "do_machine_op mop \<equiv> do
+    ms \<leftarrow> gets machine_state;
+    (r, ms') \<leftarrow> select_f (mop ms);
+    modify (\<lambda>state. state \<lparr> machine_state := ms' \<rparr>);
+    return r
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tcb_cnode_index :: "nat \<Rightarrow> cnode_index" where
+  "tcb_cnode_index n \<equiv> to_bl (of_nat n :: 3 word)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  zombie_cte_bits :: "nat option \<Rightarrow> nat" where
+ "zombie_cte_bits N \<equiv> case N of Some n \<Rightarrow> n | None \<Rightarrow> 3"<\STATESEP>0<\TRANSEP><\STATESEP>lemma zombie_cte_bits_simps[simp]:
+ "zombie_cte_bits (Some n) = n"
+ "zombie_cte_bits None     = 3"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. zombie_cte_bits (Some n) = n &&& zombie_cte_bits None = 3<\STATESEP>by (simp add: zombie_cte_bits_def)+<\STATESEP>1<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  first_cslot_of :: "cap \<Rightarrow> cslot_ptr"
+where
+  "first_cslot_of (ThreadCap oref) = (oref, tcb_cnode_index 0)"
+| "first_cslot_of (CNodeCap oref bits g) = (oref, replicate bits False)"
+| "first_cslot_of (Zombie oref bits n) = (oref, replicate (zombie_cte_bits bits) False)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  obj_refs :: "cap \<Rightarrow> obj_ref set"
+where
+  "obj_refs NullCap = {}"
+| "obj_refs (ReplyCap r m cr) = {}"
+| "obj_refs IRQControlCap = {}"
+| "obj_refs (IRQHandlerCap irq) = {}"
+| "obj_refs (UntypedCap dev r s f) = {}"
+| "obj_refs (CNodeCap r bits guard) = {r}"
+| "obj_refs (EndpointCap r b cr) = {r}"
+| "obj_refs (NotificationCap r b cr) = {r}"
+| "obj_refs (ThreadCap r) = {r}"
+| "obj_refs DomainCap = {}"
+| "obj_refs (Zombie ptr b n) = {ptr}"
+| "obj_refs (ArchObjectCap x) = set_option (aobj_ref x)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  obj_ref_of :: "cap \<Rightarrow> obj_ref"
+where
+  "obj_ref_of (UntypedCap dev r s f) = r"
+| "obj_ref_of (ReplyCap r m cr) = r"
+| "obj_ref_of (CNodeCap r bits guard) = r"
+| "obj_ref_of (EndpointCap r b cr) = r"
+| "obj_ref_of (NotificationCap r b cr) = r"
+| "obj_ref_of (ThreadCap r) = r"
+| "obj_ref_of (Zombie ptr b n) = ptr"
+| "obj_ref_of (ArchObjectCap x) = the (aobj_ref x)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  cap_bits_untyped :: "cap \<Rightarrow> nat"
+where
+  "cap_bits_untyped (UntypedCap dev r s f) = s"<\STATESEP>0<\TRANSEP><\STATESEP>definition tcb_cnode_map :: "tcb \<Rightarrow> cnode_index \<Rightarrow> cap option"
+  where
+  "tcb_cnode_map tcb \<equiv>
+   [tcb_cnode_index 0 \<mapsto> tcb_ctable tcb,
+    tcb_cnode_index 1 \<mapsto> tcb_vtable tcb,
+    tcb_cnode_index 2 \<mapsto> tcb_reply tcb,
+    tcb_cnode_index 3 \<mapsto> tcb_caller tcb,
+    tcb_cnode_index 4 \<mapsto> tcb_ipcframe tcb]"<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_of :: "kernel_object \<Rightarrow> cnode_index \<Rightarrow> cap option"
+  where
+  "cap_of kobj \<equiv> case kobj of CNode _ cs \<Rightarrow> cs | TCB tcb \<Rightarrow> tcb_cnode_map tcb | _ \<Rightarrow> Map.empty"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  caps_of :: "kernel_object \<Rightarrow> cap set" where
+  "caps_of kobj \<equiv> ran (cap_of kobj)"<\STATESEP>0<\TRANSEP><\STATESEP>section "Cap transfers"<\STATESEP>0<\TRANSEP><\STATESEP>record captransfer =
+  ct_receive_root :: cap_ref
+  ct_receive_index :: cap_ref
+  ct_receive_depth :: data<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_transfer_data_size :: nat
+  where
+  "cap_transfer_data_size \<equiv> 3"<\STATESEP>0<\TRANSEP><\STATESEP>definition msg_max_length :: nat
+  where
+  "msg_max_length \<equiv> 120"<\STATESEP>0<\TRANSEP><\STATESEP>definition msg_max_extra_caps :: nat
+  where
+  "msg_max_extra_caps \<equiv> 3"<\STATESEP>0<\TRANSEP><\STATESEP>definition max_ipc_length :: nat
+  where
+  "max_ipc_length \<equiv> cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2"<\STATESEP>0<\TRANSEP><\STATESEP>definition msg_align_bits :: nat
+  where
+  "msg_align_bits \<equiv> word_size_bits + (LEAST n. max_ipc_length \<le> 2 ^ n)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma msg_align_bits':
+  "msg_align_bits = word_size_bits + 7"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msg_align_bits = word_size_bits + 7<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. msg_align_bits = word_size_bits + 7<\STATESEP>have "(LEAST n. (cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2) \<le> 2 ^ n) = 7"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (LEAST n. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ n) = 7<\STATESEP>proof (rule Least_equality)<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ 7
+ 2. \<And>y. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y \<Longrightarrow> 7 \<le> y<\STATESEP>show "(cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2)  \<le> 2 ^ 7"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ 7<\STATESEP>by (simp add: cap_transfer_data_size_def msg_max_length_def msg_max_extra_caps_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ 7
+
+goal (1 subgoal):
+ 1. \<And>y. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y \<Longrightarrow> 7 \<le> y<\STATESEP>next<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>y. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y \<Longrightarrow> 7 \<le> y<\STATESEP>fix y<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>y. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y \<Longrightarrow> 7 \<le> y<\STATESEP>assume "(cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2) \<le> 2 ^ y"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y
+
+goal (1 subgoal):
+ 1. \<And>y. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y \<Longrightarrow> 7 \<le> y<\STATESEP>hence "(2 :: nat) ^ 7 \<le> 2 ^ y"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y
+
+goal (1 subgoal):
+ 1. 2 ^ 7 \<le> 2 ^ y<\STATESEP>by (simp add: cap_transfer_data_size_def msg_max_length_def msg_max_extra_caps_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+2 ^ 7 \<le> 2 ^ y
+
+goal (1 subgoal):
+ 1. \<And>y. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ y \<Longrightarrow> 7 \<le> y<\STATESEP>thus "7 \<le> y"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+2 ^ 7 \<le> 2 ^ y
+
+goal (1 subgoal):
+ 1. 7 \<le> y<\STATESEP>by (rule power_le_imp_le_exp [rotated], simp)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+7 \<le> y
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(LEAST n. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ n) = 7
+
+goal (1 subgoal):
+ 1. msg_align_bits = word_size_bits + 7<\STATESEP>thus ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(LEAST n. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ n) = 7
+
+goal (1 subgoal):
+ 1. msg_align_bits = word_size_bits + 7<\STATESEP>unfolding msg_align_bits_def max_ipc_length_def<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+(LEAST n. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ n) = 7
+
+goal (1 subgoal):
+ 1. word_size_bits + (LEAST n. cap_transfer_data_size + msg_max_length + msg_max_extra_caps + 2 \<le> 2 ^ n) = word_size_bits + 7<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+msg_align_bits = word_size_bits + 7
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

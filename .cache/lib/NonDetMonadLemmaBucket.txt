@@ -1,0 +1,121 @@
+<\STATESEP>theory NonDetMonadLemmaBucket
+imports
+  Lib
+  Monads.Nondet_More_VCG
+  Monad_Lists
+  Monads.Nondet_Monad_Equations
+  Monad_Commute
+  Monads.Nondet_No_Fail
+  Monads.Nondet_No_Throw
+  CutMon
+  Oblivious
+  Injection_Handler
+  Monads.Nondet_While_Loop_Rules_Completeness
+  "Word_Lib.Distinct_Prop" (* for distinct_tuple_helper *)
+  Monads.Nondet_Reader_Option
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma distinct_tuple_helper:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. distinct (x # xs rv s)\<rbrace> \<Longrightarrow>
+   \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. distinct (x # (map fst (zip (xs rv s) (ys rv s))))\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. distinct (x # xs rv s)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. distinct (x # map fst (zip (xs rv s) (ys rv s)))\<rbrace><\STATESEP>apply (erule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>rv s. distinct (x # xs rv s) \<Longrightarrow> distinct (x # map fst (zip (xs rv s) (ys rv s)))<\STATESEP>apply (erule distinct_prefix)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>rv s. x # map fst (zip (xs rv s) (ys rv s)) \<le> x # xs rv s<\STATESEP>apply (simp add: map_fst_zip_prefix)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_validE_R_wp:
+  "\<lbrace>\<lambda>s. f s \<noteq> None \<and> isRight (the (f s)) \<and> Q (theRight (the (f s))) s\<rbrace>
+     gets_the f
+   \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s \<noteq> None \<and> isRight (the (f s)) \<and> Q (theRight (the (f s))) s\<rbrace> gets_the f \<lbrace>Q\<rbrace>, -<\STATESEP>apply (simp add: gets_the_def validE_R_def validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<exists>y. f s = Some y) \<and> isRight (the (f s)) \<and> Q (theRight (the (f s))) s\<rbrace> gets f >>= assert_opt \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s\<rbrace><\STATESEP>apply (wp | wpc | simp add: assert_opt_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>y. f s = Some y) \<and> isRight (the (f s)) \<and> Q (theRight (the (f s))) s \<Longrightarrow> case the (f s) of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s<\STATESEP>apply (clarsimp split: split: sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_bindE:
+  "isRight v \<Longrightarrow> return v >>=E f = f (theRight v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. isRight v \<Longrightarrow> return v >>=E f = f (theRight v)<\STATESEP>by (cases v; clarsimp simp: return_returnOk)<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_case_return: (* not in Lib, because "return" is not in scope there *)
+  "(case xs of [] \<Rightarrow> return v | y # ys \<Rightarrow> return (f y ys))
+    = return (case xs of [] \<Rightarrow> v | y # ys \<Rightarrow> f y ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (case xs of [] \<Rightarrow> return v | y # ys \<Rightarrow> return (f y ys)) = return (case xs of [] \<Rightarrow> v | y # ys \<Rightarrow> f y ys)<\STATESEP>by (simp split: list.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_isLeft_theRight_split:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q False rv s\<rbrace>,\<lbrace>\<lambda>e s. \<forall>v. Q True v s\<rbrace> \<Longrightarrow>
+     \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q (isLeft rv) (theRight rv) s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q False\<rbrace>, \<lbrace>\<lambda>e s. \<forall>v. Q True v s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q (isLeft rv) (theRight rv)\<rbrace><\STATESEP>apply (simp add: validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> \<forall>v. Q True v s | Inr r \<Rightarrow> Q False r s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q (isLeft rv) (theRight rv)\<rbrace><\STATESEP>apply (erule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>rv s. case rv of Inl e \<Rightarrow> \<forall>v. Q True v s | Inr r \<Rightarrow> Q False r s \<Longrightarrow> Q (isLeft rv) (theRight rv) s<\STATESEP>apply (simp split: sum.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_inv_wp2:
+  assumes post: "\<And>s. \<lbrakk> I s; V [] s \<rbrakk> \<Longrightarrow> Q s"
+  and     hr: "\<And>a as. suffix (a # as) xs \<Longrightarrow> \<lbrace>\<lambda>s. I s \<and> V (a # as) s\<rbrace> m a \<lbrace>\<lambda>r s. I s \<and> V as s\<rbrace>"
+  shows   "\<lbrace>I and V xs\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>I and V xs\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>proof (induct xs rule: list_induct_suffix)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<lbrace>I and V []\<rbrace> mapM_x m [] \<lbrace>\<lambda>rv. Q\<rbrace>
+ 2. \<And>x xsa. \<lbrakk>\<lbrace>I and V xsa\<rbrace> mapM_x m xsa \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xsa) xs\<rbrakk> \<Longrightarrow> \<lbrace>I and V (x # xsa)\<rbrace> mapM_x m (x # xsa) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (2 subgoals):
+ 1. \<lbrace>I and V []\<rbrace> mapM_x m [] \<lbrace>\<lambda>rv. Q\<rbrace>
+ 2. \<And>x xsa. \<lbrakk>\<lbrace>I and V xsa\<rbrace> mapM_x m xsa \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xsa) xs\<rbrakk> \<Longrightarrow> \<lbrace>I and V (x # xsa)\<rbrace> mapM_x m (x # xsa) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>I and V []\<rbrace> mapM_x m [] \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply (simp add: mapM_x_Nil)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>a. I a \<and> V [] a\<rbrace> return () \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply wp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. I s \<and> V [] s \<Longrightarrow> Q s<\STATESEP>apply (clarsimp intro!: post)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>I and V []\<rbrace> mapM_x m [] \<lbrace>\<lambda>rv. Q\<rbrace>
+
+goal (1 subgoal):
+ 1. \<And>x xsa. \<lbrakk>\<lbrace>I and V xsa\<rbrace> mapM_x m xsa \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xsa) xs\<rbrakk> \<Longrightarrow> \<lbrace>I and V (x # xsa)\<rbrace> mapM_x m (x # xsa) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x xsa. \<lbrakk>\<lbrace>I and V xsa\<rbrace> mapM_x m xsa \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xsa) xs\<rbrakk> \<Longrightarrow> \<lbrace>I and V (x # xsa)\<rbrace> mapM_x m (x # xsa) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>case (Cons x xs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrace>I and V xs\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>
+suffix (x # xs) xs
+
+goal (1 subgoal):
+ 1. \<And>x xsa. \<lbrakk>\<lbrace>I and V xsa\<rbrace> mapM_x m xsa \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xsa) xs\<rbrakk> \<Longrightarrow> \<lbrace>I and V (x # xsa)\<rbrace> mapM_x m (x # xsa) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<lbrace>I and V xs\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>
+suffix (x # xs) xs
+
+goal (1 subgoal):
+ 1. \<lbrace>I and V (x # xs)\<rbrace> mapM_x m (x # xs) \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply (simp add: mapM_x_Cons)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>\<lambda>a. I a \<and> V xs a\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xs) xs\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>a. I a \<and> V (x # xs) a\<rbrace> do y <- m x;
+mapM_x m xs
+od \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply wp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<lbrace>\<lambda>a. I a \<and> V xs a\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xs) xs\<rbrakk> \<Longrightarrow> \<lbrace>?Q2\<rbrace> m x \<lbrace>\<lambda>rv a. I a \<and> V xs a\<rbrace>
+ 2. \<And>s. \<lbrakk>\<lbrace>\<lambda>a. I a \<and> V xs a\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xs) xs; I s \<and> V (x # xs) s\<rbrakk> \<Longrightarrow> ?Q2 s<\STATESEP>apply (wp hr)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<lbrace>\<lambda>a. I a \<and> V xs a\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>; suffix (x # xs) xs; I s \<and> V (x # xs) s\<rbrakk> \<Longrightarrow> I s \<and> V (x # xs) s<\STATESEP>apply assumption<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>I and V (x # xs)\<rbrace> mapM_x m (x # xs) \<lbrace>\<lambda>rv. Q\<rbrace>
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma gets_the_exs_valid_no_ofail:
+  "\<lbrakk>no_ofail P h; ovalid P h Q\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> gets_the h \<exists>\<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>no_ofail P h; \<lblot>P\<rblot> h \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> gets_the h \<exists>\<lbrace>Q\<rbrace><\STATESEP>apply (rule exs_valid_weaken_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>no_ofail P h; \<lblot>P\<rblot> h \<lblot>Q\<rblot>\<rbrakk> \<Longrightarrow> \<lbrace>?P'\<rbrace> gets_the h \<exists>\<lbrace>Q\<rbrace>
+ 2. \<And>s. \<lbrakk>no_ofail P h; \<lblot>P\<rblot> h \<lblot>Q\<rblot>; P s\<rbrakk> \<Longrightarrow> ?P' s<\STATESEP>apply (rule gets_the_exs_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>no_ofail P h; \<lblot>P\<rblot> h \<lblot>Q\<rblot>; P s\<rbrakk> \<Longrightarrow> \<exists>x. h s = Some x \<and> Q x s<\STATESEP>apply (fastforce simp: ovalid_def no_ofail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

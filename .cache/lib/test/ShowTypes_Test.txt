@@ -1,0 +1,50 @@
+<\STATESEP>theory ShowTypes_Test
+imports
+  Lib.ShowTypes
+  CParser.LemmaBucket_C
+  CParser.CTranslation
+begin<\STATESEP>0<\TRANSEP><\STATESEP>experiment
+  (* The point of this test is to confirm that the generic 'show types' feature
+     shows enough type information to fully reconstruct a term; the pointer type
+     feature does something similar so we disable it here. *)
+  notes [[show_ptr_types = false]]
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma c_guard_cast_byte: "c_guard (x :: ('a :: {mem_type}) ptr) \<Longrightarrow> c_guard (ptr_coerce x :: 8 word ptr)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c_guard x \<Longrightarrow> c_guard (ptr_coerce x)<\STATESEP>goal_show_types 0<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c_guard x \<Longrightarrow> c_guard (ptr_coerce x)<\STATESEP>using [[show_sorts]]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c_guard x \<Longrightarrow> c_guard (ptr_coerce x)
+variables:
+x :: 'a ptr
+type variables:
+'a :: mem_type<\STATESEP>goal_show_types 0<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. c_guard x \<Longrightarrow> c_guard (ptr_coerce x)
+variables:
+x :: 'a ptr
+type variables:
+'a :: mem_type<\STATESEP>apply (case_tac x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa::32 word. \<lbrakk>c_guard x; x = Ptr xa\<rbrakk> \<Longrightarrow> c_guard (ptr_coerce x)
+variables:
+x :: 'a ptr
+type variables:
+'a :: mem_type<\STATESEP>apply (fastforce intro!: byte_ptr_guarded simp: c_guard_def dest: c_null_guard)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!
+variables:
+x :: 'a ptr
+type variables:
+'a :: mem_type<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>thm c_guard_cast_byte[where x = "Ptr (ucast (0 :: 8 word))"]<\STATESEP>0<\TRANSEP><\STATESEP>thm_show_types c_guard_cast_byte[where x = "Ptr (ucast (0 :: 8 word))"]<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  let val ctxt = Config.put show_sorts true @{context}
+      (* NB: this test fails if we leave some polymorphism in the term *)
+      val term = @{thm c_guard_cast_byte[where x = "Ptr (ucast (0 :: 8 word)) :: unit ptr"]} |> Thm.prop_of
+      val string_no_types = Syntax.pretty_term ctxt term
+                            |> Pretty.string_of |> YXML.content_of
+      val string_show_types = Show_Types.term_show_types true ctxt term
+
+      val _ = assert (Syntax.read_term ctxt string_no_types <> term) "Show_Types test (baseline)"
+      val _ = assert (Syntax.read_term ctxt string_show_types = term) "Show_Types test"
+  in () end
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

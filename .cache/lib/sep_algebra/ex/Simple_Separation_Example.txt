@@ -1,0 +1,211 @@
+<\STATESEP>chapter "Example from HOL/Hoare/Separation"<\STATESEP>0<\TRANSEP><\STATESEP>theory Simple_Separation_Example
+imports
+  "HOL-Hoare.Hoare_Logic_Abort"
+  Sep_Heap_Instance
+  Sep_Tactics
+begin<\STATESEP>0<\TRANSEP><\STATESEP>declare [[syntax_ambiguity_warning = false]]<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym heap = "(nat \<Rightarrow> nat option)"<\STATESEP>0<\TRANSEP><\STATESEP>definition maps_to:: "nat \<Rightarrow> nat \<Rightarrow> heap \<Rightarrow> bool" ("_ \<mapsto> _" [56,51] 56)
+  where "x \<mapsto> y \<equiv> \<lambda>h. h = [x \<mapsto> y]"<\STATESEP>0<\TRANSEP><\STATESEP>notation pred_ex  (binder "\<exists>" 10)<\STATESEP>0<\TRANSEP><\STATESEP>definition maps_to_ex :: "nat \<Rightarrow> heap \<Rightarrow> bool" ("_ \<mapsto> -" [56] 56)
+  where "x \<mapsto> - \<equiv> \<exists>y. x \<mapsto> y"<\STATESEP>0<\TRANSEP><\STATESEP>lemma maps_to_maps_to_ex [elim!]:
+  "(p \<mapsto> v) s \<Longrightarrow> (p \<mapsto> -) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (p \<mapsto> v) s \<Longrightarrow> (p \<mapsto> -) s<\STATESEP>by (auto simp: maps_to_ex_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma maps_to_write:
+  "(p \<mapsto> - ** P) H \<Longrightarrow> (p \<mapsto> v ** P) (H (p \<mapsto> v))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (p \<mapsto> - \<and>* P) H \<Longrightarrow> (p \<mapsto> v \<and>* P) (H(p \<mapsto> v))<\STATESEP>apply (clarsimp simp: sep_conj_def maps_to_def maps_to_ex_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y xa. \<lbrakk>[p \<mapsto> xa] ## y; H = [p \<mapsto> xa] + y; P y\<rbrakk> \<Longrightarrow> \<exists>ya. [p \<mapsto> v] ## ya \<and> ([p \<mapsto> xa] + y)(p \<mapsto> v) = [p \<mapsto> v] + ya \<and> P ya<\STATESEP>apply (rule_tac x=y in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y xa. \<lbrakk>[p \<mapsto> xa] ## y; H = [p \<mapsto> xa] + y; P y\<rbrakk> \<Longrightarrow> [p \<mapsto> v] ## y \<and> ([p \<mapsto> xa] + y)(p \<mapsto> v) = [p \<mapsto> v] + y \<and> P y<\STATESEP>apply (auto simp: sep_disj_fun_def map_convs map_add_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma points_to:
+  "(p \<mapsto> v ** P) H \<Longrightarrow> the (H p) = v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (p \<mapsto> v \<and>* P) H \<Longrightarrow> the (H p) = v<\STATESEP>by (auto elim!: sep_conjE
+           simp: sep_disj_fun_def maps_to_def map_convs map_add_def
+           split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>primrec
+  list :: "nat \<Rightarrow> nat list \<Rightarrow> heap \<Rightarrow> bool"
+where
+  "list i [] = (\<langle>i=0\<rangle> and \<box>)"
+| "list i (x#xs) = (\<langle>i=x \<and> i\<noteq>0\<rangle> and (EXS j. i \<mapsto> j ** list j xs))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma list_empty [simp]:
+  shows "list 0 xs = (\<lambda>s. xs = [] \<and> \<box> s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. list 0 xs = (\<lambda>s. xs = [] \<and> \<box> s)<\STATESEP>by (cases xs) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma "VARS x y z w h
+ {(x \<mapsto> y ** z \<mapsto> w) h}
+ SKIP
+ {x \<noteq> z}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {(x \<mapsto> y \<and>* z \<mapsto> w) h}
+SKIP
+{x \<noteq> z}<\STATESEP>apply vcg<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y z w h. (x \<mapsto> y \<and>* z \<mapsto> w) h \<Longrightarrow> x \<noteq> z<\STATESEP>apply(auto elim!: sep_conjE simp: maps_to_def sep_disj_fun_def domain_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "VARS H x y z w
+ {(P ** Q) H}
+ SKIP
+ {(Q ** P) H}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {(P \<and>* Q) H}
+SKIP
+{(Q \<and>* P) H}<\STATESEP>apply vcg<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>H x y z w. (P \<and>* Q) H \<Longrightarrow> (Q \<and>* P) H<\STATESEP>apply(simp add: sep_conj_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "VARS H
+ {p\<noteq>0 \<and> (p \<mapsto> - ** list q qs) H}
+ H := H(p \<mapsto> q)
+ {list p (p#qs) H}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {p \<noteq> 0 \<and> (p \<mapsto> - \<and>* list q qs) H}
+H := H(p \<mapsto> q)
+{list p (p # qs) H}<\STATESEP>apply vcg<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>H. p \<noteq> 0 \<and> (p \<mapsto> - \<and>* list q qs) H \<Longrightarrow> list p (p # qs) (H(p \<mapsto> q))<\STATESEP>apply (auto intro: maps_to_write)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "VARS H p q r
+  {(list p Ps ** list q Qs) H}
+  WHILE p \<noteq> 0
+  INV {\<exists>ps qs. (list p ps ** list q qs) H \<and> rev ps @ qs = rev Ps @ Qs}
+  DO r := p; p := the(H p); H := H(r \<mapsto> q); q := r OD
+  {list q (rev Ps @ Qs) H}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {(list p Ps \<and>* list q Qs) H}
+WHILE p \<noteq> 0 INV {\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs}  VAR {0} 
+DO r := p; p := the (H p); H := H(r \<mapsto> q); q := r OD
+{list q (rev Ps @ Qs) H}<\STATESEP>apply vcg<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>H p q r. (list p Ps \<and>* list q Qs) H \<Longrightarrow> \<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> p \<noteq> 0 \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 3. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> p \<noteq> 0 \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q ps qs. \<lbrakk>0 < p; (list p ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (case_tac ps, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q ps qs a lista. \<lbrakk>0 < p; (list p ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs; ps = a # lista\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rename_tac p ps')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q ps qs p ps'. \<lbrakk>0 < pa; (list pa ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs; ps = p # ps'\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list (the (H pa)) ps \<and>* list pa qs) (H(pa \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule_tac x = "ps'" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q ps qs p ps'. \<lbrakk>0 < pa; (list pa ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs; ps = p # ps'\<rbrakk> \<Longrightarrow> \<exists>qs. (list (the (H pa)) ps' \<and>* list pa qs) (H(pa \<mapsto> q)) \<and> rev ps' @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule_tac x = "p # qs" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q ps qs p ps'. \<lbrakk>0 < pa; (list pa ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs; ps = p # ps'\<rbrakk> \<Longrightarrow> (list (the (H pa)) ps' \<and>* list pa (p # qs)) (H(pa \<mapsto> q)) \<and> rev ps' @ p # qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps'. \<lbrakk>0 < pa; ((\<lambda>s. \<exists>x. (pa \<mapsto> x \<and>* list x ps') s) \<and>* list q qs) H; rev ps' @ pa # qs = rev Ps @ Qs\<rbrakk> \<Longrightarrow> (list (the (H pa)) ps' \<and>* (\<lambda>s. \<exists>x. (pa \<mapsto> x \<and>* list x qs) s)) (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (clarsimp simp: sep_conj_exists sep_conj_ac)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* pa \<mapsto> x) H\<rbrakk> \<Longrightarrow> \<exists>x. (list x qs \<and>* pa \<mapsto> x \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule_tac x = "q" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* pa \<mapsto> x) H\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>thm points_to<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* pa \<mapsto> x) H\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (subst (asm) sep_conj_ac)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; ((list x ps' \<and>* pa \<mapsto> x) \<and>* list q qs) H\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (subst (asm) sep_conj_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; ((pa \<mapsto> x \<and>* list x ps') \<and>* list q qs) H\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (simp add: sep_conj_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (frule points_to)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list (the (H pa)) ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list x ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>thm maps_to_write<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> (list q qs \<and>* pa \<mapsto> q \<and>* list x ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (subst sep_conj_assoc[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> ((list q qs \<and>* pa \<mapsto> q) \<and>* list x ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (subst sep_conj_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> ((pa \<mapsto> q \<and>* list q qs) \<and>* list x ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (simp add: sep_conj_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> (pa \<mapsto> q \<and>* list q qs \<and>* list x ps') (H(pa \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule maps_to_write)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> (pa \<mapsto> - \<and>* list q qs \<and>* list x ps') H
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>thm maps_to_maps_to_ex<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; (pa \<mapsto> x \<and>* list x ps' \<and>* list q qs) H; the (H pa) = x\<rbrakk> \<Longrightarrow> (pa \<mapsto> - \<and>* list q qs \<and>* list x ps') H
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (drule sep_conj_impl1[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>H pa q qs ps' x h. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; the (H pa) = x; (pa \<mapsto> x) h\<rbrakk> \<Longrightarrow> ?I62 H pa q qs ps' x h
+ 2. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; the (H pa) = x; (?I62 H pa q qs ps' x \<and>* list x ps' \<and>* list q qs) H\<rbrakk> \<Longrightarrow> (pa \<mapsto> - \<and>* list q qs \<and>* list x ps') H
+ 3. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (erule maps_to_maps_to_ex)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; the (H pa) = x; (pa \<mapsto> - \<and>* list x ps' \<and>* list q qs) H\<rbrakk> \<Longrightarrow> (pa \<mapsto> - \<and>* list q qs \<and>* list x ps') H
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule sep_conj_impl1[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>H pa q qs ps' x. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; the (H pa) = x; (pa \<mapsto> - \<and>* list x ps' \<and>* list q qs) H\<rbrakk> \<Longrightarrow> (?P66 H pa q qs ps' x \<and>* list q qs \<and>* list x ps') H
+ 2. \<And>H pa q qs ps' x h. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; the (H pa) = x; (pa \<mapsto> - \<and>* list x ps' \<and>* list q qs) H; ?P66 H pa q qs ps' x h\<rbrakk> \<Longrightarrow> (pa \<mapsto> -) h
+ 3. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (subst sep_conj_ac, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H pa q qs ps' x h. \<lbrakk>0 < pa; rev ps' @ pa # qs = rev Ps @ Qs; the (H pa) = x; (pa \<mapsto> - \<and>* list x ps' \<and>* list q qs) H; (pa \<mapsto> -) h\<rbrakk> \<Longrightarrow> (pa \<mapsto> -) h
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "VARS H p q r
+  {(list p Ps ** list q Qs) H}
+  WHILE p \<noteq> 0
+  INV {\<exists>ps qs. (list p ps ** list q qs) H \<and> rev ps @ qs = rev Ps @ Qs}
+  DO r := p; p := the(H p); H := H(r \<mapsto> q); q := r OD
+  {list q (rev Ps @ Qs) H}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {(list p Ps \<and>* list q Qs) H}
+WHILE p \<noteq> 0 INV {\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs}  VAR {0} 
+DO r := p; p := the (H p); H := H(r \<mapsto> q); q := r OD
+{list q (rev Ps @ Qs) H}<\STATESEP>apply vcg<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>H p q r. (list p Ps \<and>* list q Qs) H \<Longrightarrow> \<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> p \<noteq> 0 \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 3. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> p \<noteq> 0 \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q ps qs. \<lbrakk>0 < p; (list p ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (case_tac ps, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q ps qs a lista. \<lbrakk>0 < p; (list p ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs; ps = a # lista\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rename_tac p q ps qs p' ps')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q ps qs p' ps'. \<lbrakk>0 < p; (list p ps \<and>* list q qs) H; rev ps @ qs = rev Ps @ Qs; ps = p' # ps'\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list (the (H p)) ps \<and>* list p qs) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (clarsimp simp: sep_conj_exists sep_conj_ac)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list p qs \<and>* list (the (H p)) ps) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (subst points_to, sep_solve)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> \<exists>ps qs. (list p qs \<and>* list x ps) (H(p \<mapsto> q)) \<and> rev ps @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule_tac x = "ps'" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> \<exists>qs. (list p qs \<and>* list x ps') (H(p \<mapsto> q)) \<and> rev ps' @ qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule_tac x = "p # qs" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> (list p (p # qs) \<and>* list x ps') (H(p \<mapsto> q)) \<and> rev ps' @ p # qs = rev Ps @ Qs
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (simp add: sep_conj_exists sep_conj_ac)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> \<exists>xa. (list x ps' \<and>* list xa qs \<and>* p \<mapsto> xa) (H(p \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (rule exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> (list x ps' \<and>* list (?x59 H p q qs ps' x) qs \<and>* p \<mapsto> ?x59 H p q qs ps' x) (H(p \<mapsto> q))
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (sep_rule (direct) maps_to_write) \<comment> \<open>note: demonstrates computation\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>H p q qs ps' x. \<lbrakk>0 < p; rev ps' @ p # qs = rev Ps @ Qs; (list q qs \<and>* list x ps' \<and>* p \<mapsto> x) H\<rbrakk> \<Longrightarrow> (p \<mapsto> - \<and>* list x ps' \<and>* list q qs) H
+ 2. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply (sep_solve add: maps_to_maps_to_ex)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>H p q r. (\<exists>ps qs. (list p ps \<and>* list q qs) H \<and> rev ps @ qs = rev Ps @ Qs) \<and> \<not> p \<noteq> 0 \<Longrightarrow> list q (rev Ps @ Qs) H<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

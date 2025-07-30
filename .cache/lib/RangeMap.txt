@@ -1,0 +1,1181 @@
+<\STATESEP>theory RangeMap
+imports
+  FastMap
+  FP_Eval
+  ML_Utils.MkTermAntiquote
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Preliminaries: generalised lookup lists\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition lookup_upd :: "('k \<Rightarrow> 'l \<Rightarrow> bool) \<Rightarrow> ('l \<Rightarrow> 'k \<times> 'v) \<Rightarrow> 'k \<Rightarrow> 'v \<Rightarrow> ('l \<Rightarrow> 'k \<times> 'v)"
+  where
+  "lookup_upd eq f k v \<equiv> \<lambda>x. if eq k x then (k, v) else f x"<\STATESEP>0<\TRANSEP><\STATESEP>fun lookup_map_of :: "('k \<Rightarrow> 'l \<Rightarrow> bool) \<Rightarrow> ('k \<times> 'v) list \<Rightarrow> ('l \<Rightarrow> ('k \<times> 'v) option)"
+  where
+    "lookup_map_of eq [] = Map.empty"
+  | "lookup_map_of eq ((k, v)#kvs) = (\<lambda>x. if eq k x then Some (k, v) else lookup_map_of eq kvs x)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma map_of_to_lookup_map_of:
+  "map_of kvs = map_option snd o lookup_map_of (=) kvs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. map_of kvs = map_option snd \<circ> lookup_map_of (=) kvs<\STATESEP>by (induct kvs; auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_map_of_Some:
+  "lookup_map_of eq kvs k = Some (k', v') \<Longrightarrow> (k', v') \<in> set kvs \<and> eq k' k"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_of eq kvs k = Some (k', v') \<Longrightarrow> (k', v') \<in> set kvs \<and> eq k' k<\STATESEP>by (induct kvs; fastforce split: if_splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_map_of_None:
+  "lookup_map_of eq kvs k = None \<Longrightarrow> \<forall>(k', v') \<in> set kvs. \<not> eq k' k"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_of eq kvs k = None \<Longrightarrow> \<forall>(k', v')\<in>set kvs. \<not> eq k' k<\STATESEP>by (induct kvs; fastforce split: if_splits)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Distinct ordered pairs of list elements\<close><\STATESEP>0<\TRANSEP><\STATESEP>fun list_pairwise :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a list \<Rightarrow> bool"
+  where
+  "list_pairwise P [] = True"
+| "list_pairwise P (x#xs) = ((\<forall>y \<in> set xs. P x y) \<and> list_pairwise P xs)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma list_pairwise_as_indices:
+  "list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j))<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. list_pairwise P [] = (\<forall>i j. i < j \<and> j < length [] \<longrightarrow> P ([] ! i) ([] ! j))
+ 2. \<And>a xs. list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)) \<Longrightarrow> list_pairwise P (a # xs) = (\<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)) \<Longrightarrow> list_pairwise P (a # xs) = (\<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j))<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); list_pairwise P (a # xs)\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j); i < j; j < Suc (length xs)\<rbrakk> \<Longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply (case_tac "i = 0")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j); i < j; j < Suc (length xs); i = 0\<rbrakk> \<Longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))
+ 2. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j); i < j; j < Suc (length xs); i \<noteq> 0\<rbrakk> \<Longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))
+ 3. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j); i < j; j < Suc (length xs); i \<noteq> 0\<rbrakk> \<Longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j); i < j; j < Suc (length xs); 0 < i\<rbrakk> \<Longrightarrow> P (xs ! (i - Suc 0)) (xs ! (j - Suc 0))
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply (drule_tac x="i - 1" in spec, drule_tac x="j - 1" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; i < j; j < Suc (length xs); 0 < i; i - 1 < j - 1 \<and> j - 1 < length xs \<longrightarrow> P (xs ! (i - 1)) (xs ! (j - 1))\<rbrakk> \<Longrightarrow> P (xs ! (i - Suc 0)) (xs ! (j - Suc 0))
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs; \<forall>x\<in>set xs. P a x; i < j; j < Suc (length xs); 0 < i; i - Suc 0 < j - Suc 0 \<and> j - Suc 0 < length xs \<longrightarrow> P (xs ! (i - Suc 0)) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> P (xs ! (i - Suc 0)) (xs ! (j - Suc 0))
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply linarith<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < length (a # xs) \<longrightarrow> P ((a # xs) ! i) ((a # xs) ! j)\<rbrakk> \<Longrightarrow> list_pairwise P (a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set xs. P a x) \<and> (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j))<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>x\<in>set xs. P a x
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs x. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0)); x \<in> set xs\<rbrakk> \<Longrightarrow> P a x
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply (subst (asm) in_set_conv_nth, erule exE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs x i. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0)); i < length xs \<and> xs ! i = x\<rbrakk> \<Longrightarrow> P a x
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply (rename_tac j)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs x j. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0)); j < length xs \<and> xs ! j = x\<rbrakk> \<Longrightarrow> P a x
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply (drule_tac x="0" in spec, drule_tac x="j + 1" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs x j. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); j < length xs \<and> xs ! j = x; 0 < j + 1 \<and> j + 1 < Suc (length xs) \<longrightarrow> P ((a # xs) ! 0) (xs ! (j + 1 - Suc 0))\<rbrakk> \<Longrightarrow> P a x
+ 2. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0))\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); \<forall>i j. i < j \<and> j < Suc (length xs) \<longrightarrow> P ((a # xs) ! i) (xs ! (j - Suc 0)); i < j; j < length xs\<rbrakk> \<Longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply (drule_tac x="i + 1" in spec, drule_tac x="j + 1" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs i j. \<lbrakk>list_pairwise P xs = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! i) (xs ! j)); i < j; j < length xs; i + 1 < j + 1 \<and> j + 1 < Suc (length xs) \<longrightarrow> P ((a # xs) ! (i + 1)) (xs ! (j + 1 - Suc 0))\<rbrakk> \<Longrightarrow> P (xs ! i) (xs ! j)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_pairwise_snoc:
+  "list_pairwise P (xs @ [x]) = ((\<forall>y \<in> set xs. P y x) \<and> list_pairwise P xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. list_pairwise P (xs @ [x]) = ((\<forall>y\<in>set xs. P y x) \<and> list_pairwise P xs)<\STATESEP>by (induct xs; auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_pairwise_append:
+  "list_pairwise P (xs @ ys) =
+   (list_pairwise P xs \<and> list_pairwise P ys \<and> (\<forall>x \<in> set xs. \<forall>y \<in> set ys. P x y))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. list_pairwise P (xs @ ys) = (list_pairwise P xs \<and> list_pairwise P ys \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set ys. P x y))<\STATESEP>by (induct xs; auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma index_rev_rev_eq:
+  fixes i :: nat and n :: nat
+  shows "i < n \<Longrightarrow> n - (n - i - 1) - 1 = i"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < n \<Longrightarrow> n - (n - i - 1) - 1 = i<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_pairwise_rev:
+  "list_pairwise P (rev xs) = list_pairwise (swp P) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. list_pairwise P (rev xs) = list_pairwise (swp P) xs<\STATESEP>apply (simp add: list_pairwise_as_indices swp_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)) = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i))<\STATESEP>apply (case_tac "xs = []")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xs = [] \<Longrightarrow> (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)) = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i))
+ 2. xs \<noteq> [] \<Longrightarrow> (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)) = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xs \<noteq> [] \<Longrightarrow> (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)) = (\<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i))<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>xs \<noteq> []; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i)
+ 2. \<lbrakk>xs \<noteq> []; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i)\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)<\STATESEP>apply (intro allI impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>i j. \<lbrakk>xs \<noteq> []; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j); i < j \<and> j < length xs\<rbrakk> \<Longrightarrow> P (xs ! j) (xs ! i)
+ 2. \<lbrakk>xs \<noteq> []; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i)\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)<\STATESEP>apply (drule_tac x="length xs - j - 1" in spec, drule_tac x="length xs - i - 1" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>i j. \<lbrakk>xs \<noteq> []; i < j \<and> j < length xs; length xs - j - 1 < length xs - i - 1 \<and> length xs - i - 1 < length xs \<longrightarrow> P (rev xs ! (length xs - j - 1)) (rev xs ! (length xs - i - 1))\<rbrakk> \<Longrightarrow> P (xs ! j) (xs ! i)
+ 2. \<lbrakk>xs \<noteq> []; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i)\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)<\STATESEP>apply (clarsimp simp: rev_nth)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>xs \<noteq> []; \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (xs ! j) (xs ! i)\<rbrakk> \<Longrightarrow> \<forall>i j. i < j \<and> j < length xs \<longrightarrow> P (rev xs ! i) (rev xs ! j)<\STATESEP>apply (clarsimp simp: rev_nth)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_pairwise_imp:
+  "\<lbrakk> \<And>i j. \<lbrakk> i < j; P (xs ! i) (xs ! j) \<rbrakk> \<Longrightarrow> Q (xs ! i) (xs ! j) \<rbrakk> \<Longrightarrow>
+   list_pairwise P xs \<Longrightarrow> list_pairwise Q xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>i j. \<lbrakk>i < j; P (xs ! i) (xs ! j)\<rbrakk> \<Longrightarrow> Q (xs ! i) (xs ! j); list_pairwise P xs\<rbrakk> \<Longrightarrow> list_pairwise Q xs<\STATESEP>by (simp add: list_pairwise_as_indices)<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_pairwise_imp_weak:
+  "\<lbrakk> \<And>x y. \<lbrakk> x \<in> set xs; y \<in> set xs; P x y \<rbrakk> \<Longrightarrow> Q x y \<rbrakk> \<Longrightarrow>
+   list_pairwise P xs \<Longrightarrow> list_pairwise Q xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs; P x y\<rbrakk> \<Longrightarrow> Q x y; list_pairwise P xs\<rbrakk> \<Longrightarrow> list_pairwise Q xs<\STATESEP>by (simp add: list_pairwise_as_indices)<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_pairwise_commute:
+  "symp P \<Longrightarrow> list_pairwise P (xs @ ys) = list_pairwise P (ys @ xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. symp P \<Longrightarrow> list_pairwise P (xs @ ys) = list_pairwise P (ys @ xs)<\STATESEP>by (fastforce simp: list_pairwise_append symp_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Predicate for disjoint keys\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition lookup_map_disjoint_keys :: "('k \<Rightarrow> 'x \<Rightarrow> bool) \<Rightarrow> ('k \<times> 'v) list \<Rightarrow> bool"
+  where
+  "lookup_map_disjoint_keys eq =
+     list_pairwise (\<lambda>(k, _) (k', _). disjnt (Collect (eq k)) (Collect (eq k')))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ran_lookup_map_of:
+  "ran (lookup_map_of eq []) = {}"
+  "ran (lookup_map_of eq ((k, v)#kvs)) =
+     (if Collect (eq k) \<noteq> {} then {(k, v)} else {})
+     \<union> ran (lookup_map_of eq kvs |` Collect (not (eq k)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran (lookup_map_of eq []) = {} &&& ran (lookup_map_of eq ((k, v) # kvs)) = (if Collect (eq k) \<noteq> {} then {(k, v)} else {}) \<union> ran (lookup_map_of eq kvs |` Collect (not eq k))<\STATESEP>by (auto simp: ran_def restrict_map_def pred_neg_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ran_lookup_map_of_disjoint:
+  "ran (lookup_map_of eq []) = {}"
+  "\<forall>(k', v') \<in> set kvs. \<forall>x. eq k x \<longrightarrow> \<not>eq k' x
+   \<Longrightarrow> ran (lookup_map_of eq ((k, v)#kvs)) =
+         (if Collect (eq k) \<noteq> {} then {(k, v)} else {})
+         \<union> ran (lookup_map_of eq kvs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran (lookup_map_of eq []) = {} &&& (\<forall>(k', v')\<in>set kvs. \<forall>x. eq k x \<longrightarrow> \<not> eq k' x \<Longrightarrow> ran (lookup_map_of eq ((k, v) # kvs)) = (if Collect (eq k) \<noteq> {} then {(k, v)} else {}) \<union> ran (lookup_map_of eq kvs))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>(k', v')\<in>set kvs. \<forall>x. eq k x \<longrightarrow> \<not> eq k' x \<Longrightarrow> ran (lookup_map_of eq ((k, v) # kvs)) = (if Collect (eq k) \<noteq> {} then {(k, v)} else {}) \<union> ran (lookup_map_of eq kvs)<\STATESEP>apply (subst ran_lookup_map_of)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>(k', v')\<in>set kvs. \<forall>x. eq k x \<longrightarrow> \<not> eq k' x \<Longrightarrow> (if Collect (eq k) \<noteq> {} then {(k, v)} else {}) \<union> ran (lookup_map_of eq kvs |` Collect (not eq k)) = (if Collect (eq k) \<noteq> {} then {(k, v)} else {}) \<union> ran (lookup_map_of eq kvs)<\STATESEP>apply (clarsimp simp: restrict_map_def pred_neg_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>x\<in>set kvs. case x of (k', v') \<Rightarrow> \<forall>x. eq k x \<longrightarrow> \<not> eq k' x; eq k x\<rbrakk> \<Longrightarrow> insert (k, v) (ran (\<lambda>x. if \<not> eq k x then lookup_map_of eq kvs x else None)) = insert (k, v) (ran (lookup_map_of eq kvs))<\STATESEP>apply (rule arg_cong[where f="insert _"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>x\<in>set kvs. case x of (k', v') \<Rightarrow> \<forall>x. eq k x \<longrightarrow> \<not> eq k' x; eq k x\<rbrakk> \<Longrightarrow> ran (\<lambda>x. if \<not> eq k x then lookup_map_of eq kvs x else None) = ran (lookup_map_of eq kvs)<\STATESEP>apply (force simp: ran_def dest: lookup_map_of_Some)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>locale RangeMap begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Range maps as lookup lists\<close><\STATESEP>0<\TRANSEP><\STATESEP>fun in_range :: "('k::linorder \<times> 'k) \<Rightarrow> 'k \<Rightarrow> bool"
+  where
+  "in_range (start, end) k = (start \<le> k \<and> k < end)"<\STATESEP>0<\TRANSEP><\STATESEP>declare in_range.simps[simp del]<\STATESEP>0<\TRANSEP><\STATESEP>declare in_range.simps[THEN iffD1, dest]<\STATESEP>0<\TRANSEP><\STATESEP>lemma Collect_in_range_atLeastLessThan[simp]:
+  "Collect (in_range r) = {fst r ..< snd r}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Collect (in_range r) = {fst r..<snd r}<\STATESEP>by (cases r; fastforce simp: in_range.simps ord_class.atLeastLessThan_iff)<\STATESEP>1<\TRANSEP><\STATESEP>definition "range_map_of \<equiv> lookup_map_of in_range"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas range_map_of_Some' =
+  lookup_map_of_Some[where eq=in_range, folded range_map_of_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas range_map_of_Some =
+  range_map_of_Some'[where k'="(start', end')" for start' end', simplified in_range.simps]<\STATESEP>0<\TRANSEP><\STATESEP>lemma range_map_of_SomeD:
+  "range_map_of kvs k = Some ((start, end), v) \<Longrightarrow>
+   ((start, end), v) \<in> set kvs \<and> start \<le> k \<and> k < end"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. range_map_of kvs k = Some ((start, end), v) \<Longrightarrow> ((start, end), v) \<in> set kvs \<and> start \<le> k \<and> k < end<\STATESEP>by (fastforce simp: in_range.simps dest: range_map_of_Some')<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Disjoint and monotonic key ranges\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition disjoint_key_ranges :: "(('k::linorder \<times> 'k) \<times> 'v) list \<Rightarrow> bool"
+  where
+  "disjoint_key_ranges = lookup_map_disjoint_keys in_range"<\STATESEP>0<\TRANSEP><\STATESEP>fun monotonic_key_ranges :: "(('k::linorder \<times> 'k) \<times> 'v) list \<Rightarrow> bool"
+  where
+    "monotonic_key_ranges (((start, end), _) # ((start', end'), v') # kvs) =
+       (start \<le> end \<and> end \<le> start' \<and> monotonic_key_ranges (((start', end'), v') # kvs))"
+  | "monotonic_key_ranges [((start, end), _)] = (start \<le> end)"
+  | "monotonic_key_ranges [] = True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma monotonic_key_ranges_alt_def:
+  "monotonic_key_ranges kvs =
+     (list_all (\<lambda>((start, end), _). start \<le> end) kvs
+      \<and> list_pairwise (\<lambda>((start, end), _) ((start', end'), _). end \<le> start') kvs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monotonic_key_ranges kvs = (list_all (\<lambda>((start, end), uu_). start \<le> end) kvs \<and> list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') kvs)<\STATESEP>apply (induct kvs rule: monotonic_key_ranges.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end uu_ start' end' v' kvs. monotonic_key_ranges (((start', end'), v') # kvs) = (list_all (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) b) (((start', end'), v') # kvs) \<and> list_pairwise (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_ a. case a of (a, b) \<Rightarrow> (case a of (start', end') \<Rightarrow> \<lambda>_. end \<le> start') b) b) (((start', end'), v') # kvs)) \<Longrightarrow> monotonic_key_ranges (((start, end), uu_) # ((start', end'), v') # kvs) = (list_all (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) b) (((start, end), uu_) # ((start', end'), v') # kvs) \<and> list_pairwise (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_ a. case a of (a, b) \<Rightarrow> (case a of (start', end') \<Rightarrow> \<lambda>_. end \<le> start') b) b) (((start, end), uu_) # ((start', end'), v') # kvs))
+ 2. \<And>start end uv_. monotonic_key_ranges [((start, end), uv_)] = (list_all (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) b) [((start, end), uv_)] \<and> list_pairwise (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_ a. case a of (a, b) \<Rightarrow> (case a of (start', end') \<Rightarrow> \<lambda>_. end \<le> start') b) b) [((start, end), uv_)])
+ 3. monotonic_key_ranges [] = (list_all (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) b) [] \<and> list_pairwise (\<lambda>a. case a of (a, b) \<Rightarrow> (case a of (start, end) \<Rightarrow> \<lambda>_ a. case a of (a, b) \<Rightarrow> (case a of (start', end') \<Rightarrow> \<lambda>_. end \<le> start') b) b) [])<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monotonic_key_ranges_disjoint:
+  "monotonic_key_ranges kvs \<Longrightarrow> disjoint_key_ranges kvs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monotonic_key_ranges kvs \<Longrightarrow> disjoint_key_ranges kvs<\STATESEP>apply (simp add: monotonic_key_ranges_alt_def
+                   disjoint_key_ranges_def lookup_map_disjoint_keys_def disjnt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. list_all (\<lambda>((start, end), uu_). start \<le> end) kvs \<and> list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') kvs \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). fst k < snd k' \<longrightarrow> fst k' < snd k \<longrightarrow> fst k < snd k \<longrightarrow> \<not> fst k' < snd k') kvs<\STATESEP>apply (induct kvs; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Search trees for ranges\<close><\STATESEP>0<\TRANSEP><\STATESEP>datatype ('k, 'v) RangeTree =
+    Leaf
+  | Node 'k 'k 'v "('k, 'v) RangeTree" "('k, 'v) RangeTree"<\STATESEP>0<\TRANSEP><\STATESEP>primrec lookup_range_tree :: "('k::linorder, 'v) RangeTree \<Rightarrow> 'k \<Rightarrow> (('k \<times> 'k) \<times> 'v) option"
+  where
+    "lookup_range_tree Leaf x = None"
+  | "lookup_range_tree (Node start end v l r) x =
+       (if start \<le> x \<and> x < end then Some ((start, end), v)
+        else if x < start then lookup_range_tree l x
+        else lookup_range_tree r x)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec lookup_range_tree_valid ::
+        "('k::linorder, 'v) RangeTree \<Rightarrow> bool \<times> ('k \<times> 'k) option"
+  where
+    "lookup_range_tree_valid Leaf = (True, None)"
+  | "lookup_range_tree_valid (Node start end v lt rt) =
+       (let (lt_valid, lt_range) = lookup_range_tree_valid lt;
+            (rt_valid, rt_range) = lookup_range_tree_valid rt;
+            lt_low = (case lt_range of None \<Rightarrow> start | Some (low, high) \<Rightarrow> low);
+            rt_high = (case rt_range of None \<Rightarrow> end | Some (low, high) \<Rightarrow> high)
+        in (lt_valid \<and> rt_valid \<and> start \<le> end \<and>
+            (case lt_range of None \<Rightarrow> True | Some (low, high) \<Rightarrow> high \<le> start) \<and>
+            (case rt_range of None \<Rightarrow> True | Some (low, high) \<Rightarrow> end \<le> low),
+            Some (lt_low, rt_high)))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma lookup_range_tree_valid_empty:
+  "lookup_range_tree_valid tree = (True, None) \<Longrightarrow> tree = Leaf"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_range_tree_valid tree = (True, None) \<Longrightarrow> tree = Leaf<\STATESEP>apply (induct tree)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. lookup_range_tree_valid Leaf = (True, None) \<Longrightarrow> Leaf = Leaf
+ 2. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>lookup_range_tree_valid tree1 = (True, None) \<Longrightarrow> tree1 = Leaf; lookup_range_tree_valid tree2 = (True, None) \<Longrightarrow> tree2 = Leaf; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, None)\<rbrakk> \<Longrightarrow> Node x1 x2 x3 tree1 tree2 = Leaf<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>lookup_range_tree_valid tree1 = (True, None) \<Longrightarrow> tree1 = Leaf; lookup_range_tree_valid tree2 = (True, None) \<Longrightarrow> tree2 = Leaf; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, None)\<rbrakk> \<Longrightarrow> Node x1 x2 x3 tree1 tree2 = Leaf<\STATESEP>apply (fastforce split: prod.splits option.splits if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_range_tree_valid_range:
+  "lookup_range_tree_valid tree = (True, Some (low, high)) \<Longrightarrow> low \<le> high"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_range_tree_valid tree = (True, Some (low, high)) \<Longrightarrow> low \<le> high<\STATESEP>apply (induct tree arbitrary: low high)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>low high. lookup_range_tree_valid Leaf = (True, Some (low, high)) \<Longrightarrow> low \<le> high
+ 2. \<And>x1 x2 x3 tree1 tree2 low high. \<lbrakk>\<And>low high. lookup_range_tree_valid tree1 = (True, Some (low, high)) \<Longrightarrow> low \<le> high; \<And>low high. lookup_range_tree_valid tree2 = (True, Some (low, high)) \<Longrightarrow> low \<le> high; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, Some (low, high))\<rbrakk> \<Longrightarrow> low \<le> high<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2 low high. \<lbrakk>\<And>low high. lookup_range_tree_valid tree1 = (True, Some (low, high)) \<Longrightarrow> low \<le> high; \<And>low high. lookup_range_tree_valid tree2 = (True, Some (low, high)) \<Longrightarrow> low \<le> high; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, Some (low, high))\<rbrakk> \<Longrightarrow> low \<le> high<\STATESEP>apply (fastforce split: prod.splits option.splits if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_range_tree_valid_in_range:
+  "lookup_range_tree_valid tree = (True, Some (low, high)) \<Longrightarrow>
+   lookup_range_tree tree k = Some ((start, end), v) \<Longrightarrow>
+   in_range (start, end) k \<and> low \<le> start \<and> end \<le> high"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_range_tree_valid tree = (True, Some (low, high)); lookup_range_tree tree k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high<\STATESEP>apply (induct tree arbitrary: k v low high)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>k v low high. \<lbrakk>lookup_range_tree_valid Leaf = (True, Some (low, high)); lookup_range_tree Leaf k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high
+ 2. \<And>x1 x2 x3 tree1 tree2 k v low high. \<lbrakk>\<And>k v low high. \<lbrakk>lookup_range_tree_valid tree1 = (True, Some (low, high)); lookup_range_tree tree1 k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high; \<And>k v low high. \<lbrakk>lookup_range_tree_valid tree2 = (True, Some (low, high)); lookup_range_tree tree2 k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, Some (low, high)); lookup_range_tree (Node x1 x2 x3 tree1 tree2) k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2 k v low high. \<lbrakk>\<And>k v low high. \<lbrakk>lookup_range_tree_valid tree1 = (True, Some (low, high)); lookup_range_tree tree1 k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high; \<And>k v low high. \<lbrakk>lookup_range_tree_valid tree2 = (True, Some (low, high)); lookup_range_tree tree2 k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, Some (low, high)); lookup_range_tree (Node x1 x2 x3 tree1 tree2) k = Some ((start, end), v)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> low \<le> start \<and> end \<le> high<\STATESEP>apply (fastforce simp: in_range.simps
+                   split: prod.splits option.splits if_split_asm
+                   dest: lookup_range_tree_valid_empty lookup_range_tree_valid_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!
+flex-flex pairs:
+\<lambda>:000 :001 :002 :003 :004 :005. ?x974 :000 :001 :002 :003 :004 :005 True True \<equiv>\<^sup>? \<lambda>:000 :001 :002 :003 :004 :005. ?x957 :000 :001 :002 :003 :004 :005 True True
+\<lambda>:000 :001 :002 :003 :004 :005. ?kb617 :000 :001 :002 :003 :004 :005 True True \<equiv>\<^sup>? \<lambda>:000 :001 :002 :003 :004 :005. ?k600 :000 :001 :002 :003 :004 :005 True True<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_range_tree_valid_in_range_None:
+  "lookup_range_tree_valid tree = (True, Some (low, high)) \<Longrightarrow>
+   \<not> in_range (low, high) k \<Longrightarrow>
+   lookup_range_tree tree k = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_range_tree_valid tree = (True, Some (low, high)); \<not> in_range (low, high) k\<rbrakk> \<Longrightarrow> lookup_range_tree tree k = None<\STATESEP>apply (erule contrapos_np)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_range_tree_valid tree = (True, Some (low, high)); lookup_range_tree tree k \<noteq> None\<rbrakk> \<Longrightarrow> in_range (low, high) k<\STATESEP>apply (fastforce simp: in_range.simps dest: lookup_range_tree_valid_in_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>primrec lookup_range_tree_to_list :: "('k, 'v) RangeTree \<Rightarrow> (('k \<times> 'k) \<times> 'v) list"
+  where
+    "lookup_range_tree_to_list Leaf = []"
+  | "lookup_range_tree_to_list (Node start end v lt rt) =
+        lookup_range_tree_to_list lt @ [((start, end), v)] @ lookup_range_tree_to_list rt"<\STATESEP>0<\TRANSEP><\STATESEP>lemma lookup_range_tree_to_list_range:
+  "lookup_range_tree_valid tree = (True, Some (low, high)) \<Longrightarrow>
+   ((start, end), v) \<in> set (lookup_range_tree_to_list tree) \<Longrightarrow>
+   low \<le> start \<and> start \<le> end \<and> end \<le> high"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_range_tree_valid tree = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list tree)\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high<\STATESEP>apply (induct tree arbitrary: start "end" v low high)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>start end v low high. \<lbrakk>lookup_range_tree_valid Leaf = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list Leaf)\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high
+ 2. \<And>x1 x2 x3 tree1 tree2 start end v low high. \<lbrakk>\<And>start end v low high. \<lbrakk>lookup_range_tree_valid tree1 = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list tree1)\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high; \<And>start end v low high. \<lbrakk>lookup_range_tree_valid tree2 = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list tree2)\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2 start end v low high. \<lbrakk>\<And>start end v low high. \<lbrakk>lookup_range_tree_valid tree1 = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list tree1)\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high; \<And>start end v low high. \<lbrakk>lookup_range_tree_valid tree2 = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list tree2)\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high; lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2) = (True, Some (low, high)); ((start, end), v) \<in> set (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> low \<le> start \<and> start \<le> end \<and> end \<le> high<\STATESEP>apply (fastforce split: prod.splits option.splits if_split_asm
+                   dest: lookup_range_tree_valid_empty lookup_range_tree_valid_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!
+flex-flex pairs:
+\<lambda>:000 :001 :002 :003 :004 :005 :006. ?startb696 :000 :001 :002 :003 :004 :005 :006 True True \<equiv>\<^sup>? \<lambda>:000 :001 :002 :003 :004 :005 :006. ?start678 :000 :001 :002 :003 :004 :005 :006 True True
+\<lambda>:000 :001 :002 :003 :004 :005 :006. ?endb242 :000 :001 :002 :003 :004 :005 :006 True True \<equiv>\<^sup>? \<lambda>:000 :001 :002 :003 :004 :005 :006. ?end227 :000 :001 :002 :003 :004 :005 :006 True True<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma monotonic_ranges_each_valid:
+  "monotonic_key_ranges xs \<Longrightarrow> ((start, end), v) \<in> set xs \<Longrightarrow> start \<le> end"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monotonic_key_ranges xs; ((start, end), v) \<in> set xs\<rbrakk> \<Longrightarrow> start \<le> end<\STATESEP>by (fastforce simp: monotonic_key_ranges_alt_def list_all_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_range_tree_list_monotonic:
+  "fst (lookup_range_tree_valid tree) \<Longrightarrow>
+   monotonic_key_ranges (lookup_range_tree_to_list tree)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (lookup_range_tree_valid tree) \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list tree)<\STATESEP>apply (induct tree)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. fst (lookup_range_tree_valid Leaf) \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list Leaf)
+ 2. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> monotonic_key_ranges (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>apply (clarsimp simp: monotonic_key_ranges_alt_def list_pairwise_append
+                  split: prod.splits option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x1 x2 tree1 tree2 x1a x1b. \<lbrakk>lookup_range_tree_valid tree1 = (True, None); lookup_range_tree_valid tree2 = (True, None); list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree1); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree1); list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree2); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree2); x1a; x1b; x1 \<le> x2\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> x2 \<le> a) \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree1). \<forall>a b. (\<exists>x2. x = ((a, b), x2)) \<longrightarrow> b \<le> x1 \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> b \<le> a))
+ 2. \<And>x1 x2 tree1 tree2 x1a x1b x1c x2d. \<lbrakk>list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree1); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree1); list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree2); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree2); lookup_range_tree_valid tree1 = (True, Some (x1c, x2d)); lookup_range_tree_valid tree2 = (True, None); x1a; x1b; x1 \<le> x2; x2d \<le> x1\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> x2 \<le> a) \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree1). \<forall>a b. (\<exists>x2. x = ((a, b), x2)) \<longrightarrow> b \<le> x1 \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> b \<le> a))
+ 3. \<And>x1 x2 tree1 tree2 x1a x1b x1c x2d. \<lbrakk>list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree1); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree1); list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree2); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree2); lookup_range_tree_valid tree1 = (True, None); lookup_range_tree_valid tree2 = (True, Some (x1c, x2d)); x1a; x1b; x1 \<le> x2; x2 \<le> x1c\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> x2 \<le> a) \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree1). \<forall>a b. (\<exists>x2. x = ((a, b), x2)) \<longrightarrow> b \<le> x1 \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> b \<le> a))
+ 4. \<And>x1 x2 tree1 tree2 x1a x1b x1c x2d x1d x2f. \<lbrakk>list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree1); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree1); list_all (\<lambda>((start, end), uu_). start \<le> end) (lookup_range_tree_to_list tree2); list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') (lookup_range_tree_to_list tree2); lookup_range_tree_valid tree1 = (True, Some (x1d, x2f)); lookup_range_tree_valid tree2 = (True, Some (x1c, x2d)); x1a; x1b; x1 \<le> x2; x2f \<le> x1; x2 \<le> x1c\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> x2 \<le> a) \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree1). \<forall>a b. (\<exists>x2. x = ((a, b), x2)) \<longrightarrow> b \<le> x1 \<and> (\<forall>x\<in>set (lookup_range_tree_to_list tree2). \<forall>a. (\<exists>b x2. x = ((a, b), x2)) \<longrightarrow> b \<le> a))<\STATESEP>apply (fastforce dest: lookup_range_tree_valid_empty lookup_range_tree_to_list_range)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!
+flex-flex pairs:
+\<lambda>:000 :001 :002 :003. ?v371 :000 :001 :002 :003 True True \<equiv>\<^sup>? \<lambda>:000 :001 :002 :003. ?v361 :000 :001 :002 :003 True True<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_map_of_append_to_map_add:
+  "lookup_map_of eq (xs @ ys) = lookup_map_of eq ys ++ lookup_map_of eq xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_of eq (xs @ ys) = lookup_map_of eq ys ++ lookup_map_of eq xs<\STATESEP>unfolding map_add_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_of eq (xs @ ys) = (\<lambda>x. case lookup_map_of eq xs x of None \<Rightarrow> lookup_map_of eq ys x | Some x \<Rightarrow> Some x)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. lookup_map_of eq ([] @ ys) = (\<lambda>x. case lookup_map_of eq [] x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a)
+ 2. \<And>a xs. lookup_map_of eq (xs @ ys) = (\<lambda>x. case lookup_map_of eq xs x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a) \<Longrightarrow> lookup_map_of eq ((a # xs) @ ys) = (\<lambda>x. case lookup_map_of eq (a # xs) x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. lookup_map_of eq (xs @ ys) = (\<lambda>x. case lookup_map_of eq xs x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a) \<Longrightarrow> lookup_map_of eq ((a # xs) @ ys) = (\<lambda>x. case lookup_map_of eq (a # xs) x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs x. lookup_map_of eq (xs @ ys) = (\<lambda>x. case lookup_map_of eq xs x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a) \<Longrightarrow> lookup_map_of eq ((a # xs) @ ys) x = (case lookup_map_of eq (a # xs) x of None \<Rightarrow> lookup_map_of eq ys x | Some a \<Rightarrow> Some a)<\STATESEP>apply (clarsimp split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_map_of_append_cong:
+  "\<lbrakk> lookup_map_of eq xs = lookup_map_of eq xs';
+     lookup_map_of eq ys = lookup_map_of eq ys'
+   \<rbrakk> \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (xs' @ ys')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_map_of eq xs = lookup_map_of eq xs'; lookup_map_of eq ys = lookup_map_of eq ys'\<rbrakk> \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (xs' @ ys')<\STATESEP>by (simp add: lookup_map_of_append_to_map_add)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_map_of_append1_commute:
+  "lookup_map_disjoint_keys eq (xs @ [y]) \<Longrightarrow>
+   lookup_map_of eq (xs @ [y]) = lookup_map_of eq ([y] @ xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_disjoint_keys eq (xs @ [y]) \<Longrightarrow> lookup_map_of eq (xs @ [y]) = lookup_map_of eq ([y] @ xs)<\STATESEP>apply (induct xs arbitrary: y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y. lookup_map_disjoint_keys eq ([] @ [y]) \<Longrightarrow> lookup_map_of eq ([] @ [y]) = lookup_map_of eq ([y] @ [])
+ 2. \<And>a xs y. \<lbrakk>\<And>y. lookup_map_disjoint_keys eq (xs @ [y]) \<Longrightarrow> lookup_map_of eq (xs @ [y]) = lookup_map_of eq ([y] @ xs); lookup_map_disjoint_keys eq ((a # xs) @ [y])\<rbrakk> \<Longrightarrow> lookup_map_of eq ((a # xs) @ [y]) = lookup_map_of eq ([y] @ a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs y. \<lbrakk>\<And>y. lookup_map_disjoint_keys eq (xs @ [y]) \<Longrightarrow> lookup_map_of eq (xs @ [y]) = lookup_map_of eq ([y] @ xs); lookup_map_disjoint_keys eq ((a # xs) @ [y])\<rbrakk> \<Longrightarrow> lookup_map_of eq ((a # xs) @ [y]) = lookup_map_of eq ([y] @ a # xs)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs y x. \<lbrakk>\<And>y. lookup_map_disjoint_keys eq (xs @ [y]) \<Longrightarrow> lookup_map_of eq (xs @ [y]) = lookup_map_of eq ([y] @ xs); lookup_map_disjoint_keys eq ((a # xs) @ [y])\<rbrakk> \<Longrightarrow> lookup_map_of eq ((a # xs) @ [y]) x = lookup_map_of eq ([y] @ a # xs) x<\STATESEP>apply clarify<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b xs aa ba x. \<lbrakk>\<And>a b. lookup_map_disjoint_keys eq (xs @ [(a, b)]) \<Longrightarrow> lookup_map_of eq (xs @ [(a, b)]) = lookup_map_of eq ([(a, b)] @ xs); lookup_map_disjoint_keys eq (((a, b) # xs) @ [(aa, ba)])\<rbrakk> \<Longrightarrow> lookup_map_of eq (((a, b) # xs) @ [(aa, ba)]) x = lookup_map_of eq ([(aa, ba)] @ (a, b) # xs) x<\STATESEP>apply (simp add: disjnt_def lookup_map_disjoint_keys_def flip: Collect_conj_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Cons_to_append:
+  "x # xs = [x] @ xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x # xs = [x] @ xs<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_map_of_append_commute:
+  "lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow>
+   lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs)<\STATESEP>apply (induct xs arbitrary: ys)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ys. lookup_map_disjoint_keys eq ([] @ ys) \<Longrightarrow> lookup_map_of eq ([] @ ys) = lookup_map_of eq (ys @ [])
+ 2. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((a # xs) @ ys) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((a # xs) @ ys) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply (subst Cons_to_append, subst append_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ([a] @ xs @ ys) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply (subst lookup_map_of_append1_commute[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_disjoint_keys eq ((xs @ ys) @ [a])
+ 2. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply (simp only: lookup_map_disjoint_keys_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ((xs @ ys) @ [a])
+ 2. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply (subst list_pairwise_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> symp (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k')))
+ 2. \<And>a xs ys. \<lbrakk>\<And>ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys)
+ 3. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply (fastforce intro: sympI disjnt_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys)
+ 2. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq (ys @ a # xs)<\STATESEP>apply (rule_tac t="lookup_map_of eq (ys @ a # xs)" and s="lookup_map_of eq ((ys @ [a]) @ xs)" in subst)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((ys @ [a]) @ xs) = lookup_map_of eq (ys @ a # xs)
+ 2. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq ((ys @ [a]) @ xs)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. lookup_map_disjoint_keys eq (xs @ ys) \<Longrightarrow> lookup_map_of eq (xs @ ys) = lookup_map_of eq (ys @ xs); lookup_map_disjoint_keys eq ((a # xs) @ ys)\<rbrakk> \<Longrightarrow> lookup_map_of eq ((xs @ ys) @ [a]) = lookup_map_of eq ((ys @ [a]) @ xs)<\STATESEP>apply (subst append_assoc, drule meta_spec, erule meta_mp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. lookup_map_disjoint_keys eq ((a # xs) @ ys) \<Longrightarrow> lookup_map_disjoint_keys eq (xs @ ys @ [a])<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. lookup_map_disjoint_keys eq (a # xs @ ys) \<Longrightarrow> lookup_map_disjoint_keys eq (xs @ ys @ [a])<\STATESEP>apply (subst (asm) Cons_to_append, subst append_assoc[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. lookup_map_disjoint_keys eq ([a] @ xs @ ys) \<Longrightarrow> lookup_map_disjoint_keys eq ((xs @ ys) @ [a])<\STATESEP>apply (simp only: lookup_map_disjoint_keys_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys) \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ((xs @ ys) @ [a])<\STATESEP>apply (subst list_pairwise_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys) \<Longrightarrow> symp (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k')))
+ 2. \<And>a xs ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys) \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys)<\STATESEP>apply (fastforce intro: sympI disjnt_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys) \<Longrightarrow> list_pairwise (\<lambda>(k, uu_) (k', uu_). disjnt (Collect (eq k)) (Collect (eq k'))) ([a] @ xs @ ys)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_alt_cond:
+  "\<lbrakk>\<And>x. g x \<noteq> None \<Longrightarrow> \<not> cond x; \<And>x. f x \<noteq> None \<Longrightarrow> cond x\<rbrakk> \<Longrightarrow>
+   f ++ g = (\<lambda>x. if cond x then f x else g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. g x \<noteq> None \<Longrightarrow> \<not> cond x; \<And>x. f x \<noteq> None \<Longrightarrow> cond x\<rbrakk> \<Longrightarrow> f ++ g = (\<lambda>x. if cond x then f x else g x)<\STATESEP>by (fastforce simp: map_add_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_alt_cond':
+  "\<lbrakk>\<And>x. f x \<noteq> None \<Longrightarrow> \<not> cond x; \<And>x. g x \<noteq> None \<Longrightarrow> cond x\<rbrakk> \<Longrightarrow>
+   f ++ g = (\<lambda>x. if cond x then g x else f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. f x \<noteq> None \<Longrightarrow> \<not> cond x; \<And>x. g x \<noteq> None \<Longrightarrow> cond x\<rbrakk> \<Longrightarrow> f ++ g = (\<lambda>x. if cond x then g x else f x)<\STATESEP>by (fastforce simp: map_add_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fst_lookup_range_tree_validD:
+  "fst (lookup_range_tree_valid (Node start end v l r)) \<Longrightarrow>
+   fst (lookup_range_tree_valid l) \<and> fst (lookup_range_tree_valid r)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (lookup_range_tree_valid (Node start end v l r)) \<Longrightarrow> fst (lookup_range_tree_valid l) \<and> fst (lookup_range_tree_valid r)<\STATESEP>by (simp split: option.splits prod.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_range_tree_Some:
+  "lookup_range_tree tree k = Some ((start, end), v) \<Longrightarrow>
+   fst (lookup_range_tree_valid tree) \<Longrightarrow>
+   in_range (start, end) k
+   \<and> (\<exists>low high. lookup_range_tree_valid tree = (True, Some (low, high))
+                  \<and> low \<le> start \<and> end \<le> high)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_range_tree tree k = Some ((start, end), v); fst (lookup_range_tree_valid tree)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> (\<exists>low high. lookup_range_tree_valid tree = (True, Some (low, high)) \<and> low \<le> start \<and> end \<le> high)<\STATESEP>apply (cases "lookup_range_tree_valid tree")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>lookup_range_tree tree k = Some ((start, end), v); fst (lookup_range_tree_valid tree); lookup_range_tree_valid tree = (a, b)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> (\<exists>low high. lookup_range_tree_valid tree = (True, Some (low, high)) \<and> low \<le> start \<and> end \<le> high)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>lookup_range_tree tree k = Some ((start, end), v); a; lookup_range_tree_valid tree = (True, b)\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> (\<exists>low high. b = Some (low, high) \<and> low \<le> start \<and> end \<le> high)<\STATESEP>apply (rename_tac r, case_tac r)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a r. \<lbrakk>lookup_range_tree tree k = Some ((start, end), v); a; lookup_range_tree_valid tree = (True, r); r = None\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> (\<exists>low high. r = Some (low, high) \<and> low \<le> start \<and> end \<le> high)
+ 2. \<And>a r aa. \<lbrakk>lookup_range_tree tree k = Some ((start, end), v); a; lookup_range_tree_valid tree = (True, r); r = Some aa\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> (\<exists>low high. r = Some (low, high) \<and> low \<le> start \<and> end \<le> high)<\STATESEP>apply (fastforce dest: lookup_range_tree_valid_empty)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a r aa. \<lbrakk>lookup_range_tree tree k = Some ((start, end), v); a; lookup_range_tree_valid tree = (True, r); r = Some aa\<rbrakk> \<Longrightarrow> in_range (start, end) k \<and> (\<exists>low high. r = Some (low, high) \<and> low \<le> start \<and> end \<le> high)<\STATESEP>apply (fastforce dest: lookup_range_tree_valid_in_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>theorem lookup_range_tree_to_list_of:
+  fixes tree :: "('a::linorder, 'b) RangeTree"
+  shows "fst (lookup_range_tree_valid tree) \<Longrightarrow>
+         lookup_range_tree tree = range_map_of (lookup_range_tree_to_list tree)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (lookup_range_tree_valid tree) \<Longrightarrow> lookup_range_tree tree = range_map_of (lookup_range_tree_to_list tree)<\STATESEP>unfolding range_map_of_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (lookup_range_tree_valid tree) \<Longrightarrow> lookup_range_tree tree = lookup_map_of in_range (lookup_range_tree_to_list tree)<\STATESEP>proof (induct tree)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. fst (lookup_range_tree_valid Leaf) \<Longrightarrow> lookup_range_tree Leaf = lookup_map_of in_range (lookup_range_tree_to_list Leaf)
+ 2. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>case Leaf<\STATESEP>2<\TRANSEP>proof (state)
+this:
+fst (lookup_range_tree_valid Leaf)
+
+goal (2 subgoals):
+ 1. fst (lookup_range_tree_valid Leaf) \<Longrightarrow> lookup_range_tree Leaf = lookup_map_of in_range (lookup_range_tree_to_list Leaf)
+ 2. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_range_tree Leaf = lookup_map_of in_range (lookup_range_tree_to_list Leaf)<\STATESEP>by (fastforce simp: range_map_of_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+lookup_range_tree Leaf = lookup_map_of in_range (lookup_range_tree_to_list Leaf)
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>case (Node start "end" v treeL treeR)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+fst (lookup_range_tree_valid treeL) \<Longrightarrow> lookup_range_tree treeL = lookup_map_of in_range (lookup_range_tree_to_list treeL)
+fst (lookup_range_tree_valid treeR) \<Longrightarrow> lookup_range_tree treeR = lookup_map_of in_range (lookup_range_tree_to_list treeR)
+fst (lookup_range_tree_valid (Node start end v treeL treeR))
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>have valid_children:
+      "fst (lookup_range_tree_valid treeL)"
+      "fst (lookup_range_tree_valid treeR)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (lookup_range_tree_valid treeL) &&& fst (lookup_range_tree_valid treeR)<\STATESEP>using Node.prems fst_lookup_range_tree_validD<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+fst (lookup_range_tree_valid (Node start end v treeL treeR))
+fst (lookup_range_tree_valid (Node ?start ?end ?v ?l ?r)) \<Longrightarrow> fst (lookup_range_tree_valid ?l) \<and> fst (lookup_range_tree_valid ?r)
+
+goal (1 subgoal):
+ 1. fst (lookup_range_tree_valid treeL) &&& fst (lookup_range_tree_valid treeR)<\STATESEP>by auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+fst (lookup_range_tree_valid treeL)
+fst (lookup_range_tree_valid treeR)
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>have eq_children:
+      "lookup_range_tree treeL = lookup_map_of in_range (lookup_range_tree_to_list treeL)"
+      "lookup_range_tree treeR = lookup_map_of in_range (lookup_range_tree_to_list treeR)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_range_tree treeL = lookup_map_of in_range (lookup_range_tree_to_list treeL) &&& lookup_range_tree treeR = lookup_map_of in_range (lookup_range_tree_to_list treeR)<\STATESEP>using Node.hyps valid_children<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+fst (lookup_range_tree_valid treeL) \<Longrightarrow> lookup_range_tree treeL = lookup_map_of in_range (lookup_range_tree_to_list treeL)
+fst (lookup_range_tree_valid treeR) \<Longrightarrow> lookup_range_tree treeR = lookup_map_of in_range (lookup_range_tree_to_list treeR)
+fst (lookup_range_tree_valid treeL)
+fst (lookup_range_tree_valid treeR)
+
+goal (1 subgoal):
+ 1. lookup_range_tree treeL = lookup_map_of in_range (lookup_range_tree_to_list treeL) &&& lookup_range_tree treeR = lookup_map_of in_range (lookup_range_tree_to_list treeR)<\STATESEP>by auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+lookup_range_tree treeL = lookup_map_of in_range (lookup_range_tree_to_list treeL)
+lookup_range_tree treeR = lookup_map_of in_range (lookup_range_tree_to_list treeR)
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>have treeL1_disjoint:
+      "lookup_map_disjoint_keys in_range (lookup_range_tree_to_list treeL @ [((start, end), v)])"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_disjoint_keys in_range (lookup_range_tree_to_list treeL @ [((start, end), v)])<\STATESEP>using Node.prems<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+fst (lookup_range_tree_valid (Node start end v treeL treeR))
+
+goal (1 subgoal):
+ 1. lookup_map_disjoint_keys in_range (lookup_range_tree_to_list treeL @ [((start, end), v)])<\STATESEP>by (fastforce dest!: lookup_range_tree_list_monotonic monotonic_key_ranges_disjoint
+                    simp: disjoint_key_ranges_def lookup_map_disjoint_keys_def list_pairwise_append)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+lookup_map_disjoint_keys in_range (lookup_range_tree_to_list treeL @ [((start, end), v)])
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+lookup_map_disjoint_keys in_range (lookup_range_tree_to_list treeL @ [((start, end), v)])
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>fix x :: 'a<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>have lookup_list_reorder:
+        "lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x
+         = lookup_map_of in_range
+                         ([((start, end), v)]
+                           @ lookup_range_tree_to_list treeL
+                           @ lookup_range_tree_to_list treeR) x"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x = lookup_map_of in_range ([((start, end), v)] @ lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x<\STATESEP>using lookup_range_tree_to_list.simps(2) append_assoc
+              lookup_map_of_append_commute[OF treeL1_disjoint]
+              lookup_map_of_append_cong[OF _ refl]<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+lookup_range_tree_to_list (Node ?start ?end ?v ?lt ?rt) = lookup_range_tree_to_list ?lt @ [((?start, ?end), ?v)] @ lookup_range_tree_to_list ?rt
+(?xs @ ?ys) @ ?zs = ?xs @ ?ys @ ?zs
+lookup_map_of in_range (lookup_range_tree_to_list treeL @ [((start, end), v)]) = lookup_map_of in_range ([((start, end), v)] @ lookup_range_tree_to_list treeL)
+lookup_map_of ?eq ?xs = lookup_map_of ?eq ?xs' \<Longrightarrow> lookup_map_of ?eq (?xs @ ?ys) = lookup_map_of ?eq (?xs' @ ?ys)
+
+goal (1 subgoal):
+ 1. lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x = lookup_map_of in_range ([((start, end), v)] @ lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x<\STATESEP>by metis<\STATESEP>5<\TRANSEP>proof (state)
+this:
+lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x = lookup_map_of in_range ([((start, end), v)] @ lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>have branch_eq_lookup_append[symmetric]:
+        "lookup_map_of in_range (lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x
+         = (if x < start then lookup_map_of in_range (lookup_range_tree_to_list treeL) x
+                         else lookup_map_of in_range (lookup_range_tree_to_list treeR) x)"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_map_of in_range (lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x = (if x < start then lookup_map_of in_range (lookup_range_tree_to_list treeL) x else lookup_map_of in_range (lookup_range_tree_to_list treeR) x)<\STATESEP>apply (simp only: lookup_map_of_append_to_map_add flip: eq_children)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (lookup_range_tree treeR ++ lookup_range_tree treeL) x = (if x < start then lookup_range_tree treeL x else lookup_range_tree treeR x)<\STATESEP>apply (rule map_add_alt_cond'[THEN fun_cong])<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. lookup_range_tree treeR x \<noteq> None \<Longrightarrow> \<not> x < start
+ 2. \<And>x. lookup_range_tree treeL x \<noteq> None \<Longrightarrow> x < start<\STATESEP>using Node.prems<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+fst (lookup_range_tree_valid (Node start end v treeL treeR))
+
+goal (2 subgoals):
+ 1. \<And>x. lookup_range_tree treeR x \<noteq> None \<Longrightarrow> \<not> x < start
+ 2. \<And>x. lookup_range_tree treeL x \<noteq> None \<Longrightarrow> x < start<\STATESEP>apply (fastforce dest: lookup_range_tree_Some split: prod.splits)+<\STATESEP>5<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>5<\TRANSEP>proof (state)
+this:
+(if x < start then lookup_map_of in_range (lookup_range_tree_to_list treeL) x else lookup_map_of in_range (lookup_range_tree_to_list treeR) x) = lookup_map_of in_range (lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>have case_ext:
+        "lookup_range_tree (Node start end v treeL treeR) x
+         = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_range_tree (Node start end v treeL treeR) x = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x<\STATESEP>apply (simp only: lookup_range_tree.simps
+                          lookup_list_reorder eq_children branch_eq_lookup_append
+                    flip: in_range.simps)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (if in_range (start, end) x then Some ((start, end), v) else lookup_map_of in_range (lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x) = lookup_map_of in_range ([((start, end), v)] @ lookup_range_tree_to_list treeL @ lookup_range_tree_to_list treeR) x<\STATESEP>by (simp only: lookup_map_of.simps append.simps)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+lookup_range_tree (Node start end v treeL treeR) x = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) x
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+lookup_range_tree (Node start end v treeL treeR) ?x2 = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) ?x2
+
+goal (1 subgoal):
+ 1. \<And>x1 x2 x3 tree1 tree2. \<lbrakk>fst (lookup_range_tree_valid tree1) \<Longrightarrow> lookup_range_tree tree1 = lookup_map_of in_range (lookup_range_tree_to_list tree1); fst (lookup_range_tree_valid tree2) \<Longrightarrow> lookup_range_tree tree2 = lookup_map_of in_range (lookup_range_tree_to_list tree2); fst (lookup_range_tree_valid (Node x1 x2 x3 tree1 tree2))\<rbrakk> \<Longrightarrow> lookup_range_tree (Node x1 x2 x3 tree1 tree2) = lookup_map_of in_range (lookup_range_tree_to_list (Node x1 x2 x3 tree1 tree2))<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+lookup_range_tree (Node start end v treeL treeR) ?x2 = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) ?x2<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+lookup_range_tree (Node start end v treeL treeR) ?x2 = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR)) ?x2
+
+goal (1 subgoal):
+ 1. lookup_range_tree (Node start end v treeL treeR) = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR))<\STATESEP>by auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+lookup_range_tree (Node start end v treeL treeR) = lookup_map_of in_range (lookup_range_tree_to_list (Node start end v treeL treeR))
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma lookup_range_tree_to_list_of_gen:
+  "\<lbrakk> fst (lookup_range_tree_valid tree);
+     lookup_range_tree_to_list tree = binds
+   \<rbrakk> \<Longrightarrow> lookup_range_tree tree = range_map_of binds
+         \<and> monotonic_key_ranges binds"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fst (lookup_range_tree_valid tree); lookup_range_tree_to_list tree = binds\<rbrakk> \<Longrightarrow> lookup_range_tree tree = range_map_of binds \<and> monotonic_key_ranges binds<\STATESEP>using lookup_range_tree_to_list_of<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+fst (lookup_range_tree_valid ?tree) \<Longrightarrow> lookup_range_tree ?tree = range_map_of (lookup_range_tree_to_list ?tree)
+
+goal (1 subgoal):
+ 1. \<lbrakk>fst (lookup_range_tree_valid tree); lookup_range_tree_to_list tree = binds\<rbrakk> \<Longrightarrow> lookup_range_tree tree = range_map_of binds \<and> monotonic_key_ranges binds<\STATESEP>apply (fastforce dest: lookup_range_tree_list_monotonic)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Domain and range\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma dom_range_map_of:
+  "dom (range_map_of xs) =
+     Union (set (map (Collect o in_range o fst) xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom (range_map_of xs) = \<Union> (set (map (Collect \<circ> in_range \<circ> fst) xs))<\STATESEP>by (induct xs; fastforce simp: range_map_of_def in_range.simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma Collect_in_range_rewrite:
+  "Collect o in_range o fst = (\<lambda>((start, end), v). {start ..< end})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Collect \<circ> in_range \<circ> fst = (\<lambda>((start, end), v). {start..<end})<\STATESEP>by (fastforce simp: in_range.simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ran_add_if:
+  "\<lbrakk> \<forall>x. P x \<longrightarrow> z x = None \<rbrakk>
+   \<Longrightarrow> ran (\<lambda>x. if P x then y x else z x) = ran (y |` Collect P) \<union> ran z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. P x \<longrightarrow> z x = None \<Longrightarrow> ran (\<lambda>x. if P x then y x else z x) = ran (y |` Collect P) \<union> ran z<\STATESEP>by (auto simp: ran_def restrict_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma atLeastLessThan_union_contiguous:
+  "\<lbrakk>(l::'a::linorder) \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> {l..<m} \<union> {m..<u} = {l..<u}"
+  "\<lbrakk>(l::'a::linorder) \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> ({l..<m} \<union> {m..<u}) \<union> x = {l..<u} \<union> x"
+  "\<lbrakk>(l::'a::linorder) \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> {l..<m} \<union> ({m..<u} \<union> x) = {l..<u} \<union> x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrakk>l \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> {l..<m} \<union> {m..<u} = {l..<u}) &&& (\<lbrakk>l \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> {l..<m} \<union> {m..<u} \<union> x = {l..<u} \<union> x) &&& (\<lbrakk>l \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> {l..<m} \<union> ({m..<u} \<union> x) = {l..<u} \<union> x)<\STATESEP>by (auto simp: ivl_disj_un)<\STATESEP>1<\TRANSEP><\STATESEP>fun combine_contiguous_ranges :: "('a::linorder \<times> 'a) list \<Rightarrow> ('a \<times> 'a) list"
+  where
+    "combine_contiguous_ranges ((start, end) # (start', end') # xs) =
+       (if end = start' then combine_contiguous_ranges ((start, end') # xs) else
+          (start, end) # combine_contiguous_ranges ((start', end') # xs))"
+  | "combine_contiguous_ranges xs = xs"<\STATESEP>0<\TRANSEP><\STATESEP>fun combine_contiguous_ranges_rev :: "('a::linorder \<times> 'a) list \<Rightarrow> ('a \<times> 'a) list"
+  where
+    "combine_contiguous_ranges_rev ((start, end) # xs) =
+       (case combine_contiguous_ranges_rev xs of
+            (start', end') # xs' \<Rightarrow> if end = start' then (start, end') # xs' else
+                                      (start, end) # (start', end') # xs'
+          | [] \<Rightarrow> [(start, end)])"
+  | "combine_contiguous_ranges_rev [] = []"<\STATESEP>0<\TRANSEP><\STATESEP>lemma combine_contiguous_ranges_both:
+  "combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply (induct xs rule: length_induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply (case_tac xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xs. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = []\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs
+ 2. \<And>xs a list. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = a # list\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs a list. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = a # list\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply (rename_tac xs')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs a xs'. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = a # xs'\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply (case_tac xs')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xs a xs'. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = a # xs'; xs' = []\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs
+ 2. \<And>xs a xs' aa list. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = a # xs'; xs' = aa # list\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs a xs' aa list. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> combine_contiguous_ranges ys = combine_contiguous_ranges_rev ys; xs = a # xs'; xs' = aa # list\<rbrakk> \<Longrightarrow> combine_contiguous_ranges xs = combine_contiguous_ranges_rev xs<\STATESEP>apply (clarsimp split: list.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma combine_contiguous_ranges_rev_head_helper:
+  "\<lbrakk> combine_contiguous_ranges_rev ks = ((start', end') # ks_tl');
+     monotonic_key_ranges kvs; ks = map fst kvs; ks = (start, end) # ks_tl
+   \<rbrakk> \<Longrightarrow>
+   start = start' \<and> end \<le> end'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges kvs; ks = map fst kvs; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (induct kvs arbitrary: ks start "end" start' end' ks_tl ks_tl'
+                rule: monotonic_key_ranges.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end uu_ start' end' v' kvs ks starta enda start'a end'a ks_tl ks_tl'. \<lbrakk>\<And>ks start end start'a end'a ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start'a, end'a) # ks_tl'; monotonic_key_ranges (((start', end'), v') # kvs); ks = map fst (((start', end'), v') # kvs); ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start'a \<and> end \<le> end'a; combine_contiguous_ranges_rev ks = (start'a, end'a) # ks_tl'; monotonic_key_ranges (((start, end), uu_) # ((start', end'), v') # kvs); ks = map fst (((start, end), uu_) # ((start', end'), v') # kvs); ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start'a \<and> enda \<le> end'a
+ 2. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 3. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (clarsimp simp del: combine_contiguous_ranges_rev.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end start' end' v' kvs start'a end'a ks_tl'. \<lbrakk>\<And>ks start start'a end'a ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ((start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start = start'; ks = (start', end') # map fst kvs\<rbrakk> \<Longrightarrow> start' = start'a \<and> end' \<le> end'a; combine_contiguous_ranges_rev ((start, end) # (start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start \<le> end; end \<le> start'; monotonic_key_ranges (((start', end'), v') # kvs)\<rbrakk> \<Longrightarrow> start = start'a \<and> end \<le> end'a
+ 2. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 3. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (drule_tac x="(start', end') # map fst kvs" in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end start' end' v' kvs start'a end'a ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ((start, end) # (start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start \<le> end; end \<le> start'; monotonic_key_ranges (((start', end'), v') # kvs); \<And>start start'a end'a ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ((start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start = start'; (start', end') # map fst kvs = (start', end') # map fst kvs\<rbrakk> \<Longrightarrow> start' = start'a \<and> end' \<le> end'a\<rbrakk> \<Longrightarrow> start = start'a \<and> end \<le> end'a
+ 2. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 3. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (drule_tac x="start'" in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end start' end' v' kvs start'a end'a ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ((start, end) # (start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start \<le> end; end \<le> start'; monotonic_key_ranges (((start', end'), v') # kvs); \<And>start'a end'a ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ((start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start' = start'; (start', end') # map fst kvs = (start', end') # map fst kvs\<rbrakk> \<Longrightarrow> start' = start'a \<and> end' \<le> end'a\<rbrakk> \<Longrightarrow> start = start'a \<and> end \<le> end'a
+ 2. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 3. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (clarsimp simp del: combine_contiguous_ranges_rev.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end start' end' v' kvs start'a end'a ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ((start, end) # (start', end') # map fst kvs) = (start'a, end'a) # ks_tl'; start \<le> end; end \<le> start'; monotonic_key_ranges (((start', end'), v') # kvs); \<And>start'a end'a ks_tl'. combine_contiguous_ranges_rev ((start', end') # map fst kvs) = (start'a, end'a) # ks_tl' \<Longrightarrow> start' = start'a \<and> end' \<le> end'a\<rbrakk> \<Longrightarrow> start = start'a \<and> end \<le> end'a
+ 2. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 3. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (simp only: combine_contiguous_ranges_rev.simps(1)[where xs = "_#_"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end start' end' v' kvs start'a end'a ks_tl'. \<lbrakk>(case combine_contiguous_ranges_rev ((start', end') # map fst kvs) of [] \<Rightarrow> [(start, end)] | (start', end') # xs' \<Rightarrow> if end = start' then (start, end') # xs' else (start, end) # (start', end') # xs') = (start'a, end'a) # ks_tl'; start \<le> end; end \<le> start'; monotonic_key_ranges (((start', end'), v') # kvs); \<And>start'a end'a ks_tl'. combine_contiguous_ranges_rev ((start', end') # map fst kvs) = (start'a, end'a) # ks_tl' \<Longrightarrow> start' = start'a \<and> end' \<le> end'a\<rbrakk> \<Longrightarrow> start = start'a \<and> end \<le> end'a
+ 2. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 3. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>apply (fastforce dest: monotonic_ranges_each_valid split: list.splits if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>start end uv_ ks starta enda start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges [((start, end), uv_)]; ks = map fst [((start, end), uv_)]; ks = (starta, enda) # ks_tl\<rbrakk> \<Longrightarrow> starta = start' \<and> enda \<le> end'
+ 2. \<And>ks start end start' end' ks_tl ks_tl'. \<lbrakk>combine_contiguous_ranges_rev ks = (start', end') # ks_tl'; monotonic_key_ranges []; ks = map fst []; ks = (start, end) # ks_tl\<rbrakk> \<Longrightarrow> start = start' \<and> end \<le> end'<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma combine_contiguous_ranges_rev_correct:
+  "monotonic_key_ranges xs \<Longrightarrow>
+   Union (set (map (Collect o in_range o fst) xs))
+    = Union (set (map (Collect o in_range) (combine_contiguous_ranges_rev (map fst xs))))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monotonic_key_ranges xs \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) xs)) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst xs))))<\STATESEP>apply (induct xs rule: monotonic_key_ranges.induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>start end uu_ start' end' v' kvs. \<lbrakk>monotonic_key_ranges (((start', end'), v') # kvs) \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) (((start', end'), v') # kvs))) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst (((start', end'), v') # kvs))))); monotonic_key_ranges (((start, end), uu_) # ((start', end'), v') # kvs)\<rbrakk> \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) (((start, end), uu_) # ((start', end'), v') # kvs))) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst (((start, end), uu_) # ((start', end'), v') # kvs)))))
+ 2. \<And>start end uv_. monotonic_key_ranges [((start, end), uv_)] \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) [((start, end), uv_)])) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst [((start, end), uv_)]))))
+ 3. monotonic_key_ranges [] \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) [])) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst []))))<\STATESEP>subgoal<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monotonic_key_ranges (((start'_, end'_), v'_) # kvs_) \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) (((start'_, end'_), v'_) # kvs_))) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst (((start'_, end'_), v'_) # kvs_))))); monotonic_key_ranges (((start_, end_), uu_) # ((start'_, end'_), v'_) # kvs_)\<rbrakk> \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) (((start_, end_), uu_) # ((start'_, end'_), v'_) # kvs_))) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst (((start_, end_), uu_) # ((start'_, end'_), v'_) # kvs_)))))<\STATESEP>supply combine_contiguous_ranges_rev.simps[simp del]<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>monotonic_key_ranges (((start'_, end'_), v'_) # kvs_) \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) (((start'_, end'_), v'_) # kvs_))) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst (((start'_, end'_), v'_) # kvs_))))); monotonic_key_ranges (((start_, end_), uu_) # ((start'_, end'_), v'_) # kvs_)\<rbrakk> \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) (((start_, end_), uu_) # ((start'_, end'_), v'_) # kvs_))) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst (((start_, end_), uu_) # ((start'_, end'_), v'_) # kvs_)))))<\STATESEP>apply (clarsimp simp: combine_contiguous_ranges_rev.simps(1)[where xs="_#_"]
+                      split: list.splits)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_); combine_contiguous_ranges_rev ((start'_, end'_) # map fst kvs_) = (end_, b) # x22\<rbrakk> \<Longrightarrow> {start_..<end_} \<union> ({end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})) = {start_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})<\STATESEP>apply (drule(1) combine_contiguous_ranges_rev_head_helper)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_)\<rbrakk> \<Longrightarrow> (start'_, end'_) # map fst kvs_ = map fst (((start'_, end'_), v'_) # kvs_)
+ 2. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_)\<rbrakk> \<Longrightarrow> (start'_, end'_) # map fst kvs_ = (?start28 b x22, ?end28 b x22) # ?ks_tl28 b x22
+ 3. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_); ?start28 b x22 = end_ \<and> ?end28 b x22 \<le> b\<rbrakk> \<Longrightarrow> {start_..<end_} \<union> ({end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})) = {start_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})<\STATESEP>apply simp<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_)\<rbrakk> \<Longrightarrow> (start'_, end'_) # map fst kvs_ = (?start28 b x22, ?end28 b x22) # ?ks_tl28 b x22
+ 2. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_); ?start28 b x22 = end_ \<and> ?end28 b x22 \<le> b\<rbrakk> \<Longrightarrow> {start_..<end_} \<union> ({end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})) = {start_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})<\STATESEP>apply (rule refl)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>b x22. \<lbrakk>{start'_..<end'_} \<union> (\<Union>x\<in>set kvs_. {fst (fst x)..<snd (fst x)}) = {end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x}); start_ \<le> end_; end_ \<le> start'_; monotonic_key_ranges (((start'_, end'_), v'_) # kvs_); start'_ = end_ \<and> end'_ \<le> b\<rbrakk> \<Longrightarrow> {start_..<end_} \<union> ({end_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})) = {start_..<b} \<union> (\<Union>x\<in>set x22. {fst x..<snd x})<\STATESEP>apply (fastforce dest: atLeastLessThan_union_contiguous monotonic_ranges_each_valid)<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>start end uv_. monotonic_key_ranges [((start, end), uv_)] \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) [((start, end), uv_)])) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst [((start, end), uv_)]))))
+ 2. monotonic_key_ranges [] \<Longrightarrow> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) [])) = \<Union> (set (map (Collect \<circ> in_range) (combine_contiguous_ranges_rev (map fst []))))<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas combine_contiguous_ranges_correct =
+  combine_contiguous_ranges_rev_correct[folded combine_contiguous_ranges_both]<\STATESEP>0<\TRANSEP><\STATESEP>lemma ran_range_map_of:
+  "\<lbrakk> monotonic_key_ranges xs \<rbrakk> \<Longrightarrow>
+   ran (range_map_of xs) = set (filter (\<lambda>((start, end), v). start < end) xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. monotonic_key_ranges xs \<Longrightarrow> ran (range_map_of xs) = set (filter (\<lambda>((start, end), v). start < end) xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. monotonic_key_ranges [] \<Longrightarrow> ran (range_map_of []) = set (filter (\<lambda>((start, end), v). start < end) [])
+ 2. \<And>a xs. \<lbrakk>monotonic_key_ranges xs \<Longrightarrow> ran (range_map_of xs) = set (filter (\<lambda>((start, end), v). start < end) xs); monotonic_key_ranges (a # xs)\<rbrakk> \<Longrightarrow> ran (range_map_of (a # xs)) = set (filter (\<lambda>((start, end), v). start < end) (a # xs))<\STATESEP>apply (fastforce simp: range_map_of_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>monotonic_key_ranges xs \<Longrightarrow> ran (range_map_of xs) = set (filter (\<lambda>((start, end), v). start < end) xs); monotonic_key_ranges (a # xs)\<rbrakk> \<Longrightarrow> ran (range_map_of (a # xs)) = set (filter (\<lambda>((start, end), v). start < end) (a # xs))<\STATESEP>apply (clarsimp simp: range_map_of_def monotonic_key_ranges_alt_def list_all_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> ran (\<lambda>x. if in_range (a, b) x then Some ((a, b), ba) else lookup_map_of in_range xs x) = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> ran (\<lambda>x. if in_range (b, b) x then Some ((b, b), ba) else lookup_map_of in_range xs x) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>apply (subst ran_add_if)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> \<forall>x. in_range (a, b) x \<longrightarrow> lookup_map_of in_range xs x = None
+ 2. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> ran ((\<lambda>x. Some ((a, b), ba)) |` Collect (in_range (a, b))) \<union> ran (lookup_map_of in_range xs) = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> ran (\<lambda>x. if in_range (b, b) x then Some ((b, b), ba) else lookup_map_of in_range xs x) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>apply (subst not_in_domIff[where f="lookup_map_of _ _"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> \<forall>x. in_range (a, b) x \<longrightarrow> x \<notin> dom (lookup_map_of in_range xs)
+ 2. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> ran ((\<lambda>x. Some ((a, b), ba)) |` Collect (in_range (a, b))) \<union> ran (lookup_map_of in_range xs) = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> ran (\<lambda>x. if in_range (b, b) x then Some ((b, b), ba) else lookup_map_of in_range xs x) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>apply (subst dom_range_map_of[unfolded range_map_of_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> \<forall>x. in_range (a, b) x \<longrightarrow> x \<notin> \<Union> (set (map (Collect \<circ> in_range \<circ> fst) xs))
+ 2. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> ran ((\<lambda>x. Some ((a, b), ba)) |` Collect (in_range (a, b))) \<union> ran (lookup_map_of in_range xs) = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> ran (\<lambda>x. if in_range (b, b) x then Some ((b, b), ba) else lookup_map_of in_range xs x) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>apply (fastforce simp: disjnt_def in_range.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b ba xs. \<lbrakk>ran (lookup_map_of in_range xs) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> ran ((\<lambda>x. Some ((a, b), ba)) |` Collect (in_range (a, b))) \<union> ran (lookup_map_of in_range xs) = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> ran (\<lambda>x. if in_range (b, b) x then Some ((b, b), ba) else lookup_map_of in_range xs x) = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>apply (clarsimp simp: ran_def restrict_map_def in_range.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b ba xs. \<lbrakk>{b. \<exists>a. lookup_map_of in_range xs a = Some b} = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}; a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> {bb. \<exists>aa. (a \<le> aa \<and> aa < b \<longrightarrow> ((a, b), ba) = bb) \<and> a \<le> aa \<and> aa < b} \<union> {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa} = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> {bb. \<exists>a. (b \<le> a \<and> a < b \<longrightarrow> ((b, b), ba) = bb) \<and> ((b \<le> a \<longrightarrow> \<not> a < b) \<longrightarrow> lookup_map_of in_range xs a = Some bb)} = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>apply (drule sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b ba xs. \<lbrakk>a \<le> b; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>_. start \<le> end) xa; \<forall>x\<in>set xs. case x of (x, xa) \<Rightarrow> (case x of (start', end') \<Rightarrow> \<lambda>_. b \<le> start') xa; list_pairwise (\<lambda>((start, end), uu_) ((start', end'), uu_). end \<le> start') xs; {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa} = {b. \<exists>a. lookup_map_of in_range xs a = Some b}\<rbrakk> \<Longrightarrow> (a < b \<longrightarrow> {bb. \<exists>aa. (a \<le> aa \<and> aa < b \<longrightarrow> ((a, b), ba) = bb) \<and> a \<le> aa \<and> aa < b} \<union> {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa} = insert ((a, b), ba) {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa}) \<and> (a = b \<longrightarrow> {bb. \<exists>a. (b \<le> a \<and> a < b \<longrightarrow> ((b, b), ba) = bb) \<and> ((b \<le> a \<longrightarrow> \<not> a < b) \<longrightarrow> lookup_map_of in_range xs a = Some bb)} = {x \<in> set xs. case x of (x, xa) \<Rightarrow> (case x of (start, end) \<Rightarrow> \<lambda>v. start < end) xa})<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Generating lookup rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma lookup_map_of_single:
+  "\<lbrakk> lookup_map_disjoint_keys eq binds;
+     (k, v) \<in> set binds; eq k x \<rbrakk>
+   \<Longrightarrow> lookup_map_of eq binds x = Some (k, v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_map_disjoint_keys eq binds; (k, v) \<in> set binds; eq k x\<rbrakk> \<Longrightarrow> lookup_map_of eq binds x = Some (k, v)<\STATESEP>by (induct binds;
+      fastforce simp: lookup_map_disjoint_keys_def disjnt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_map_of_single':
+  "\<lbrakk> disjoint_key_ranges binds;
+     ((start, end), v) \<in> set binds; in_range (start, end) k \<rbrakk>
+   \<Longrightarrow> range_map_of binds k = Some ((start, end), v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>disjoint_key_ranges binds; ((start, end), v) \<in> set binds; in_range (start, end) k\<rbrakk> \<Longrightarrow> range_map_of binds k = Some ((start, end), v)<\STATESEP>unfolding range_map_of_def disjoint_key_ranges_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>lookup_map_disjoint_keys in_range binds; ((start, end), v) \<in> set binds; in_range (start, end) k\<rbrakk> \<Longrightarrow> lookup_map_of in_range binds k = Some ((start, end), v)<\STATESEP>by (fastforce intro: lookup_map_of_single)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas range_map_of_single = range_map_of_single'[unfolded in_range.simps, OF _ _ conjI]<\STATESEP>0<\TRANSEP><\STATESEP>lemma range_map_of_lookups__gen_all':
+  "\<lbrakk> m = range_map_of binds; disjoint_key_ranges binds \<rbrakk> \<Longrightarrow>
+   list_all (\<lambda>((start, end), v). \<forall>k. in_range (start, end) k = (m k = Some ((start, end), v))) binds"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>m = range_map_of binds; disjoint_key_ranges binds\<rbrakk> \<Longrightarrow> list_all (\<lambda>((start, end), v). \<forall>k. in_range (start, end) k = (m k = Some ((start, end), v))) binds<\STATESEP>by (fastforce simp: list_all_iff intro: range_map_of_single' dest: range_map_of_Some')<\STATESEP>1<\TRANSEP><\STATESEP>lemmas range_map_of_lookups__gen_all =
+  range_map_of_lookups__gen_all'
+    [OF _ monotonic_key_ranges_disjoint, simplified in_range.simps]<\STATESEP>0<\TRANSEP><\STATESEP>lemma range_map_of_start:
+  "\<lbrakk> disjoint_key_ranges binds; ((start, end), v) \<in> set binds; start < end \<rbrakk>
+   \<Longrightarrow> range_map_of binds start = Some ((start, end), v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>disjoint_key_ranges binds; ((start, end), v) \<in> set binds; start < end\<rbrakk> \<Longrightarrow> range_map_of binds start = Some ((start, end), v)<\STATESEP>by (fastforce simp: in_range.simps intro: range_map_of_single)<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_map_of_start_lookups__gen_all':
+  "\<lbrakk> m = range_map_of binds; disjoint_key_ranges binds \<rbrakk> \<Longrightarrow>
+   list_all (\<lambda>((start, end), v). start < end \<longrightarrow> m start = Some ((start, end), v)) binds"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>m = range_map_of binds; disjoint_key_ranges binds\<rbrakk> \<Longrightarrow> list_all (\<lambda>((start, end), v). start < end \<longrightarrow> m start = Some ((start, end), v)) binds<\STATESEP>by (fastforce simp: list_all_iff intro: range_map_of_start)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas range_map_of_start_lookups__gen_all =
+  range_map_of_start_lookups__gen_all'[OF _ monotonic_key_ranges_disjoint]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas list_all_dest = FastMap.list_all_dest<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Setup for automation\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition quote :: "'a \<Rightarrow> 'a"
+  where unquote: "quote x \<equiv> x"<\STATESEP>0<\TRANSEP><\STATESEP>lemma hold_quote:
+  "quote x = quote x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. quote x = quote x<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma spec_FO:
+  "All P \<Longrightarrow> P x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. All P \<Longrightarrow> P x<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>ML_val \<open>@{assert} (not (Thm.eq_thm_prop (@{thm spec}, @{thm spec_FO})))\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma lookup_range_tree_simps':
+  "lookup_range_tree Leaf x = None"
+  "\<lbrakk> start \<le> x; x < end \<rbrakk> \<Longrightarrow>
+     lookup_range_tree (Node start end v l r) x = Some ((start, end), v)"
+  "\<lbrakk> x < start \<rbrakk> \<Longrightarrow>
+     lookup_range_tree (Node start end v l r) x = lookup_range_tree l x"
+  "\<lbrakk> start \<le> end; end \<le> x \<rbrakk> \<Longrightarrow>
+     lookup_range_tree (Node start end v l r) x = lookup_range_tree r x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (lookup_range_tree Leaf x = None &&& (\<lbrakk>start \<le> x; x < end\<rbrakk> \<Longrightarrow> lookup_range_tree (Node start end v l r) x = Some ((start, end), v))) &&& (x < start \<Longrightarrow> lookup_range_tree (Node start end v l r) x = lookup_range_tree l x) &&& (\<lbrakk>start \<le> end; end \<le> x\<rbrakk> \<Longrightarrow> lookup_range_tree (Node start end v l r) x = lookup_range_tree r x)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>declare RangeMap.lookup_range_tree_simps'[simp]<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+structure RangeMap = struct
+
+val $$ = uncurry Thm.apply;
+infix 9 $$;
+
+(* Like "OF", but first order, and resolving thms must not have extra prems *)
+fun FO_OF (thm, []) = thm
+  | FO_OF (thm, res::ress) = let
+      val (prem1, _) = Thm.dest_implies (Thm.cprop_of thm);
+      val inst = Thm.first_order_match (prem1, Thm.cprop_of res);
+      val thm' = Thm.instantiate inst thm;
+      in FO_OF (Thm.implies_elim thm' res, ress) end;
+infix 0 FO_OF;
+
+(* Applies conversion to a whole thm *)
+fun conv_prop conv thm =
+  let val next = conv (Thm.cprop_of thm);
+  in if Thm.is_reflexive next then thm else Thm.equal_elim next thm end;
+
+(* Like HOLogic.mk_list but for cterms *)
+fun mk_list ctxt T = let
+  val Nil = Const (@{const_name Nil}, HOLogic.listT T)
+            |> Thm.cterm_of ctxt;
+  val Cons = Const (@{const_name Cons}, T --> HOLogic.listT T --> HOLogic.listT T)
+             |> Thm.cterm_of ctxt;
+  in fn xs => fold_rev (fn x => fn xs => Cons $$ x $$ xs) xs Nil end;
+
+(* Build RangeTree cterm *)
+fun build_range_tree ctxt kT vT = let
+  val treeT = Type (@{type_name RangeMap.RangeTree}, [kT, vT]);
+  val leaf = Const (@{const_name RangeMap.Leaf}, treeT) |> Thm.cterm_of ctxt;
+  val node = Const (@{const_name RangeMap.Node}, kT-->kT-->vT-->treeT-->treeT-->treeT)
+             |> Thm.cterm_of ctxt;
+  fun build [] = leaf
+    | build kvs = let
+          val (kvs1, ((ks, ke), v) :: kvs2) = chop (length kvs div 2) kvs;
+          in node $$ ks $$ ke $$ v $$ build kvs1 $$ build kvs2
+          end;
+  in build end;
+
+(* Build lookup list cterm *)
+fun build_lookup_list ctxt kT vT = let
+  val key_rangeT = HOLogic.mk_prodT (kT, kT);
+  val key_Pair = Const (@{const_name Pair}, kT --> kT --> key_rangeT)
+                 |> Thm.cterm_of ctxt;
+  val elemT = HOLogic.mk_prodT (key_rangeT, vT);
+  val elem_Pair = Const (@{const_name Pair}, key_rangeT --> vT --> elemT)
+                  |> Thm.cterm_of ctxt;
+  fun elem ((ks, ke), v) = elem_Pair $$ (key_Pair $$ ks $$ ke) $$ v;
+  in mk_list ctxt elemT o map elem end;
+
+(* Quote all keys and values to prevent unwanted rewriting *)
+fun quote_elems ctxt kT vT =
+  let fun quote T = Const (@{const_name RangeMap.quote}, T-->T) |> Thm.cterm_of ctxt;
+  in map (fn ((ks, ke), v) => ((quote kT $$ ks, quote kT $$ ke), quote vT $$ v)) end;
+
+(* Check whether conversion is valid and its result lies in a given list *)
+fun is_conv_to terms (src, conv) =
+      Thm.term_of (Thm.lhs_of conv) aconv Thm.term_of src andalso
+      exists (fn term => Thm.term_of (Thm.rhs_of conv) aconv term) terms;
+
+(* Checking generated lookup rules *)
+fun check_generated_thms desc templates thms =
+      if length thms <> length templates then
+        raise THM ("RangeMap internal error: generated " ^ string_of_int (length thms) ^
+                   " thms for " ^ desc ^ ", but expected " ^ string_of_int (length templates),
+                   0, thms)
+      else case filter (fn (thm, template) => not (Thm.prop_of thm aconv template))
+                       (thms ~~ templates) of
+               [] => ()
+             | bads => raise THM ("RangeMap internal error: wrong format for " ^ desc,
+                                  0, map fst bads);
+
+(* Common FP_Eval configuration. We use hold_quote everywhere to avoid
+   descending into user input terms *)
+fun fp_eval_conv' ctxt rules congs =
+  FP_Eval.eval_conv ctxt (FP_Eval.make_rules rules (congs @ @{thms RangeMap.hold_quote}));
+
+fun unquote_conv ctxt = FP_Eval.eval_conv ctxt (FP_Eval.make_rules @{thms RangeMap.unquote} []);
+val unquote_thm = Conv.fconv_rule o unquote_conv;
+
+(* Helper for targeted beta reduction *)
+fun beta_conversion_thm conv_where =
+      conv_prop (conv_where (Thm.beta_conversion false));
+
+(* Pre-compute key comparison results.
+   This allows us to report errors early and avoid cluttering
+   other proofs with the user-supplied key ordering semantics. *)
+fun compare_keys ctxt kT solver elems =
+  let val but_last = split_last #> fst;
+      val elem_pairs = if null elems then [] else but_last elems ~~ tl elems;
+      val cmpT = kT --> kT --> @{typ bool};
+      val eqT = Thm.cterm_of ctxt (Const (@{const_name HOL.eq}, cmpT));
+      val lessT = Thm.cterm_of ctxt (Const (@{const_name less}, cmpT));
+      val less_eqT = Thm.cterm_of ctxt (Const (@{const_name less_eq}, cmpT));
+
+      (* Monotonicity: required to be True always *)
+      val monotonic_cmps =
+              map (fn ((ks, ke), _) => less_eqT $$ ks $$ ke) elems
+            @ map (fn (((_, ke), _), ((ks', _), _)) => less_eqT $$ ke $$ ks') elem_pairs;
+
+      val monotonic_results = map solver monotonic_cmps;
+      val _ = case filter (not o is_conv_to [@{term True}])
+                          (monotonic_cmps ~~ monotonic_results) of
+                  [] => ()
+                | ((_, bad)::_) =>
+                    raise THM ("RangeMap: failed to solve key constraint", 0, [bad]);
+
+      (* Determine whether ranges are adjacent.
+         Allowed to be False, used for generating compact domain thm. *)
+      val adj_eq_cmps =
+            map (fn (((_, ke), _), ((ks', _), _)) => eqT $$ ke $$ ks') elem_pairs;
+
+      val adj_eq_results = map solver adj_eq_cmps;
+      val _ = case filter (not o is_conv_to [@{term True}, @{term False}])
+                          (adj_eq_cmps ~~ adj_eq_results) of
+                  [] => ()
+                | ((_, bad)::_) =>
+                    raise THM ("RangeMap: failed to solve key constraint", 0, [bad]);
+
+      (* Determine whether each key range is nonempty.
+         Allowed to be False, used for generating range thm. *)
+      val nonempty_cmps =
+              map (fn ((ks, ke), _) => lessT $$ ks $$ ke) elems;
+
+      val nonempty_results = map solver nonempty_cmps;
+      val _ = case filter (not o is_conv_to [@{term True}, @{term False}])
+                          (nonempty_cmps ~~ nonempty_results) of
+                  [] => ()
+                | ((_, bad)::_) =>
+                    raise THM ("RangeMap: failed to solve key range emptyiness", 0, [bad]);
+
+  in (monotonic_results, adj_eq_results, nonempty_results) end;
+
+(*** Generate various theorems and conversions ***)
+
+fun gen__lookup_range_tree_valid ctxt tree_const tree_def key_cmps =
+  let val prop =
+        @{mk_term "Trueprop (fst (RangeMap.lookup_range_tree_valid ?tree))" (tree)} tree_const
+        |> Thm.cterm_of ctxt;
+      val rules = FP_Eval.make_rules
+                    (@{thms RangeMap.lookup_range_tree_valid.simps
+                            simp_thms prod.sel prod.case option.case Let_def if_True if_False}
+                     @ [tree_def] @ key_cmps)
+                    @{thms if_weak_cong FP_Eval.let_weak_cong' option.case_cong_weak
+                           RangeMap.hold_quote};
+  in Goal.init prop
+     |> (FP_Eval.eval_tac ctxt rules 1
+         THEN resolve_tac ctxt @{thms TrueI} 1)
+     |> Seq.hd
+     |> Goal.finish ctxt
+  end;
+
+fun gen__lookup_range_tree_to_list ctxt tree_const tree_def list_const list_def =
+  let val prop =
+        @{mk_term "Trueprop (RangeMap.lookup_range_tree_to_list ?tree = ?list)" (tree, list)}
+          (tree_const, list_const)
+        |> Thm.cterm_of ctxt;
+      val rules = FP_Eval.make_rules
+                    (@{thms RangeMap.lookup_range_tree_to_list.simps append.simps}
+                     @ [list_def, tree_def])
+                    @{thms RangeMap.hold_quote};
+  in Goal.init prop
+     |> (FP_Eval.eval_tac ctxt rules 1
+         THEN resolve_tac ctxt @{thms refl} 1)
+     |> Seq.hd
+     |> Goal.finish ctxt
+  end;
+
+fun gen__range_lookups ctxt tree_list_lookup_eq_thm list_def list_monotonic_thm =
+  (@{thm RangeMap.range_map_of_lookups__gen_all}
+      FO_OF [tree_list_lookup_eq_thm, list_monotonic_thm])
+  |> Conv.fconv_rule (fp_eval_conv' ctxt
+                        (@{thms RangeMap.list_all_dest prod.case} @ [list_def]) [])
+  |> HOLogic.conj_elims ctxt
+  |> map (fn t => (@{thm RangeMap.spec_FO} FO_OF [t])
+                  |> beta_conversion_thm Conv.arg_conv (* beta reduce result of spec thm *))
+  |> map (Conv.fconv_rule (fp_eval_conv' ctxt @{thms RangeMap.in_range.simps} []));
+
+fun expected__range_lookups tree_const elems =
+  elems
+  |> map (fn ((ks, ke), v) =>
+            @{mk_term "Trueprop ((?s \<le> ?x \<and> ?x < ?e)
+                                 = (RangeMap.lookup_range_tree ?tree ?x = Some ((?s, ?e), ?v)))"
+                       (tree, s, e, v)}
+              (tree_const, Thm.term_of ks, Thm.term_of ke, Thm.term_of v));
+
+fun gen__start_lookups ctxt
+      tree_list_lookup_eq_thm list_def list_monotonic_thm key_range_nonempty_thms =
+  (@{thm RangeMap.range_map_of_start_lookups__gen_all}
+      FO_OF [tree_list_lookup_eq_thm, list_monotonic_thm])
+  |> Conv.fconv_rule (fp_eval_conv' ctxt
+                        (@{thms RangeMap.list_all_dest prod.case simp_thms}
+                         @ [list_def] @ key_range_nonempty_thms)
+                        [])
+  |> HOLogic.conj_elims ctxt;
+
+fun expected__start_lookups tree_const elems key_range_nonempty_thms =
+  elems ~~ key_range_nonempty_thms
+  |> filter (fn (_, cmp) => Thm.term_of (Thm.rhs_of cmp) = @{term True})
+  |> map fst
+  |> map (fn ((ks, ke), v) =>
+            @{mk_term "Trueprop (RangeMap.lookup_range_tree ?tree ?s = Some ((?s, ?e), ?v))"
+                       (tree, s, e, v)}
+              (tree_const, Thm.term_of ks, Thm.term_of ke, Thm.term_of v));
+
+fun gen__domain_thm ctxt tree_const tree_list_lookup_eq_thm =
+  @{mk_term "dom (RangeMap.lookup_range_tree ?tree)" (tree)} tree_const
+  |> Thm.cterm_of ctxt
+  |> fp_eval_conv' ctxt ([tree_list_lookup_eq_thm] @ @{thms RangeMap.dom_range_map_of}) [];
+
+fun gen__compact_domain_thm ctxt domain_thm list_def list_monotonic_thm key_adj_equal_thms =
+  domain_thm
+  |> Conv.fconv_rule
+      ((* First, invoke @{const RangeMap.combine_contiguous_ranges} *)
+       (fp_eval_conv' ctxt
+          [(@{thm RangeMap.combine_contiguous_ranges_correct} FO_OF [list_monotonic_thm])] [])
+       then_conv
+       (* Now evaluate combine_contiguous_ranges. We can't expand the
+          lookup list definition before using "combine_contiguous_ranges_correct",
+          so this is split into a subsequent eval step. *)
+       (fp_eval_conv' ctxt
+                ([list_def]
+                 @ @{thms RangeMap.combine_contiguous_ranges.simps prod.case list.map prod.sel
+                          rel_simps simp_thms if_True if_False
+                          RangeMap.Collect_in_range_atLeastLessThan o_apply}
+                 @ key_adj_equal_thms)
+                @{thms if_weak_cong})
+      );
+
+fun gen__range_thm ctxt
+      tree_const tree_list_lookup_eq_thm list_def list_monotonic_thm key_range_nonempty_thms =
+  @{mk_term "ran (RangeMap.lookup_range_tree ?tree)" (tree)} tree_const
+  |> Thm.cterm_of ctxt
+  |> (fp_eval_conv' ctxt
+            ([tree_list_lookup_eq_thm]
+             @ [@{thm RangeMap.ran_range_map_of} FO_OF [list_monotonic_thm]])
+            []
+      then_conv
+      fp_eval_conv' ctxt
+            ([list_def] @ key_range_nonempty_thms
+             @ @{thms filter.simps prod.case simp_thms if_True if_False})
+            @{thms if_weak_cong prod.case_cong_weak}
+      (* if range turns out to contain all elements, collapse back into list *)
+      then_conv
+      fp_eval_conv' ctxt [Thm.symmetric list_def] []
+     );
+
+(*** User interface ***)
+
+(* Choosing names for the const and its theorems. The constant will be named with
+   map_name; Local_Theory.define may also add extra names (e.g. <map_name>_def) *)
+type name_opts = {
+    tree_const: binding,
+    tree_def: binding,
+    list_const: binding,
+    list_def: binding,
+    tree_valid_thm: binding,
+    tree_to_list_thm: binding,
+    tree_list_lookup_eq_thm: binding,
+    list_monotonic_thm: binding,
+    range_lookup_thms: binding,
+    start_lookup_thms: binding,
+    domain_thm: binding,
+    compact_domain_thm: binding,
+    range_thm: binding
+};
+
+fun name_opts_default (base_name: string): name_opts =
+  let val qual = Binding.qualify_name true (Binding.name base_name);
+  in {
+    tree_const = qual "tree",
+    tree_def = Thm.def_binding (qual "tree"),
+    list_const = qual "list",
+    list_def = Thm.def_binding (qual "list"),
+    tree_valid_thm = qual "tree_valid",
+    tree_to_list_thm = qual "tree_to_list",
+    tree_list_lookup_eq_thm = qual "tree_list_lookup_eq",
+    list_monotonic_thm = qual "list_monotonic",
+    range_lookup_thms = qual "lookups",
+    start_lookup_thms = qual "start_lookups",
+    domain_thm = qual "domain",
+    compact_domain_thm = qual "domain_compact",
+    range_thm = qual "range"
+  } end;
+
+(* Top level *)
+fun define_map
+      (name_opts: name_opts)
+      (elems: ((cterm * cterm) * cterm) list)
+      (kT: typ)
+      (vT: typ)
+      (key_cmp_solver: conv)
+      ctxt =
+  let
+    fun msg x = "RangeMap: " ^ Binding.print (#tree_const name_opts) ^ ": " ^ x;
+    val tracing_msg = tracing o msg;
+
+    (* check input types *)
+    val _ = elems
+            |> app (fn ((ks, ke), v) =>
+                  if Thm.typ_of_cterm ks <> kT
+                  then raise TYPE (msg "key has wrong type", [kT], [Thm.term_of ks])
+                  else if Thm.typ_of_cterm ke <> kT
+                  then raise TYPE (msg "key has wrong type", [kT], [Thm.term_of ke])
+                  else if Thm.typ_of_cterm v <> vT
+                  then raise TYPE (msg "value has wrong type", [vT], [Thm.term_of v])
+                  else ());
+
+    (* quote all input keys and values *)
+    val quoted_elems = quote_elems ctxt kT vT elems;
+    (* unquote when computing key comparisons *)
+    val quoted_key_cmp_solver = unquote_conv ctxt then_conv key_cmp_solver;
+
+    (* less verbose "notes"; also unquotes user input *)
+    fun notes ctxt thmss =
+          Local_Theory.notes
+            (map (fn (bind, thms) => ((bind, []), [(map (unquote_thm ctxt) thms, [])])) thmss) ctxt
+          |> snd;
+
+    val _ = tracing_msg "evaluating key comparisons";
+    val start = Timing.start ();
+    val (key_mono_thms, key_adj_eq_thms, key_range_nonempty_thms) =
+           compare_keys ctxt kT quoted_key_cmp_solver quoted_elems;
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+
+    val _ = tracing_msg "defining tree";
+    val start = Timing.start ();
+    val quoted_tree = build_range_tree ctxt kT vT quoted_elems;
+    val unquote_tree_eqn = unquote_conv ctxt quoted_tree;
+    val unquoted_tree = Thm.rhs_of unquote_tree_eqn;
+    val ((tree_const, (_, tree_def)), ctxt) =
+          ctxt |> Local_Theory.define
+              ((#tree_const name_opts, NoSyn),
+               ((#tree_def name_opts, []), Thm.term_of unquoted_tree));
+    val quoted_tree_def = Thm.transitive tree_def (Thm.symmetric unquote_tree_eqn);
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+
+    val _ = tracing_msg "defining lookup list";
+    val start = Timing.start ();
+    val quoted_list = build_lookup_list ctxt kT vT quoted_elems;
+    val unquote_list_eqn = unquote_conv ctxt quoted_list;
+    val unquoted_list = Thm.rhs_of unquote_list_eqn;
+    val ((list_const, (_, list_def)), ctxt) =
+          ctxt |> Local_Theory.define
+              ((#list_const name_opts, NoSyn),
+               ((#list_def name_opts, []), Thm.term_of unquoted_list));
+    val quoted_list_def = Thm.transitive list_def (Thm.symmetric unquote_list_eqn);
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+
+    val _ = tracing_msg "proving tree validity";
+    val start = Timing.start ();
+    val tree_valid_thm =
+          gen__lookup_range_tree_valid ctxt tree_const quoted_tree_def key_mono_thms;
+    val ctxt = notes ctxt
+          [(#tree_valid_thm name_opts, [tree_valid_thm])];
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+
+    val _ = tracing_msg "proving tree and list correspondence";
+    val start = Timing.start ();
+    val tree_to_list_thm =
+          gen__lookup_range_tree_to_list ctxt
+                tree_const quoted_tree_def
+                list_const quoted_list_def;
+    val list_properties =
+          @{thm RangeMap.lookup_range_tree_to_list_of_gen}
+            FO_OF [tree_valid_thm, tree_to_list_thm];
+    val [tree_list_lookup_eq_thm, list_monotonic_thm] =
+          HOLogic.conj_elims ctxt list_properties;
+    val ctxt = notes ctxt
+          [(#tree_to_list_thm name_opts, [tree_to_list_thm]),
+           (#tree_list_lookup_eq_thm name_opts, [tree_list_lookup_eq_thm]),
+           (#list_monotonic_thm name_opts, [list_monotonic_thm])];
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+
+    val _ = tracing_msg "generating lookup rules";
+    val start = Timing.start ();
+    val tree_range_lookups =
+          if null elems then [] else
+          gen__range_lookups ctxt tree_list_lookup_eq_thm quoted_list_def list_monotonic_thm
+          |> tap (check_generated_thms "range lookup rule"
+                    (expected__range_lookups tree_const quoted_elems));
+    val tree_start_lookups =
+          if null elems then [] else
+          gen__start_lookups ctxt
+              tree_list_lookup_eq_thm quoted_list_def list_monotonic_thm key_range_nonempty_thms
+          |> tap (check_generated_thms "start lookup rule"
+                    (expected__start_lookups tree_const quoted_elems key_range_nonempty_thms));
+    val ctxt = notes ctxt
+          [(#range_lookup_thms name_opts, tree_range_lookups),
+           (#start_lookup_thms name_opts, tree_start_lookups)];
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+
+    val _ = tracing_msg "calculating domain and range";
+    val domain_thm = gen__domain_thm ctxt tree_const tree_list_lookup_eq_thm;
+    val compact_domain_thm =
+          gen__compact_domain_thm ctxt
+              domain_thm quoted_list_def list_monotonic_thm key_adj_eq_thms;
+    val domain_thm' = (* remove internal "in_range" *)
+          domain_thm
+          |> Conv.fconv_rule (fp_eval_conv' ctxt @{thms RangeMap.Collect_in_range_rewrite} []);
+    val range_thm =
+          gen__range_thm ctxt tree_const
+              tree_list_lookup_eq_thm quoted_list_def list_monotonic_thm key_range_nonempty_thms;
+    val ctxt = notes ctxt
+          [(#domain_thm name_opts, [domain_thm']),
+           (#compact_domain_thm name_opts, [compact_domain_thm]),
+           (#range_thm name_opts, [range_thm])];
+    val _ = tracing_msg ("done: " ^ Timing.message (Timing.result start));
+  in ctxt end;
+
+end;
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

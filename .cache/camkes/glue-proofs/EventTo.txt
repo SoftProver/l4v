@@ -1,0 +1,232 @@
+<\STATESEP>chapter \<open>Event Receive\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory EventTo imports
+  "CParser.CTranslation"
+  "AutoCorres.AutoCorres"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>declare [[allow_underscore_idents=true]]<\STATESEP>0<\TRANSEP><\STATESEP>external_file "EventTo.c"<\STATESEP>0<\TRANSEP><\STATESEP>install_C_file "EventTo.c"<\STATESEP>0<\TRANSEP><\STATESEP>autocorres [ts_rules = nondet, no_heap_abs = seL4_SetMR] "EventTo.c"<\STATESEP>0<\TRANSEP><\STATESEP>context EventTo begin<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "seL4_MsgMaxLength \<equiv> 120"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  seL4_SetMR_lifted' :: "int \<Rightarrow> word32 \<Rightarrow> lifted_globals \<Rightarrow> (unit \<times> lifted_globals) set \<times> bool"
+where
+  "seL4_SetMR_lifted' i val \<equiv>
+   do
+     ret' \<leftarrow> seL4_GetIPCBuffer';
+     guard (\<lambda>s. i < seL4_MsgMaxLength);
+     guard (\<lambda>s. 0 \<le> i);
+     modify (\<lambda>s. s \<lparr>heap_seL4_IPCBuffer__C :=
+       (heap_seL4_IPCBuffer__C s)(ret' :=
+          msg_C_update (\<lambda>a. Arrays.update a (nat i) val)
+             (heap_seL4_IPCBuffer__C s ret'))
+     \<rparr>)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>locale EventTo_glue = EventTo +
+  assumes seL4_SetMR_axiom: "exec_concrete lift_global_heap (seL4_SetMR' i val) = seL4_SetMR_lifted' i val"
+  assumes swi_safe_to_ignore[simplified, simp]:
+    "asm_semantics_ok_to_ignore TYPE(nat) true (''swi '' @ x)"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  globals_frame_intact :: "lifted_globals \<Rightarrow> bool"
+where
+  "globals_frame_intact s \<equiv> is_valid_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ipc_buffer_valid :: "lifted_globals \<Rightarrow> bool"
+where
+  "ipc_buffer_valid s \<equiv> is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame)))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  setMR :: "lifted_globals \<Rightarrow> nat \<Rightarrow> word32 \<Rightarrow> lifted_globals"
+where
+  "setMR s i v \<equiv>
+      s\<lparr>heap_seL4_IPCBuffer__C := (heap_seL4_IPCBuffer__C s)
+          (heap_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame)) :=
+              msg_C_update (\<lambda>a. Arrays.update a i v)
+                 (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (Ptr (scast seL4_GlobalsFrame)))))\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  setMRs :: "lifted_globals \<Rightarrow> word32 \<Rightarrow> word32 \<Rightarrow>
+             word32 \<Rightarrow> word32 \<Rightarrow> lifted_globals"
+where
+  "setMRs s mr0 mr1 mr2 mr3 \<equiv> setMR (setMR (setMR (setMR s 0 mr0) 1 mr1) 2 mr2) 3 mr3"<\STATESEP>0<\TRANSEP><\STATESEP>lemma seL4_SetMR_wp[wp_unsafe]:
+  notes seL4_SetMR_axiom[simp]
+  shows
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        i \<ge> 0 \<and>
+        i < seL4_MsgMaxLength \<and>
+        (\<forall>x. P x (setMR s (nat i) v))\<rbrace>
+     exec_concrete lift_global_heap (seL4_SetMR' i v)
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> i \<and> i < 120 \<and> (\<forall>x. P x (setMR s (nat i) v))\<rbrace> exec_concrete lift_global_heap (seL4_SetMR' i v) \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_SetMR_lifted'_def seL4_GetIPCBuffer'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> i \<and> i < 120 \<and> P () (setMR s (nat i) v)\<rbrace> do ret' <- do y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)));
+gets (\<lambda>s. heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))
+od;
+y <- guard (\<lambda>s. i < 120);
+y <- guard (\<lambda>s. 0 \<le> i);
+modify (\<lambda>s. s\<lparr>heap_seL4_IPCBuffer__C := (heap_seL4_IPCBuffer__C s)(ret' := msg_C_update (\<lambda>a. Arrays.update a (nat i) v) (heap_seL4_IPCBuffer__C s ret'))\<rparr>)
+od \<lbrace>P\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> i \<and> i < 120 \<and> P () (setMR s (nat i) v) \<Longrightarrow> ((P () (s\<lparr>heap_seL4_IPCBuffer__C := (heap_seL4_IPCBuffer__C s)(heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) := msg_C_update (\<lambda>a. Arrays.update a (nat i) v) (heap_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))))\<rparr>) \<and> 0 \<le> i) \<and> i < 120) \<and> is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))<\STATESEP>apply (simp add:setMR_def globals_frame_intact_def ipc_buffer_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_GetIPCBuffer_wp[wp_unsafe]: "\<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> seL4_GetIPCBuffer' \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> seL4_GetIPCBuffer' \<lbrace>P\<rbrace><\STATESEP>apply (unfold seL4_GetIPCBuffer'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> do guard (\<lambda>s. is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)));
+gets (\<lambda>s. heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))
+od \<lbrace>P\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>x. P x s \<Longrightarrow> is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)) \<longrightarrow> P (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  thread_count :: word32
+where
+  "thread_count \<equiv> 2"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tls_ptr :: "lifted_globals \<Rightarrow> camkes_tls_t_C ptr"
+where
+  "tls_ptr s \<equiv> Ptr (ptr_val (heap_seL4_IPCBuffer__C'ptr s
+     (Ptr (scast seL4_GlobalsFrame))) && 0xFFFFF000)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tls :: "lifted_globals \<Rightarrow> camkes_tls_t_C"
+where
+  "tls s \<equiv> heap_camkes_tls_t_C s (tls_ptr s)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tls_valid :: "lifted_globals \<Rightarrow> bool"
+where
+  "tls_valid s \<equiv> is_valid_camkes_tls_t_C s (tls_ptr s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma camkes_get_tls_wp':
+  "\<forall>s'. \<lbrace>\<lambda>s. tls_valid s \<and> globals_frame_intact s \<and> s = s'\<rbrace>
+     camkes_get_tls'
+   \<lbrace>\<lambda>r s. s = s' \<and> r = tls_ptr s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s'. \<lbrace>\<lambda>s. tls_valid s \<and> globals_frame_intact s \<and> s = s'\<rbrace> camkes_get_tls' \<lbrace>\<lambda>r s. s = s' \<and> r = tls_ptr s\<rbrace>!<\STATESEP>apply (rule allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s'. \<lbrace>\<lambda>s. tls_valid s \<and> globals_frame_intact s \<and> s = s'\<rbrace> camkes_get_tls' \<lbrace>\<lambda>r s. s = s' \<and> r = tls_ptr s\<rbrace>!<\STATESEP>apply (simp add:camkes_get_tls'_def seL4_GetIPCBuffer'_def tls_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s'. \<lbrace>\<lambda>s. is_valid_camkes_tls_t_C s (tls_ptr s) \<and> globals_frame_intact s \<and> s = s'\<rbrace> do ret' <- do y <- guard (\<lambda>s. is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)));
+gets (\<lambda>s. heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)))
+od;
+return (PTR(camkes_tls_t_C) (ptr_val ret' && 0xFFFFF000))
+od \<lbrace>\<lambda>r s. s = s' \<and> r = tls_ptr s\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s' s. is_valid_camkes_tls_t_C s (tls_ptr s) \<and> globals_frame_intact s \<and> s = s' \<Longrightarrow> (s = s' \<and> PTR(camkes_tls_t_C) (ptr_val (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) && 0xFFFFF000) = tls_ptr s) \<and> is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))<\STATESEP>apply (clarsimp simp:globals_frame_intact_def tls_ptr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas camkes_get_tls_wp[wp] =
+  camkes_get_tls_wp'[THEN validNF_make_schematic_post, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma abort_wp[wp]:
+  "\<lbrace>\<lambda>_. False\<rbrace> abort' \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. False\<rbrace> abort' \<lbrace>P\<rbrace>!<\STATESEP>apply (rule validNF_false_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_Poll_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and>
+        badge \<noteq> NULL \<and>
+        is_valid_w32 s badge \<rbrace>
+     seL4_Poll' cap badge
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and> badge \<noteq> NULL \<and> is_valid_w32 s badge\<rbrace> seL4_Poll' cap badge \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_Poll'_def seL4_GetIPCBuffer'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and> badge \<noteq> NULL \<and> is_valid_w32 s badge\<rbrace> do info___struct_seL4_MessageInfo_C <- unknown;
+msg0___unsigned <- unknown;
+msg1___unsigned <- unknown;
+msg2___unsigned <- unknown;
+msg3___unsigned <- unknown;
+y <- exec_concrete lift_global_heap (seL4_SetMR' 0 msg0___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 msg1___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 msg2___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 3 msg3___unsigned);
+y <- when (badge \<noteq> NULL) (do y <- guard (\<lambda>s. is_valid_w32 s badge);
+modify (heap_w32_update (\<lambda>a. a(badge := cap)))
+od);
+return info___struct_seL4_MessageInfo_C
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_SetMR_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. P x (heap_w32_update (\<lambda>a. a(badge := b)) (setMRs s v0 v1 v2 v3))) \<and> badge \<noteq> NULL \<and> is_valid_w32 s badge \<Longrightarrow> \<forall>x xa xb xc xd. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR s (nat 0) xa) \<and> ipc_buffer_valid (setMR s (nat 0) xa) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> 0 \<le> 3 \<and> 3 < 120 \<and> (\<forall>xe. if badge \<noteq> NULL then P x (heap_w32_update (\<lambda>a. a(badge := cap)) (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd)) \<and> is_valid_w32 (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd) badge else P x (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd)))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma seL4_Wait_wp[wp_unsafe]:
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace>
+     seL4_Wait' cap NULL
+   \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> seL4_Wait' cap NULL \<lbrace>P\<rbrace>!<\STATESEP>apply (simp add:seL4_Wait'_def seL4_GetIPCBuffer'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3))\<rbrace> do info___struct_seL4_MessageInfo_C <- unknown;
+msg0___unsigned <- unknown;
+msg1___unsigned <- unknown;
+msg2___unsigned <- unknown;
+msg3___unsigned <- unknown;
+y <- exec_concrete lift_global_heap (seL4_SetMR' 0 msg0___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 1 msg1___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 2 msg2___unsigned);
+y <- exec_concrete lift_global_heap (seL4_SetMR' 3 msg3___unsigned);
+return info___struct_seL4_MessageInfo_C
+od \<lbrace>P\<rbrace>!<\STATESEP>apply (wp seL4_SetMR_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. P x (setMRs s v0 v1 v2 v3)) \<Longrightarrow> \<forall>x xa xb xc xd. globals_frame_intact s \<and> ipc_buffer_valid s \<and> 0 \<le> 0 \<and> 0 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR s (nat 0) xa) \<and> ipc_buffer_valid (setMR s (nat 0) xa) \<and> 0 \<le> 1 \<and> 1 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> ipc_buffer_valid (setMR (setMR s (nat 0) xa) (nat 1) xb) \<and> 0 \<le> 2 \<and> 2 < 120 \<and> (\<forall>xe. globals_frame_intact (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> ipc_buffer_valid (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) \<and> 0 \<le> 3 \<and> 3 < 120 \<and> (\<forall>xe. P x (setMR (setMR (setMR (setMR s (nat 0) xa) (nat 1) xb) (nat 2) xc) (nat 3) xd)))))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EventTo_poll_nf:
+  notes seL4_SetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s. is_valid_w32 s (Ptr (symbol_table ''badge_1'')) \<and>
+        Ptr (symbol_table ''badge_1'') \<noteq> NULL \<and>
+        is_valid_w32 s (Ptr (symbol_table ''badge_2'')) \<and>
+        Ptr (symbol_table ''badge_2'') \<noteq> NULL \<and>
+        globals_frame_intact s \<and>
+        ipc_buffer_valid s \<and>
+        tls_valid s \<and>
+        thread_index_C (tls s) \<in> {1..thread_count}\<rbrace>
+   EventTo_poll'
+  \<lbrace>\<lambda>r s. is_valid_w32 s (Ptr (symbol_table ''badge_1'')) \<and>
+         Ptr (symbol_table ''badge_1'') \<noteq> NULL \<and>
+         is_valid_w32 s (Ptr (symbol_table ''badge_2'')) \<and>
+         Ptr (symbol_table ''badge_2'') \<noteq> NULL \<and>
+         globals_frame_intact s \<and>
+         ipc_buffer_valid s \<and>
+         tls_valid s \<and>
+         thread_index_C (tls s) \<in> {1..thread_count} \<and>
+         (r = 0 \<or> r = 1)\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')) \<and> PTR('a) (symbol_table ''badge_1'') \<noteq> NULL \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')) \<and> PTR('b) (symbol_table ''badge_2'') \<noteq> NULL \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> tls_valid s \<and> thread_index_C (tls s) \<in> {1..thread_count}\<rbrace> EventTo_poll' \<lbrace>\<lambda>r s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')) \<and> PTR('c) (symbol_table ''badge_1'') \<noteq> NULL \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')) \<and> PTR('d) (symbol_table ''badge_2'') \<noteq> NULL \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> tls_valid s \<and> thread_index_C (tls s) \<in> {1..thread_count} \<and> (r = 0 \<or> r = 1)\<rbrace>!<\STATESEP>apply (simp add:EventTo_poll'_def get_badge'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')) \<and> symbol_table ''badge_1'' \<noteq> 0 \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')) \<and> symbol_table ''badge_2'' \<noteq> 0 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> tls_valid s \<and> 1 \<le> thread_index_C (tls s) \<and> thread_index_C (tls s) \<le> thread_count\<rbrace> do ret' <- do ret' <- camkes_get_tls';
+y <- guard (\<lambda>s. is_valid_camkes_tls_t_C s ret');
+condition (\<lambda>s. thread_index_C (heap_camkes_tls_t_C s ret') = 1)
+  (do y <- guard (\<lambda>s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')));
+return (PTR(32 word) (symbol_table ''badge_1''))
+od)
+  condition (\<lambda>s. thread_index_C (heap_camkes_tls_t_C s ret') = 2)
+  (do y <- guard (\<lambda>s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')));
+return (PTR(32 word) (symbol_table ''badge_2''))
+od)
+  (do y <- abort';
+fail
+od)
+od;
+ret'a <- seL4_Poll' 6 ret';
+y <- guard (\<lambda>s. is_valid_w32 s ret');
+gets (\<lambda>s. if heap_w32 s ret' = 0xBAD1DEA then 1 else 0)
+od \<lbrace>\<lambda>r s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')) \<and> symbol_table ''badge_1'' \<noteq> 0 \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')) \<and> symbol_table ''badge_2'' \<noteq> 0 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> tls_valid s \<and> 1 \<le> thread_index_C (tls s) \<and> thread_index_C (tls s) \<le> thread_count \<and> (r = 0 \<or> r = 1)\<rbrace>!<\STATESEP>apply (wp seL4_Poll_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')) \<and> symbol_table ''badge_1'' \<noteq> 0 \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')) \<and> symbol_table ''badge_2'' \<noteq> 0 \<and> globals_frame_intact s \<and> ipc_buffer_valid s \<and> tls_valid s \<and> 1 \<le> thread_index_C (tls s) \<and> thread_index_C (tls s) \<le> thread_count \<Longrightarrow> tls_valid s \<and> globals_frame_intact s \<and> (if thread_index_C (heap_camkes_tls_t_C s (tls_ptr s)) = 1 then (globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. (is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_1'')) \<and> symbol_table ''badge_1'' \<noteq> 0 \<and> is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_2'')) \<and> symbol_table ''badge_2'' \<noteq> 0 \<and> globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) \<and> tls_valid (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) \<and> 1 \<le> thread_index_C (tls (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3))) \<and> thread_index_C (tls (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3))) \<le> thread_count \<and> ((if heap_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_1'')) = 0xBAD1DEA then 1 else 0) = 0 \<or> (if heap_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_1'')) = 0xBAD1DEA then 1 else 0) = 1)) \<and> is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_1'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_1''))) \<and> PTR(32 word) (symbol_table ''badge_1'') \<noteq> NULL \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1''))) \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')) else if thread_index_C (heap_camkes_tls_t_C s (tls_ptr s)) = 2 then (globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x b v0 v1 v2 v3. (is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_1'')) \<and> symbol_table ''badge_1'' \<noteq> 0 \<and> is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_2'')) \<and> symbol_table ''badge_2'' \<noteq> 0 \<and> globals_frame_intact (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) \<and> ipc_buffer_valid (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) \<and> tls_valid (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) \<and> 1 \<le> thread_index_C (tls (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3))) \<and> thread_index_C (tls (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3))) \<le> thread_count \<and> ((if heap_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_2'')) = 0xBAD1DEA then 1 else 0) = 0 \<or> (if heap_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_2'')) = 0xBAD1DEA then 1 else 0) = 1)) \<and> is_valid_w32 (heap_w32_update (\<lambda>a. a(PTR(32 word) (symbol_table ''badge_2'') := b)) (setMRs s v0 v1 v2 v3)) (PTR(32 word) (symbol_table ''badge_2''))) \<and> PTR(32 word) (symbol_table ''badge_2'') \<noteq> NULL \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2''))) \<and> is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')) else False) \<and> is_valid_camkes_tls_t_C s (tls_ptr s)<\STATESEP>apply (clarsimp simp:globals_frame_intact_def seL4_GetIPCBuffer'_def
+                       thread_count_def setMRs_def setMR_def
+                       ipc_buffer_valid_def tls_valid_def tls_ptr_def
+                       tls_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>is_valid_w32 s (PTR(32 word) (symbol_table ''badge_1'')); symbol_table ''badge_1'' \<noteq> 0; is_valid_w32 s (PTR(32 word) (symbol_table ''badge_2'')); symbol_table ''badge_2'' \<noteq> 0; is_valid_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame)); is_valid_seL4_IPCBuffer__C s (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))); is_valid_camkes_tls_t_C s (PTR(camkes_tls_t_C) (ptr_val (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) && 0xFFFFF000)); 1 \<le> thread_index_C (heap_camkes_tls_t_C s (PTR(camkes_tls_t_C) (ptr_val (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) && 0xFFFFF000))); thread_index_C (heap_camkes_tls_t_C s (PTR(camkes_tls_t_C) (ptr_val (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) && 0xFFFFF000))) \<le> 2; thread_index_C (heap_camkes_tls_t_C s (PTR(camkes_tls_t_C) (ptr_val (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) && 0xFFFFF000))) \<noteq> 2\<rbrakk> \<Longrightarrow> thread_index_C (heap_camkes_tls_t_C s (PTR(camkes_tls_t_C) (ptr_val (heap_seL4_IPCBuffer__C'ptr s (PTR(seL4_IPCBuffer__C ptr) (SCAST(32 signed \<rightarrow> 32) seL4_GlobalsFrame))) && 0xFFFFF000))) = 1<\STATESEP>apply unat_arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EventTo_run_nf: "\<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> EventTo__run' \<lbrace>P\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> EventTo__run' \<lbrace>P\<rbrace>!<\STATESEP>apply (unfold EventTo__run'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>r. P r s\<rbrace> return 0 \<lbrace>P\<rbrace>!<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>r. P r s \<Longrightarrow> P 0 s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma EventTo_wait_nf:
+  notes seL4_SetMR_wp[wp]
+  shows
+  "\<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s\<rbrace>
+    EventTo_wait'
+   \<lbrace>\<lambda>_ s. globals_frame_intact s \<and> ipc_buffer_valid s\<rbrace>!"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s\<rbrace> EventTo_wait' \<lbrace>\<lambda>_ s. globals_frame_intact s \<and> ipc_buffer_valid s\<rbrace>!<\STATESEP>apply (simp add:EventTo_wait'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. globals_frame_intact s \<and> ipc_buffer_valid s\<rbrace> do ret' <- seL4_Wait' 6 NULL;
+skip
+od \<lbrace>\<lambda>_ s. globals_frame_intact s \<and> ipc_buffer_valid s\<rbrace>!<\STATESEP>apply (wp seL4_Wait_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. globals_frame_intact s \<and> ipc_buffer_valid s \<Longrightarrow> globals_frame_intact s \<and> ipc_buffer_valid s \<and> (\<forall>x v0 v1 v2 v3. globals_frame_intact (setMRs s v0 v1 v2 v3) \<and> ipc_buffer_valid (setMRs s v0 v1 v2 v3))<\STATESEP>apply (simp add:globals_frame_intact_def ipc_buffer_valid_def setMRs_def
+                  setMR_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,394 @@
+<\STATESEP>theory Arch_AC
+imports ArchRetype_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>text\<open>
+
+Setup for arch-specific access control.
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition ipc_buffer_has_auth :: "'a PAS \<Rightarrow> obj_ref \<Rightarrow> obj_ref option \<Rightarrow> bool" where
+   "ipc_buffer_has_auth aag thread \<equiv>
+    case_option True (\<lambda>p. is_aligned p msg_align_bits \<and>
+                          (\<forall>x \<in> ptr_range p msg_align_bits. abs_has_auth_to aag Write thread x))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ipc_buffer_has_auth_wordE:
+  "\<lbrakk> ipc_buffer_has_auth aag thread (Some buf); p \<in> ptr_range (buf + off) sz;
+     is_aligned off sz; sz \<le> msg_align_bits; off < 2 ^ msg_align_bits \<rbrakk>
+     \<Longrightarrow> abs_has_auth_to aag Write thread p"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ipc_buffer_has_auth aag thread (Some buf); p \<in> ptr_range (buf + off) sz; is_aligned off sz; sz \<le> msg_align_bits; off < 2 ^ msg_align_bits\<rbrakk> \<Longrightarrow> (pasObjectAbs aag thread, Write, pasObjectAbs aag p) \<in> pasPolicy aag<\STATESEP>unfolding ipc_buffer_has_auth_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>case Some buf of None \<Rightarrow> True | Some p \<Rightarrow> is_aligned p msg_align_bits \<and> (\<forall>x\<in>ptr_range p msg_align_bits. (pasObjectAbs aag thread, Write, pasObjectAbs aag x) \<in> pasPolicy aag); p \<in> ptr_range (buf + off) sz; is_aligned off sz; sz \<le> msg_align_bits; off < 2 ^ msg_align_bits\<rbrakk> \<Longrightarrow> (pasObjectAbs aag thread, Write, pasObjectAbs aag p) \<in> pasPolicy aag<\STATESEP>by (fastforce elim: bspec set_mp[OF ptr_range_subset])<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_transferable_ArchCap[simp]:
+  "\<not> is_transferable (Some (ArchObjectCap cap))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> is_transferable_cap (ArchObjectCap cap)<\STATESEP>using is_transferable.simps<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+is_transferable ?opt_cap = (?opt_cap = None \<or> ?opt_cap = Some NullCap \<or> (\<exists>t R. ?opt_cap = Some (ReplyCap t False R)))
+
+goal (1 subgoal):
+ 1. \<not> is_transferable_cap (ArchObjectCap cap)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_set':
+  assumes ip: "\<And>x y. \<lbrakk> x \<in> set xs; y \<in> set xs \<rbrakk> \<Longrightarrow> \<lbrace>I x and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace>"
+  and rl: "\<And>s. (\<forall>x \<in> set xs. I x s) \<Longrightarrow> P s"
+  shows "\<lbrace>\<lambda>s. (\<forall>x \<in> set xs. I x s)\<rbrace> mapM f xs \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> mapM f xs \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (rule hoare_post_imp[OF rl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>uu_ s. ?Q uu_ s \<Longrightarrow> \<forall>x\<in>set xs. I x s
+ 2. \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> mapM f xs \<lbrace>?Q\<rbrace><\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. \<forall>x\<in>set xs. I x s\<rbrace><\STATESEP>apply (rule mapM_set)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> f x \<lbrace>\<lambda>_ s. \<forall>x\<in>set xs. I x s\<rbrace>
+ 2. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> f x \<lbrace>\<lambda>_. I x\<rbrace>
+ 3. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>?Q8 x\<rbrace> f x \<lbrace>\<lambda>_ s. \<forall>x\<in>set xs. I x s\<rbrace>
+ 2. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> ?Q8 x s
+ 3. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> f x \<lbrace>\<lambda>_. I x\<rbrace>
+ 4. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply (rule hoare_vcg_ball_lift)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x xa. \<lbrakk>x \<in> set xs; xa \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>?P11 x xa\<rbrace> f x \<lbrace>\<lambda>rv. I xa\<rbrace>
+ 2. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> \<forall>xa\<in>set xs. ?P11 x xa s
+ 3. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> f x \<lbrace>\<lambda>_. I x\<rbrace>
+ 4. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply (erule (1) ip)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> \<forall>xa\<in>set xs. (I x and I xa) s
+ 2. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> f x \<lbrace>\<lambda>_. I x\<rbrace>
+ 3. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>set xs. I x s\<rbrace> f x \<lbrace>\<lambda>_. I x\<rbrace>
+ 2. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>?Q15 x\<rbrace> f x \<lbrace>\<lambda>_. I x\<rbrace>
+ 2. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> ?Q15 x s
+ 3. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply (rule ip)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x. x \<in> set xs \<Longrightarrow> x \<in> set xs
+ 2. \<And>x. x \<in> set xs \<Longrightarrow> x \<in> set xs
+ 3. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> (I x and I x) s
+ 4. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. x \<in> set xs \<Longrightarrow> x \<in> set xs
+ 2. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> (I x and I x) s
+ 3. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x s. \<lbrakk>x \<in> set xs; \<forall>x\<in>set xs. I x s\<rbrakk> \<Longrightarrow> (I x and I x) s
+ 2. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. \<forall>x\<in>set xs. I x s) and I y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>?Q21 x y\<rbrace> f x \<lbrace>\<lambda>_. I y\<rbrace>
+ 2. \<And>x y s. \<lbrakk>x \<in> set xs; y \<in> set xs; ((\<lambda>s. \<forall>x\<in>set xs. I x s) and I y) s\<rbrakk> \<Longrightarrow> ?Q21 x y s<\STATESEP>apply (rule ip)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> x \<in> set xs
+ 2. \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> y \<in> set xs
+ 3. \<And>x y s. \<lbrakk>x \<in> set xs; y \<in> set xs; ((\<lambda>s. \<forall>x\<in>set xs. I x s) and I y) s\<rbrakk> \<Longrightarrow> (I x and I y) s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_set'':
+  assumes ip: "\<And>x y. \<lbrakk> x \<in> set xs; y \<in> set xs \<rbrakk> \<Longrightarrow> \<lbrace>I x and I y and Q\<rbrace> f x \<lbrace>\<lambda>_. I y and Q\<rbrace>"
+  and rl: "\<And>s. (\<forall>x \<in> set xs. I x s) \<and> Q s \<Longrightarrow> P s"
+  shows "\<lbrace>\<lambda>s. (\<forall>x \<in> set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (rule hoare_post_imp[OF rl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>uu_ s. ?Q uu_ s \<Longrightarrow> (\<forall>x\<in>set xs. I x s) \<and> Q s
+ 2. \<lbrace>\<lambda>s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>?Q\<rbrace><\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace><\STATESEP>apply (cases "xs = []")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xs = [] \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace>
+ 2. xs \<noteq> [] \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace><\STATESEP>apply (simp add: mapM_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xs \<noteq> [] \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xs \<noteq> [] \<Longrightarrow> \<lbrace>?Q6\<rbrace> mapM f xs \<lbrace>\<lambda>_ s. (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrace>
+ 2. \<And>s. \<lbrakk>xs \<noteq> []; (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrakk> \<Longrightarrow> ?Q6 s<\STATESEP>apply (rule mapM_set'[where I = "\<lambda>x s. I x s \<and> Q s"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x y. \<lbrakk>xs \<noteq> []; x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>(\<lambda>s. I x s \<and> Q s) and (\<lambda>s. I y s \<and> Q s)\<rbrace> f x \<lbrace>\<lambda>_ s. I y s \<and> Q s\<rbrace>
+ 2. \<And>s. \<lbrakk>xs \<noteq> []; \<forall>x\<in>set xs. I x s \<and> Q s\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set xs. I x s) \<and> Q s
+ 3. \<And>s. \<lbrakk>xs \<noteq> []; (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrakk> \<Longrightarrow> \<forall>x\<in>set xs. I x s \<and> Q s<\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y. \<lbrakk>xs \<noteq> []; x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> \<lbrace>?Q12 x y\<rbrace> f x \<lbrace>\<lambda>_ s. I y s \<and> Q s\<rbrace>
+ 2. \<And>x y s. \<lbrakk>xs \<noteq> []; x \<in> set xs; y \<in> set xs; ((\<lambda>s. I x s \<and> Q s) and (\<lambda>s. I y s \<and> Q s)) s\<rbrakk> \<Longrightarrow> ?Q12 x y s
+ 3. \<And>s. \<lbrakk>xs \<noteq> []; \<forall>x\<in>set xs. I x s \<and> Q s\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set xs. I x s) \<and> Q s
+ 4. \<And>s. \<lbrakk>xs \<noteq> []; (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrakk> \<Longrightarrow> \<forall>x\<in>set xs. I x s \<and> Q s<\STATESEP>apply (rule ip[simplified pred_conj_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x y. \<lbrakk>xs \<noteq> []; x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> x \<in> set xs
+ 2. \<And>x y. \<lbrakk>xs \<noteq> []; x \<in> set xs; y \<in> set xs\<rbrakk> \<Longrightarrow> y \<in> set xs
+ 3. \<And>x y s. \<lbrakk>xs \<noteq> []; x \<in> set xs; y \<in> set xs; ((\<lambda>s. I x s \<and> Q s) and (\<lambda>s. I y s \<and> Q s)) s\<rbrakk> \<Longrightarrow> (I x s \<and> I y s) \<and> Q s
+ 4. \<And>s. \<lbrakk>xs \<noteq> []; \<forall>x\<in>set xs. I x s \<and> Q s\<rbrakk> \<Longrightarrow> (\<forall>x\<in>set xs. I x s) \<and> Q s
+ 5. \<And>s. \<lbrakk>xs \<noteq> []; (\<forall>x\<in>set xs. I x s) \<and> Q s\<rbrakk> \<Longrightarrow> \<forall>x\<in>set xs. I x s \<and> Q s<\STATESEP>apply (auto simp: neq_Nil_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma as_user_state_vrefs:
+  "\<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. P (state_vrefs s))\<rbrace>
+   as_user t f
+   \<lbrace>\<lambda>_ s :: det_ext state. P (state_vrefs s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. P (state_vrefs s))\<rbrace> as_user t f \<lbrace>\<lambda>_ s. P (state_vrefs s)\<rbrace><\STATESEP>apply (simp add: as_user_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. P (state_vrefs s))\<rbrace> do tcb <- gets_the (get_tcb t);
+(a, uc') <- select_f (f (arch_tcb_context_get (tcb_arch tcb)));
+y <- set_object t (TCB (tcb\<lparr>tcb_arch := arch_tcb_context_set uc' (tcb_arch tcb)\<rparr>));
+return a
+od \<lbrace>\<lambda>_ s. P (state_vrefs s)\<rbrace><\STATESEP>apply (wpsimp wp: set_object_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y x xa. \<lbrakk>pspace_aligned s; valid_vspace_objs s; valid_arch_state s; P (state_vrefs s); (x, xa) \<in> fst (f (arch_tcb_context_get (tcb_arch y))); get_tcb t s = Some y\<rbrakk> \<Longrightarrow> P (state_vrefs (s\<lparr>kheap := (kheap s)(t \<mapsto> TCB (y\<lparr>tcb_arch := arch_tcb_context_set xa (tcb_arch y)\<rparr>))\<rparr>))<\STATESEP>apply (clarsimp simp: state_vrefs_tcb_upd obj_at_def is_obj_defs
+                 elim!: rsubst[where P=P, OF _ ext]
+                 dest!: get_tcb_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma as_user_pas_refined[wp]:
+  "\<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and pas_refined aag\<rbrace>
+   as_user t f
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and pas_refined aag\<rbrace> as_user t f \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (simp add: pas_refined_def state_objs_to_policy_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)\<rbrace> as_user t f \<lbrace>\<lambda>_ s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q6\<rbrace> as_user t f \<lbrace>\<lambda>_ s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag\<rbrace>
+ 2. \<And>s. (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s \<Longrightarrow> ?Q6 s<\STATESEP>apply wps<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>prev_s. \<lbrace>?P9 prev_s\<rbrace> as_user t f \<lbrace>\<lambda>rv s'. pas_wellformed aag \<and> irq_map_wellformed aag prev_s \<and> tcb_domain_map_wellformed aag prev_s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state prev_s) (thread_st_auth prev_s) (thread_bound_ntfns prev_s) (cdt prev_s) (state_vrefs s')) \<subseteq> pasPolicy aag \<and> state_asids_to_policy_arch aag (caps_of_state prev_s) (arch_state prev_s) (state_vrefs s') \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag prev_s \<subseteq> pasPolicy aag\<rbrace>
+ 2. \<And>s. (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s \<Longrightarrow> ?P9 s s<\STATESEP>apply (wp as_user_state_vrefs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s \<Longrightarrow> (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>sa. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs sa)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy_arch aag (caps_of_state s) (arch_state s) (state_vrefs sa) \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunches set_message_info
+  for pas_refined[wp]: "pas_refined aag"
+  and cdt[wp]: "\<lambda>s. P (cdt s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunches do_machine_op
+  for thread_st_auth[wp]: "\<lambda>s. P (thread_st_auth s)"
+  and state_vrefs[wp]: "\<lambda>s :: 'a :: state_ext state. P (state_vrefs s)"<\STATESEP>0<\TRANSEP><\STATESEP>crunch integrity_autarch: set_message_info "integrity aag X st"<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_mrs_thread_st_auth[wp]:
+  "set_mrs thread buf msgs \<lbrace>\<lambda>s. P (thread_st_auth s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (thread_st_auth s)\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_ s. P (thread_st_auth s)\<rbrace><\STATESEP>supply if_split[split del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (thread_st_auth s)\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_ s. P (thread_st_auth s)\<rbrace><\STATESEP>apply (simp add: set_mrs_def split_def set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (thread_st_auth s)\<rbrace> do tcb <- gets_the (get_tcb thread);
+y <- do kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh thread = Some y);
+return (the (kh thread))
+od;
+y <- assert (a_type kobj = ATCB);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>))\<rparr>)
+od;
+case buf of None \<Rightarrow> return (nat_to_len (min (length msg_registers) (length msgs))) | Some pptr \<Rightarrow> do y <- zipWithM_x (store_word_offs pptr) (if Suc (length msg_registers) \<le> msg_max_length then [Suc (length msg_registers)..<msg_max_length] @ [msg_max_length] else []) (drop (length msg_registers) msgs);
+return (nat_to_len (min (length msgs) msg_max_length))
+od
+od \<lbrace>\<lambda>_ s. P (thread_st_auth s)\<rbrace><\STATESEP>apply (wpsimp wp: gets_the_wp get_wp put_wp mapM_x_wp'
+              simp: zipWithM_x_mapM_x split_def store_word_offs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y tcb. \<lbrakk>P (thread_st_auth s); get_tcb thread s = Some y; kheap s thread = Some (TCB tcb)\<rbrakk> \<Longrightarrow> P (thread_st_auth (s\<lparr>kheap := \<lambda>a. if a = thread then Some (TCB (y\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch y) reg) (tcb_arch y)\<rparr>)) else kheap s a\<rparr>))<\STATESEP>apply (clarsimp simp: fun_upd_def[symmetric] thread_st_auth_preserved)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_mrs_thread_bound_ntfns[wp]:
+  "set_mrs thread buf msgs \<lbrace>\<lambda>s. P (thread_bound_ntfns s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (thread_bound_ntfns s)\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_ s. P (thread_bound_ntfns s)\<rbrace><\STATESEP>supply if_split[split del]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (thread_bound_ntfns s)\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_ s. P (thread_bound_ntfns s)\<rbrace><\STATESEP>apply (simp add: set_mrs_def split_def set_object_def get_object_def )<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (thread_bound_ntfns s)\<rbrace> do tcb <- gets_the (get_tcb thread);
+y <- do kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh thread = Some y);
+return (the (kh thread))
+od;
+y <- assert (a_type kobj = ATCB);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(thread \<mapsto> TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>))\<rparr>)
+od;
+case buf of None \<Rightarrow> return (nat_to_len (min (length msg_registers) (length msgs))) | Some pptr \<Rightarrow> do y <- zipWithM_x (store_word_offs pptr) (if Suc (length msg_registers) \<le> msg_max_length then [Suc (length msg_registers)..<msg_max_length] @ [msg_max_length] else []) (drop (length msg_registers) msgs);
+return (nat_to_len (min (length msgs) msg_max_length))
+od
+od \<lbrace>\<lambda>_ s. P (thread_bound_ntfns s)\<rbrace><\STATESEP>apply (wpsimp wp: gets_the_wp get_wp put_wp mapM_x_wp' dmo_wp
+              simp: zipWithM_x_mapM_x split_def store_word_offs_def no_irq_storeWord)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y tcb. \<lbrakk>P (thread_bound_ntfns s); get_tcb thread s = Some y; kheap s thread = Some (TCB tcb)\<rbrakk> \<Longrightarrow> P (thread_bound_ntfns (s\<lparr>kheap := \<lambda>a. if a = thread then Some (TCB (y\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch y) reg) (tcb_arch y)\<rparr>)) else kheap s a\<rparr>))<\STATESEP>apply (clarsimp simp: fun_upd_def[symmetric] thread_bound_ntfns_preserved)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma delete_objects_pspace_no_overlap:
+  "\<lbrace>pspace_aligned and valid_objs and (\<lambda>s. \<exists>idx. cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s)\<rbrace>
+   delete_objects ptr sz
+   \<lbrace>\<lambda>_. pspace_no_overlap_range_cover ptr sz\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_objs and (\<lambda>s. \<exists>idx. cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s)\<rbrace> delete_objects ptr sz \<lbrace>\<lambda>_. pspace_no_overlap (up_aligned_area ptr sz)\<rbrace><\STATESEP>unfolding delete_objects_def do_machine_op_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_objs and (\<lambda>s. \<exists>idx. cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s)\<rbrace> do do ms <- gets machine_state;
+(r, ms') <- select_f (freeMemory ptr sz ms);
+modify (machine_state_update (\<lambda>_. ms'));
+return r
+od;
+modify (detype {ptr..ptr + 2 ^ sz - 1})
+od \<lbrace>\<lambda>_. pspace_no_overlap (up_aligned_area ptr sz)\<rbrace><\STATESEP>apply (wp | simp add: split_def detype_machine_state_update_comm)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. pspace_aligned s \<and> valid_objs s \<and> (\<exists>idx. cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s) \<Longrightarrow> (\<exists>b. ((), b) \<in> fst (freeMemory ptr sz (machine_state s))) \<longrightarrow> pspace_no_overlap (up_aligned_area ptr sz) (detype {ptr..ptr + 2 ^ sz - 1} s)<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s idx b. \<lbrakk>pspace_aligned s; valid_objs s; cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s; ((), b) \<in> fst (freeMemory ptr sz (machine_state s))\<rbrakk> \<Longrightarrow> pspace_no_overlap (up_aligned_area ptr sz) (detype {ptr..ptr + 2 ^ sz - 1} s)<\STATESEP>apply (rule pspace_no_overlap_detype)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s idx b. \<lbrakk>pspace_aligned s; valid_objs s; cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s; ((), b) \<in> fst (freeMemory ptr sz (machine_state s))\<rbrakk> \<Longrightarrow> s \<turnstile> UntypedCap (?dev20 s idx b) ptr sz (?idx20 s idx b)
+ 2. \<And>s idx b. \<lbrakk>pspace_aligned s; valid_objs s; cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s; ((), b) \<in> fst (freeMemory ptr sz (machine_state s))\<rbrakk> \<Longrightarrow> pspace_aligned s
+ 3. \<And>s idx b. \<lbrakk>pspace_aligned s; valid_objs s; cte_wp_at ((=) (UntypedCap dev ptr sz idx)) slot s; ((), b) \<in> fst (freeMemory ptr sz (machine_state s))\<rbrakk> \<Longrightarrow> valid_objs s<\STATESEP>apply (auto dest: cte_wp_at_valid_objs_valid_cap)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma delete_objects_invs_ex:
+  "\<lbrace>invs and ct_active and
+    (\<lambda>s. \<exists>slot dev f. cte_wp_at ((=) (UntypedCap dev ptr bits f)) slot s \<and>
+                      descendants_range (UntypedCap dev ptr bits f) slot s)\<rbrace>
+   delete_objects ptr bits
+   \<lbrace>\<lambda>_. invs\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and ct_active and (\<lambda>s. \<exists>slot dev f. cte_wp_at ((=) (UntypedCap dev ptr bits f)) slot s \<and> descendants_range (UntypedCap dev ptr bits f) slot s)\<rbrace> delete_objects ptr bits \<lbrace>\<lambda>_. invs\<rbrace><\STATESEP>apply (clarsimp simp: valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b a ba dev f. \<lbrakk>((), b) \<in> fst (delete_objects ptr bits s); invs s; ct_active s; cte_wp_at ((=) (UntypedCap dev ptr bits f)) (a, ba) s; descendants_range (UntypedCap dev ptr bits f) (a, ba) s\<rbrakk> \<Longrightarrow> invs b<\STATESEP>apply (erule use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b a ba dev f. \<lbrakk>invs s; ct_active s; cte_wp_at ((=) (UntypedCap dev ptr bits f)) (a, ba) s; descendants_range (UntypedCap dev ptr bits f) (a, ba) s\<rbrakk> \<Longrightarrow> \<lbrace>?P16 s b a ba dev f\<rbrace> delete_objects ptr bits \<lbrace>\<lambda>a. invs\<rbrace>
+ 2. \<And>s b a ba dev f. \<lbrakk>invs s; ct_active s; cte_wp_at ((=) (UntypedCap dev ptr bits f)) (a, ba) s; descendants_range (UntypedCap dev ptr bits f) (a, ba) s\<rbrakk> \<Longrightarrow> ?P16 s b a ba dev f s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b a ba dev f. \<lbrakk>invs s; ct_active s; cte_wp_at ((=) (UntypedCap dev ptr bits f)) (a, ba) s; descendants_range (UntypedCap dev ptr bits f) (a, ba) s\<rbrakk> \<Longrightarrow> ((\<lambda>sa. \<exists>slot. cte_wp_at ((=) (UntypedCap (?dev20 s b a ba dev f) ptr bits (?f20 s b a ba dev f))) slot sa \<and> descendants_range (UntypedCap (?dev20 s b a ba dev f) ptr bits (?f20 s b a ba dev f)) slot sa) and invs and ct_active) s<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_subject_asid_into_loas:
+  "\<lbrakk> is_subject_asid aag asid; pas_refined aag s \<rbrakk>
+     \<Longrightarrow> label_owns_asid_slot aag (pasSubject aag) asid"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_subject_asid aag asid; pas_refined aag s\<rbrakk> \<Longrightarrow> label_owns_asid_slot aag (pasSubject aag) asid<\STATESEP>unfolding label_owns_asid_slot_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_subject_asid aag asid; pas_refined aag s\<rbrakk> \<Longrightarrow> (pasSubject aag, Control, pasASIDAbs aag asid) \<in> pasPolicy aag<\STATESEP>by (clarsimp simp: pas_refined_refl)<\STATESEP>1<\TRANSEP><\STATESEP>locale Arch_AC_1 =
+  assumes set_mrs_state_vrefs[wp]:
+    "\<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. P (state_vrefs s))\<rbrace>
+     set_mrs thread buf msgs
+     \<lbrace>\<lambda>_ s :: det_ext state. P (state_vrefs s)\<rbrace>"
+  and mul_add_word_size_lt_msg_align_bits_ofnat:
+  "\<lbrakk> p < 2 ^ (msg_align_bits - word_size_bits); k < word_size \<rbrakk>
+     \<Longrightarrow> of_nat p * of_nat word_size + k < (2 :: obj_ref) ^ msg_align_bits"
+  and zero_less_word_size[simp]:
+    "0 < (word_size :: obj_ref)"<\STATESEP>0<\TRANSEP><\STATESEP>context Arch_AC_1 begin<\STATESEP>0<\TRANSEP><\STATESEP>lemmas mul_word_size_lt_msg_align_bits_ofnat =
+  mul_add_word_size_lt_msg_align_bits_ofnat[where k=0, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas ptr_range_off_off_mems =
+  ptr_range_add_memI[OF _ mul_word_size_lt_msg_align_bits_ofnat]
+  ptr_range_add_memI[OF _ mul_add_word_size_lt_msg_align_bits_ofnat, simplified add.assoc[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma dmo_storeWord_respects_Write:
+  "\<lbrace>integrity aag X st and K (\<forall>p' \<in> ptr_range p word_size_bits. aag_has_auth_to aag Write p')\<rbrace>
+   do_machine_op (storeWord p v)
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and K (\<forall>p'\<in>ptr_range p word_size_bits. (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag)\<rbrace> do_machine_op (storeWord p v) \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> do_machine_op (storeWord p v) \<lbrace>\<lambda>_. integrity aag X st\<rbrace>
+ 2. \<And>s. (integrity aag X st and K (\<forall>p'\<in>ptr_range p word_size_bits. (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag)) s \<Longrightarrow> ?Q s<\STATESEP>apply (wp dmo_wp storeWord_respects)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (integrity aag X st and K (\<forall>p'\<in>ptr_range p word_size_bits. (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag)) s \<Longrightarrow> integrity aag X st (s\<lparr>machine_state := machine_state s\<rparr>) \<and> (\<forall>p'\<in>ptr_range p word_size_bits. (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma store_word_offs_integrity_autarch:
+  "\<lbrace>\<lambda>s. integrity aag X st s \<and> is_subject aag thread \<and>
+        ipc_buffer_has_auth aag thread (Some buf) \<and>
+        r < 2 ^ (msg_align_bits - word_size_bits)\<rbrace>
+   store_word_offs buf r v
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. integrity aag X st s \<and> is_subject aag thread \<and> ipc_buffer_has_auth aag thread (Some buf) \<and> r < 2 ^ (msg_align_bits - word_size_bits)\<rbrace> store_word_offs buf r v \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (simp add: store_word_offs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. integrity aag X st s \<and> is_subject aag thread \<and> ipc_buffer_has_auth aag thread (Some buf) \<and> r < 2 ^ (msg_align_bits - word_size_bits)\<rbrace> do s <- get;
+y <- assert (in_user_frame (buf + word_of_nat r * word_of_nat word_size) s);
+do_machine_op (storeWord (buf + word_of_nat r * word_of_nat word_size) v)
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> do s <- get;
+y <- assert (in_user_frame (buf + word_of_nat r * word_of_nat word_size) s);
+do_machine_op (storeWord (buf + word_of_nat r * word_of_nat word_size) v)
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace>
+ 2. \<And>s. integrity aag X st s \<and> is_subject aag thread \<and> ipc_buffer_has_auth aag thread (Some buf) \<and> r < 2 ^ (msg_align_bits - word_size_bits) \<Longrightarrow> ?Q s<\STATESEP>apply (wp dmo_storeWord_respects_Write)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. integrity aag X st s \<and> is_subject aag thread \<and> ipc_buffer_has_auth aag thread (Some buf) \<and> r < 2 ^ (msg_align_bits - word_size_bits) \<Longrightarrow> in_user_frame (buf + word_of_nat r * word_of_nat word_size) s \<longrightarrow> (integrity aag X st and K (\<forall>p'\<in>ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits. (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag)) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; ipc_buffer_has_auth aag thread (Some buf); r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag<\STATESEP>apply (drule (1) ipc_buffer_has_auth_wordE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> is_aligned (word_of_nat r * word_of_nat word_size) word_size_bits
+ 2. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> word_size_bits \<le> msg_align_bits
+ 3. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> word_of_nat r * word_of_nat word_size < 2 ^ msg_align_bits
+ 4. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits; (pasObjectAbs aag thread, Write, pasObjectAbs aag p') \<in> pasPolicy aag\<rbrakk> \<Longrightarrow> (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag<\STATESEP>apply (simp add: word_size_word_size_bits is_aligned_mult_triv2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> word_size_bits \<le> msg_align_bits
+ 2. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> word_of_nat r * word_of_nat word_size < 2 ^ msg_align_bits
+ 3. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits; (pasObjectAbs aag thread, Write, pasObjectAbs aag p') \<in> pasPolicy aag\<rbrakk> \<Longrightarrow> (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag<\STATESEP>apply (simp add: msg_align_bits')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits\<rbrakk> \<Longrightarrow> word_of_nat r * word_of_nat word_size < 2 ^ msg_align_bits
+ 2. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits; (pasObjectAbs aag thread, Write, pasObjectAbs aag p') \<in> pasPolicy aag\<rbrakk> \<Longrightarrow> (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag<\STATESEP>apply (erule mul_word_size_lt_msg_align_bits_ofnat)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s p'. \<lbrakk>integrity aag X st s; is_subject aag thread; r < 2 ^ (msg_align_bits - word_size_bits); in_user_frame (buf + word_of_nat r * word_of_nat word_size) s; p' \<in> ptr_range (buf + word_of_nat r * word_of_nat word_size) word_size_bits; (pasObjectAbs aag thread, Write, pasObjectAbs aag p') \<in> pasPolicy aag\<rbrakk> \<Longrightarrow> (pasSubject aag, Write, pasObjectAbs aag p') \<in> pasPolicy aag<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_mrs_pas_refined[wp]:
+  "\<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and pas_refined aag\<rbrace>
+   set_mrs thread buf msgs
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and pas_refined aag\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (simp add: pas_refined_def state_objs_to_policy_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_ s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q6\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_ s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag\<rbrace>
+ 2. \<And>s. (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s \<Longrightarrow> ?Q6 s<\STATESEP>apply (wp | wps)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs s)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy aag s \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s \<Longrightarrow> (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>s. pas_wellformed aag)) s \<and> irq_map_wellformed aag s \<and> tcb_domain_map_wellformed aag s \<and> (pspace_aligned and valid_vspace_objs and valid_arch_state and (\<lambda>sa. auth_graph_map (pasObjectAbs aag) (state_bits_to_policy (caps_of_state s) (thread_st_auth s) (thread_bound_ntfns s) (cdt s) (state_vrefs sa)) \<subseteq> pasPolicy aag \<and> state_asids_to_policy_arch aag (caps_of_state s) (arch_state s) (state_vrefs sa) \<subseteq> pasPolicy aag \<and> state_irqs_to_policy aag s \<subseteq> pasPolicy aag)) s<\STATESEP>apply (clarsimp dest!: auth_graph_map_memD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma copy_mrs_integrity_autarch:
+  "\<lbrace>pas_refined aag and integrity aag X st and
+    K (is_subject aag receiver \<and> ipc_buffer_has_auth aag receiver rbuf \<and>
+       unat n < 2 ^ (msg_align_bits - word_size_bits))\<rbrace>
+   copy_mrs sender sbuf receiver rbuf n
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and integrity aag X st and K (is_subject aag receiver \<and> ipc_buffer_has_auth aag receiver rbuf \<and> unat n < 2 ^ (msg_align_bits - word_size_bits))\<rbrace> copy_mrs sender sbuf receiver rbuf n \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (rule hoare_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_subject aag receiver \<and> ipc_buffer_has_auth aag receiver rbuf \<and> unat n < 2 ^ (msg_align_bits - word_size_bits) \<Longrightarrow> \<lbrace>pas_refined aag and integrity aag X st\<rbrace> copy_mrs sender sbuf receiver rbuf n \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (simp add: copy_mrs_def cong: if_cong split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_subject aag receiver \<and> ipc_buffer_has_auth aag receiver rbuf \<and> unat n < 2 ^ (msg_align_bits - word_size_bits) \<Longrightarrow> \<lbrace>pas_refined aag and integrity aag X st\<rbrace> do y <- mapM (\<lambda>r. do v <- as_user sender (getRegister r);
+as_user receiver (setRegister r v)
+od) (take (unat n) msg_registers);
+buf_mrs <- case sbuf of None \<Rightarrow> return [] | Some sb_ptr \<Rightarrow> case rbuf of None \<Rightarrow> return [] | Some rb_ptr \<Rightarrow> mapM (\<lambda>x. load_word_offs sb_ptr x >>= store_word_offs rb_ptr x) (if Suc (length msg_registers) \<le> unat n then [Suc (length msg_registers)..<unat n] @ [unat n] else []);
+return (min n (nat_to_len (min (length msg_registers) (unat n) + length buf_mrs)))
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wpsimp wp: mapM_wp' as_user_integrity_autarch
+                    store_word_offs_integrity_autarch[where thread=receiver]
+         | fastforce)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_mrs_integrity_autarch:
+  "\<lbrace>integrity aag X st and K (is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf)\<rbrace>
+   set_mrs thread buf msgs
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and K (is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf)\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (rule hoare_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>integrity aag X st\<rbrace> set_mrs thread buf msgs \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (simp add: set_mrs_def split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>integrity aag X st\<rbrace> do tcb <- gets_the (get_tcb thread);
+y <- set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>));
+case buf of None \<Rightarrow> return (nat_to_len (min (length msg_registers) (length msgs))) | Some pptr \<Rightarrow> do y <- zipWithM_x (store_word_offs pptr) (if Suc (length msg_registers) \<le> msg_max_length then [Suc (length msg_registers)..<msg_max_length] @ [msg_max_length] else []) (drop (length msg_registers) msgs);
+return (nat_to_len (min (length msgs) msg_max_length))
+od
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wpsimp wp: gets_the_wp get_wp put_wp mapM_x_wp'
+                    store_word_offs_integrity_autarch[where thread=thread]
+              simp: split_def zipWithM_x_mapM_x split_del: if_split)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x2 a b s. \<lbrakk>buf = Some x2; is_subject aag thread; ipc_buffer_has_auth aag thread (Some x2); (a, b) \<in> set (zip (if Suc (length msg_registers) \<le> msg_max_length then [Suc (length msg_registers)..<msg_max_length] @ [msg_max_length] else []) (drop (length msg_registers) msgs)); integrity aag X st s\<rbrakk> \<Longrightarrow> a < 2 ^ (msg_align_bits - word_size_bits)
+ 2. \<And>tcb. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q'6 tcb\<rbrace> set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>)) \<lbrace>\<lambda>rv s. (buf = None \<longrightarrow> integrity aag X st s) \<and> (\<forall>x. buf = Some x \<longrightarrow> integrity aag X st s)\<rbrace>
+ 3. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q5\<rbrace> gets_the (get_tcb thread) \<lbrace>?Q'6\<rbrace>
+ 4. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> ?Q5 s<\STATESEP>apply (clarsimp elim!: in_set_zipE split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x2 a b s. \<lbrakk>integrity aag X st s; buf = Some x2; is_subject aag thread; ipc_buffer_has_auth aag thread (Some x2); Suc (length msg_registers) \<le> msg_max_length; a = msg_max_length \<or> Suc (length msg_registers) \<le> a \<and> a < msg_max_length; b \<in> set (drop (length msg_registers) msgs)\<rbrakk> \<Longrightarrow> a < 2 ^ (msg_align_bits - word_size_bits)
+ 2. \<And>tcb. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q'6 tcb\<rbrace> set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>)) \<lbrace>\<lambda>rv s. (buf = None \<longrightarrow> integrity aag X st s) \<and> (\<forall>x. buf = Some x \<longrightarrow> integrity aag X st s)\<rbrace>
+ 3. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q5\<rbrace> gets_the (get_tcb thread) \<lbrace>?Q'6\<rbrace>
+ 4. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> ?Q5 s<\STATESEP>apply (rule order_le_less_trans[where y=msg_max_length])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x2 a b s. \<lbrakk>integrity aag X st s; buf = Some x2; is_subject aag thread; ipc_buffer_has_auth aag thread (Some x2); Suc (length msg_registers) \<le> msg_max_length; a = msg_max_length \<or> Suc (length msg_registers) \<le> a \<and> a < msg_max_length; b \<in> set (drop (length msg_registers) msgs)\<rbrakk> \<Longrightarrow> a \<le> msg_max_length
+ 2. \<And>x2 a b s. \<lbrakk>integrity aag X st s; buf = Some x2; is_subject aag thread; ipc_buffer_has_auth aag thread (Some x2); Suc (length msg_registers) \<le> msg_max_length; a = msg_max_length \<or> Suc (length msg_registers) \<le> a \<and> a < msg_max_length; b \<in> set (drop (length msg_registers) msgs)\<rbrakk> \<Longrightarrow> msg_max_length < 2 ^ (msg_align_bits - word_size_bits)
+ 3. \<And>tcb. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q'6 tcb\<rbrace> set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>)) \<lbrace>\<lambda>rv s. (buf = None \<longrightarrow> integrity aag X st s) \<and> (\<forall>x. buf = Some x \<longrightarrow> integrity aag X st s)\<rbrace>
+ 4. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q5\<rbrace> gets_the (get_tcb thread) \<lbrace>?Q'6\<rbrace>
+ 5. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> ?Q5 s<\STATESEP>apply (fastforce simp add: le_eq_less_or_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x2 a b s. \<lbrakk>integrity aag X st s; buf = Some x2; is_subject aag thread; ipc_buffer_has_auth aag thread (Some x2); Suc (length msg_registers) \<le> msg_max_length; a = msg_max_length \<or> Suc (length msg_registers) \<le> a \<and> a < msg_max_length; b \<in> set (drop (length msg_registers) msgs)\<rbrakk> \<Longrightarrow> msg_max_length < 2 ^ (msg_align_bits - word_size_bits)
+ 2. \<And>tcb. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q'6 tcb\<rbrace> set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>)) \<lbrace>\<lambda>rv s. (buf = None \<longrightarrow> integrity aag X st s) \<and> (\<forall>x. buf = Some x \<longrightarrow> integrity aag X st s)\<rbrace>
+ 3. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q5\<rbrace> gets_the (get_tcb thread) \<lbrace>?Q'6\<rbrace>
+ 4. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> ?Q5 s<\STATESEP>apply (simp add: msg_max_length_def msg_align_bits' word_size_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>tcb. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q'6 tcb\<rbrace> set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>)) \<lbrace>\<lambda>rv s. (buf = None \<longrightarrow> integrity aag X st s) \<and> (\<forall>x. buf = Some x \<longrightarrow> integrity aag X st s)\<rbrace>
+ 2. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q5\<rbrace> gets_the (get_tcb thread) \<lbrace>?Q'6\<rbrace>
+ 3. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> ?Q5 s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>tcb. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q'6 tcb\<rbrace> set_object thread (TCB (tcb\<lparr>tcb_arch := arch_tcb_set_registers (\<lambda>reg. if reg \<in> set (take (length msgs) msg_registers) then msgs ! the_index msg_registers reg else arch_tcb_get_registers (tcb_arch tcb) reg) (tcb_arch tcb)\<rparr>)) \<lbrace>\<lambda>rv. integrity aag X st\<rbrace>
+ 2. is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf \<Longrightarrow> \<lbrace>?Q5\<rbrace> gets_the (get_tcb thread) \<lbrace>?Q'6\<rbrace>
+ 3. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> ?Q5 s<\STATESEP>apply (wp set_object_integrity_autarch hoare_drop_imps hoare_vcg_all_lift)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>is_subject aag thread \<and> ipc_buffer_has_auth aag thread buf; integrity aag X st s\<rbrakk> \<Longrightarrow> get_tcb thread s \<noteq> None \<longrightarrow> (integrity aag X st and K (is_subject aag thread)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

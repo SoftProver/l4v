@@ -1,0 +1,225 @@
+<\STATESEP>theory ArchTcbAcc_AI
+imports TcbAcc_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems TcbAcc_AI_assms<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_master_cap_simps =
+  cap_master_cap_def[simplified cap_master_arch_cap_def, split_simps cap.split arch_cap.split]<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_master_cap_arch_eqDs:
+  "cap_master_cap cap = cap.ArchObjectCap (arch_cap.PageCap dev ref rghts sz mapdata)
+     \<Longrightarrow> rghts = UNIV \<and> mapdata = None
+          \<and> (\<exists>rghts mapdata. cap = cap.ArchObjectCap (arch_cap.PageCap dev ref rghts sz mapdata))"
+  "cap_master_cap cap = cap.ArchObjectCap arch_cap.ASIDControlCap
+     \<Longrightarrow> cap = cap.ArchObjectCap arch_cap.ASIDControlCap"
+  "cap_master_cap cap = cap.ArchObjectCap (arch_cap.ASIDPoolCap pool asid)
+     \<Longrightarrow> asid = 0 \<and> (\<exists>asid. cap = cap.ArchObjectCap (arch_cap.ASIDPoolCap pool asid))"
+  "cap_master_cap cap = cap.ArchObjectCap (arch_cap.PageTableCap ptr data)
+     \<Longrightarrow> data = None \<and> (\<exists>data. cap = cap.ArchObjectCap (arch_cap.PageTableCap ptr data))"
+  "cap_master_cap cap = cap.ArchObjectCap (arch_cap.PageDirectoryCap ptr data2)
+     \<Longrightarrow> data2 = None \<and> (\<exists>data2. cap = cap.ArchObjectCap (arch_cap.PageDirectoryCap ptr data2))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((cap_master_cap cap = ArchObjectCap (PageCap dev ref rghts sz mapdata) \<Longrightarrow> rghts = UNIV \<and> mapdata = None \<and> (\<exists>rghts mapdata. cap = ArchObjectCap (PageCap dev ref rghts sz mapdata))) &&& (cap_master_cap cap = ArchObjectCap ASIDControlCap \<Longrightarrow> cap = ArchObjectCap ASIDControlCap)) &&& (cap_master_cap cap = ArchObjectCap (ASIDPoolCap pool asid) \<Longrightarrow> asid = 0 \<and> (\<exists>asid. cap = ArchObjectCap (ASIDPoolCap pool asid))) &&& (cap_master_cap cap = ArchObjectCap (PageTableCap ptr data) \<Longrightarrow> data = None \<and> (\<exists>data. cap = ArchObjectCap (PageTableCap ptr data))) &&& (cap_master_cap cap = ArchObjectCap (PageDirectoryCap ptr data2) \<Longrightarrow> data2 = None \<and> (\<exists>data2. cap = ArchObjectCap (PageDirectoryCap ptr data2)))<\STATESEP>by (clarsimp simp: cap_master_cap_def
+              split: cap.split_asm arch_cap.split_asm)+<\STATESEP>1<\TRANSEP><\STATESEP>lemmas cap_master_cap_eqDs =
+  cap_master_cap_eqDs1 cap_master_cap_arch_eqDs
+  cap_master_cap_eqDs1 [OF sym] cap_master_cap_arch_eqDs[OF sym]<\STATESEP>0<\TRANSEP><\STATESEP>lemma vm_sets_diff[simp]:
+  "vm_read_only \<noteq> vm_read_write"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. vm_read_only \<noteq> vm_read_write<\STATESEP>by (simp add: vm_read_write_def vm_read_only_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas vm_sets_diff2[simp] = not_sym[OF vm_sets_diff]<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_master_cap_tcb_cap_valid_arch:
+  "\<lbrakk> cap_master_cap c = cap_master_cap c'; is_arch_cap c' ;
+     is_valid_vtable_root c \<Longrightarrow> is_valid_vtable_root c' ; tcb_cap_valid c p s \<rbrakk> \<Longrightarrow>
+   tcb_cap_valid c' p s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cap_master_cap c = cap_master_cap c'; is_arch_cap c'; is_valid_vtable_root c \<Longrightarrow> is_valid_vtable_root c'; tcb_cap_valid c p s\<rbrakk> \<Longrightarrow> tcb_cap_valid c' p s<\STATESEP>by (auto simp: cap_master_cap_def tcb_cap_valid_def tcb_cap_cases_def
+                 valid_ipc_buffer_cap_def  is_cap_simps
+                 is_nondevice_page_cap_simps is_nondevice_page_cap_arch_def
+           elim: pred_tcb_weakenE
+          split: option.splits cap.splits arch_cap.splits
+                 Structures_A.thread_state.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma storeWord_invs[wp, TcbAcc_AI_assms]:
+  "\<lbrace>in_user_frame p and invs\<rbrace> do_machine_op (storeWord p w) \<lbrace>\<lambda>rv. invs\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>in_user_frame p and invs\<rbrace> do_machine_op (storeWord p w) \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<lbrace>in_user_frame p and invs\<rbrace> do_machine_op (storeWord p w) \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>have aligned_offset_ignore:
+    "\<And>l sz. l<4 \<Longrightarrow> p && mask 2 = 0 \<Longrightarrow>
+       p+l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>proof -<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>fix l sz<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>assume al: "p && mask 2 = 0"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+p && mask 2 = 0
+
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>assume "(l::word32) < 4"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+l < 4
+
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>hence less: "l<2^2"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+l < 4
+
+goal (1 subgoal):
+ 1. l < 2\<^sup>2<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+l < 2\<^sup>2
+
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>have le: "2 \<le> pageBitsForSize sz"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 2 \<le> pageBitsForSize sz<\STATESEP>by (case_tac sz, simp_all)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+2 \<le> pageBitsForSize sz
+
+goal (1 subgoal):
+ 1. \<And>l sz. \<lbrakk>l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>show "?thesis l sz"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)<\STATESEP>by (rule is_aligned_add_helper[simplified is_aligned_mask,
+          THEN conjunct2, THEN mask_out_first_mask_some,
+          where n=2, OF al less le])<\STATESEP>5<\TRANSEP>proof (state)
+this:
+p + l && ~~ mask (pageBitsForSize sz) = p && ~~ mask (pageBitsForSize sz)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>?l < 4; p && mask 2 = 0\<rbrakk> \<Longrightarrow> p + ?l && ~~ mask (pageBitsForSize ?sz) = p && ~~ mask (pageBitsForSize ?sz)
+
+goal (1 subgoal):
+ 1. \<lbrace>in_user_frame p and invs\<rbrace> do_machine_op (storeWord p w) \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>in_user_frame p and invs\<rbrace> do_machine_op (storeWord p w) \<lbrace>\<lambda>rv. invs\<rbrace><\STATESEP>apply (wp dmo_invs)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (in_user_frame p and invs) s \<Longrightarrow> \<forall>m. \<forall>(r, m')\<in>fst (storeWord p w m). (\<forall>p. in_user_frame p s \<or> underlying_memory m' p = underlying_memory m p) \<and> (\<forall>irq. m = machine_state s \<longrightarrow> (interrupt_states s irq = IRQInactive \<longrightarrow> irq_masks m' irq) \<or> irq_masks m' irq = irq_masks m irq) \<and> invs s<\STATESEP>apply (clarsimp simp: storeWord_def invs_def valid_state_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s m b. \<lbrakk>((), b) \<in> fst ((do y <- assert (p && mask 2 = 0);
+modify (underlying_memory_update (\<lambda>m. m(p := word_rsplit w ! 3, p + 1 := word_rsplit w ! 2, p + 2 := word_rsplit w ! Suc 0, p + 3 := word_rsplit w ! 0)))
+od) m); in_user_frame p s; valid_pspace s; valid_mdb s; valid_ioc s; valid_idle s; only_idle s; if_unsafe_then_cap s; valid_reply_caps s; valid_reply_masters s; valid_global_refs s; valid_arch_state s; valid_irq_node s; valid_irq_handlers s; valid_irq_states s; valid_machine_state s; valid_vspace_objs s; valid_arch_caps s; valid_global_objs s; valid_kernel_mappings s; equal_kernel_mappings s; valid_asid_map s; valid_global_vspace_mappings s; pspace_in_kernel_window s; cap_refs_in_kernel_window s; pspace_respects_device_region s; cap_refs_respects_device_region s; cur_tcb s\<rbrakk> \<Longrightarrow> (\<forall>p. in_user_frame p s \<or> underlying_memory b p = underlying_memory m p) \<and> (m = machine_state s \<longrightarrow> (\<forall>irq. interrupt_states s irq = IRQInactive \<longrightarrow> irq_masks b irq \<or> irq_masks b irq = irq_masks (machine_state s) irq))<\STATESEP>apply (fastforce simp: valid_machine_state_def in_user_frame_def
+               assert_def simpler_modify_def fail_def bind_def return_def
+               pageBits_def aligned_offset_ignore
+             split: if_split_asm)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>in_user_frame p and invs\<rbrace> do_machine_op (storeWord p w) \<lbrace>\<lambda>rv. invs\<rbrace>
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma valid_ipc_buffer_cap_0[simp, TcbAcc_AI_assms]:
+  "valid_ipc_buffer_cap cap a \<Longrightarrow> valid_ipc_buffer_cap cap 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_ipc_buffer_cap cap a \<Longrightarrow> valid_ipc_buffer_cap cap 0<\STATESEP>by (auto simp add: valid_ipc_buffer_cap_def case_bool_If
+    split: cap.split arch_cap.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma thread_set_hyp_refs_trivial [TcbAcc_AI_assms]:
+  assumes x: "\<And>tcb. tcb_state  (f tcb) = tcb_state  tcb"
+  assumes y: "\<And>tcb. tcb_arch_ref (f tcb) = tcb_arch_ref tcb"
+  shows      "\<lbrace>\<lambda>s. P (state_hyp_refs_of s)\<rbrace> thread_set f t \<lbrace>\<lambda>rv s. P (state_hyp_refs_of s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (state_hyp_refs_of s)\<rbrace> thread_set f t \<lbrace>\<lambda>rv s. P (state_hyp_refs_of s)\<rbrace><\STATESEP>apply (simp add: thread_set_def set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (state_hyp_refs_of s)\<rbrace> do tcb <- gets_the (get_tcb t);
+kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh t = Some y);
+return (the (kh t))
+od;
+y <- assert (a_type kobj = ATCB);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(t \<mapsto> TCB (f tcb))\<rparr>)
+od \<lbrace>\<lambda>rv s. P (state_hyp_refs_of s)\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (state_hyp_refs_of s) \<Longrightarrow> get_tcb t s \<noteq> None \<longrightarrow> (\<exists>y. kheap s t = Some y) \<longrightarrow> a_type (the (kheap s t)) = ATCB \<longrightarrow> P (state_hyp_refs_of (s\<lparr>kheap := (kheap s)(t \<mapsto> TCB (f (the (get_tcb t s))))\<rparr>))<\STATESEP>apply (clarsimp dest!: get_tcb_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s tcb. \<lbrakk>P (state_hyp_refs_of s); kheap s t = Some (TCB tcb)\<rbrakk> \<Longrightarrow> P (state_hyp_refs_of (s\<lparr>kheap := \<lambda>a. if a = t then Some (TCB (f (the (get_tcb t s)))) else kheap s a\<rparr>))<\STATESEP>apply (clarsimp elim!: rsubst[where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s tcb. kheap s t = Some (TCB tcb) \<Longrightarrow> state_hyp_refs_of s = state_hyp_refs_of (s\<lparr>kheap := \<lambda>a. if a = t then Some (TCB (f (the (get_tcb t s)))) else kheap s a\<rparr>)<\STATESEP>apply (rule all_ext;
+         clarsimp simp: state_hyp_refs_of_def hyp_refs_of_def tcb_hyp_refs_def
+                        get_tcb_def x y[simplified tcb_arch_ref_def])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mab_pb [simp]:
+  "msg_align_bits \<le> pageBits"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msg_align_bits \<le> pageBits<\STATESEP>unfolding msg_align_bits pageBits_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 9 \<le> 12<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma mab_wb [simp]:
+  "msg_align_bits < word_bits"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. msg_align_bits < word_bits<\STATESEP>unfolding msg_align_bits word_bits_conv<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 9 < 32<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_cap_valid_ipc [TcbAcc_AI_assms]:
+  "\<lbrace>valid_objs and obj_at (\<lambda>ko. \<exists>tcb. ko = TCB tcb \<and> tcb_ipc_buffer tcb = v) t\<rbrace>
+     get_cap (t, tcb_cnode_index 4)
+   \<lbrace>\<lambda>rv s. valid_ipc_buffer_cap rv v\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_objs and obj_at (\<lambda>ko. \<exists>tcb. ko = TCB tcb \<and> tcb_ipc_buffer tcb = v) t\<rbrace> get_cap (t, tcb_cnode_index 4) \<lbrace>\<lambda>rv s. valid_ipc_buffer_cap rv v\<rbrace><\STATESEP>apply (wp get_cap_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (valid_objs and obj_at (\<lambda>ko. \<exists>tcb. ko = TCB tcb \<and> tcb_ipc_buffer tcb = v) t) s \<Longrightarrow> \<forall>cap. cte_wp_at ((=) cap) (t, tcb_cnode_index 4) s \<longrightarrow> valid_ipc_buffer_cap cap v<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s cap. \<lbrakk>valid_objs s; obj_at (\<lambda>ko. \<exists>tcb. ko = TCB tcb \<and> tcb_ipc_buffer tcb = v) t s; cte_wp_at ((=) cap) (t, tcb_cnode_index 4) s\<rbrakk> \<Longrightarrow> valid_ipc_buffer_cap cap v<\STATESEP>apply (drule(1) cte_wp_tcb_cap_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s cap. \<lbrakk>valid_objs s; obj_at (\<lambda>ko. \<exists>tcb. ko = TCB tcb \<and> tcb_ipc_buffer tcb = v) t s; tcb_cap_valid cap (t, tcb_cnode_index 4) s\<rbrakk> \<Longrightarrow> valid_ipc_buffer_cap cap v<\STATESEP>apply (clarsimp simp add: tcb_cap_valid_def obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s cap tcb. \<lbrakk>valid_objs s; is_tcb (TCB tcb) \<longrightarrow> st_tcb_at (\<lambda>st. is_nondevice_page_cap cap \<or> NullCap = cap) t s \<and> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb); kheap s t = Some (TCB tcb); v = tcb_ipc_buffer tcb\<rbrakk> \<Longrightarrow> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb)<\STATESEP>apply (simp add: valid_ipc_buffer_cap_def mask_cap_def cap_rights_update_def
+                   acap_rights_update_def is_tcb
+            split: cap.split_asm arch_cap.split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma pred_tcb_cap_wp_at [TcbAcc_AI_assms]:
+  "\<lbrakk>pred_tcb_at proj P t s; valid_objs s;
+    ref \<in> dom tcb_cap_cases;
+    \<forall>cap. (pred_tcb_at proj P t s \<and> tcb_cap_valid cap (t, ref) s) \<longrightarrow> Q cap\<rbrakk> \<Longrightarrow>
+   cte_wp_at Q (t, ref) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>pred_tcb_at proj P t s; valid_objs s; ref \<in> dom tcb_cap_cases; \<forall>cap. pred_tcb_at proj P t s \<and> tcb_cap_valid cap (t, ref) s \<longrightarrow> Q cap\<rbrakk> \<Longrightarrow> cte_wp_at Q (t, ref) s<\STATESEP>apply (clarsimp simp: cte_wp_at_cases tcb_at_def dest!: get_tcb_SomeD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a aa b. \<lbrakk>pred_tcb_at proj P t s; valid_objs s; \<forall>cap. tcb_cap_valid cap (t, ref) s \<longrightarrow> Q cap; tcb_cap_cases ref = Some (a, aa, b); \<forall>tcb. kheap s t = Some (TCB tcb) \<longrightarrow> \<not> Q (a tcb)\<rbrakk> \<Longrightarrow> \<exists>sz fun. kheap s t = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> (\<exists>cap. fun ref = Some cap \<and> Q cap)<\STATESEP>apply (rename_tac getF setF restr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>getF setF restr. \<lbrakk>pred_tcb_at proj P t s; valid_objs s; \<forall>cap. tcb_cap_valid cap (t, ref) s \<longrightarrow> Q cap; tcb_cap_cases ref = Some (getF, setF, restr); \<forall>tcb. kheap s t = Some (TCB tcb) \<longrightarrow> \<not> Q (getF tcb)\<rbrakk> \<Longrightarrow> \<exists>sz fun. kheap s t = Some (CNode sz fun) \<and> well_formed_cnode_n sz fun \<and> (\<exists>cap. fun ref = Some cap \<and> Q cap)<\STATESEP>apply (clarsimp simp: tcb_cap_valid_def pred_tcb_at_def obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>getF setF restr tcb. \<lbrakk>valid_objs s; \<forall>cap. (is_tcb (TCB tcb) \<longrightarrow> restr t (tcb_state tcb) cap \<and> (ref = tcb_cnode_index 4 \<longrightarrow> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb))) \<longrightarrow> Q cap; tcb_cap_cases ref = Some (getF, setF, restr); \<not> Q (getF tcb); kheap s t = Some (TCB tcb); P (proj (tcb_to_itcb tcb))\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (erule(1) valid_objsE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>getF setF restr tcb. \<lbrakk>\<forall>cap. (is_tcb (TCB tcb) \<longrightarrow> restr t (tcb_state tcb) cap \<and> (ref = tcb_cnode_index 4 \<longrightarrow> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb))) \<longrightarrow> Q cap; tcb_cap_cases ref = Some (getF, setF, restr); \<not> Q (getF tcb); kheap s t = Some (TCB tcb); P (proj (tcb_to_itcb tcb)); valid_obj t (TCB tcb) s\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp simp add: valid_obj_def valid_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>getF setF restr tcb. \<lbrakk>\<forall>cap. (is_tcb (TCB tcb) \<longrightarrow> restr t (tcb_state tcb) cap \<and> (ref = tcb_cnode_index 4 \<longrightarrow> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb))) \<longrightarrow> Q cap; tcb_cap_cases ref = Some (getF, setF, restr); \<not> Q (getF tcb); kheap s t = Some (TCB tcb); P (proj (tcb_to_itcb tcb)); \<forall>x\<in>ran tcb_cap_cases. case x of (getF, ab) \<Rightarrow> s \<turnstile> getF tcb \<and> (case ab of (setF, restr) \<Rightarrow> restr t (tcb_state tcb) (getF tcb)); valid_ipc_buffer_cap (tcb_ipcframe tcb) (tcb_ipc_buffer tcb); valid_tcb_state (tcb_state tcb) s; case tcb_fault tcb of None \<Rightarrow> True | Some f \<Rightarrow> valid_fault f; length (tcb_fault_handler tcb) = word_bits; valid_bound_ntfn (tcb_bound_notification tcb) s; valid_arch_tcb (tcb_arch tcb) s\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (erule_tac x="(getF, setF, restr)" in ballE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>getF setF restr tcb. \<lbrakk>\<forall>cap. (is_tcb (TCB tcb) \<longrightarrow> restr t (tcb_state tcb) cap \<and> (ref = tcb_cnode_index 4 \<longrightarrow> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb))) \<longrightarrow> Q cap; tcb_cap_cases ref = Some (getF, setF, restr); \<not> Q (getF tcb); kheap s t = Some (TCB tcb); P (proj (tcb_to_itcb tcb)); valid_ipc_buffer_cap (tcb_ipcframe tcb) (tcb_ipc_buffer tcb); valid_tcb_state (tcb_state tcb) s; case tcb_fault tcb of None \<Rightarrow> True | Some f \<Rightarrow> valid_fault f; length (tcb_fault_handler tcb) = word_bits; valid_bound_ntfn (tcb_bound_notification tcb) s; valid_arch_tcb (tcb_arch tcb) s; case (getF, setF, restr) of (getF, ab) \<Rightarrow> s \<turnstile> getF tcb \<and> (case ab of (setF, restr) \<Rightarrow> restr t (tcb_state tcb) (getF tcb))\<rbrakk> \<Longrightarrow> False
+ 2. \<And>getF setF restr tcb. \<lbrakk>\<forall>cap. (is_tcb (TCB tcb) \<longrightarrow> restr t (tcb_state tcb) cap \<and> (ref = tcb_cnode_index 4 \<longrightarrow> valid_ipc_buffer_cap cap (tcb_ipc_buffer tcb))) \<longrightarrow> Q cap; tcb_cap_cases ref = Some (getF, setF, restr); \<not> Q (getF tcb); kheap s t = Some (TCB tcb); P (proj (tcb_to_itcb tcb)); valid_ipc_buffer_cap (tcb_ipcframe tcb) (tcb_ipc_buffer tcb); valid_tcb_state (tcb_state tcb) s; case tcb_fault tcb of None \<Rightarrow> True | Some f \<Rightarrow> valid_fault f; length (tcb_fault_handler tcb) = word_bits; valid_bound_ntfn (tcb_bound_notification tcb) s; valid_arch_tcb (tcb_arch tcb) s; (getF, setF, restr) \<notin> ran tcb_cap_cases\<rbrakk> \<Longrightarrow> False<\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma as_user_hyp_refs_of[wp, TcbAcc_AI_assms]:
+  "\<lbrace>\<lambda>s. P (state_hyp_refs_of s)\<rbrace>
+     as_user t m
+   \<lbrace>\<lambda>rv s. P (state_hyp_refs_of s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (state_hyp_refs_of s)\<rbrace> as_user t m \<lbrace>\<lambda>rv s. P (state_hyp_refs_of s)\<rbrace><\STATESEP>apply (wp as_user_wp_thread_set_helper
+            thread_set_hyp_refs_trivial | simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sts_typ_ats = sts_typ_ats abs_atyp_at_lifts [OF set_thread_state_typ_at]<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_tcb_context_set_eq_ARM[TcbAcc_AI_assms]: "arch_tcb_context_set (arch_tcb_context_get t) t = t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_tcb_context_set (arch_tcb_context_get t) t = t<\STATESEP>unfolding arch_tcb_context_get_def arch_tcb_context_set_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. t\<lparr>tcb_context := tcb_context t\<rparr> = t<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_tcb_context_get_eq_ARM[TcbAcc_AI_assms]: "arch_tcb_context_get (arch_tcb_context_set uc t) = uc"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_tcb_context_get (arch_tcb_context_set uc t) = uc<\STATESEP>unfolding arch_tcb_context_get_def arch_tcb_context_set_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_context (t\<lparr>tcb_context := uc\<rparr>) = uc<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_tcb_update_aux2: "(\<lambda>tcb. tcb\<lparr> tcb_arch := f (tcb_arch tcb) \<rparr>)  = tcb_arch_update f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>tcb. tcb\<lparr>tcb_arch := f (tcb_arch tcb)\<rparr>) = tcb_arch_update f<\STATESEP>by (rule ext, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_tcb_update_aux3: "tcb\<lparr>tcb_arch := f (tcb_arch tcb)\<rparr>  = tcb_arch_update f tcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb\<lparr>tcb_arch := f (tcb_arch tcb)\<rparr> = tcb_arch_update f tcb<\STATESEP>by(simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_context_update_aux: "arch_tcb_context_set (P (arch_tcb_context_get atcb)) atcb
+                               = tcb_context_update (\<lambda>ctx. P ctx) atcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_tcb_context_set (P (arch_tcb_context_get atcb)) atcb = tcb_context_update P atcb<\STATESEP>by (simp add: arch_tcb_context_set_def arch_tcb_context_get_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation TcbAcc_AI?: TcbAcc_AI<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. TcbAcc_AI TYPE('a)<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. TcbAcc_AI TYPE('a)<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. TcbAcc_AI TYPE('a)<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. TcbAcc_AI TYPE('a)<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. TcbAcc_AI TYPE('a)<\STATESEP>by (unfold_locales; (fact TcbAcc_AI_assms)?)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+TcbAcc_AI TYPE('a)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

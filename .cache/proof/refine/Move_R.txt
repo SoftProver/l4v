@@ -1,0 +1,692 @@
+<\STATESEP>theory Move_R
+imports
+  "AInvs.ArchDetSchedSchedule_AI"
+
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma zip_map_rel:
+  assumes "(x,y) \<in> set (zip xs ys)" "map f xs = map g ys"
+  shows "f x = g y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f x = g y<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+(x, y) \<in> set (zip xs ys)
+map f xs = map g ys
+
+goal (1 subgoal):
+ 1. f x = g y<\STATESEP>by (induct xs arbitrary: x y ys; cases ys) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma fold_K:
+  "(P and (\<lambda> s. Q)) = (P and K Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P and (\<lambda>s. Q)) = (P and K Q)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas FalseI = notE[where R=False]<\STATESEP>0<\TRANSEP><\STATESEP>lemma nonempty_cross_distinct_singleton_elim:
+  "\<lbrakk> x \<times> {a} = y \<times> {b};
+     x \<noteq> {} \<or> y \<noteq> {};
+     a \<noteq> b \<rbrakk>
+   \<Longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<times> {a} = y \<times> {b}; x \<noteq> {} \<or> y \<noteq> {}; a \<noteq> b\<rbrakk> \<Longrightarrow> P<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_other_bits_set:
+  "\<lbrakk> (w::'a::len word) && ~~ (2 ^ n) = 0 ; n' \<noteq> n ; n < size w ; n' < size w \<rbrakk>
+   \<Longrightarrow>  \<not> w !! n'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>w && ~~ 2 ^ n = 0; n' \<noteq> n; n < size w; n' < size w\<rbrakk> \<Longrightarrow> \<not> w !! n'<\STATESEP>by (fastforce dest!: word_eqD simp: word_ops_nth_size word_size nth_w2p)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mask_out_0:
+  "\<lbrakk>x \<le> 2^n-1; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x::'a::len word) && ~~ mask n = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<le> 2 ^ n - 1; n < LENGTH('a)\<rbrakk> \<Longrightarrow> x && ~~ mask n = 0<\STATESEP>by (clarsimp simp: mask_out_sub_mask less_mask_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma mask_out_first_mask_some_eq:
+  "\<lbrakk> x && ~~ mask n = y && ~~ mask n; n \<le> m \<rbrakk> \<Longrightarrow> x && ~~ mask m = y && ~~ mask m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x && ~~ mask n = y && ~~ mask n; n \<le> m\<rbrakk> \<Longrightarrow> x && ~~ mask m = y && ~~ mask m<\STATESEP>apply (rule word_eqI, rename_tac n')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n'. \<lbrakk>x && ~~ mask n = y && ~~ mask n; n \<le> m\<rbrakk> \<Longrightarrow> n' < size (x && ~~ mask m) \<longrightarrow> (x && ~~ mask m) !! n' = (y && ~~ mask m) !! n'<\STATESEP>apply (drule_tac x=n' in word_eqD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n'. \<lbrakk>n \<le> m; (x && ~~ mask n) !! n' = (y && ~~ mask n) !! n'\<rbrakk> \<Longrightarrow> n' < size (x && ~~ mask m) \<longrightarrow> (x && ~~ mask m) !! n' = (y && ~~ mask m) !! n'<\STATESEP>apply (auto simp: word_ops_nth_size word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma unaligned_helper:
+  "\<lbrakk>is_aligned x n; y\<noteq>0; y < 2 ^ n\<rbrakk> \<Longrightarrow> \<not> is_aligned (x + y) n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; y \<noteq> 0; y < 2 ^ n\<rbrakk> \<Longrightarrow> \<not> is_aligned (x + y) n<\STATESEP>apply (simp (no_asm_simp) add: is_aligned_mask)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; y \<noteq> 0; y < 2 ^ n\<rbrakk> \<Longrightarrow> x + y && mask n \<noteq> 0<\STATESEP>apply (simp add: mask_add_aligned)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; y \<noteq> 0; y < 2 ^ n\<rbrakk> \<Longrightarrow> y && mask n \<noteq> 0<\STATESEP>apply (cut_tac mask_eq_iff_w2p[of n y], simp_all add: word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; y \<noteq> 0; y < 2 ^ n\<rbrakk> \<Longrightarrow> n < LENGTH('a)<\STATESEP>apply (rule ccontr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; y \<noteq> 0; y < 2 ^ n; \<not> n < LENGTH('a)\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (simp add: not_less power_overflow word_bits_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>declare word_unat_power[symmetric, simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma oblivious_mapM_x:
+  "\<forall>x\<in>set xs. oblivious f (g x) \<Longrightarrow> oblivious f (mapM_x g xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x\<in>set xs. oblivious f (g x) \<Longrightarrow> oblivious f (mapM_x g xs)<\STATESEP>by (induct xs) (auto simp: mapM_x_Nil mapM_x_Cons oblivious_bind)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_if_lift3:
+  "\<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (P rv s \<longrightarrow> X rv s) \<and> (\<not> P rv s \<longrightarrow> Y rv s)\<rbrace> \<Longrightarrow>
+  \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (if P rv s then X rv else Y rv) s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (P rv s \<longrightarrow> X rv s) \<and> (\<not> P rv s \<longrightarrow> Y rv s)\<rbrace> \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (if P rv s then X rv else Y rv) s\<rbrace><\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_pre_post = hoare_pre_imp[where R="\<lambda>_. Q" and Q=Q for Q]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_underlying_gets_pre_rhs =
+  corres_symb_exec_r[OF _ _ gets_inv no_fail_pre[OF no_fail_gets TrueI]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_if_r':
+  "\<lbrakk> G' \<Longrightarrow> corres_underlying sr nf nf' r P P' a c; \<not>G' \<Longrightarrow> corres_underlying sr nf nf' r P Q' a d \<rbrakk>
+   \<Longrightarrow> corres_underlying sr nf nf' r (P) (if G' then P' else Q')
+                                     (a) (if G' then c  else d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>G' \<Longrightarrow> corres_underlying sr nf nf' r P P' a c; \<not> G' \<Longrightarrow> corres_underlying sr nf nf' r P Q' a d\<rbrakk> \<Longrightarrow> corres_underlying sr nf nf' r P (if G' then P' else Q') a (if G' then c else d)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_corres_combined:
+  assumes "valid P f Q"
+  assumes "corres_underlying sr False nf' rr P P' f f'"
+  assumes "valid (\<lambda>s'. \<exists>s. (s,s')\<in>sr \<and> P s \<and> P' s') f' Q'" (is "valid ?P _ _")
+  shows "valid ?P f' (\<lambda>r' s'. \<exists>r s. (s,s') \<in> sr \<and> Q r s \<and> Q' r' s' \<and> rr r r')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s'. \<exists>s. (s, s') \<in> sr \<and> P s \<and> P' s'\<rbrace> f' \<lbrace>\<lambda>r' s'. \<exists>r s. (s, s') \<in> sr \<and> Q r s \<and> Q' r' s' \<and> rr r r'\<rbrace><\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>
+corres_underlying sr False nf' rr P P' f f'
+\<lbrace>\<lambda>s'. \<exists>s. (s, s') \<in> sr \<and> P s \<and> P' s'\<rbrace> f' \<lbrace>Q'\<rbrace>
+
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s'. \<exists>s. (s, s') \<in> sr \<and> P s \<and> P' s'\<rbrace> f' \<lbrace>\<lambda>r' s'. \<exists>r s. (s, s') \<in> sr \<and> Q r s \<and> Q' r' s' \<and> rr r r'\<rbrace><\STATESEP>by (fastforce simp: valid_def corres_underlying_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_noop3:
+  assumes x: "\<And>s s'. \<lbrakk>P s; P' s'; (s, s') \<in> sr\<rbrakk>  \<Longrightarrow> \<lbrace>(=) s\<rbrace> f \<exists>\<lbrace>\<lambda>r. (=) s\<rbrace>"
+  assumes y: "\<And>s s'. \<lbrakk>P s; P' s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s'\<rbrace> g \<lbrace>\<lambda>r. (=) s'\<rbrace>"
+  assumes z: "nf' \<Longrightarrow> no_fail P' g"
+  shows      "corres_underlying sr nf nf' dc P P' f g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' dc P P' f g<\STATESEP>apply (clarsimp simp: corres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> (\<forall>x\<in>fst (g b). case x of (r', t') \<Rightarrow> \<exists>x\<in>fst (f a). case x of (r, t) \<Rightarrow> (t, t') \<in> sr) \<and> (nf' \<longrightarrow> \<not> snd (g b))<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> \<forall>x\<in>fst (g b). case x of (r', t') \<Rightarrow> \<exists>x\<in>fst (f a). case x of (r, t) \<Rightarrow> (t, t') \<in> sr
+ 2. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f a). case x of (r, t) \<Rightarrow> (t, ba) \<in> sr
+ 2. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (rule use_exs_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> \<lbrace>?P36 a b aa ba\<rbrace> f \<exists>\<lbrace>\<lambda>a b. (b, ba) \<in> sr\<rbrace>
+ 2. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> ?P36 a b aa ba a
+ 3. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (rule exs_hoare_post_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a b aa ba r s. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b); ?Q39 a b aa ba r s\<rbrakk> \<Longrightarrow> (s, ba) \<in> sr
+ 2. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> \<lbrace>?P36 a b aa ba\<rbrace> f \<exists>\<lbrace>?Q39 a b aa ba\<rbrace>
+ 3. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> ?P36 a b aa ba a
+ 4. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> \<lbrace>?P36 a b aa ba\<rbrace> f \<exists>\<lbrace>?Q39 a b aa ba\<rbrace>
+ 2. \<And>a b aa ba r s. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b); ?Q39 a b aa ba r s\<rbrakk> \<Longrightarrow> (s, ba) \<in> sr
+ 3. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> ?P36 a b aa ba a
+ 4. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (rule x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> P (?s42 a b aa ba)
+ 2. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> P' (?s'42 a b aa ba)
+ 3. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> (?s42 a b aa ba, ?s'42 a b aa ba) \<in> sr
+ 4. \<And>a b aa ba r s. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b); ?s42 a b aa ba = s\<rbrakk> \<Longrightarrow> (s, ba) \<in> sr
+ 5. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> ?s42 a b aa ba = a
+ 6. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply assumption+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b aa ba r s. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b); a = s\<rbrakk> \<Longrightarrow> (s, ba) \<in> sr
+ 2. \<And>a b aa ba. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); (aa, ba) \<in> fst (g b)\<rbrakk> \<Longrightarrow> a = a
+ 3. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply simp_all<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b aa ba s. \<lbrakk>(s, b) \<in> sr; P s; P' b; nf \<longrightarrow> \<not> snd (f s); (aa, ba) \<in> fst (g b); a = s\<rbrakk> \<Longrightarrow> (s, ba) \<in> sr
+ 2. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (subgoal_tac "ba = b")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a b aa ba s. \<lbrakk>(s, b) \<in> sr; P s; P' b; nf \<longrightarrow> \<not> snd (f s); (aa, ba) \<in> fst (g b); a = s; ba = b\<rbrakk> \<Longrightarrow> (s, ba) \<in> sr
+ 2. \<And>a b aa ba s. \<lbrakk>(s, b) \<in> sr; P s; P' b; nf \<longrightarrow> \<not> snd (f s); (aa, ba) \<in> fst (g b); a = s\<rbrakk> \<Longrightarrow> ba = b
+ 3. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b aa ba s. \<lbrakk>(s, b) \<in> sr; P s; P' b; nf \<longrightarrow> \<not> snd (f s); (aa, ba) \<in> fst (g b); a = s\<rbrakk> \<Longrightarrow> ba = b
+ 2. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (rule sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b aa ba s. \<lbrakk>(s, b) \<in> sr; P s; P' b; nf \<longrightarrow> \<not> snd (f s); (aa, ba) \<in> fst (g b); a = s\<rbrakk> \<Longrightarrow> b = ba
+ 2. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (rule use_valid[OF _ y], assumption+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b aa ba s. \<lbrakk>(s, b) \<in> sr; P s; P' b; nf \<longrightarrow> \<not> snd (f s); (aa, ba) \<in> fst (g b); a = s\<rbrakk> \<Longrightarrow> b = b
+ 2. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a)\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (insert z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>(a, b) \<in> sr; P a; P' b; nf \<longrightarrow> \<not> snd (f a); nf' \<Longrightarrow> no_fail P' g\<rbrakk> \<Longrightarrow> nf' \<longrightarrow> \<not> snd (g b)<\STATESEP>apply (clarsimp simp: no_fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_symb_exec_l':
+  assumes z: "\<And>rv. corres_underlying sr nf nf' r (Q' rv) P' (x rv) y"
+  assumes x: "\<And>s. P s \<Longrightarrow> \<lbrace>(=) s\<rbrace> m \<exists>\<lbrace>\<lambda>r. (=) s\<rbrace>"
+  assumes y: "\<lbrace>Q\<rbrace> m \<lbrace>Q'\<rbrace>"
+  shows      "corres_underlying sr nf nf' r (P and Q) P' (m >>= (\<lambda>rv. x rv)) y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' r (P and Q) P' (m >>= x) y<\STATESEP>apply (rule corres_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. corres_underlying sr nf nf' r ?Q ?Q' (m >>= x) y
+ 2. \<And>s. (P and Q) s \<Longrightarrow> ?Q s
+ 3. \<And>s. P' s \<Longrightarrow> ?Q' s<\STATESEP>apply (subst gets_bind_ign[symmetric], rule corres_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. corres_underlying sr nf nf' ?r'7 ?P7 ?P'7 m (gets ?f5)
+ 2. \<And>rv xa. ?r'7 rv xa \<Longrightarrow> corres_underlying sr nf nf' r (?R7 rv) (?R'7 xa) (x rv) y
+ 3. \<lbrace>?Q7\<rbrace> m \<lbrace>?R7\<rbrace>
+ 4. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>?R'7\<rbrace>
+ 5. \<And>s. (P and Q) s \<Longrightarrow> (?P7 and ?Q7) s
+ 6. \<And>s. P' s \<Longrightarrow> (?P'7 and ?Q'7) s<\STATESEP>apply (rule corres_noop3)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>s s'. \<lbrakk>?P7 s; ?P'7 s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s\<rbrace> m \<exists>\<lbrace>\<lambda>r. (=) s\<rbrace>
+ 2. \<And>s s'. \<lbrakk>?P7 s; ?P'7 s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s'\<rbrace> gets ?f5 \<lbrace>\<lambda>r. (=) s'\<rbrace>
+ 3. nf' \<Longrightarrow> no_fail ?P'7 (gets ?f5)
+ 4. \<And>rv xa. dc rv xa \<Longrightarrow> corres_underlying sr nf nf' r (?R7 rv) (?R'7 xa) (x rv) y
+ 5. \<lbrace>?Q7\<rbrace> m \<lbrace>?R7\<rbrace>
+ 6. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>?R'7\<rbrace>
+ 7. \<And>s. (P and Q) s \<Longrightarrow> (?P7 and ?Q7) s
+ 8. \<And>s. P' s \<Longrightarrow> (?P'7 and ?Q'7) s<\STATESEP>apply (erule x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>s s'. \<lbrakk>P s; ?P'7 s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s'\<rbrace> gets ?f5 \<lbrace>\<lambda>r. (=) s'\<rbrace>
+ 2. nf' \<Longrightarrow> no_fail ?P'7 (gets ?f5)
+ 3. \<And>rv xa. dc rv xa \<Longrightarrow> corres_underlying sr nf nf' r (?R7 rv) (?R'7 xa) (x rv) y
+ 4. \<lbrace>?Q7\<rbrace> m \<lbrace>?R7\<rbrace>
+ 5. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>?R'7\<rbrace>
+ 6. \<And>s. (P and Q) s \<Longrightarrow> (P and ?Q7) s
+ 7. \<And>s. P' s \<Longrightarrow> (?P'7 and ?Q'7) s<\STATESEP>apply (rule gets_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. nf' \<Longrightarrow> no_fail ?P'7 (gets ?f5)
+ 2. \<And>rv xa. dc rv xa \<Longrightarrow> corres_underlying sr nf nf' r (?R7 rv) (?R'7 xa) (x rv) y
+ 3. \<lbrace>?Q7\<rbrace> m \<lbrace>?R7\<rbrace>
+ 4. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>?R'7\<rbrace>
+ 5. \<And>s. (P and Q) s \<Longrightarrow> (P and ?Q7) s
+ 6. \<And>s. P' s \<Longrightarrow> (?P'7 and ?Q'7) s<\STATESEP>apply (rule no_fail_gets)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>rv xa. dc rv xa \<Longrightarrow> corres_underlying sr nf nf' r (?R7 rv) (?R'7 xa) (x rv) y
+ 2. \<lbrace>?Q7\<rbrace> m \<lbrace>?R7\<rbrace>
+ 3. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>?R'7\<rbrace>
+ 4. \<And>s. (P and Q) s \<Longrightarrow> (P and ?Q7) s
+ 5. \<And>s. P' s \<Longrightarrow> ((\<lambda>_. True) and ?Q'7) s<\STATESEP>apply (rule z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?Q7\<rbrace> m \<lbrace>Q'\<rbrace>
+ 2. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>\<lambda>x. P'\<rbrace>
+ 3. \<And>s. (P and Q) s \<Longrightarrow> (P and ?Q7) s
+ 4. \<And>s. P' s \<Longrightarrow> ((\<lambda>_. True) and ?Q'7) s<\STATESEP>apply (rule y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q'7\<rbrace> gets ?f5 \<lbrace>\<lambda>x. P'\<rbrace>
+ 2. \<And>s. (P and Q) s \<Longrightarrow> (P and Q) s
+ 3. \<And>s. P' s \<Longrightarrow> ((\<lambda>_. True) and ?Q'7) s<\STATESEP>apply (rule gets_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. (P and Q) s \<Longrightarrow> (P and Q) s
+ 2. \<And>s. P' s \<Longrightarrow> ((\<lambda>_. True) and P') s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_symb_exec_r':
+  assumes z: "\<And>rv. corres_underlying sr nf nf' r P (P'' rv) x (y rv)"
+  assumes y: "\<lbrace>P'\<rbrace> m \<lbrace>P''\<rbrace>"
+  assumes x: "\<And>s. Q' s \<Longrightarrow> \<lbrace>(=) s\<rbrace> m \<lbrace>\<lambda>r. (=) s\<rbrace>"
+  assumes nf: "nf' \<Longrightarrow> no_fail R' m"
+  shows      "corres_underlying sr nf nf' r P (P' and Q' and R') x (m >>= (\<lambda>rv. y rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' r P (P' and Q' and R') x (m >>= y)<\STATESEP>apply (rule corres_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. corres_underlying sr nf nf' r ?Q ?Q' x (m >>= y)
+ 2. \<And>s. P s \<Longrightarrow> ?Q s
+ 3. \<And>s. (P' and Q' and R') s \<Longrightarrow> ?Q' s<\STATESEP>apply (subst gets_bind_ign[symmetric], rule corres_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. corres_underlying sr nf nf' ?r'7 ?P7 ?P'7 (gets ?f5) m
+ 2. \<And>xa rv'. ?r'7 xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 3. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 4. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 6. \<And>s. (P' and Q' and R') s \<Longrightarrow> (?P'7 and ?Q'7) s<\STATESEP>apply (rule_tac P'="a' and a''" for a' a'' in corres_noop3)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>s s'. \<lbrakk>?P7 s; (?a'21 and ?a''21) s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s\<rbrace> gets ?f5 \<exists>\<lbrace>\<lambda>r. (=) s\<rbrace>
+ 2. \<And>s s'. \<lbrakk>?P7 s; (?a'21 and ?a''21) s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s'\<rbrace> m \<lbrace>\<lambda>r. (=) s'\<rbrace>
+ 3. nf' \<Longrightarrow> no_fail (?a'21 and ?a''21) m
+ 4. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 5. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 6. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 7. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 8. \<And>s. (P' and Q' and R') s \<Longrightarrow> (?a'21 and ?a''21 and ?Q'7) s<\STATESEP>apply (simp add: simpler_gets_def exs_valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>s s'. \<lbrakk>?P7 s; (?a'21 and ?a''21) s'; (s, s') \<in> sr\<rbrakk> \<Longrightarrow> \<lbrace>(=) s'\<rbrace> m \<lbrace>\<lambda>r. (=) s'\<rbrace>
+ 2. nf' \<Longrightarrow> no_fail (?a'21 and ?a''21) m
+ 3. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 4. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 5. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 6. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 7. \<And>s. (P' and Q' and R') s \<Longrightarrow> (?a'21 and ?a''21 and ?Q'7) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>s s'. \<lbrakk>?P7 s; (s, s') \<in> sr; ?a'21 s'; ?a''21 s'\<rbrakk> \<Longrightarrow> \<lbrace>(=) s'\<rbrace> m \<lbrace>\<lambda>r. (=) s'\<rbrace>
+ 2. nf' \<Longrightarrow> no_fail (?a'21 and ?a''21) m
+ 3. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 4. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 5. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 6. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 7. \<And>s. (P' and Q' and R') s \<Longrightarrow> (?a'21 and ?a''21 and ?Q'7) s<\STATESEP>apply (erule x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. nf' \<Longrightarrow> no_fail (Q' and ?a''21) m
+ 2. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 3. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 4. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 6. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and ?a''21 and ?Q'7) s<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. nf' \<Longrightarrow> no_fail ?P35 m
+ 2. \<And>s. \<lbrakk>nf'; (Q' and ?a''21) s\<rbrakk> \<Longrightarrow> ?P35 s
+ 3. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 4. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 5. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 6. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 7. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and ?a''21 and ?Q'7) s<\STATESEP>apply (erule nf)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s. \<lbrakk>nf'; (Q' and ?a''21) s\<rbrakk> \<Longrightarrow> R' s
+ 2. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 3. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 4. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 6. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and ?a''21 and ?Q'7) s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>s. \<lbrakk>nf'; Q' s; ?a''21 s\<rbrakk> \<Longrightarrow> R' s
+ 2. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 3. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 4. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 5. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 6. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and ?a''21 and ?Q'7) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>xa rv'. dc xa rv' \<Longrightarrow> corres_underlying sr nf nf' r (?R7 xa) (?R'7 rv') x (y rv')
+ 2. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>?R7\<rbrace>
+ 3. \<lbrace>?Q'7\<rbrace> m \<lbrace>?R'7\<rbrace>
+ 4. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 5. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and R' and ?Q'7) s<\STATESEP>apply (rule z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<lbrace>?Q7\<rbrace> gets ?f5 \<lbrace>\<lambda>x. P\<rbrace>
+ 2. \<lbrace>?Q'7\<rbrace> m \<lbrace>P''\<rbrace>
+ 3. \<And>s. P s \<Longrightarrow> (?P7 and ?Q7) s
+ 4. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and R' and ?Q'7) s<\STATESEP>apply (rule gets_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q'7\<rbrace> m \<lbrace>P''\<rbrace>
+ 2. \<And>s. P s \<Longrightarrow> (?P7 and P) s
+ 3. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and R' and ?Q'7) s<\STATESEP>apply (rule y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. P s \<Longrightarrow> (?P7 and P) s
+ 2. \<And>s. (P' and Q' and R') s \<Longrightarrow> (Q' and R' and P') s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_mapM_x_lower:
+  fixes P :: "'a option \<Rightarrow> 's \<Rightarrow> bool"
+  fixes f :: "('s,'a) nondet_monad"
+  fixes g :: "'a \<Rightarrow> 'b \<Rightarrow> ('s,'c) nondet_monad"
+  \<comment> \<open>@{term g} preserves the state that @{term f} cares about\<close>
+  assumes g: "\<And>x y. \<lbrace> P (Some x) \<rbrace> g x y \<lbrace> \<lambda>_. P (Some x) \<rbrace>"
+  \<comment> \<open>@{term P} specifies whether @{term f} either fails or returns a deterministic result\<close>
+  assumes f: "\<And>opt_x s. P opt_x s \<Longrightarrow> f s = case_option ({},True) (\<lambda>x. ({(x,s)},False)) opt_x"
+  \<comment> \<open>Every state determines P, and therefore the behaviour of @{term f}\<close>
+  assumes x: "\<And>s. \<exists> opt_x. P opt_x s"
+  \<comment> \<open>If @{term f} may fail, ensure there is at least one @{term f}\<close>
+  assumes y: "\<exists>s. P None s \<Longrightarrow> ys \<noteq> []"
+  shows "do x \<leftarrow> f; mapM_x (g x) ys od = mapM_x (\<lambda>y. do x \<leftarrow> f; g x y od) ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>have f_rv: "\<lbrace>\<top>\<rbrace> f \<lbrace>\<lambda>r. P (Some r)\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>r. P (Some r)\<rbrace><\STATESEP>using x f<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+\<exists>opt_x. P opt_x ?s
+P ?opt_x ?s \<Longrightarrow> f ?s = (case ?opt_x of None \<Rightarrow> ({}, True) | Some x \<Rightarrow> ({(x, ?s)}, False))
+
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>r. P (Some r)\<rbrace><\STATESEP>apply (clarsimp simp: valid_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<And>s. \<exists>opt_x. P opt_x s; \<And>opt_x s. P opt_x s \<Longrightarrow> f s = (case opt_x of None \<Rightarrow> ({}, True) | Some x \<Rightarrow> ({(x, s)}, False)); (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> P (Some a) b<\STATESEP>apply (drule_tac x=s in meta_spec; clarsimp)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b opt_x. \<lbrakk>\<And>opt_x s. P opt_x s \<Longrightarrow> f s = (case opt_x of None \<Rightarrow> ({}, True) | Some x \<Rightarrow> ({(x, s)}, False)); (a, b) \<in> fst (case opt_x of None \<Rightarrow> ({}, True) | Some x \<Rightarrow> ({(x, s)}, False)); P opt_x s\<rbrakk> \<Longrightarrow> P (Some a) b<\STATESEP>apply (case_tac opt_x; simp)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>r. P (Some r)\<rbrace>
+
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>r. P (Some r)\<rbrace>
+
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>fix y and h :: "'a \<Rightarrow> ('s,'d) nondet_monad"<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>have "do x \<leftarrow> f; _ \<leftarrow> g x y; h x od
+              = do x \<leftarrow> f; _ \<leftarrow> g x y; x \<leftarrow> f; h x od"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- f;
+_ <- g x y;
+h x
+od = do x <- f;
+_ <- g x y;
+f >>= h
+od<\STATESEP>apply (rule ext)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (do x <- f;
+_ <- g x y;
+h x
+od) x = (do x <- f;
+_ <- g x y;
+f >>= h
+od) x<\STATESEP>apply (subst monad_eq_split[where g="do x \<leftarrow> f; g x y; return x od"
+                                      and P="\<top>" and Q="\<lambda>r. P (Some r)"
+                                      and f="h" and f'="\<lambda>_. f >>= h",
+                                    simplified bind_assoc, simplified])<\STATESEP>5<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x r s. P (Some r) s \<Longrightarrow> h r s = (f >>= h) s
+ 2. \<And>x. \<lbrace>\<lambda>_. True\<rbrace> do x <- f;
+y <- g x y;
+return x
+od \<lbrace>\<lambda>r. P (Some r)\<rbrace>
+ 3. \<And>x. (do x <- f;
+x <- g x y;
+f >>= h
+od) x = (do x <- f;
+_ <- g x y;
+f >>= h
+od) x<\STATESEP>apply (wpsimp wp: g f_rv simp: f return_def bind_def)+<\STATESEP>5<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>5<\TRANSEP>proof (state)
+this:
+do x <- f;
+_ <- g x y;
+h x
+od = do x <- f;
+_ <- g x y;
+f >>= h
+od
+
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+do x <- f;
+_ <- g x ?y2;
+?h2 x
+od = do x <- f;
+_ <- g x ?y2;
+f >>= ?h2
+od
+
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>note f_redundant = this<\STATESEP>2<\TRANSEP>proof (state)
+this:
+do x <- f;
+_ <- g x ?y2;
+?h2 x
+od = do x <- f;
+_ <- g x ?y2;
+f >>= ?h2
+od
+
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>proof (cases "\<exists>s. P None s")<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<exists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+ 2. \<nexists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>case True<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<exists>s. P None s
+
+goal (2 subgoals):
+ 1. \<exists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+ 2. \<nexists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>show ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>apply (cases ys; simp add: True y mapM_x_Cons bind_assoc)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a list. ys = a # list \<Longrightarrow> do x <- f;
+y <- g x a;
+mapM_x (g x) list
+od = do x <- f;
+y <- g x a;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) list
+od<\STATESEP>subgoal for y ys<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ys = y # ys \<Longrightarrow> do x <- f;
+y <- g x y;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x y;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od<\STATESEP>apply (thin_tac _)<\STATESEP>8<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- f;
+y <- g x y;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x y;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od<\STATESEP>apply (induct ys arbitrary: y; simp add: mapM_x_Nil mapM_x_Cons bind_assoc)<\STATESEP>8<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a ys y. (\<And>y. do x <- f;
+y <- g x y;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x y;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od) \<Longrightarrow> do x <- f;
+y <- g x y;
+y <- g x a;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x y;
+x <- f;
+y <- g x a;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od<\STATESEP>apply (subst f_redundant; simp)<\STATESEP>8<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>8<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>5<\TRANSEP>proof (state)
+this:
+do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+
+goal (1 subgoal):
+ 1. \<nexists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>next<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<nexists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>case False<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<nexists>s. P None s
+
+goal (1 subgoal):
+ 1. \<nexists>s. P None s \<Longrightarrow> do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>show ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>using False<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+\<nexists>s. P None s
+
+goal (1 subgoal):
+ 1. do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys<\STATESEP>apply (induct ys; simp add: mapM_x_Nil mapM_x_Cons bind_assoc)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>x. \<not> P None x \<Longrightarrow> do x <- f;
+return ()
+od = return ()
+ 2. \<And>a ys. \<lbrakk>do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys; \<forall>x. \<not> P None x\<rbrakk> \<Longrightarrow> do x <- f;
+y <- g x a;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x a;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od<\STATESEP>apply (rule ext)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<forall>x. \<not> P None x \<Longrightarrow> (do x <- f;
+return ()
+od) x = return () x
+ 2. \<And>a ys. \<lbrakk>do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys; \<forall>x. \<not> P None x\<rbrakk> \<Longrightarrow> do x <- f;
+y <- g x a;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x a;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od<\STATESEP>subgoal for s<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. \<not> P None x \<Longrightarrow> (do x <- f;
+return ()
+od) s = return () s<\STATESEP>by (insert x[of s]; drule spec[of _ s]; clarsimp; case_tac opt_x;
+               clarsimp simp: bind_def return_def f)<\STATESEP>8<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a ys. \<lbrakk>do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys; \<forall>x. \<not> P None x\<rbrakk> \<Longrightarrow> do x <- f;
+y <- g x a;
+mapM_x (g x) ys
+od = do x <- f;
+y <- g x a;
+mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+od<\STATESEP>apply (subst f_redundant; simp)<\STATESEP>5<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>5<\TRANSEP>proof (state)
+this:
+do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+do x <- f;
+mapM_x (g x) ys
+od = mapM_x (\<lambda>y. do x <- f;
+g x y
+od) ys
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>crunch domain_list_inv[wp]: do_user_op "\<lambda>s. P (domain_list s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma next_child_child_set:
+  "\<lbrakk>next_child slot (cdt_list s) = Some child; valid_list s\<rbrakk>
+    \<Longrightarrow> child \<in> (case next_child slot (cdt_list s) of None \<Rightarrow> {} | Some n \<Rightarrow> {n})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>next_child slot (cdt_list s) = Some child; valid_list s\<rbrakk> \<Longrightarrow> child \<in> (case next_child slot (cdt_list s) of None \<Rightarrow> {} | Some n \<Rightarrow> {n})<\STATESEP>by (simp add: next_child_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_delete_one_cur_tcb[wp]:
+  "\<lbrace>\<lambda>s. cur_tcb s\<rbrace> cap_delete_one slot \<lbrace>\<lambda>_ s. cur_tcb s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>cur_tcb\<rbrace> cap_delete_one slot \<lbrace>\<lambda>_. cur_tcb\<rbrace><\STATESEP>apply (simp add: cur_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. tcb_at (cur_thread s) s\<rbrace> cap_delete_one slot \<lbrace>\<lambda>_ s. tcb_at (cur_thread s) s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> cap_delete_one slot \<lbrace>\<lambda>_ s. tcb_at (cur_thread s) s\<rbrace>
+ 2. \<And>s. tcb_at (cur_thread s) s \<Longrightarrow> ?Q s<\STATESEP>apply wps<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>prev_s. \<lbrace>?P3 prev_s\<rbrace> cap_delete_one slot \<lbrace>\<lambda>rv s'. tcb_at (cur_thread prev_s) prev_s\<rbrace>
+ 2. \<And>s. tcb_at (cur_thread s) s \<Longrightarrow> ?P3 s s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. tcb_at (cur_thread s) s \<Longrightarrow> tcb_at (cur_thread s) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma check_active_irq_invs:
+  "\<lbrace>invs and (ct_running or ct_idle) and einvs and (\<lambda>s. scheduler_action s = resume_cur_thread)
+    and (\<lambda>s. 0 < domain_time s) and valid_domain_list \<rbrace>
+   check_active_irq
+   \<lbrace>\<lambda>_. invs and (ct_running or ct_idle) and valid_list and valid_sched
+        and (\<lambda>s. scheduler_action s = resume_cur_thread)
+        and (\<lambda>s. 0 < domain_time s) and valid_domain_list \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and (ct_running or ct_idle) and einvs and (\<lambda>s. scheduler_action s = resume_cur_thread) and (\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace> check_active_irq \<lbrace>\<lambda>_. invs and (ct_running or ct_idle) and valid_list and valid_sched and (\<lambda>s. scheduler_action s = resume_cur_thread) and (\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace><\STATESEP>by (wpsimp simp: check_active_irq_def ct_in_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma check_active_irq_invs_just_running:
+  "\<lbrace>invs and ct_running and einvs and (\<lambda>s. scheduler_action s = resume_cur_thread)
+      and (\<lambda>s. 0 < domain_time s) and valid_domain_list \<rbrace>
+   check_active_irq
+   \<lbrace>\<lambda>_. invs and ct_running and valid_list and valid_sched
+        and (\<lambda>s. scheduler_action s = resume_cur_thread)
+        and (\<lambda>s. 0 < domain_time s) and valid_domain_list \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and ct_running and einvs and (\<lambda>s. scheduler_action s = resume_cur_thread) and (\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace> check_active_irq \<lbrace>\<lambda>_. invs and ct_running and valid_list and valid_sched and (\<lambda>s. scheduler_action s = resume_cur_thread) and (\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace><\STATESEP>by (wpsimp simp: check_active_irq_def ct_in_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma check_active_irq_invs_just_idle:
+  "\<lbrace>invs and ct_idle and einvs and (\<lambda>s. scheduler_action s = resume_cur_thread)
+      and (\<lambda>s. 0 < domain_time s) and valid_domain_list \<rbrace>
+   check_active_irq
+   \<lbrace>\<lambda>_. invs and ct_idle and valid_list and valid_sched
+        and (\<lambda>s. scheduler_action s = resume_cur_thread)
+        and (\<lambda>s. 0 < domain_time s) and valid_domain_list \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs and ct_idle and einvs and (\<lambda>s. scheduler_action s = resume_cur_thread) and (\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace> check_active_irq \<lbrace>\<lambda>_. invs and ct_idle and valid_list and valid_sched and (\<lambda>s. scheduler_action s = resume_cur_thread) and (\<lambda>s. 0 < domain_time s) and valid_domain_list\<rbrace><\STATESEP>by (wpsimp simp: check_active_irq_def ct_in_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma caps_of_state_kheap_ekheap[simp]:
+  "caps_of_state (kheap_update f (ekheap_update ef s))
+     = caps_of_state (kheap_update f s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. caps_of_state (kheap_update f (ekheap_update ef s)) = caps_of_state (kheap_update f s)<\STATESEP>apply (simp add: trans_state_update[symmetric] del: trans_state_update)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

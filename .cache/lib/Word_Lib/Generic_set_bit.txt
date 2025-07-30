@@ -1,0 +1,123 @@
+<\STATESEP>section \<open>Operation variant for setting and unsetting bits\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Generic_set_bit
+  imports
+    "HOL-Library.Word"
+    Most_significant_bit
+begin<\STATESEP>0<\TRANSEP><\STATESEP>class set_bit = semiring_bits +
+  fixes set_bit :: \<open>'a \<Rightarrow> nat \<Rightarrow> bool \<Rightarrow> 'a\<close>
+  assumes bit_set_bit_iff_2n:
+    \<open>bit (set_bit a m b) n \<longleftrightarrow>
+      (if m = n then b else bit a n) \<and> 2 ^ n \<noteq> 0\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas bit_set_bit_iff[bit_simps] = bit_set_bit_iff_2n[simplified fold_possible_bit simp_thms]<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_bit_eq:
+  \<open>set_bit a n b = (if b then Bit_Operations.set_bit else unset_bit) n a\<close>
+  for a :: \<open>'a::{ring_bit_operations, set_bit}\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit a n b = (if b then semiring_bit_operations_class.set_bit else unset_bit) n a<\STATESEP>by (rule bit_eqI) (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>instantiation int :: set_bit
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition set_bit_int :: \<open>int \<Rightarrow> nat \<Rightarrow> bool \<Rightarrow> int\<close>
+  where \<open>set_bit_int i n b = (if b then Bit_Operations.set_bit else Bit_Operations.unset_bit) n i\<close><\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(int, set_bit_class)<\STATESEP>by standard (simp_all add: set_bit_int_def bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context
+  includes bit_operations_syntax
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma fixes i :: int
+  shows int_set_bit_True_conv_OR [code]: "Generic_set_bit.set_bit i n True = i OR push_bit n 1"
+  and int_set_bit_False_conv_NAND [code]: "Generic_set_bit.set_bit i n False = i AND NOT (push_bit n 1)"
+  and int_set_bit_conv_ops: "Generic_set_bit.set_bit i n b = (if b then i OR (push_bit n 1) else i AND NOT (push_bit n 1))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit i n True = i OR push_bit n 1 &&& set_bit_class.set_bit i n False = i AND NOT (push_bit n 1) &&& set_bit_class.set_bit i n b = (if b then i OR push_bit n 1 else i AND NOT (push_bit n 1))<\STATESEP>by (simp_all add: bit_eq_iff) (auto simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>instantiation word :: (len) set_bit
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition set_bit_word :: \<open>'a word \<Rightarrow> nat \<Rightarrow> bool \<Rightarrow> 'a word\<close>
+  where set_bit_unfold: \<open>set_bit w n b = (if b then Bit_Operations.set_bit n w else unset_bit n w)\<close>
+  for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS('a word, set_bit_class)<\STATESEP>by standard (auto simp add: set_bit_unfold bit_simps dest: bit_imp_le_length)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma bit_set_bit_word_iff [bit_simps]:
+  \<open>bit (set_bit w m b) n \<longleftrightarrow> (if m = n then n < LENGTH('a) \<and> b else bit w n)\<close>
+  for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (set_bit_class.set_bit w m b) n = (if m = n then n < LENGTH('a) \<and> b else bit w n)<\STATESEP>by (auto simp add: bit_simps dest: bit_imp_le_length)<\STATESEP>1<\TRANSEP><\STATESEP>lemma test_bit_set_gen:
+  "bit (set_bit w n x) m \<longleftrightarrow> (if m = n then n < size w \<and> x else bit w m)"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (set_bit_class.set_bit w n x) m = (if m = n then n < size w \<and> x else bit w m)<\STATESEP>by (simp add: bit_set_bit_word_iff word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma test_bit_set:
+  "bit (set_bit w n x) n \<longleftrightarrow> n < size w \<and> x"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (set_bit_class.set_bit w n x) n = (n < size w \<and> x)<\STATESEP>by (auto simp add: bit_simps word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_nth: "set_bit w n (bit w n) = w"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w n (bit w n) = w<\STATESEP>by (rule bit_word_eqI) (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_set_same [simp]: "set_bit (set_bit w n x) n y = set_bit w n y"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (set_bit_class.set_bit w n x) n y = set_bit_class.set_bit w n y<\STATESEP>by (rule word_eqI) (simp add : test_bit_set_gen word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_set_diff:
+  fixes w :: "'a::len word"
+  assumes "m \<noteq> n"
+  shows "set_bit (set_bit w m x) n y = set_bit (set_bit w n y) m x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit (set_bit_class.set_bit w m x) n y = set_bit_class.set_bit (set_bit_class.set_bit w n y) m x<\STATESEP>by (rule word_eqI) (auto simp: test_bit_set_gen word_size assms)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_nth_iff: "set_bit w n b = w \<longleftrightarrow> bit w n = b \<or> n \<ge> size w"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (set_bit_class.set_bit w n b = w) = (bit w n = b \<or> size w \<le> n)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. set_bit_class.set_bit w n b = w \<Longrightarrow> bit w n = b \<or> size w \<le> n
+ 2. bit w n = b \<or> size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (rule disjCI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>set_bit_class.set_bit w n b = w; \<not> size w \<le> n\<rbrakk> \<Longrightarrow> bit w n = b
+ 2. bit w n = b \<or> size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (drule word_eqD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<not> size w \<le> n; bit (set_bit_class.set_bit w n b) ?x5 = bit w ?x5\<rbrakk> \<Longrightarrow> bit w n = b
+ 2. bit w n = b \<or> size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (erule sym [THEN trans])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<not> size w \<le> n \<Longrightarrow> bit (set_bit_class.set_bit w n b) n = b
+ 2. bit w n = b \<or> size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (simp add: test_bit_set)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w n = b \<or> size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. bit w n = b \<Longrightarrow> set_bit_class.set_bit w n b = w
+ 2. size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. b = bit w n \<Longrightarrow> set_bit_class.set_bit w n (bit w n) = w
+ 2. size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (rule word_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na. b = bit w n \<Longrightarrow> na < size (set_bit_class.set_bit w n (bit w n)) \<longrightarrow> bit (set_bit_class.set_bit w n (bit w n)) na = bit w na
+ 2. size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (clarsimp simp add : test_bit_set_gen)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>b = bit w n; n < size (set_bit_class.set_bit w n (bit w n))\<rbrakk> \<Longrightarrow> (n < size w \<and> bit w n) = bit w n
+ 2. size w \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (auto simp add: word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LENGTH('a) \<le> n \<Longrightarrow> set_bit_class.set_bit w n b = w<\STATESEP>apply (rule bit_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>na. \<lbrakk>LENGTH('a) \<le> n; possible_bit TYPE('a word) na\<rbrakk> \<Longrightarrow> bit (set_bit_class.set_bit w n b) na = bit w na<\STATESEP>apply (simp add: bit_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clr_le: "w \<ge> set_bit w n False"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit w n False \<le> w<\STATESEP>apply (simp add: set_bit_unfold)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unset_bit n w \<le> w<\STATESEP>apply transfer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>n w. take_bit LENGTH('a) (unset_bit n w) \<le> take_bit LENGTH('a) w<\STATESEP>apply (simp add: take_bit_unset_bit_eq unset_bit_less_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_set_ge: "w \<le> set_bit w n True"
+  for w :: "'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w \<le> set_bit_class.set_bit w n True<\STATESEP>apply (simp add: set_bit_unfold)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w \<le> semiring_bit_operations_class.set_bit n w<\STATESEP>apply transfer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>w n. take_bit LENGTH('a) w \<le> take_bit LENGTH('a) (semiring_bit_operations_class.set_bit n w)<\STATESEP>apply (simp add: take_bit_set_bit_eq set_bit_greater_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_bit_beyond:
+  "size x \<le> n \<Longrightarrow> set_bit x n b = x" for x :: "'a :: len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. size x \<le> n \<Longrightarrow> set_bit_class.set_bit x n b = x<\STATESEP>by (simp add: word_set_nth_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma one_bit_shiftl: "set_bit 0 n True = (1 :: 'a :: len word) << n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit 0 n True = 1 << n<\STATESEP>apply (rule word_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>na. na < size (set_bit_class.set_bit 0 n True) \<longrightarrow> bit (set_bit_class.set_bit 0 n True) na = bit (1 << n) na<\STATESEP>apply (auto simp add: word_size bit_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma one_bit_pow: "set_bit 0 n True = (2 :: 'a :: len word) ^ n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set_bit_class.set_bit 0 n True = 2 ^ n<\STATESEP>by (simp add: one_bit_shiftl shiftl_def)<\STATESEP>1<\TRANSEP><\STATESEP>instantiation integer :: set_bit
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context
+  includes integer.lifting
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lift_definition set_bit_integer :: \<open>integer \<Rightarrow> nat \<Rightarrow> bool \<Rightarrow> integer\<close> is set_bit<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(integer, set_bit_class)<\STATESEP>by (standard; transfer) (simp add: bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

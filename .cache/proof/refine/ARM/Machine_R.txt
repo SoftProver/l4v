@@ -1,0 +1,129 @@
+<\STATESEP>theory Machine_R
+imports Bits_R
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition "irq_state_independent_H (P :: kernel_state \<Rightarrow> bool)\<equiv>
+              \<forall>(f :: nat \<Rightarrow> nat) (s :: kernel_state). P s \<longrightarrow> P (s\<lparr>ksMachineState := ksMachineState s
+                                \<lparr>irq_state := f (irq_state (ksMachineState s))\<rparr>\<rparr>)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma irq_state_independent_HI[intro!, simp]:
+  "\<lbrakk>\<And>s f. P (s\<lparr>ksMachineState := ksMachineState s
+              \<lparr>irq_state := f (irq_state (ksMachineState s))\<rparr>\<rparr>) = P s\<rbrakk>
+   \<Longrightarrow> irq_state_independent_H P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s f. P (s\<lparr>ksMachineState := ksMachineState s\<lparr>irq_state := f (irq_state (ksMachineState s))\<rparr>\<rparr>) = P s) \<Longrightarrow> irq_state_independent_H P<\STATESEP>by (simp add: irq_state_independent_H_def)<\STATESEP>1<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_getirq_inv[wp]:
+  "irq_state_independent_H P \<Longrightarrow> \<lbrace>P\<rbrace> doMachineOp (getActiveIRQ in_kernel) \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_state_independent_H P \<Longrightarrow> \<lbrace>P\<rbrace> doMachineOp (getActiveIRQ in_kernel) \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (simp add: getActiveIRQ_def doMachineOp_def split_def exec_gets
+                   select_f_select[simplified liftM_def]
+                   select_modify_comm gets_machine_state_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. irq_state_independent_H P \<Longrightarrow> \<lbrace>P\<rbrace> do ms <- gets ksMachineState;
+p <- select_f ((do y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if irq_masks ms active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od) ms);
+y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>irq_state_independent_H P; P s\<rbrakk> \<Longrightarrow> \<forall>x\<in>fst ((do y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if irq_masks (ksMachineState s) active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od) (ksMachineState s)). P (s\<lparr>ksMachineState := snd x\<rparr>)<\STATESEP>apply (clarsimp simp: irq_state_independent_H_def in_monad return_def split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_masked:
+  "\<lbrace>\<lambda>s. valid_irq_masks' table (irq_masks s)\<rbrace> getActiveIRQ in_kernel
+  \<lbrace>\<lambda>rv s. \<forall>irq. rv = Some irq \<longrightarrow> table irq \<noteq> IRQInactive\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. valid_irq_masks' table (irq_masks s)\<rbrace> getActiveIRQ in_kernel \<lbrace>\<lambda>rv s. \<forall>irq. rv = Some irq \<longrightarrow> table irq \<noteq> irqstate.IRQInactive\<rbrace><\STATESEP>apply (simp add: getActiveIRQ_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. valid_irq_masks' table (irq_masks s)\<rbrace> do is_masked <- gets irq_masks;
+y <- modify (\<lambda>s. s\<lparr>irq_state := Suc (irq_state s)\<rparr>);
+active_irq <- gets (irq_oracle \<circ> irq_state);
+if is_masked active_irq \<or> active_irq = 0x3FF \<or> in_kernel \<and> active_irq \<in> non_kernel_IRQs then return None else return (Some active_irq)
+od \<lbrace>\<lambda>rv s. \<forall>irq. rv = Some irq \<longrightarrow> table irq \<noteq> irqstate.IRQInactive\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. valid_irq_masks' table (irq_masks s) \<Longrightarrow> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs \<longrightarrow> (\<forall>irq. None = Some irq \<longrightarrow> table irq \<noteq> irqstate.IRQInactive)) \<and> (\<not> (irq_masks s ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) \<or> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) = 0x3FF \<or> in_kernel \<and> (irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>) \<in> non_kernel_IRQs) \<longrightarrow> (\<forall>irq. Some ((irq_oracle \<circ> irq_state) (s\<lparr>irq_state := Suc (irq_state s)\<rparr>)) = Some irq \<longrightarrow> table irq \<noteq> irqstate.IRQInactive))<\STATESEP>apply (clarsimp simp: valid_irq_masks'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_maskInterrupt:
+  "\<lbrace>\<lambda>s. P (ksMachineState_update (irq_masks_update (\<lambda>t. t (irq := m))) s)\<rbrace>
+  doMachineOp (maskInterrupt m irq) \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := m))) s)\<rbrace> doMachineOp (maskInterrupt m irq) \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply (simp add: doMachineOp_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := m))) s)\<rbrace> do ms <- gets ksMachineState;
+p <- select_f (maskInterrupt m irq ms);
+modify (ksMachineState_update (\<lambda>_. snd p))
+od \<lbrace>\<lambda>_. P\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := m))) s) \<Longrightarrow> \<forall>x\<in>fst (maskInterrupt m irq (ksMachineState s)). P (s\<lparr>ksMachineState := snd x\<rparr>)<\STATESEP>apply (clarsimp simp: maskInterrupt_def in_monad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := m))) s) \<Longrightarrow> P (s\<lparr>ksMachineState := ksMachineState s\<lparr>irq_masks := (irq_masks (ksMachineState s))(irq := m)\<rparr>\<rparr>)<\STATESEP>apply (erule rsubst [where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := m))) s = s\<lparr>ksMachineState := ksMachineState s\<lparr>irq_masks := (irq_masks (ksMachineState s))(irq := m)\<rparr>\<rparr><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_maskInterrupt_True:
+  "\<lbrace>invs'\<rbrace> doMachineOp (maskInterrupt True irq) \<lbrace>\<lambda>_. invs'\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>invs'\<rbrace> doMachineOp (maskInterrupt True irq) \<lbrace>\<lambda>_. invs'\<rbrace><\STATESEP>apply (wp dmo_maskInterrupt)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. invs' s \<Longrightarrow> invs' (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := True))) s)<\STATESEP>apply (clarsimp simp: invs'_def valid_state'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>valid_pspace' s; sch_act_wf (ksSchedulerAction s) s; sym_refs (state_refs_of' s); if_live_then_nonz_cap' s; if_unsafe_then_cap' s; valid_idle' s; valid_global_refs' s; valid_arch_state' s; valid_irq_node' (irq_node' s) s; valid_irq_handlers' s; valid_irq_states' s; valid_machine_state' s; irqs_masked' s; sym_heap_sched_pointers s; valid_sched_pointers s; valid_bitmaps s; ct_not_inQ s; ct_idle_or_in_cur_domain' s; valid_pde_mappings' s; pspace_domain_valid s; ksCurDomain s \<le> maxDomain; ksDomSchedule (KernelInit_H.newKernelState undefined) \<noteq> []; \<forall>x\<in>set (ksDomSchedule (KernelInit_H.newKernelState undefined)). dschDomain x \<le> maxDomain \<and> 0 < dschLength x; ksDomSchedule s = ksDomSchedule (KernelInit_H.newKernelState undefined); ksDomScheduleIdx s < length (ksDomSchedule (KernelInit_H.newKernelState undefined)); untyped_ranges_zero' s; cur_tcb' s\<rbrakk> \<Longrightarrow> valid_irq_masks' (intStateIRQTable (ksInterruptState s)) ((irq_masks (ksMachineState s))(irq := True)) \<and> valid_machine_state' (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := True))) s)<\STATESEP>apply (simp add: valid_irq_masks'_def valid_machine_state'_def
+                   ct_not_inQ_def ct_idle_or_in_cur_domain'_def tcb_in_cur_domain'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma setIRQState_irq_states':
+  "\<lbrace>valid_irq_states'\<rbrace>
+      setIRQState state irq
+   \<lbrace>\<lambda>rv. valid_irq_states'\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_irq_states'\<rbrace> setIRQState state irq \<lbrace>\<lambda>rv. valid_irq_states'\<rbrace><\STATESEP>apply (simp add: setIRQState_def setInterruptState_def getInterruptState_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>valid_irq_states'\<rbrace> do st <- gets ksInterruptState;
+y <- modify (ksInterruptState_update (\<lambda>_. intStateIRQTable_update (\<lambda>_. (intStateIRQTable st)(irq := state)) st));
+doMachineOp (maskInterrupt (state = irqstate.IRQInactive) irq)
+od \<lbrace>\<lambda>rv. valid_irq_states'\<rbrace><\STATESEP>apply (wp dmo_maskInterrupt)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. valid_irq_states' s \<Longrightarrow> valid_irq_states' (ksMachineState_update (irq_masks_update (\<lambda>t. t(irq := state = irqstate.IRQInactive))) (s\<lparr>ksInterruptState := intStateIRQTable_update (\<lambda>_. (intStateIRQTable (ksInterruptState s))(irq := state)) (ksInterruptState s)\<rparr>))<\STATESEP>apply (simp add: valid_irq_masks'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_le_maxIRQ:
+  "\<lbrace>irqs_masked' and valid_irq_states'\<rbrace> doMachineOp (getActiveIRQ in_kernel) \<lbrace>\<lambda>rv s. \<forall>x. rv = Some x \<longrightarrow> x \<le> maxIRQ\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>irqs_masked' and valid_irq_states'\<rbrace> doMachineOp (getActiveIRQ in_kernel) \<lbrace>\<lambda>rv s. \<forall>x. rv = Some x \<longrightarrow> x \<le> maxIRQ\<rbrace><\STATESEP>apply (simp add: doMachineOp_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>irqs_masked' and valid_irq_states'\<rbrace> do ms <- gets ksMachineState;
+p <- select_f (getActiveIRQ in_kernel ms);
+y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od \<lbrace>\<lambda>rv s. \<forall>x. rv = Some x \<longrightarrow> x \<le> maxIRQ\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (irqs_masked' and valid_irq_states') s \<Longrightarrow> \<forall>x\<in>fst (getActiveIRQ in_kernel (ksMachineState s)). \<forall>xa. fst x = Some xa \<longrightarrow> xa \<le> maxIRQ<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b x. \<lbrakk>(Some x, b) \<in> fst (getActiveIRQ in_kernel (ksMachineState s)); irqs_masked' s; valid_irq_states' s\<rbrakk> \<Longrightarrow> x \<le> maxIRQ<\STATESEP>apply (drule use_valid, rule getActiveIRQ_le_maxIRQ')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b x. \<lbrakk>irqs_masked' s; valid_irq_states' s\<rbrakk> \<Longrightarrow> \<forall>irq>maxIRQ. irq_masks (ksMachineState s) irq
+ 2. \<And>s b x. \<lbrakk>irqs_masked' s; valid_irq_states' s; \<forall>xa. Some x = Some xa \<longrightarrow> xa \<le> maxIRQ\<rbrakk> \<Longrightarrow> x \<le> maxIRQ<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b x. \<lbrakk>irqs_masked' s; valid_irq_states' s; \<forall>xa. Some x = Some xa \<longrightarrow> xa \<le> maxIRQ\<rbrakk> \<Longrightarrow> x \<le> maxIRQ
+ 2. \<And>s b x. \<lbrakk>irqs_masked' s; valid_irq_states' s\<rbrakk> \<Longrightarrow> \<forall>irq>maxIRQ. irq_masks (ksMachineState s) irq<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b x. \<lbrakk>irqs_masked' s; valid_irq_states' s\<rbrakk> \<Longrightarrow> \<forall>irq>maxIRQ. irq_masks (ksMachineState s) irq<\STATESEP>apply (simp add: irqs_masked'_def valid_irq_states'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getActiveIRQ_neq_Some0xFF:
+  "\<lbrace>\<top>\<rbrace> doMachineOp (getActiveIRQ in_kernel) \<lbrace>\<lambda>rv s. rv \<noteq> Some 0x3FF\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> doMachineOp (getActiveIRQ in_kernel) \<lbrace>\<lambda>rv s. rv \<noteq> Some 0x3FF\<rbrace><\STATESEP>apply (simp add: doMachineOp_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> do ms <- gets ksMachineState;
+p <- select_f (getActiveIRQ in_kernel ms);
+y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od \<lbrace>\<lambda>rv s. rv \<noteq> Some 0x3FF\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> \<forall>x\<in>fst (getActiveIRQ in_kernel (ksMachineState s)). fst x \<noteq> Some 0x3FF<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b. (Some 0x3FF, b) \<in> fst (getActiveIRQ in_kernel (ksMachineState s)) \<Longrightarrow> False<\STATESEP>apply (drule use_valid, rule getActiveIRQ_neq_Some0xFF')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b. True
+ 2. \<And>s b. Some 0x3FF \<noteq> Some 0x3FF \<Longrightarrow> False<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,81 @@
+<\STATESEP>theory AbstractSeparation_SD
+imports
+  AbstractSeparationHelpers_SD
+  "Sep_Algebra.Map_Extra"
+  "DSpec.Types_D"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_component_id = Fields | Slot nat<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym cdl_component_ids = "cdl_component_id set"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "cdl_component_ids" <=(type) "cdl_component_id set"<\STATESEP>0<\TRANSEP><\STATESEP>datatype cdl_component = CDL_Object cdl_object | CDL_Cap "cdl_cap option"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym sep_state_heap = "(cdl_object_id \<times> cdl_component_id) \<Rightarrow> cdl_component option"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym sep_state_irq_map = "cdl_irq \<Rightarrow> cdl_object_id option"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "sep_state_heap" <=(type) "32 word \<times> cdl_component_id \<Rightarrow> cdl_component option"<\STATESEP>0<\TRANSEP><\STATESEP>datatype sep_state =
+  SepState "(cdl_object_id \<times> cdl_component_id) \<Rightarrow> cdl_component option"
+           "cdl_irq \<Rightarrow> cdl_object_id option"<\STATESEP>0<\TRANSEP><\STATESEP>primrec sep_heap :: "sep_state \<Rightarrow> sep_state_heap"
+where "sep_heap (SepState heap irqs) = heap"<\STATESEP>0<\TRANSEP><\STATESEP>primrec sep_irq_node :: "sep_state \<Rightarrow> sep_state_irq_map"
+where "sep_irq_node (SepState heap irqs) = irqs"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_state_add :: "sep_state \<Rightarrow> sep_state \<Rightarrow> sep_state"
+where
+  "sep_state_add state_a state_b \<equiv>
+  SepState ((sep_heap state_a) ++ (sep_heap state_b))
+           ((sep_irq_node state_a) ++ sep_irq_node state_b)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_state_disj :: "sep_state \<Rightarrow> sep_state \<Rightarrow> bool"
+where
+  "sep_state_disj state_a state_b \<equiv>
+   (sep_heap state_a) \<bottom> (sep_heap state_b) \<and>
+   (sep_irq_node state_a) \<bottom> (sep_irq_node state_b)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_state_add_comm:
+  "sep_state_disj x y \<Longrightarrow> sep_state_add x y = sep_state_add y x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_state_disj x y \<Longrightarrow> sep_state_add x y = sep_state_add y x<\STATESEP>by (fastforce simp: sep_state_add_def sep_state_disj_def intro!:map_add_com)<\STATESEP>1<\TRANSEP><\STATESEP>instantiation "sep_state" :: zero
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition "0 \<equiv> SepState (\<lambda>p. None) Map.empty"<\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(sep_state, zero_class)<\STATESEP>..<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>instantiation "sep_state" :: stronger_sep_algebra
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition "(##) \<equiv> sep_state_disj"<\STATESEP>0<\TRANSEP><\STATESEP>definition "(+) \<equiv> sep_state_add"<\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(sep_state, stronger_sep_algebra_class)<\STATESEP>apply standard<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>x. x ## 0
+ 2. \<And>x y. x ## y \<Longrightarrow> y ## x
+ 3. \<And>x. x + 0 = x
+ 4. \<And>x y. x ## y \<Longrightarrow> x + y = y + x
+ 5. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 6. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (simp add: sep_disj_sep_state_def sep_state_disj_def zero_sep_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x y. x ## y \<Longrightarrow> y ## x
+ 2. \<And>x. x + 0 = x
+ 3. \<And>x y. x ## y \<Longrightarrow> x + y = y + x
+ 4. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 5. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (clarsimp simp: sep_disj_sep_state_def sep_state_disj_def Let_unfold
+                            map_disj_com Int_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x. x + 0 = x
+ 2. \<And>x y. x ## y \<Longrightarrow> x + y = y + x
+ 3. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 4. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (simp add: plus_sep_state_def sep_state_add_def zero_sep_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x. SepState (sep_heap x) (sep_irq_node x) = x
+ 2. \<And>x y. x ## y \<Longrightarrow> x + y = y + x
+ 3. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 4. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (case_tac x,simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x y. x ## y \<Longrightarrow> x + y = y + x
+ 2. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 3. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (clarsimp simp: plus_sep_state_def sep_disj_sep_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x y. sep_state_disj x y \<Longrightarrow> sep_state_add x y = sep_state_add y x
+ 2. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 3. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (erule sep_state_add_comm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x y z. \<lbrakk>x ## y; y ## z; x ## z\<rbrakk> \<Longrightarrow> x + y + z = x + (y + z)
+ 2. \<And>y z x. y ## z \<Longrightarrow> x ## y + z = (x ## y \<and> x ## z)<\STATESEP>apply (simp add: plus_sep_state_def sep_state_add_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z x. y ## z \<Longrightarrow> x ## SepState (sep_heap y ++ sep_heap z) (sep_irq_node y ++ sep_irq_node z) = (x ## y \<and> x ## z)<\STATESEP>apply (clarsimp simp: sep_disj_sep_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y z x. sep_state_disj y z \<Longrightarrow> sep_state_disj x (SepState (sep_heap y ++ sep_heap z) (sep_irq_node y ++ sep_irq_node z)) = (sep_state_disj x y \<and> sep_state_disj x z)<\STATESEP>apply (auto simp: map_disj_def sep_state_disj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>instantiation "sep_state" :: cancellative_sep_algebra
+begin<\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(sep_state, cancellative_sep_algebra_class)<\STATESEP>apply (standard; simp add: sep_disj_sep_state_def sep_state_disj_def zero_sep_state_def
+                   plus_sep_state_def sep_state_add_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b. \<lbrakk>sep_heap a \<bottom> sep_heap a \<and> sep_irq_node a \<bottom> sep_irq_node a; SepState (sep_heap a ++ sep_heap a) (sep_irq_node a ++ sep_irq_node a) = b\<rbrakk> \<Longrightarrow> a = b
+ 2. \<And>x z y. \<lbrakk>sep_heap x ++ sep_heap z = sep_heap y ++ sep_heap z \<and> sep_irq_node x ++ sep_irq_node z = sep_irq_node y ++ sep_irq_node z; sep_heap x \<bottom> sep_heap z \<and> sep_irq_node x \<bottom> sep_irq_node z; sep_heap y \<bottom> sep_heap z \<and> sep_irq_node y \<bottom> sep_irq_node z\<rbrakk> \<Longrightarrow> x = y<\STATESEP>apply (metis map_add_subsumed1 map_le_refl sep_heap.simps sep_irq_node.simps sep_state.exhaust)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x z y. \<lbrakk>sep_heap x ++ sep_heap z = sep_heap y ++ sep_heap z \<and> sep_irq_node x ++ sep_irq_node z = sep_irq_node y ++ sep_irq_node z; sep_heap x \<bottom> sep_heap z \<and> sep_irq_node x \<bottom> sep_irq_node z; sep_heap y \<bottom> sep_heap z \<and> sep_irq_node y \<bottom> sep_irq_node z\<rbrakk> \<Longrightarrow> x = y<\STATESEP>by (metis map_add_left_eq sep_heap.simps sep_irq_node.simps sep_state.exhaust)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

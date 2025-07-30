@@ -1,0 +1,52 @@
+<\STATESEP>theory EgTop
+imports GenFilterSystem
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{ssec:archprop}Architectural Properties\<close><\STATESEP>0<\TRANSEP><\STATESEP>fun
+  sends_on :: "channel \<Rightarrow> component \<Rightarrow> bool"
+where
+   "sends_on c (Request f _) = (\<exists>s. \<exists>q \<in> f s. q_channel q = c)"
+ | "sends_on c (a ;; b) = (sends_on c a \<or> sends_on c b)"
+ | "sends_on c (IF cond THEN a ELSE b) =
+     (\<forall>s. cond s \<and> sends_on c a \<or> \<not> cond s \<and> sends_on c b)"
+ | "sends_on c (WHILE cond DO a) = (\<forall>s. cond s \<and> sends_on c a \<or> \<not> cond s)"
+ | "sends_on c (a \<squnion> b) = (sends_on c a \<or> sends_on c b)"
+ | "sends_on _ _ = False"<\STATESEP>0<\TRANSEP><\STATESEP>fun
+  receives_on :: "channel \<Rightarrow> component \<Rightarrow> bool"
+where
+   "receives_on c (Response f) = (\<exists>q s. \<exists>a \<in> f q s. a_channel (snd a) = c)"
+ | "receives_on c (a ;; b) = (receives_on c a \<or> receives_on c b)"
+ | "receives_on c (IF cond THEN a ELSE b) =
+     (\<forall>s. cond s \<and> receives_on c a \<or> \<not> cond s \<and> receives_on c b)"
+ | "receives_on c (WHILE cond DO a) =
+     (\<forall>s. cond s \<and> receives_on c a \<or> \<not> cond s)"
+ | "receives_on c (a \<squnion> b) = (receives_on c a \<or> receives_on c b)"
+ | "receives_on _ _ = False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  communicates_on :: "channel \<Rightarrow> component \<Rightarrow> bool"
+where
+  "communicates_on ch c \<equiv> sends_on ch c \<or> receives_on ch c"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<forall>c.
+  \<not>(communicates_on c client_untrusted \<and> communicates_on c store_untrusted)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>c. \<not> (communicates_on c client_untrusted \<and> communicates_on c store_untrusted)<\STATESEP>unfolding communicates_on_def client_untrusted_def Client_untrusted_def
+            store_untrusted_def Store_untrusted_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>c. \<not> ((sends_on c LOOP UserStep \<squnion> ArbitraryRequest (case Client_l of Client_l \<Rightarrow> one) \<squnion> ArbitraryResponse (case Client_l of Client_l \<Rightarrow> one) \<or> receives_on c LOOP UserStep \<squnion> ArbitraryRequest (case Client_l of Client_l \<Rightarrow> one) \<squnion> ArbitraryResponse (case Client_l of Client_l \<Rightarrow> one)) \<and> (sends_on c LOOP UserStep \<squnion> ArbitraryRequest (case Store_l of Store_l \<Rightarrow> two) \<squnion> ArbitraryResponse (case Store_l of Store_l \<Rightarrow> two) \<or> receives_on c LOOP UserStep \<squnion> ArbitraryRequest (case Store_l of Store_l \<Rightarrow> two) \<squnion> ArbitraryResponse (case Store_l of Store_l \<Rightarrow> two)))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>c. sends_on c UserStep \<or> sends_on c (ArbitraryRequest two) \<or> sends_on c (ArbitraryResponse two) \<or> receives_on c UserStep \<or> receives_on c (ArbitraryRequest two) \<or> receives_on c (ArbitraryResponse two) \<Longrightarrow> \<not> sends_on c UserStep \<and> \<not> sends_on c (ArbitraryRequest one) \<and> \<not> sends_on c (ArbitraryResponse one) \<and> \<not> receives_on c UserStep \<and> \<not> receives_on c (ArbitraryRequest one) \<and> \<not> receives_on c (ArbitraryResponse one)<\STATESEP>unfolding UserStep_def ArbitraryRequest_def ArbitraryResponse_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>c. sends_on c (LocalOp internal) \<or> sends_on c (Request (\<lambda>_. {x. q_channel x = two}) (\<lambda>_ _. UNIV\<^sub>c)) \<or> sends_on c (Response (\<lambda>_ _. {(s', \<beta>). s' \<in> UNIV\<^sub>c \<and> a_channel \<beta> = two})) \<or> receives_on c (LocalOp internal) \<or> receives_on c (Request (\<lambda>_. {x. q_channel x = two}) (\<lambda>_ _. UNIV\<^sub>c)) \<or> receives_on c (Response (\<lambda>_ _. {(s', \<beta>). s' \<in> UNIV\<^sub>c \<and> a_channel \<beta> = two})) \<Longrightarrow> \<not> sends_on c (LocalOp internal) \<and> \<not> sends_on c (Request (\<lambda>_. {x. q_channel x = one}) (\<lambda>_ _. UNIV\<^sub>c)) \<and> \<not> sends_on c (Response (\<lambda>_ _. {(s', \<beta>). s' \<in> UNIV\<^sub>c \<and> a_channel \<beta> = one})) \<and> \<not> receives_on c (LocalOp internal) \<and> \<not> receives_on c (Request (\<lambda>_. {x. q_channel x = one}) (\<lambda>_ _. UNIV\<^sub>c)) \<and> \<not> receives_on c (Response (\<lambda>_ _. {(s', \<beta>). s' \<in> UNIV\<^sub>c \<and> a_channel \<beta> = one}))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>c. (\<exists>q. q_channel q = two) \<and> two = c \<or> (\<exists>x. x \<in> UNIV\<^sub>c) \<and> (\<exists>y. a_channel y = two) \<and> two = c \<Longrightarrow> ((\<forall>q. q_channel q \<noteq> one) \<or> one \<noteq> c) \<and> (UNIV\<^sub>c = {} \<or> (\<forall>y. a_channel y \<noteq> one) \<or> one \<noteq> c)<\STATESEP>apply (case_tac c, clarsimp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>fun
+  sends :: "component \<Rightarrow> channel question set \<Rightarrow> bool"
+where
+   "sends (Request f _) qs = (\<exists>s. \<exists>q \<in> f s. q \<in> qs)"
+ | "sends (a ;; b) qs = (sends a qs \<or> sends b qs)"
+ | "sends (IF cond THEN a ELSE b) qs = (\<forall>s. cond s \<and> sends a qs \<or> \<not> cond s \<and> sends b qs)"
+ | "sends (WHILE cond DO a) qs = (\<forall>s. cond s \<and> sends a qs \<or> \<not> cond s)"
+ | "sends (a \<squnion> b) qs = (sends a qs \<or> sends b qs)"
+ | "sends _ _ = False"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<forall>p. \<exists>e s. gs\<^sub>0 p = Some (e, s) \<and>
+           (e = client_untrusted \<or>
+            \<not>(\<exists>c. sends e {x. q_channel x = c \<and> q_data x = Return [String ''baz'']} \<and>
+              receives_on c client_untrusted))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>p. \<exists>e s. gs\<^sub>0 p = Some (e, s) \<and> (e = client_untrusted \<or> (\<nexists>c. sends e {x. q_channel x = c \<and> q_data x = Return [String ''baz'']} \<and> receives_on c client_untrusted))<\STATESEP>oops<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

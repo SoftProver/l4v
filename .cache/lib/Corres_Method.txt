@@ -1,0 +1,103 @@
+<\STATESEP>theory Corres_Method
+imports Corres_Cases ExtraCorres
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Goal predicates\<close><\STATESEP>0<\TRANSEP><\STATESEP>method is_corres = succeeds \<open>rule corres_inst\<close>, fails \<open>rule TrueI\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma no_fail_triv: "no_fail P f \<Longrightarrow> no_fail P f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P f \<Longrightarrow> no_fail P f<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_trivs = hoare_triv hoare_trivE hoare_trivE_R hoare_trivR_R no_fail_triv<\STATESEP>0<\TRANSEP><\STATESEP>method is_wp = succeeds \<open>rule hoare_trivs\<close>, fails \<open>rule TrueI\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_post_False = hoare_pre_cont[where P="\<lambda>_. \<bottom>"]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoareE_post_False = hoare_FalseE[where Q="\<lambda>_. \<bottom>" and E="\<lambda>_. \<bottom>"]<\STATESEP>0<\TRANSEP><\STATESEP>method is_hoare_schematic_post =
+  (* If the post condition matches both \<top> and \<bottom>, it must be schematic *)
+  succeeds \<open>wp_pre, rule hoare_post_False hoareE_post_False\<close>,
+  succeeds \<open>wp_pre, rule wp_post_taut wp_post_tautE\<close><\STATESEP>0<\TRANSEP><\STATESEP>method is_safe_wp = is_wp, fails \<open>is_hoare_schematic_post\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Main corres method\<close><\STATESEP>0<\TRANSEP><\STATESEP>named_theorems corres_splits<\STATESEP>0<\TRANSEP><\STATESEP>method corres_split declares corres_splits = no_name_eta, rule corres_splits<\STATESEP>0<\TRANSEP><\STATESEP>method corres_cleanup methods m uses simp simp_del split split_del cong intro =
+  #break "corres_cleanup",
+  ( m
+  | assumption
+  | rule refl TrueI
+  | clarsimp simp del: corres_no_simp simp_del simp: simp split: split split del: split_del
+             cong: cong intro!: intro
+  (* enables passing in conjI for terminal goals: *)
+  | (rule intro;
+     corres_cleanup m simp: simp simp_del: simp_del split: split split_del: split_del
+                      cong: cong intro: intro))<\STATESEP>0<\TRANSEP><\STATESEP>method corres_rule
+  methods m uses simp simp_del split split_del cong intro declares corres corres_term =
+  determ \<open>solves \<open>((rule corres_term | corres_rrel_pre, rule corres_term);
+                   solves \<open>corres_cleanup m simp: simp simp_del: simp_del split: split
+                                            split_del: split_del cong: cong\<close>)\<close>
+          | (rule corres | corres_rrel_pre, rule corres);
+            ((fails \<open>is_corres\<close>, fails \<open>is_wp\<close>,
+              solves \<open>corres_cleanup m simp: simp simp_del: simp_del split: split
+                                       split_del: split_del cong: cong\<close>)?)\<close><\STATESEP>0<\TRANSEP><\STATESEP>named_theorems corres_simp<\STATESEP>0<\TRANSEP><\STATESEP>method corres'
+  methods m
+  uses simp term_simp simp_del split split_del cong intro wp wp_del fallback
+  declares corres corres_term corres_splits =
+  (((* debug breakpoint *)
+    #break "corres",
+    (* introduce schematic guards if they don't exist *)
+    corres_pre0
+    (* fix up schematic guards if they contain constructor parameters *)
+    | wpfix
+    (* apply a single corres rule if possible *)
+    | corres_rule m simp: term_simp simp simp_del: simp_del split_del: split_del split: split
+                    cong: cong corres: corres corres_term: corres_term
+    (* only split if we can apply a single corres rule afterwards *)
+    | corres_split corres_splits: corres_splits,
+      corres_rule m simp: simp term_simp simp_del: simp_del split_del: split_del split: split
+                    cong: cong corres: corres corres_term: corres_term
+    (* apply potentially unsafe fallback rules if any are provided *)
+    | corres_rule m simp: simp term_simp simp_del: simp_del split_del: split_del split: split
+                    cong: cong corres: fallback
+    (* simplify head corres goal, e.g. for things like liftM unfolding if the user provides such
+       a rule as "simp". Not clarsimp, because clarsimp will still perform hypsubst on assumptions
+       and might through that rewrite guards *)
+    | is_corres,
+      simp (no_asm_use) cong: corres_weaker_cong cong split: split split del: if_split split_del
+                        add: simp corres_simp del: corres_no_simp simp_del
+    (* simplify any remaining side condition head goal (non-corres, non-wp). This is either a side
+       condition that was not solved by corres_cleanup, or it is one of the two terminal implication
+       goals. It is very likely that the method will stop after this and not have solved the goal,
+       but it also very likely that the first thing we want to do for such a goal is clarsimp. That
+       means, overall we might solve a few more goals, and not be detrimental to interactive proof
+       either. *)
+    | fails \<open>is_corres\<close>, fails \<open>is_wp\<close>,
+      clarsimp cong: cong simp del: simp_del simp: simp split del: if_split split_del split: split
+               intro!: intro
+    (* if (and only if) we get to the state where all corres goals and side conditions are solved,
+       attempt to solve all wp goals that were generated in order. We are not using then_all_new_fwd
+       here, because we should only start solving wp goals once *all* corres goals are solved --
+       otherwise the goal will still have schematic post conditions. Fail if there is a
+       free schematic postcondition despite all these measures.
+       *)
+    | is_safe_wp,
+      (wpsimp wp: wp wp_del: wp_del simp: simp simp_del: simp_del split: split split_del: split_del
+              cong: cong)+
+   )+)[1]<\STATESEP>0<\TRANSEP><\STATESEP>method corres
+  uses simp term_simp simp_del split split_del cong intro wp wp_del fallback
+  declares corres corres_term corres_splits =
+  corres' \<open>fail\<close> simp: simp term_simp: term_simp simp_del: simp_del split: split
+                 split_del: split_del cong: cong intro: intro wp: wp wp_del: wp_del
+                 fallback: fallback
+                 corres: corres corres_term: corres_term corres_splits: corres_splits<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Corres rule setup\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas [corres_no_simp] = subst_all<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [corres_splits] =
+  corres_split
+  corres_splitEE<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_split_liftE_bindE [corres_splits] =
+  corres_splitEE[OF corres_liftE_rel_sum[THEN iffD2], simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [corres_term] =
+  corres_return_eq_same corres_gets_trivial select_corres_eq
+  corres_underlying_assert_assert<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_returnOk_eq_same[corres_term] = corres_returnOkTT[of "(=)"]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_throwError_eq_same[corres_term] = corres_throwErrorTT[of "(=)"]<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_get_trivial[corres_term]:
+  "corres_underlying sr nf nf' (\<lambda>s s'. (s,s') \<in> sr) \<top> \<top> get get"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' (\<lambda>s s'. (s, s') \<in> sr) (\<lambda>_. True) (\<lambda>_. True) get get<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corres_underlying_stateAssert_stateAssert_trivial[corres_term] =
+  corres_underlying_stateAssert_stateAssert[where P=\<top> and P'=\<top>, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_modify_tivial[corres_term]:
+  "(\<And>s s'. (s, s') \<in> sr \<Longrightarrow> (f s, g s') \<in> sr) \<Longrightarrow>
+   corres_underlying sr nf nf' dc \<top> \<top> (modify f) (modify g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s s'. (s, s') \<in> sr \<Longrightarrow> (f s, g s') \<in> sr) \<Longrightarrow> corres_underlying sr nf nf' dc (\<lambda>_. True) (\<lambda>_. True) (modify f) (modify g)<\STATESEP>by (simp add: corres_modify)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas [corres] =
+  corres_underlying_fail_fail
+  corres_fail
+  corres_assert
+  whenE_throwError_corres (* match this before corres_whenE *)
+  corres_whenE
+  corres_when
+
+  (* not in corres_split, because head is usually not solvable by single rule: *)
+  corres_split_handle
+  corres_split_catch
+  corres_if2<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [corres_simp] =
+  liftE_bindE
+  unless_when
+  unlessE_whenE<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

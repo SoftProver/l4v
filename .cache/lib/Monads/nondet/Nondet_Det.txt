@@ -1,0 +1,46 @@
+<\STATESEP>theory Nondet_Det
+  imports
+    Nondet_Monad
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Determinism"<\STATESEP>0<\TRANSEP><\STATESEP>definition det :: "('a,'s) nondet_monad \<Rightarrow> bool" where
+  "det f \<equiv> \<forall>s. \<exists>r. f s = ({r},False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition the_run_state :: "('s,'a) nondet_monad \<Rightarrow> 's \<Rightarrow> 'a \<times> 's" where
+  "the_run_state M \<equiv> \<lambda>s. THE s'. fst (M s) = {s'}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma det_set_iff:
+  "det f \<Longrightarrow> (r \<in> fst (f s)) = (fst (f s) = {r})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det f \<Longrightarrow> (r \<in> fst (f s)) = (fst (f s) = {r})<\STATESEP>unfolding det_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. \<exists>r. f s = ({r}, False) \<Longrightarrow> (r \<in> fst (f s)) = (fst (f s) = {r})<\STATESEP>by (metis fst_conv singleton_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_det[iff]:
+  "det (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (return x)<\STATESEP>by (simp add: det_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma put_det[iff]:
+  "det (put s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (put s)<\STATESEP>by (simp add: det_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_det[iff]:
+  "det get"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det get<\STATESEP>by (simp add: det_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_gets[iff]:
+  "det (gets f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (gets f)<\STATESEP>by (auto simp add: gets_def det_def get_def return_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_UN:
+  "det f \<Longrightarrow> (\<Union>x \<in> fst (f s). g x) = (g (THE x. x \<in> fst (f s)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det f \<Longrightarrow> \<Union> (g ` fst (f s)) = g (THE x. x \<in> fst (f s))<\STATESEP>unfolding det_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. \<exists>r. f s = ({r}, False) \<Longrightarrow> \<Union> (g ` fst (f s)) = g (THE x. x \<in> fst (f s))<\STATESEP>by (smt (verit) SUP_eq_const emptyE fst_conv singletonD singletonI the1_equality)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_detI[simp, intro!]:
+  "\<lbrakk> det f; \<forall>x. det (g x) \<rbrakk> \<Longrightarrow> det (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>det f; \<forall>x. det (g x)\<rbrakk> \<Longrightarrow> det (f >>= g)<\STATESEP>unfolding bind_def det_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. \<exists>r. f s = ({r}, False); \<forall>x s. \<exists>r. g x s = ({r}, False)\<rbrakk> \<Longrightarrow> \<forall>s. \<exists>r. (\<Union> (fst ` (\<lambda>(x, y). g x y) ` fst (f s)), True \<in> snd ` (\<lambda>(x, y). g x y) ` fst (f s) \<or> snd (f s)) = ({r}, False)<\STATESEP>apply (erule all_reg[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x s. \<exists>r. g x s = ({r}, False) \<Longrightarrow> \<forall>x. (\<exists>r. f x = ({r}, False)) \<longrightarrow> (\<exists>r. (\<Union> (fst ` (\<lambda>(x, y). g x y) ` fst (f x)), True \<in> snd ` (\<lambda>(x, y). g x y) ` fst (f x) \<or> snd (f x)) = ({r}, False))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>\<forall>x s. \<exists>a b. g x s = ({(a, b)}, False); f x = ({(a, b)}, False)\<rbrakk> \<Longrightarrow> (\<exists>aa ba. fst (g a b) = {(aa, ba)}) \<and> \<not> snd (g a b)<\STATESEP>by (metis fst_conv snd_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma det_modify[iff]:
+  "det (modify f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. det (modify f)<\STATESEP>by (simp add: modify_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma the_run_stateI:
+  "fst (M s) = {s'} \<Longrightarrow> the_run_state M s = s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst (M s) = {s'} \<Longrightarrow> the_run_state M s = s'<\STATESEP>by (simp add: the_run_state_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma the_run_state_det:
+  "\<lbrakk> s' \<in> fst (M s); det M \<rbrakk> \<Longrightarrow> the_run_state M s = s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s' \<in> fst (M s); det M\<rbrakk> \<Longrightarrow> the_run_state M s = s'<\STATESEP>by (simp add: the_run_stateI det_set_iff)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

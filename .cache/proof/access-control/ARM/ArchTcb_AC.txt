@@ -1,0 +1,207 @@
+<\STATESEP>theory ArchTcb_AC
+imports Tcb_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>global_naming ARM_A<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems Tcb_AC_assms<\STATESEP>0<\TRANSEP><\STATESEP>declare arch_get_sanitise_register_info_inv[Tcb_AC_assms]<\STATESEP>0<\TRANSEP><\STATESEP>crunches arch_post_modify_registers
+  for pas_refined[Tcb_AC_assms, wp]: "pas_refined aag"<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_post_modify_registers_respects[Tcb_AC_assms]:
+  "\<lbrace>integrity aag X st and K (is_subject aag t)\<rbrace>
+   arch_post_modify_registers cur t
+   \<lbrace>\<lambda>_ s. integrity aag X st s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and K (is_subject aag t)\<rbrace> arch_post_modify_registers cur t \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma invoke_tcb_tc_respects_aag[Tcb_AC_assms]:
+  "\<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action
+                       and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)
+                       and K (authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf))\<rbrace>
+   invoke_tcb (ThreadControl t sl ep mcp priority croot vroot buf)
+   \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf) and K (authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf))\<rbrace> invoke_tcb (ThreadControl t sl ep mcp priority croot vroot buf) \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace><\STATESEP>apply (rule hoare_gen_asm)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)\<rbrace> invoke_tcb (ThreadControl t sl ep mcp priority croot vroot buf) \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace><\STATESEP>apply (subst invoke_tcb.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)\<rbrace> doE liftE $ option_update_thread t (tcb_fault_handler_update \<circ> K) ep;
+liftE $ case mcp of None \<Rightarrow> return () | Some (newmcp, xa) \<Rightarrow> set_mcpriority t newmcp;
+case croot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 0);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 0)
+odE;
+case vroot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 1);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 1)
+odE;
+case buf of None \<Rightarrow> returnOk () | Some (ptr, frame) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 4);
+liftE $ thread_set (tcb_ipc_buffer_update (\<lambda>_. ptr)) t;
+liftE $ case frame of None \<Rightarrow> return () | Some (new_cap, src_slot) \<Rightarrow> check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 4);
+cur <- liftE $ gets cur_thread;
+liftE $ when (t = cur) (do_extended_op reschedule_required)
+odE;
+liftE $ case priority of None \<Rightarrow> return () | Some (prio, xa) \<Rightarrow> do_extended_op (set_priority t prio);
+returnOk []
+odE \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace><\STATESEP>apply (subst option_update_thread_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)\<rbrace> doE liftE $ case ep of None \<Rightarrow> return () | Some v \<Rightarrow> thread_set ((tcb_fault_handler_update \<circ> K) v) t;
+liftE $ case mcp of None \<Rightarrow> return () | Some (newmcp, xa) \<Rightarrow> set_mcpriority t newmcp;
+case croot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 0);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 0)
+odE;
+case vroot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 1);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 1)
+odE;
+case buf of None \<Rightarrow> returnOk () | Some (ptr, frame) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 4);
+liftE $ thread_set (tcb_ipc_buffer_update (\<lambda>_. ptr)) t;
+liftE $ case frame of None \<Rightarrow> return () | Some (new_cap, src_slot) \<Rightarrow> check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 4);
+cur <- liftE $ gets cur_thread;
+liftE $ when (t = cur) (do_extended_op reschedule_required)
+odE;
+liftE $ case priority of None \<Rightarrow> return () | Some (prio, xa) \<Rightarrow> do_extended_op (set_priority t prio);
+returnOk []
+odE \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace><\STATESEP>apply (subst set_priority_extended.dxo_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)\<rbrace> doE liftE $ case ep of None \<Rightarrow> return () | Some v \<Rightarrow> thread_set ((tcb_fault_handler_update \<circ> K) v) t;
+liftE $ case mcp of None \<Rightarrow> return () | Some (newmcp, xa) \<Rightarrow> set_mcpriority t newmcp;
+case croot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 0);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 0)
+odE;
+case vroot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 1);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 1)
+odE;
+case buf of None \<Rightarrow> returnOk () | Some (ptr, frame) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 4);
+liftE $ thread_set (tcb_ipc_buffer_update (\<lambda>_. ptr)) t;
+liftE $ case frame of None \<Rightarrow> return () | Some (new_cap, src_slot) \<Rightarrow> check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 4);
+cur <- liftE $ gets cur_thread;
+liftE $ when (t = cur) (do_extended_op reschedule_required)
+odE;
+liftE $ case priority of None \<Rightarrow> return () | Some (prio, xa) \<Rightarrow> set_priority t prio;
+returnOk []
+odE \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace><\STATESEP>apply (rule hoare_weaken_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf) \<Longrightarrow> \<lbrace>?Q2\<rbrace> doE liftE $ case ep of None \<Rightarrow> return () | Some v \<Rightarrow> thread_set ((tcb_fault_handler_update \<circ> K) v) t;
+liftE $ case mcp of None \<Rightarrow> return () | Some (newmcp, xa) \<Rightarrow> set_mcpriority t newmcp;
+case croot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 0);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 0)
+odE;
+case vroot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 1);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 1)
+odE;
+case buf of None \<Rightarrow> returnOk () | Some (ptr, frame) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 4);
+liftE $ thread_set (tcb_ipc_buffer_update (\<lambda>_. ptr)) t;
+liftE $ case frame of None \<Rightarrow> return () | Some (new_cap, src_slot) \<Rightarrow> check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 4);
+cur <- liftE $ gets cur_thread;
+liftE $ when (t = cur) (do_extended_op reschedule_required)
+odE;
+liftE $ case priority of None \<Rightarrow> return () | Some (prio, xa) \<Rightarrow> set_priority t prio;
+returnOk []
+odE \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace>
+ 2. \<And>s. \<lbrakk>authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf); (integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)) s\<rbrakk> \<Longrightarrow> ?Q2 s<\STATESEP>apply (rule_tac P="case ep of Some v \<Rightarrow> length v = word_bits | _ \<Rightarrow> True"
+                 in hoare_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf); case ep of None \<Rightarrow> True | Some v \<Rightarrow> length v = word_bits\<rbrakk> \<Longrightarrow> \<lbrace>?P'5\<rbrace> doE liftE $ case ep of None \<Rightarrow> return () | Some v \<Rightarrow> thread_set ((tcb_fault_handler_update \<circ> K) v) t;
+liftE $ case mcp of None \<Rightarrow> return () | Some (newmcp, xa) \<Rightarrow> set_mcpriority t newmcp;
+case croot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 0);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 0)
+odE;
+case vroot of None \<Rightarrow> returnOk () | Some (new_cap, src_slot) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 1);
+liftE $ check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 1)
+odE;
+case buf of None \<Rightarrow> returnOk () | Some (ptr, frame) \<Rightarrow> doE cap_delete (t, tcb_cnode_index 4);
+liftE $ thread_set (tcb_ipc_buffer_update (\<lambda>_. ptr)) t;
+liftE $ case frame of None \<Rightarrow> return () | Some (new_cap, src_slot) \<Rightarrow> check_cap_at new_cap src_slot $ check_cap_at (ThreadCap t) sl $ cap_insert new_cap src_slot (t, tcb_cnode_index 4);
+cur <- liftE $ gets cur_thread;
+liftE $ when (t = cur) (do_extended_op reschedule_required)
+odE;
+liftE $ case priority of None \<Rightarrow> return () | Some (prio, xa) \<Rightarrow> set_priority t prio;
+returnOk []
+odE \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace>
+ 2. \<And>s. \<lbrakk>authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf); (integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)) s\<rbrakk> \<Longrightarrow> (?P'5 and K (case ep of None \<Rightarrow> True | Some v \<Rightarrow> length v = word_bits)) s<\STATESEP>apply (simp only: split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf); case ep of None \<Rightarrow> True | Some v \<Rightarrow> length v = word_bits\<rbrakk> \<Longrightarrow> \<lbrace>?P'5\<rbrace> doE liftE $ case ep of None \<Rightarrow> return () | Some v \<Rightarrow> thread_set ((tcb_fault_handler_update \<circ> K) v) t;
+liftE $ case mcp of None \<Rightarrow> return () | Some p \<Rightarrow> set_mcpriority t (fst p);
+case croot of None \<Rightarrow> returnOk () | Some p \<Rightarrow> doE cap_delete (t, tcb_cnode_index 0);
+liftE $ check_cap_at (fst p) (snd p) $ check_cap_at (ThreadCap t) sl $ cap_insert (fst p) (snd p) (t, tcb_cnode_index 0)
+odE;
+case vroot of None \<Rightarrow> returnOk () | Some p \<Rightarrow> doE cap_delete (t, tcb_cnode_index 1);
+liftE $ check_cap_at (fst p) (snd p) $ check_cap_at (ThreadCap t) sl $ cap_insert (fst p) (snd p) (t, tcb_cnode_index 1)
+odE;
+case buf of None \<Rightarrow> returnOk () | Some p \<Rightarrow> doE cap_delete (t, tcb_cnode_index 4);
+liftE $ thread_set (tcb_ipc_buffer_update (\<lambda>_. fst p)) t;
+liftE $ case snd p of None \<Rightarrow> return () | Some p \<Rightarrow> check_cap_at (fst p) (snd p) $ check_cap_at (ThreadCap t) sl $ cap_insert (fst p) (snd p) (t, tcb_cnode_index 4);
+cur <- liftE $ gets cur_thread;
+liftE $ when (t = cur) (do_extended_op reschedule_required)
+odE;
+liftE $ case priority of None \<Rightarrow> return () | Some p \<Rightarrow> set_priority t (fst p);
+returnOk []
+odE \<lbrace>\<lambda>_. integrity aag X st and pas_refined aag\<rbrace>
+ 2. \<And>s. \<lbrakk>authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf); (integrity aag X st and pas_refined aag and einvs and simple_sched_action and tcb_inv_wf (ThreadControl t sl ep mcp priority croot vroot buf)) s\<rbrakk> \<Longrightarrow> (?P'5 and K (case ep of None \<Rightarrow> True | Some v \<Rightarrow> length v = word_bits)) s<\STATESEP>apply (((simp add: conj_comms,
+           strengthen imp_consequent[where Q="x = None" for x], simp cong: conj_cong)
+          | strengthen invs_psp_aligned invs_vspace_objs invs_arch_state
+          | rule wp_split_const_if wp_split_const_if_R hoare_vcg_all_liftE_R
+                 hoare_vcg_E_elim hoare_vcg_const_imp_lift_R hoare_vcg_R_conj
+          | wp restart_integrity_autarch set_mcpriority_integrity_autarch
+               as_user_integrity_autarch thread_set_integrity_autarch
+               option_update_thread_integrity_autarch
+               opt_update_thread_valid_sched hoare_weak_lift_imp
+               cap_insert_integrity_autarch checked_insert_pas_refined
+               cap_delete_respects' cap_delete_pas_refined'
+               check_cap_inv2[where Q="\<lambda>_. integrity aag X st"]
+               as_user_pas_refined restart_pas_refined
+               thread_set_pas_refined
+               out_invs_trivial case_option_wpE cap_delete_deletes
+               cap_delete_valid_cap cap_insert_valid_cap out_cte_at
+               cap_insert_cte_at cap_delete_cte_at out_valid_cap out_tcb_valid
+               hoare_vcg_const_imp_lift_R hoare_vcg_all_liftE_R
+               thread_set_tcb_ipc_buffer_cap_cleared_invs
+               thread_set_invs_trivial[OF ball_tcb_cap_casesI]
+               hoare_vcg_all_lift thread_set_valid_cap out_emptyable
+               check_cap_inv[where P="valid_cap c" for c]
+               check_cap_inv[where P="tcb_cap_valid c p" for c p]
+               check_cap_inv[where P="cte_at p0" for p0]
+               check_cap_inv[where P="tcb_at p0" for p0]
+               check_cap_inv[where P="simple_sched_action"]
+               check_cap_inv[where P="valid_list"]
+               check_cap_inv[where P="valid_sched"]
+               check_cap_inv[where P="valid_arch_state"]
+               check_cap_inv[where P="valid_vspace_objs"]
+               check_cap_inv[where P="pspace_aligned"]
+               thread_set_not_state_valid_sched
+               thread_set_cte_at
+               thread_set_cte_wp_at_trivial[where Q="\<lambda>x. x", OF ball_tcb_cap_casesI]
+               thread_set_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+               checked_insert_no_cap_to
+               out_no_cap_to_trivial[OF ball_tcb_cap_casesI]
+               thread_set_ipc_tcb_cap_valid
+               cap_delete_pas_refined'[THEN valid_validE_E] thread_set_cte_wp_at_trivial
+          | simp add: ran_tcb_cap_cases dom_tcb_cap_cases[simplified]
+                      emptyable_def a_type_def partial_inv_def
+          | wpc
+          | strengthen invs_mdb use_no_cap_to_obj_asid_strg
+                       tcb_cap_always_valid_strg[where p="tcb_cnode_index 0"]
+                       tcb_cap_always_valid_strg[where p="tcb_cnode_index (Suc 0)"]))+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>authorised_tcb_inv aag (ThreadControl t sl ep mcp priority croot vroot buf); invs s \<and> pas_refined aag s \<and> ex_nonz_cap_to t s \<and> simple_sched_action s \<and> tcb_at t s \<and> valid_list s \<and> (case vroot of None \<Rightarrow> True | Some x2 \<Rightarrow> is_valid_vtable_root (fst x2)) \<and> (case croot of None \<Rightarrow> True | Some x2 \<Rightarrow> is_cnode_cap (fst x2)) \<and> (case ep of None \<Rightarrow> True | Some bl \<Rightarrow> length bl = word_bits) \<and> (case buf of None \<Rightarrow> True | Some x2 \<Rightarrow> is_aligned (fst x2) msg_align_bits) \<and> (case croot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> valid_cap (fst x2)) s \<and> (case vroot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> valid_cap (fst x2)) s \<and> (case croot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> no_cap_to_obj_dr_emp (fst x2)) s \<and> (case vroot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> no_cap_to_obj_dr_emp (fst x2)) s \<and> integrity aag X st s \<and> (case mcp of None \<Rightarrow> True | Some (mcp, auth) \<Rightarrow> mcpriority_tcb_at ((\<le>) mcp) auth s) \<and> (case priority of None \<Rightarrow> True | Some (pr, auth) \<Rightarrow> mcpriority_tcb_at ((\<le>) pr) auth s) \<and> (case buf of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> case snd x2 of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> valid_cap (fst x2)) s \<and> (case buf of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> case snd x2 of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> no_cap_to_obj_dr_emp (fst x2)) s \<and> (case croot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> cte_wp_at (\<lambda>_. True) (snd x2) and ex_cte_cap_wp_to (\<lambda>_. True) (snd x2)) s \<and> (case vroot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> cte_wp_at (\<lambda>_. True) (snd x2) and ex_cte_cap_wp_to (\<lambda>_. True) (snd x2)) s \<and> valid_sched s \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> cte_wp_at (\<lambda>_. True) sl s \<and> ex_cte_cap_wp_to (\<lambda>_. True) sl s) \<and> (case buf of None \<Rightarrow> True | Some v \<Rightarrow> case snd v of None \<Rightarrow> True | Some x2 \<Rightarrow> is_cnode_or_valid_arch (fst x2) \<and> is_arch_cap (fst x2) \<and> valid_ipc_buffer_cap (fst x2) (fst v)) \<and> (case buf of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> case snd x2 of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> cte_wp_at (\<lambda>_. True) (snd x2) and ex_cte_cap_wp_to (\<lambda>_. True) (snd x2)) s \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> cte_wp_at (\<lambda>_. True) sl s \<and> ex_cte_cap_wp_to (\<lambda>_. True) sl s) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> cte_wp_at (\<lambda>_. True) sl s \<and> ex_cte_cap_wp_to (\<lambda>_. True) sl s)\<rbrakk> \<Longrightarrow> ((\<exists>a b. mcp = Some (a, b)) \<longrightarrow> is_subject aag t) \<and> ((\<exists>a b. priority = Some (a, b)) \<longrightarrow> is_subject aag t) \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_subject aag t) \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_subject aag (fst (snd (the croot)))) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> is_subject aag (fst (snd (the vroot)))) \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> \<not> is_master_reply_cap (fst (the croot)) \<and> pas_cap_cur_auth aag (fst (the croot))) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> \<not> is_master_reply_cap (fst (the vroot)) \<and> pas_cap_cur_auth aag (fst (the vroot))) \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> (\<forall>x xa. (\<exists>b. snd (the buf) = Some (x, xa, b)) \<longrightarrow> is_subject aag xa)) \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> (\<forall>x. (\<exists>xa b. snd (the buf) = Some (x, xa, b)) \<longrightarrow> \<not> is_master_reply_cap x \<and> pas_cap_cur_auth aag x)) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> is_subject aag t \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_cnode_or_valid_arch (fst (the croot)) \<and> s \<turnstile> fst (the croot) \<and> no_cap_to_obj_dr_emp (fst (the croot)) s \<and> cte_wp_at (\<lambda>_. True) (snd (the croot)) s \<and> (is_pd_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y)) \<and> (is_pt_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y)))) \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> is_subject aag t \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_cnode_or_valid_arch (fst (the croot)) \<and> s \<turnstile> fst (the croot) \<and> no_cap_to_obj_dr_emp (fst (the croot)) s \<and> cte_wp_at (\<lambda>_. True) (snd (the croot)) s \<and> (is_pd_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y)) \<and> (is_pt_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y))) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> is_cnode_or_valid_arch (fst (the vroot)) \<and> s \<turnstile> fst (the vroot) \<and> no_cap_to_obj_dr_emp (fst (the vroot)) s \<and> cte_wp_at (\<lambda>_. True) (snd (the vroot)) s \<and> (is_valid_vtable_root (fst (the vroot)) \<or> NullCap = fst (the vroot)) \<and> (is_pd_cap (fst (the vroot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the vroot)) = Some y)) \<and> (is_pt_cap (fst (the vroot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the vroot)) = Some y)))) \<and> ((\<exists>x. ep = Some x) \<longrightarrow> is_subject aag t)<\STATESEP>apply (clarsimp simp: authorised_tcb_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>is_subject aag t; \<forall>x\<in>set_option croot \<union> set_option vroot \<union> (case buf of None \<Rightarrow> {} | Some x2 \<Rightarrow> set_option (snd x2)). case x of (cap, slot) \<Rightarrow> pas_cap_cur_auth aag cap \<and> is_subject aag (fst slot); invs s; pas_refined aag s; ex_nonz_cap_to t s; simple_sched_action s; tcb_at t s; valid_list s; case vroot of None \<Rightarrow> True | Some x2 \<Rightarrow> is_valid_vtable_root (fst x2); case croot of None \<Rightarrow> True | Some x2 \<Rightarrow> is_cnode_cap (fst x2); case ep of None \<Rightarrow> True | Some bl \<Rightarrow> length bl = word_bits; case buf of None \<Rightarrow> True | Some x2 \<Rightarrow> is_aligned (fst x2) msg_align_bits; (case croot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> valid_cap (fst x2)) s; (case vroot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> valid_cap (fst x2)) s; (case croot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> no_cap_to_obj_dr_emp (fst x2)) s; (case vroot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> no_cap_to_obj_dr_emp (fst x2)) s; integrity aag X st s; case mcp of None \<Rightarrow> True | Some (mcp, auth) \<Rightarrow> mcpriority_tcb_at ((\<le>) mcp) auth s; case priority of None \<Rightarrow> True | Some (pr, auth) \<Rightarrow> mcpriority_tcb_at ((\<le>) pr) auth s; (case buf of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> case snd x2 of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> valid_cap (fst x2)) s; (case buf of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> case snd x2 of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> no_cap_to_obj_dr_emp (fst x2)) s; (case croot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> cte_wp_at (\<lambda>_. True) (snd x2) and ex_cte_cap_wp_to (\<lambda>_. True) (snd x2)) s; (case vroot of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> cte_wp_at (\<lambda>_. True) (snd x2) and ex_cte_cap_wp_to (\<lambda>_. True) (snd x2)) s; valid_sched s; (\<exists>a b. buf = Some (a, b)) \<longrightarrow> cte_wp_at (\<lambda>_. True) sl s \<and> ex_cte_cap_wp_to (\<lambda>_. True) sl s; case buf of None \<Rightarrow> True | Some v \<Rightarrow> case snd v of None \<Rightarrow> True | Some x2 \<Rightarrow> is_cnode_or_valid_arch (fst x2) \<and> is_arch_cap (fst x2) \<and> valid_ipc_buffer_cap (fst x2) (fst v); (case buf of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> case snd x2 of None \<Rightarrow> \<lambda>_. True | Some x2 \<Rightarrow> cte_wp_at (\<lambda>_. True) (snd x2) and ex_cte_cap_wp_to (\<lambda>_. True) (snd x2)) s; (\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> cte_wp_at (\<lambda>_. True) sl s \<and> ex_cte_cap_wp_to (\<lambda>_. True) sl s; (\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> cte_wp_at (\<lambda>_. True) sl s \<and> ex_cte_cap_wp_to (\<lambda>_. True) sl s\<rbrakk> \<Longrightarrow> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_subject aag (fst (snd (the croot)))) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> is_subject aag (fst (snd (the vroot)))) \<and> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> \<not> is_master_reply_cap (fst (the croot)) \<and> pas_cap_cur_auth aag (fst (the croot))) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> \<not> is_master_reply_cap (fst (the vroot)) \<and> pas_cap_cur_auth aag (fst (the vroot))) \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> (\<forall>x xa. (\<exists>b. snd (the buf) = Some (x, xa, b)) \<longrightarrow> is_subject aag xa)) \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> (\<forall>x. (\<exists>xa b. snd (the buf) = Some (x, xa, b)) \<longrightarrow> \<not> is_master_reply_cap x \<and> pas_cap_cur_auth aag x)) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> (\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_cnode_or_valid_arch (fst (the croot)) \<and> s \<turnstile> fst (the croot) \<and> no_cap_to_obj_dr_emp (fst (the croot)) s \<and> cte_wp_at (\<lambda>_. True) (snd (the croot)) s \<and> (is_pd_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y)) \<and> (is_pt_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y))) \<and> ((\<exists>a b. buf = Some (a, b)) \<longrightarrow> ((\<exists>a aa b. croot = Some (a, aa, b)) \<longrightarrow> is_cnode_or_valid_arch (fst (the croot)) \<and> s \<turnstile> fst (the croot) \<and> no_cap_to_obj_dr_emp (fst (the croot)) s \<and> cte_wp_at (\<lambda>_. True) (snd (the croot)) s \<and> (is_pd_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y)) \<and> (is_pt_cap (fst (the croot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the croot)) = Some y))) \<and> ((\<exists>a aa b. vroot = Some (a, aa, b)) \<longrightarrow> is_cnode_or_valid_arch (fst (the vroot)) \<and> s \<turnstile> fst (the vroot) \<and> no_cap_to_obj_dr_emp (fst (the vroot)) s \<and> cte_wp_at (\<lambda>_. True) (snd (the vroot)) s \<and> (is_valid_vtable_root (fst (the vroot)) \<or> NullCap = fst (the vroot)) \<and> (is_pd_cap (fst (the vroot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the vroot)) = Some y)) \<and> (is_pt_cap (fst (the vroot)) \<longrightarrow> (\<exists>y. cap_asid (fst (the vroot)) = Some y))))<\STATESEP>apply (clarsimp simp: tcb_at_cte_at_0 tcb_at_cte_at_1[simplified]
+                        is_cap_simps is_valid_vtable_root_def
+                        is_cnode_or_valid_arch_def tcb_cap_valid_def
+                        tcb_at_st_tcb_at[symmetric] invs_valid_objs
+                        cap_asid_def vs_cap_ref_def
+                        clas_no_asid cli_no_irqs
+                        emptyable_def
+         | rule conjI | erule pas_refined_refl)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation Tcb_AC_1?: Tcb_AC_1<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Tcb_AC_1 aag<\STATESEP>proof goal_cases<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Tcb_AC_1 aag<\STATESEP>interpret Arch<\STATESEP>2<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. Tcb_AC_1 aag<\STATESEP>case 1<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (1 subgoal):
+ 1. Tcb_AC_1 aag<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Tcb_AC_1 aag<\STATESEP>by (unfold_locales; fact Tcb_AC_assms)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Tcb_AC_1 aag
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

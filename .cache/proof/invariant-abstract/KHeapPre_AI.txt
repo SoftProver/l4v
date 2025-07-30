@@ -1,0 +1,263 @@
+<\STATESEP>theory KHeapPre_AI
+imports Machine_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  same_caps :: "Structures_A.kernel_object \<Rightarrow> Structures_A.kernel_object \<Rightarrow> bool"
+where
+  "same_caps val (CNode sz cs)       = (val = CNode sz cs)"
+| "same_caps val (TCB tcb)           = (\<exists>tcb'. val = TCB tcb'
+                                         \<and> (\<forall>(getF, t) \<in> ran tcb_cap_cases. getF tcb' = getF tcb))"
+| "same_caps val (Endpoint ep)       = is_ep val"
+| "same_caps val (Notification ntfn) = is_ntfn val"
+| "same_caps val (ArchObj ao)        = (\<exists>ao'. val = ArchObj ao')"<\STATESEP>0<\TRANSEP><\STATESEP>lemma same_caps_more_simps[simp]:
+ "same_caps (CNode sz cs) val       = (val = CNode sz cs)"
+ "same_caps (TCB tcb)     val       = (\<exists>tcb'. val = TCB tcb'
+                                         \<and> (\<forall>(getF, t) \<in> ran tcb_cap_cases. getF tcb' = getF tcb))"
+ "same_caps (Endpoint ep) val       = is_ep val"
+ "same_caps (Notification ntfn) val = is_ntfn val"
+ "same_caps (ArchObj ao) val        = (\<exists>ao'. val = ArchObj ao')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (same_caps (CNode sz cs) val = (val = CNode sz cs) &&& same_caps (TCB tcb) val = (\<exists>tcb'. val = TCB tcb' \<and> (\<forall>(getF, t)\<in>ran tcb_cap_cases. getF tcb' = getF tcb))) &&& same_caps (Endpoint ep) val = is_ep val &&& same_caps (Notification ntfn) val = is_ntfn val &&& same_caps (ArchObj ao) val = (\<exists>ao'. val = ArchObj ao')<\STATESEP>by (cases val, (fastforce simp: is_obj_defs)+)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma dmo_return [simp]:
+  "do_machine_op (return x) = return x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do_machine_op (return x) = return x<\STATESEP>by (simp add: do_machine_op_def select_f_def return_def gets_def get_def
+                bind_def modify_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_object_sp:
+  "\<lbrace>P\<rbrace> get_object p \<lbrace>\<lambda>r. P and ko_at r p\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> get_object p \<lbrace>\<lambda>r. P and ko_at r p\<rbrace><\STATESEP>apply (simp add: get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> do kh <- gets kheap;
+y <- assert (\<exists>y. kh p = Some y);
+return (the (kh p))
+od \<lbrace>\<lambda>r. P and ko_at r p\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<Longrightarrow> (\<exists>y. kheap s p = Some y) \<longrightarrow> (P and ko_at (the (kheap s p)) p) s<\STATESEP>apply (auto simp add: obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition non_arch_obj :: "kernel_object \<Rightarrow> bool" where
+  "non_arch_obj \<equiv> \<lambda>ko. \<forall>ako. ko \<noteq> ArchObj ako"<\STATESEP>0<\TRANSEP><\STATESEP>lemma non_arch_objs[intro]:
+  "non_arch_obj (Endpoint ep)"
+  "non_arch_obj (CNode sz cnode_contents)"
+  "non_arch_obj (TCB tcb)"
+  "non_arch_obj (Notification notification)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (non_arch_obj (Endpoint ep) &&& non_arch_obj (CNode sz cnode_contents)) &&& non_arch_obj (TCB tcb) &&& non_arch_obj (Notification notification)<\STATESEP>by (auto simp add: non_arch_obj_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition arch_obj_pred :: "(kernel_object \<Rightarrow> bool) \<Rightarrow> bool" where
+  "arch_obj_pred P \<equiv>
+    \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow>
+      P ko = P ko'"<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_obj_predE:
+  "\<lbrakk>arch_obj_pred P; non_arch_obj ko; non_arch_obj ko'\<rbrakk> \<Longrightarrow> P ko = P ko'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>arch_obj_pred P; non_arch_obj ko; non_arch_obj ko'\<rbrakk> \<Longrightarrow> P ko = P ko'<\STATESEP>apply (unfold arch_obj_pred_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P ko = P ko'; non_arch_obj ko; non_arch_obj ko'\<rbrakk> \<Longrightarrow> P ko = P ko'<\STATESEP>apply (erule allE[where ?x="ko"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>non_arch_obj ko; non_arch_obj ko'; \<forall>ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P ko = P ko'\<rbrakk> \<Longrightarrow> P ko = P ko'<\STATESEP>apply (erule allE[where ?x="ko'"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>non_arch_obj ko; non_arch_obj ko'; non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P ko = P ko'\<rbrakk> \<Longrightarrow> P ko = P ko'<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemmas arch_obj_pred_defs = non_arch_obj_def arch_obj_pred_def<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_obj_pred_a_type[intro, simp]: "arch_obj_pred (\<lambda>ko. a_type ko = AArch T)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_obj_pred (\<lambda>ko. a_type ko = AArch T)<\STATESEP>by (auto simp add: arch_obj_pred_defs a_type_def split: kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_obj_pred_arch_obj_l[intro, simp]: "arch_obj_pred (\<lambda>ko. ArchObj ako = ko)" and
+  arch_obj_pred_arch_obj_r[intro, simp]: "arch_obj_pred (\<lambda>ko. ko = ArchObj ako)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_obj_pred ((=) (ArchObj ako)) &&& arch_obj_pred (\<lambda>ko. ko = ArchObj ako)<\STATESEP>by (auto simp add: arch_obj_pred_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_obj_pred_fun_lift: "arch_obj_pred (\<lambda>ko. F (arch_obj_fun_lift P N ko))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_obj_pred (\<lambda>ko. F (arch_obj_fun_lift P N ko))<\STATESEP>by (simp add: arch_obj_pred_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas arch_obj_pred_fun_lift_id[simp]
+  = arch_obj_pred_fun_lift[where F=id, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas arch_obj_pred_fun_lift_k[intro]
+  = arch_obj_pred_fun_lift[where F="K R" for R, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas arch_obj_pred_fun_lift_el[simp]
+  = arch_obj_pred_fun_lift[where F="\<lambda> S. x \<in> S" for x, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma arch_obj_pred_const_conjI[intro]:
+  "arch_obj_pred P \<Longrightarrow>
+    arch_obj_pred P' \<Longrightarrow>
+    arch_obj_pred (\<lambda>ko. P ko \<and> P' ko)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>arch_obj_pred P; arch_obj_pred P'\<rbrakk> \<Longrightarrow> arch_obj_pred (\<lambda>ko. P ko \<and> P' ko)<\STATESEP>apply (simp only: arch_obj_pred_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P ko = P ko'; \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P' ko = P' ko'\<rbrakk> \<Longrightarrow> \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> (P ko \<and> P' ko) = (P ko' \<and> P' ko')<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma arch_obj_pred_fI:
+  "(\<And>x. arch_obj_pred (P x)) \<Longrightarrow> arch_obj_pred (\<lambda>ko. f (\<lambda>x :: 'a :: type. P x ko))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. arch_obj_pred (P x)) \<Longrightarrow> arch_obj_pred (\<lambda>ko. f (\<lambda>x. P x ko))<\STATESEP>apply (simp only: arch_obj_pred_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P x ko = P x ko') \<Longrightarrow> \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> f (\<lambda>x. P x ko) = f (\<lambda>x. P x ko')<\STATESEP>apply (intro allI impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko ko'. \<lbrakk>\<And>x. \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P x ko = P x ko'; non_arch_obj ko; non_arch_obj ko'\<rbrakk> \<Longrightarrow> f (\<lambda>x. P x ko) = f (\<lambda>x. P x ko')<\STATESEP>apply (rule arg_cong[where f=f])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko ko'. \<lbrakk>\<And>x. \<forall>ko ko'. non_arch_obj ko \<longrightarrow> non_arch_obj ko' \<longrightarrow> P x ko = P x ko'; non_arch_obj ko; non_arch_obj ko'\<rbrakk> \<Longrightarrow> (\<lambda>x. P x ko) = (\<lambda>x. P x ko')<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>declare
+  arch_obj_pred_fI[where f=All, intro]
+  arch_obj_pred_fI[where f=Ex, intro]<\STATESEP>0<\TRANSEP><\STATESEP>locale arch_only_obj_pred =
+  fixes P :: "kernel_object \<Rightarrow> bool"
+  assumes arch_only: "arch_obj_pred P"<\STATESEP>0<\TRANSEP><\STATESEP>lemma set_object_typ_at [wp]:
+  "\<lbrace>\<lambda>s. P (typ_at T p' s)\<rbrace>
+  set_object p ko \<lbrace>\<lambda>rv s. P (typ_at T p' s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (typ_at T p' s)\<rbrace> set_object p ko \<lbrace>\<lambda>rv s. P (typ_at T p' s)\<rbrace><\STATESEP>apply (simp add: set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (typ_at T p' s)\<rbrace> do kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh p = Some y);
+return (the (kh p))
+od;
+y <- assert (a_type kobj = a_type ko);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(p \<mapsto> ko)\<rparr>)
+od \<lbrace>\<lambda>rv s. P (typ_at T p' s)\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (typ_at T p' s) \<Longrightarrow> (\<exists>y. kheap s p = Some y) \<longrightarrow> a_type (the (kheap s p)) = a_type ko \<longrightarrow> P (typ_at T p' (s\<lparr>kheap := (kheap s)(p \<mapsto> ko)\<rparr>))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>P (typ_at T p' s); kheap s p = Some y; a_type y = a_type ko\<rbrakk> \<Longrightarrow> P (typ_at T p' (s\<lparr>kheap := \<lambda>a. if a = p then Some ko else kheap s a\<rparr>))<\STATESEP>apply (erule rsubst [where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s y. \<lbrakk>kheap s p = Some y; a_type y = a_type ko\<rbrakk> \<Longrightarrow> typ_at T p' s = typ_at T p' (s\<lparr>kheap := \<lambda>a. if a = p then Some ko else kheap s a\<rparr>)<\STATESEP>apply (clarsimp simp: obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_object_neg_ko:
+  "\<lbrace>not ko_at ko' p' and K (p = p' \<longrightarrow> ko \<noteq> ko')\<rbrace>
+  set_object p ko
+  \<lbrace>\<lambda>_ s. \<not> ko_at ko' p' s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>not ko_at ko' p' and K (p = p' \<longrightarrow> ko \<noteq> ko')\<rbrace> set_object p ko \<lbrace>\<lambda>_ s. \<not> ko_at ko' p' s\<rbrace><\STATESEP>apply (simp add: set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>not ko_at ko' p' and (\<lambda>y. p = p' \<longrightarrow> ko \<noteq> ko')\<rbrace> do kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh p = Some y);
+return (the (kh p))
+od;
+y <- assert (a_type kobj = a_type ko);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(p \<mapsto> ko)\<rparr>)
+od \<lbrace>\<lambda>_ s. \<not> ko_at ko' p' s\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (not ko_at ko' p' and (\<lambda>y. p = p' \<longrightarrow> ko \<noteq> ko')) s \<Longrightarrow> (\<exists>y. kheap s p = Some y) \<longrightarrow> a_type (the (kheap s p)) = a_type ko \<longrightarrow> \<not> ko_at ko' p' (s\<lparr>kheap := (kheap s)(p \<mapsto> ko)\<rparr>)<\STATESEP>apply (simp add: pred_neg_def obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_tcb_SomeD: "get_tcb t s = Some v \<Longrightarrow> kheap s t = Some (TCB v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. get_tcb t s = Some v \<Longrightarrow> kheap s t = Some (TCB v)<\STATESEP>apply (case_tac "kheap s t", simp_all add: get_tcb_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>(case a of TCB x \<Rightarrow> Some x | _ \<Rightarrow> None) = Some v; kheap s t = Some a\<rbrakk> \<Longrightarrow> a = TCB v<\STATESEP>apply (case_tac a, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_tcb_at: "tcb_at t s \<Longrightarrow> (\<exists>tcb. get_tcb t s = Some tcb)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_at t s \<Longrightarrow> \<exists>tcb. get_tcb t s = Some tcb<\STATESEP>by (simp add: tcb_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma typ_at_same_type:
+  assumes "typ_at T p s" "a_type k = a_type ko" "kheap s p' = Some ko"
+  shows "typ_at T p (s\<lparr>kheap := (kheap s)(p' \<mapsto> k)\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. typ_at T p (s\<lparr>kheap := (kheap s)(p' \<mapsto> k)\<rparr>)<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+typ_at T p s
+a_type k = a_type ko
+kheap s p' = Some ko
+
+goal (1 subgoal):
+ 1. typ_at T p (s\<lparr>kheap := (kheap s)(p' \<mapsto> k)\<rparr>)<\STATESEP>by (clarsimp simp: obj_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_to_pure_kheap_upd:
+  assumes hoare[rule_format]:
+    "\<And>f. (\<And>P p T. \<lbrace>\<lambda>s. P (typ_at (AArch T) p s)\<rbrace>
+      f \<lbrace>\<lambda>r s. P (typ_at (AArch T) p s)\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>"
+  assumes typ_eq: "a_type k = a_type ko"
+  assumes valid: "P (s :: ('z :: state_ext) state)"
+  assumes at: "ko_at ko p s"
+  shows "P (s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P (s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>)<\STATESEP>apply (rule use_valid[where f="
+      do
+        s' <- get;
+        assert (s' = s);
+        (modify (\<lambda>s. s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>));
+        return undefined
+      od", OF _ hoare valid])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (?r, s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>) \<in> fst ((do s' <- get;
+assert (s' = s);
+modify (\<lambda>s. s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>);
+return undefined
+od) s)
+ 2. \<And>P pa T. \<lbrace>\<lambda>s. P (typ_at (AArch T) pa s)\<rbrace> do s' <- get;
+assert (s' = s);
+modify (\<lambda>s. s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>);
+return undefined
+od \<lbrace>\<lambda>r s. P (typ_at (AArch T) pa s)\<rbrace><\STATESEP>apply (fastforce simp add: simpler_modify_def get_def bind_def
+                             assert_def return_def[abs_def] fail_def)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P pa T. \<lbrace>\<lambda>s. P (typ_at (AArch T) pa s)\<rbrace> do s' <- get;
+assert (s' = s);
+modify (\<lambda>s. s\<lparr>kheap := (kheap s)(p \<mapsto> k)\<rparr>);
+return undefined
+od \<lbrace>\<lambda>r s. P (typ_at (AArch T) pa s)\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P pa T sa. P (typ_at (AArch T) pa sa) \<Longrightarrow> sa = s \<longrightarrow> P (typ_at (AArch T) pa (sa\<lparr>kheap := (kheap sa)(p \<mapsto> k)\<rparr>))<\STATESEP>apply (insert typ_eq at)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P pa T sa. \<lbrakk>P (typ_at (AArch T) pa sa); a_type k = a_type ko; ko_at ko p s\<rbrakk> \<Longrightarrow> sa = s \<longrightarrow> P (typ_at (AArch T) pa (sa\<lparr>kheap := (kheap sa)(p \<mapsto> k)\<rparr>))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P pa T. \<lbrakk>P (typ_at (AArch T) pa s); a_type k = a_type ko; ko_at ko p s\<rbrakk> \<Longrightarrow> P (typ_at (AArch T) pa (s\<lparr>kheap := \<lambda>a. if a = p then Some k else kheap s a\<rparr>))<\STATESEP>apply (erule_tac P=P in rsubst)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P pa T. \<lbrakk>a_type k = a_type ko; ko_at ko p s\<rbrakk> \<Longrightarrow> typ_at (AArch T) pa s = typ_at (AArch T) pa (s\<lparr>kheap := \<lambda>a. if a = p then Some k else kheap s a\<rparr>)<\STATESEP>by (auto simp add: obj_at_def a_type_def split: kernel_object.splits if_splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_object_wp:
+  "\<lbrace>\<lambda>s. Q (s\<lparr> kheap := (kheap s) (p \<mapsto> v)\<rparr>) \<rbrace> set_object p v \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. Q (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)\<rbrace> set_object p v \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>apply (simp add: set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. Q (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)\<rbrace> do kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh p = Some y);
+return (the (kh p))
+od;
+y <- assert (a_type kobj = a_type v);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)
+od \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. Q (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>) \<Longrightarrow> (\<exists>y. kheap s p = Some y) \<longrightarrow> a_type (the (kheap s p)) = a_type v \<longrightarrow> Q (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_object_wp:
+  "\<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> Q ko s\<rbrace> get_object p \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> Q ko s\<rbrace> get_object p \<lbrace>Q\<rbrace><\STATESEP>apply (clarsimp simp: get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> Q ko s\<rbrace> do kh <- gets kheap;
+y <- assert (\<exists>y. kh p = Some y);
+return (the (kh p))
+od \<lbrace>Q\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>ko. ko_at ko p s \<longrightarrow> Q ko s \<Longrightarrow> (\<exists>y. kheap s p = Some y) \<longrightarrow> Q (the (kheap s p)) s<\STATESEP>apply (clarsimp simp: obj_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_strengthen_pre_via_assert_forward:
+  assumes pos: "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes rel: "\<And>s. S s \<Longrightarrow> P s \<or> N s"
+  assumes neg: "\<lbrace> N \<rbrace> f \<lbrace> \<bottom>\<bottom> \<rbrace>"
+  shows "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>apply (rule hoare_weaken_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>Q\<rbrace>
+ 2. \<And>s. S s \<Longrightarrow> ?Q s<\STATESEP>apply (rule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>?Q3\<rbrace>
+ 2. \<And>rv s. ?Q3 rv s \<Longrightarrow> Q rv s
+ 3. \<And>s. S s \<Longrightarrow> ?Q s<\STATESEP>apply (rule hoare_vcg_disj_lift[OF pos neg])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. Q rv s \<or> False \<Longrightarrow> Q rv s
+ 2. \<And>s. S s \<Longrightarrow> P s \<or> N s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. S s \<Longrightarrow> P s \<or> N s<\STATESEP>apply (erule rel)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_set_object_weaken_pre:
+  assumes "\<lbrace>P\<rbrace> set_object p v \<lbrace>\<lambda>_. Q\<rbrace>"
+  shows "\<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> (a_type v = a_type ko) \<longrightarrow> P s\<rbrace>
+         set_object p v
+         \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type v = a_type ko \<longrightarrow> P s\<rbrace> set_object p v \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>apply (rule hoare_strengthen_pre_via_assert_forward
+                [OF assms, where N="\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type v = a_type ko \<longrightarrow> P s \<Longrightarrow> P s \<or> (\<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v)
+ 2. \<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v\<rbrace> set_object p v \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v\<rbrace> set_object p v \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>apply (simp add: set_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v\<rbrace> do kobj <- get_object p;
+y <- assert (a_type kobj = a_type v);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)
+od \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>apply (rule bind_wp[OF _ get_object_sp])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>kobj. \<lbrace>(\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v) and ko_at kobj p\<rbrace> do y <- assert (a_type kobj = a_type v);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)
+od \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>apply (rule bind_wp[OF _ assert_sp])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>kobj y. \<lbrace>\<lambda>s. ((\<lambda>s. \<forall>ko. ko_at ko p s \<longrightarrow> a_type ko \<noteq> a_type v) and ko_at kobj p) s \<and> a_type kobj = a_type v\<rbrace> do s <- get;
+put (s\<lparr>kheap := (kheap s)(p \<mapsto> v)\<rparr>)
+od \<lbrace>\<lambda>_ _. False\<rbrace><\STATESEP>apply (fastforce intro: hoare_weaken_pre[OF hoare_pre_cont])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas set_object_wp_strong = hoare_set_object_weaken_pre[OF set_object_wp]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

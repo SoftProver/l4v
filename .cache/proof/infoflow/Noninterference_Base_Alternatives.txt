@@ -1,0 +1,1019 @@
+<\STATESEP>theory Noninterference_Base_Alternatives
+  imports
+    Noninterference_Base
+    Eisbach_Tools.Eisbach_Methods
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context noninterference_system begin<\STATESEP>0<\TRANSEP><\STATESEP>primrec xources :: "'e list \<Rightarrow> 's \<Rightarrow> 'd \<Rightarrow> 'd set" where
+  xources_Nil: "xources [] s u = {u}"
+| xources_Cons: "xources (a # as) s u =
+    (\<Inter>{xources as s' u | s'. (s,s') \<in> Step a}) \<union>
+    {w. w = dom a s \<and> (\<forall>s'. (s,s') \<in> Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma in_xources_ConsD:
+  "x \<in> (xources (a # as) s u)
+   \<Longrightarrow> (\<forall>s'. (s,s') \<in> Step a \<longrightarrow> x \<in> xources as s' u) \<or>
+       (x = dom a s \<and> (\<forall>s'. (s,s') \<in> Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> xources (a # as) s u \<Longrightarrow> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> x \<in> xources as s' u) \<or> x = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_xources_ConsI1:
+  "(\<forall>s'. (s,s') \<in> Step a \<longrightarrow> x \<in> xources as s' u)
+   \<Longrightarrow> x \<in> xources (a # as) s u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> x \<in> xources as s' u \<Longrightarrow> x \<in> xources (a # as) s u<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_xources_ConsI2:
+  "\<lbrakk> x = dom a s; \<forall>s'. (s,s') \<in> Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u) \<rbrakk>
+     \<Longrightarrow> x \<in> xources (a # as) s u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x = dom a s; \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u)\<rbrakk> \<Longrightarrow> x \<in> xources (a # as) s u<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>declare xources_Nil [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>declare xources_Cons [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma xources_subset_xources_Cons:
+  "\<Inter>{xources as s' u | s'. (s,s') \<in> Step a} \<subseteq> xources (a # as) s u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<Inter> {xources as s' u |s'. (s, s') \<in> local.Step a} \<subseteq> xources (a # as) s u<\STATESEP>by (fastforce simp: xources_Cons)<\STATESEP>1<\TRANSEP><\STATESEP>primrec gen_purgx :: "('e list \<Rightarrow> 's \<Rightarrow> 'd \<Rightarrow> 'd set) \<Rightarrow> 'd \<Rightarrow> 'e list \<Rightarrow> 's set \<Rightarrow> 'e list" where
+  Nil: "gen_purgx sf u [] ss = []"
+| Cons: "gen_purgx sf u (a#as) ss = (if \<forall>s \<in> ss. dom a s \<in> sf (a#as) s u
+                                     then a # gen_purgx sf u as (\<Union>s \<in> ss. {s'. (s,s') \<in> Step a})
+                                     else gen_purgx sf u as ss)"<\STATESEP>0<\TRANSEP><\STATESEP>definition xpurge :: "'d \<Rightarrow> 'e list \<Rightarrow> 's set \<Rightarrow> 'e list" where
+  "xpurge \<equiv> gen_purge xources"<\STATESEP>0<\TRANSEP><\STATESEP>definition ipurgx :: "'d \<Rightarrow> 'e list \<Rightarrow> 's set \<Rightarrow> 'e list" where
+  "ipurgx \<equiv> gen_purgx sources"<\STATESEP>0<\TRANSEP><\STATESEP>definition xpurgx :: "'d \<Rightarrow> 'e list \<Rightarrow> 's set \<Rightarrow> 'e list" where
+  "xpurgx \<equiv> gen_purgx xources"<\STATESEP>0<\TRANSEP><\STATESEP>lemma xpurge_Nil:
+  "xpurge u [] ss = []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xpurge u [] ss = []<\STATESEP>by (auto simp: xpurge_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ipurgx_Nil:
+  "ipurgx u [] ss = []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ipurgx u [] ss = []<\STATESEP>by (auto simp: ipurgx_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma xpurgx_Nil:
+  "xpurgx u [] ss = []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xpurgx u [] ss = []<\STATESEP>by (auto simp: xpurgx_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma xpurge_Cons:
+  "xpurge u (a # as) ss = (if \<exists>s \<in> ss. dom a s \<in> xources (a # as) s u
+                           then a # xpurge u as (\<Union>s\<in>ss. {s'. (s,s') \<in> Step a})
+                           else xpurge u as ss)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xpurge u (a # as) ss = (if \<exists>s\<in>ss. dom a s \<in> xources (a # as) s u then a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) else xpurge u as ss)<\STATESEP>by (auto simp: xpurge_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ipurgx_Cons:
+  "ipurgx u (a # as) ss = (if (\<forall>s\<in>ss. dom a s \<in> sources (a # as) s u)
+                           then a # ipurgx u as (\<Union>s \<in> ss. {s'. (s,s') \<in> Step a})
+                           else ipurgx u as ss)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ipurgx u (a # as) ss = (if \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u then a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) else ipurgx u as ss)<\STATESEP>by (auto simp: ipurgx_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma xpurgx_Cons:
+  "xpurgx u (a # as) ss = (if (\<forall>s\<in>ss. dom a s \<in> xources (a # as) s u)
+                           then a # xpurgx u as (\<Union>s\<in>ss. {s'. (s,s') \<in> Step a})
+                           else xpurgx u as ss)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xpurgx u (a # as) ss = (if \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u then a # xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) else xpurgx u as ss)<\STATESEP>by (auto simp: xpurgx_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition xNonleakage_gen :: bool where
+  "xNonleakage_gen \<equiv> \<forall>as s u t. reachable s \<and> reachable t
+                                 \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                 \<longrightarrow> s \<approx>(xources as s u)\<approx> t
+                                 \<longrightarrow> uwr_equiv s as t as u"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context unwinding_system begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma xources_sources:
+  "confidentiality_u \<Longrightarrow> reachable s \<longrightarrow> (xources as s u = sources as s u)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> reachable s \<longrightarrow> xources as s u = sources as s u<\STATESEP>apply (induct as arbitrary: s)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. confidentiality_u \<Longrightarrow> reachable s \<longrightarrow> xources [] s u = sources [] s u
+ 2. \<And>a as s. \<lbrakk>\<And>s. confidentiality_u \<Longrightarrow> reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u\<rbrakk> \<Longrightarrow> reachable s \<longrightarrow> xources (a # as) s u = sources (a # as) s u<\STATESEP>apply (simp add: xources_Nil sources_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s. \<lbrakk>\<And>s. confidentiality_u \<Longrightarrow> reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u\<rbrakk> \<Longrightarrow> reachable s \<longrightarrow> xources (a # as) s u = sources (a # as) s u<\STATESEP>apply (simp add: sources_Cons xources_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u\<rbrakk> \<Longrightarrow> reachable s \<longrightarrow> \<Inter> {xources as s' u |s'. (s, s') \<in> local.Step a} \<union> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = \<Union> {sources as s' u |s'. (s, s') \<in> local.Step a} \<union> {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (rule impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<Inter> {xources as s' u |s'. (s, s') \<in> local.Step a} \<union> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = \<Union> {sources as s' u |s'. (s, s') \<in> local.Step a} \<union> {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (rule un_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<Inter> {xources as s' u |s'. (s, s') \<in> local.Step a} = \<Union> {sources as s' u |s'. (s, s') \<in> local.Step a}
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (rule sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<Union> {sources as s' u |s'. (s, s') \<in> local.Step a} = \<Inter> {xources as s' u |s'. (s, s') \<in> local.Step a}
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (simp only: Union_eq, simp only: UNION_eq[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> (\<Union>x\<in>{sources as s' u |s'. (s, s') \<in> local.Step a}. x) = \<Inter> {xources as s' u |s'. (s, s') \<in> local.Step a}
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (simp only: Inter_eq, simp only: INTER_eq[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> (\<Union>x\<in>{sources as s' u |s'. (s, s') \<in> local.Step a}. x) = (\<Inter>x\<in>{xources as s' u |s'. (s, s') \<in> local.Step a}. x)
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (rule Un_eq_Int)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<exists>x. x \<in> {sources as s' u |s'. (s, s') \<in> local.Step a}
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<exists>y. y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}
+ 3. \<And>a as s x y. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; x \<in> {sources as s' u |s'. (s, s') \<in> local.Step a}; y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}\<rbrakk> \<Longrightarrow> x = y
+ 4. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (clarsimp simp: Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<exists>s'. s' \<in> execution A s [a]
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<exists>y. y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}
+ 3. \<And>a as s x y. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; x \<in> {sources as s' u |s'. (s, s') \<in> local.Step a}; y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}\<rbrakk> \<Longrightarrow> x = y
+ 4. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (erule reachable_enabled)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<exists>y. y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}
+ 2. \<And>a as s x y. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; x \<in> {sources as s' u |s'. (s, s') \<in> local.Step a}; y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}\<rbrakk> \<Longrightarrow> x = y
+ 3. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (clarsimp simp: Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> \<exists>s'. s' \<in> execution A s [a]
+ 2. \<And>a as s x y. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; x \<in> {sources as s' u |s'. (s, s') \<in> local.Step a}; y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}\<rbrakk> \<Longrightarrow> x = y
+ 3. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (erule reachable_enabled)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s x y. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; x \<in> {sources as s' u |s'. (s, s') \<in> local.Step a}; y \<in> {xources as s' u |s'. (s, s') \<in> local.Step a}\<rbrakk> \<Longrightarrow> x = y
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a\<rbrakk> \<Longrightarrow> sources as s' u = xources as s'a u
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (drule_tac x=s'a in meta_spec, clarsimp simp: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> sources as s' u = sources as s'a u
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (rule sources_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> confidentiality_u
+ 2. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> s' \<sim>schedDomain\<sim> s'a
+ 3. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'
+ 4. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'a
+ 5. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> s' \<sim>schedDomain\<sim> s'a
+ 2. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'
+ 3. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'a
+ 4. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (fastforce intro: sched_equiv_preserved uwr_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'
+ 2. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'a
+ 3. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (fastforce intro: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' s'a. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s'a) \<in> local.Step a; xources as s'a u = sources as s'a u\<rbrakk> \<Longrightarrow> reachable s'a
+ 2. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (fastforce intro: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> {w. w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))} = {w. w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))}<\STATESEP>apply (rule Collect_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s w. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> (w = dom a s \<and> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u))) = (w = dom a s \<and> (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)))<\STATESEP>apply (rule conj_cong, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s w. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; w = dom a s\<rbrakk> \<Longrightarrow> (\<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u)) = (\<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u))<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s w. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u)\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (cut_tac s=s and a=a in enabled_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as s w. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u)\<rbrakk> \<Longrightarrow> reachable s
+ 2. \<And>a as s w. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u); \<exists>s'. (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 3. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s w. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u); \<exists>s'. (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s'. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; \<forall>s'. (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u); (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (drule_tac x=s' in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s'. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; (s, s') \<in> local.Step a; (s, s') \<in> local.Step a \<longrightarrow> (\<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u)\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' v. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; (s, s') \<in> local.Step a; dom a s \<leadsto> v; v \<in> xources as s' u\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (rule_tac x=v in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' v. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; (s, s') \<in> local.Step a; dom a s \<leadsto> v; v \<in> xources as s' u\<rbrakk> \<Longrightarrow> dom a s \<leadsto> v \<and> (\<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u)
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' v. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; (s, s') \<in> local.Step a; dom a s \<leadsto> v; v \<in> xources as s' u\<rbrakk> \<Longrightarrow> \<exists>s'. (s, s') \<in> local.Step a \<and> v \<in> sources as s' u
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (rule_tac x=s' in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' v. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; (s, s') \<in> local.Step a; dom a s \<leadsto> v; v \<in> xources as s' u\<rbrakk> \<Longrightarrow> (s, s') \<in> local.Step a \<and> v \<in> sources as s' u
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (drule_tac x=s' in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s s' v. \<lbrakk>confidentiality_u; reachable s; (s, s') \<in> local.Step a; dom a s \<leadsto> v; v \<in> xources as s' u; reachable s' \<longrightarrow> xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> (s, s') \<in> local.Step a \<and> v \<in> sources as s' u
+ 2. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (fastforce intro: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s w v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>v. dom a s \<leadsto> v \<and> v \<in> xources as s' u<\STATESEP>apply (rule_tac x=v in exI, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s v s' s'a. \<lbrakk>\<And>s. reachable s \<longrightarrow> xources as s u = sources as s u; confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> v \<in> xources as s' u<\STATESEP>apply (drule_tac x=s' in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; reachable s' \<longrightarrow> xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> v \<in> xources as s' u<\STATESEP>apply (clarsimp simp: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> v \<in> sources as s' u<\STATESEP>apply (rule subst[OF sources_eq])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> confidentiality_u
+ 2. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> ?s92 a as s v s' s'a \<sim>schedDomain\<sim> s'
+ 3. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable (?s92 a as s v s' s'a)
+ 4. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'
+ 5. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> v \<in> sources as (?s92 a as s v s' s'a) u<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> ?s92 a as s v s' s'a \<sim>schedDomain\<sim> s'
+ 2. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable (?s92 a as s v s' s'a)
+ 3. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'
+ 4. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> v \<in> sources as (?s92 a as s v s' s'a) u<\STATESEP>prefer 4<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> v \<in> sources as (?s92 a as s v s' s'a) u
+ 2. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> ?s92 a as s v s' s'a \<sim>schedDomain\<sim> s'
+ 3. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable (?s92 a as s v s' s'a)
+ 4. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> s'a \<sim>schedDomain\<sim> s'
+ 2. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'a
+ 3. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'<\STATESEP>apply (fastforce intro: sched_equiv_preserved uwr_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'a
+ 2. \<And>a as s v s' s'a. \<lbrakk>confidentiality_u; reachable s; dom a s \<leadsto> v; (s, s'a) \<in> local.Step a; v \<in> sources as s'a u; (s, s') \<in> local.Step a; xources as s' u = sources as s' u\<rbrakk> \<Longrightarrow> reachable s'<\STATESEP>by (auto intro: reachable_Step)<\STATESEP>1<\TRANSEP><\STATESEP>lemma xpurge_ipurge':
+  "confidentiality_u
+   \<Longrightarrow> (\<forall>s\<in>ss. reachable s) \<longrightarrow> xpurge u as ss = ipurge u as ss"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> xpurge u as ss = ipurge u as ss<\STATESEP>apply (induct as arbitrary: ss)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> xpurge u [] ss = ipurge u [] ss
+ 2. \<And>a as ss. \<lbrakk>\<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> xpurge u as ss = ipurge u as ss; confidentiality_u\<rbrakk> \<Longrightarrow> Ball ss reachable \<longrightarrow> xpurge u (a # as) ss = ipurge u (a # as) ss<\STATESEP>apply (simp add: xpurge_Nil ipurge_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss. \<lbrakk>\<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> xpurge u as ss = ipurge u as ss; confidentiality_u\<rbrakk> \<Longrightarrow> Ball ss reachable \<longrightarrow> xpurge u (a # as) ss = ipurge u (a # as) ss<\STATESEP>apply (clarsimp simp: ipurge_Cons xpurge_Cons xources_sources[rule_format] intro: reachable_Step
+         | safe)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> xpurge u as ss = ipurge u as ss; confidentiality_u; s \<in> ss; dom a s \<in> sources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = ipurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (drule_tac x="\<Union>s\<in>ss. {s'. (s,s') \<in> Step a}" in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s. \<lbrakk>confidentiality_u; s \<in> ss; dom a s \<in> sources (a # as) s u; Ball ss reachable; Ball (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) reachable \<longrightarrow> xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = ipurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = ipurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (fastforce intro: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ipurgx_xpurge':
+  "confidentiality_u
+   \<Longrightarrow> (\<forall>s\<in>ss. reachable s) \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s\<in>ss \<and> s'\<in>ss \<longrightarrow> s\<sim>schedDomain\<sim>s')
+       \<longrightarrow> ipurgx u as ss = xpurge u as ss"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss<\STATESEP>apply (induct as arbitrary: ss)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u [] ss = xpurge u [] ss
+ 2. \<And>a as ss. \<lbrakk>\<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u\<rbrakk> \<Longrightarrow> Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u (a # as) ss = xpurge u (a # as) ss<\STATESEP>apply (simp add: ipurgx_Nil xpurge_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss. \<lbrakk>\<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u\<rbrakk> \<Longrightarrow> Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u (a # as) ss = xpurge u (a # as) ss<\STATESEP>apply (clarsimp simp: xpurge_Cons ipurgx_Cons | safe)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 3. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (drule_tac x="\<Union>s\<in>ss. {s'. (s,s') \<in> Step a}" in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; Ball (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) reachable \<and> (\<exists>s. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})) \<and> (\<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 3. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (erule impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> Ball (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) reachable \<and> (\<exists>s. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})) \<and> (\<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s')
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 4. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> Ball (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) reachable
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> (\<exists>s. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})) \<and> (\<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s')
+ 3. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 4. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 5. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (fastforce intro: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> (\<exists>s. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})) \<and> (\<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s')
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 4. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> \<exists>s. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> \<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s'
+ 3. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 4. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 5. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (drule bspec, assumption, frule_tac a=a in enabled_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; reachable s; \<exists>s'. (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> \<exists>s. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> \<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s'
+ 3. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 4. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 5. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss\<rbrakk> \<Longrightarrow> \<forall>s s'. s \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<and> s' \<in> (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) \<longrightarrow> s \<sim>schedDomain\<sim> s'
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 4. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> sb \<sim>schedDomain\<sim> s'
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 4. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (match conclusion in \<open>s' \<sim>schedDomain\<sim> t'\<close> for s' t' \<Rightarrow>
+             \<open>match premises in \<open>(s,s') \<in> Step a\<close> and \<open>(t,t') \<in> Step a\<close> for a s t \<Rightarrow>
+                \<open>rule sched_equiv_preserved[of s t]\<close>\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (9 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> confidentiality_u
+ 2. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> reachable x
+ 3. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> reachable xa
+ 4. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> x \<sim>schedDomain\<sim> xa
+ 5. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (x, sb) \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 6. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (xa, s') \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 7. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 8. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 9. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> reachable x
+ 2. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> reachable xa
+ 3. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> x \<sim>schedDomain\<sim> xa
+ 4. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (x, sb) \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 5. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (xa, s') \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 6. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 7. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 8. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> reachable xa
+ 2. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> x \<sim>schedDomain\<sim> xa
+ 3. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (x, sb) \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 4. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (xa, s') \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 5. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 6. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 7. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> x \<sim>schedDomain\<sim> xa
+ 2. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (x, sb) \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 3. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (xa, s') \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 4. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 5. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 6. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (x, sb) \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 2. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (xa, s') \<in> local.Step (?a87 a as ss s sa sb s' x xa)
+ 3. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 4. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 5. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a as ss s sa sb s' x xa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; x \<in> ss; (x, sb) \<in> local.Step a; xa \<in> ss; (xa, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> (xa, s') \<in> local.Step a
+ 2. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 4. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as ss s sa. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<in> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sa \<in> ss; ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 3. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<notin> xources (a # as) s u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; s \<in> ss\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurge u as ss
+ 2. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (simp add: xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> xources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (simp add: xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> xpurge u as ss = a # xpurge u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (erule notE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> dom a s \<in> sources (a # as) s u<\STATESEP>apply (frule_tac s=s and t=sa in sources_eq, simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss; sources (?as120 a as ss s sa sb) s (?u120 a as ss s sa sb) = sources (?as120 a as ss s sa sb) sa (?u120 a as ss s sa sb)\<rbrakk> \<Longrightarrow> dom a s \<in> sources (a # as) s u<\STATESEP>apply (erule ssubst)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> dom a s \<in> sources (a # as) sa u<\STATESEP>apply (subst schedIncludesCurrentDom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> s \<sim>schedDomain\<sim> ?t124 a as ss s sa sb
+ 2. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> dom a (?t124 a as ss s sa sb) \<in> sources (a # as) sa u<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> dom a (?t124 a as ss s sa sb) \<in> sources (a # as) sa u
+ 2. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> s \<sim>schedDomain\<sim> ?t124 a as ss s sa sb<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s sa sb. \<lbrakk>\<And>ss. Ball ss reachable \<and> (\<exists>s. s \<in> ss) \<and> (\<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s') \<longrightarrow> ipurgx u as ss = xpurge u as ss; confidentiality_u; s \<in> ss; sa \<in> ss; dom a sa \<in> sources (a # as) sa u; Ball ss reachable; \<forall>s s'. s \<in> ss \<and> s' \<in> ss \<longrightarrow> s \<sim>schedDomain\<sim> s'; sb \<in> ss\<rbrakk> \<Longrightarrow> s \<sim>schedDomain\<sim> sa<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ipurgx_xpurgx':
+  "confidentiality_u \<Longrightarrow> (\<forall>s\<in>ss. reachable s) \<longrightarrow> ipurgx u as ss = xpurgx u as ss"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss<\STATESEP>apply (induct as arbitrary: ss)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> ipurgx u [] ss = xpurgx u [] ss
+ 2. \<And>a as ss. \<lbrakk>\<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u\<rbrakk> \<Longrightarrow> Ball ss reachable \<longrightarrow> ipurgx u (a # as) ss = xpurgx u (a # as) ss<\STATESEP>apply (simp add: ipurgx_Nil xpurgx_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss. \<lbrakk>\<And>ss. confidentiality_u \<Longrightarrow> Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u\<rbrakk> \<Longrightarrow> Ball ss reachable \<longrightarrow> ipurgx u (a # as) ss = xpurgx u (a # as) ss<\STATESEP>apply (clarsimp simp: xpurgx_Cons ipurgx_Cons | safe)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as ss. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<notin> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurgx u as ss
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> xpurgx u as ss = a # xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (drule_tac x="\<Union>s\<in>ss. {s'. (s,s') \<in> Step a}" in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a as ss. \<lbrakk>confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u; Ball ss reachable; Ball (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) reachable \<longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})\<rbrakk> \<Longrightarrow> ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})
+ 2. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<notin> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurgx u as ss
+ 3. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> xpurgx u as ss = a # xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (fastforce intro: reachable_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; \<forall>s\<in>ss. dom a s \<in> sources (a # as) s u; s \<in> ss; dom a s \<notin> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> a # ipurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a}) = xpurgx u as ss
+ 2. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> xpurgx u as ss = a # xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (simp add: xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a as ss s. \<lbrakk>\<And>ss. Ball ss reachable \<longrightarrow> ipurgx u as ss = xpurgx u as ss; confidentiality_u; s \<in> ss; dom a s \<notin> sources (a # as) s u; \<forall>s\<in>ss. dom a s \<in> xources (a # as) s u; Ball ss reachable\<rbrakk> \<Longrightarrow> xpurgx u as ss = a # xpurgx u as (\<Union>s\<in>ss. {s'. (s, s') \<in> local.Step a})<\STATESEP>apply (simp add: xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xpurge_ipurge:
+  "\<lbrakk> confidentiality_u; reachable s \<rbrakk>
+     \<Longrightarrow> xpurge u as {s} = ipurge u as {s}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> xpurge u as {s} = ipurge u as {s}<\STATESEP>by (subst xpurge_ipurge', auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ipurgx_ipurge:
+  "\<lbrakk> confidentiality_u; reachable s \<rbrakk>
+     \<Longrightarrow> ipurgx u as {s} = ipurge u as {s}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> ipurgx u as {s} = ipurge u as {s}<\STATESEP>apply (subst ipurgx_xpurge', (simp add: uwr_refl)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> xpurge u as {s} = ipurge u as {s}<\STATESEP>apply (subst xpurge_ipurge', auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xpurgx_ipurge:
+  "\<lbrakk> confidentiality_u; reachable s \<rbrakk>
+     \<Longrightarrow> xpurgx u as {s} = ipurge u as {s}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> xpurgx u as {s} = ipurge u as {s}<\STATESEP>apply (subst ipurgx_xpurgx'[rule_format, THEN sym], simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> ipurgx u as {s} = ipurge u as {s}<\STATESEP>apply (subst ipurgx_xpurge', (simp add: uwr_refl)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u; reachable s\<rbrakk> \<Longrightarrow> xpurge u as {s} = ipurge u as {s}<\STATESEP>apply (subst xpurge_ipurge', auto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition xNoninfluence_strong_uwr_xources_ipurge :: bool where
+  "xNoninfluence_strong_uwr_xources_ipurge \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(xources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> ipurge u as {s} = ipurge u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition xNoninfluence_strong_uwr_sources_xpurge :: bool where
+  "xNoninfluence_strong_uwr_sources_xpurge \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(sources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> xpurge u as {s} = xpurge u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition xNoninfluence_strong_uwr_xources_xpurge :: bool where
+  "xNoninfluence_strong_uwr_xources_xpurge \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(xources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> xpurge u as {s} = xpurge u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition xNoninfluence_strong_uwr_sources_ipurgx :: bool where
+  "xNoninfluence_strong_uwr_sources_ipurgx \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(sources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  xNoninfluence_strong_uwr_xources_ipurgx :: bool where
+  "xNoninfluence_strong_uwr_xources_ipurgx \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(xources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition xNoninfluence_strong_uwr_sources_xpurgx :: bool where
+  "xNoninfluence_strong_uwr_sources_xpurgx \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(sources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition xNoninfluence_strong_uwr_xources_xpurgx :: bool where
+  "xNoninfluence_strong_uwr_xources_xpurgx \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                                            \<longrightarrow> s \<approx>(xources as s u)\<approx> t
+                                                            \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                                            \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s}
+                                                            \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>definition Noninfluence_strong_uwr_pg :: bool where
+  "Noninfluence_strong_uwr_pg \<equiv> \<forall>u as bs s t. reachable s \<and> reachable t
+                                               \<longrightarrow> s \<approx>(sources as s u)\<approx> t
+                                               \<longrightarrow> s \<sim>schedDomain\<sim> t
+                                               \<longrightarrow> ipurge u as {s} = ipurge u bs {t}
+                                               \<longrightarrow> uwr_equiv s as t bs u"<\STATESEP>0<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_ipurge_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> xNoninfluence_strong_uwr_xources_ipurge = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_xources_ipurge = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_ipurge_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_xpurge_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> xNoninfluence_strong_uwr_sources_xpurge = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_sources_xpurge = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_xpurge_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: xpurge_ipurge)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_xpurge_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+    \<Longrightarrow> xNoninfluence_strong_uwr_xources_xpurge = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_xources_xpurge = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_xpurge_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: xources_sources xpurge_ipurge)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_ipurgx_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> xNoninfluence_strong_uwr_sources_ipurgx = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_sources_ipurgx = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_ipurgx_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: ipurgx_ipurge)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_ipurgx_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> xNoninfluence_strong_uwr_xources_ipurgx = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_xources_ipurgx = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_ipurgx_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: xources_sources ipurgx_ipurge)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_xpurgx_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> xNoninfluence_strong_uwr_sources_xpurgx = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_sources_xpurgx = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_xpurgx_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: xpurgx_ipurge)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_xpurgx_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> xNoninfluence_strong_uwr_xources_xpurgx = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> xNoninfluence_strong_uwr_xources_xpurgx = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_xpurgx_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: xpurgx_ipurge xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_pg_Noninfluence_strong_uwr:
+  "\<lbrakk> confidentiality_u_weak; integrity_u \<rbrakk>
+     \<Longrightarrow> Noninfluence_strong_uwr_pg = Noninfluence_strong_uwr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> Noninfluence_strong_uwr_pg = Noninfluence_strong_uwr<\STATESEP>apply (clarsimp simp: Noninfluence_strong_uwr_pg_def Noninfluence_strong_uwr_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {t} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (frule (1) confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>confidentiality_u_weak; integrity_u; confidentiality_u\<rbrakk> \<Longrightarrow> (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {t} \<longrightarrow> uwr_equiv s as t bs u) = (\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u)<\STATESEP>apply (simp add: ipurge_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xources_Step:
+  "\<lbrakk> reachable s; (dom a s, u) \<notin> policy \<rbrakk> \<Longrightarrow> xources [a] s u = {u}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>reachable s; (dom a s, u) \<notin> policy\<rbrakk> \<Longrightarrow> xources [a] s u = {u}<\STATESEP>by (auto simp: xources_Cons xources_Nil enabled_Step dest: enabled_Step)<\STATESEP>1<\TRANSEP><\STATESEP>lemma xources_Step_2:
+  "\<lbrakk> reachable s; (dom a s, u) \<in> policy \<rbrakk> \<Longrightarrow> xources [a] s u = {dom a s,u}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>reachable s; dom a s \<leadsto> u\<rbrakk> \<Longrightarrow> xources [a] s u = {dom a s, u}<\STATESEP>by (auto simp: xources_Cons xources_Nil enabled_Step dest: enabled_Step)<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_ipurge_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_ipurge_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u [a] {s} = ipurge u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u [a] {s} = ipurge u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: xources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_xpurge_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_xpurge_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u [a] {s} = xpurge u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u [a] {s} = xpurge u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: sources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_xpurge_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_xpurge_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u [a] {s} = xpurge u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u [a] {s} = xpurge u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: xources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_ipurgx_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_ipurgx_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u [a] {s} = ipurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u [a] {s} = ipurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: sources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_ipurgx_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_ipurgx_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u [a] {s} = ipurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u [a] {s} = ipurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: xources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_xpurgx_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_xpurgx_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u [a] {s} = xpurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u [a] {s} = xpurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: sources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_xpurgx_confidentiality_u_weak:
+  "xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_xpurgx_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u [a] {s} = xpurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u [a] {s} = xpurgx u [a] {s} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: xources_Step_2 sameFor_dom_def uwr_equiv_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ipurge_single_eq:
+  "\<lbrakk> reachable s; reachable t; s \<sim>schedDomain\<sim> t \<rbrakk>
+     \<Longrightarrow> ipurge u [a] {s} = ipurge u [a] {t}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t\<rbrakk> \<Longrightarrow> ipurge u [a] {s} = ipurge u [a] {t}<\STATESEP>apply (frule_tac e=a in schedIncludesCurrentDom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s = dom a t\<rbrakk> \<Longrightarrow> ipurge u [a] {s} = ipurge u [a] {t}<\STATESEP>apply (simp add: ipurge_Cons ipurge_Nil sources_Cons sources_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s = dom a t\<rbrakk> \<Longrightarrow> (dom a t = u \<longrightarrow> ((\<exists>s'. (s, s') \<in> local.Step a) \<longrightarrow> (\<exists>s'. (t, s') \<in> local.Step a) \<or> u \<leadsto> u \<and> (\<exists>s'. (t, s') \<in> local.Step a)) \<and> (u \<leadsto> u \<and> (\<exists>s'. (s, s') \<in> local.Step a) \<longrightarrow> (\<exists>s'. (t, s') \<in> local.Step a)) \<and> ((\<forall>s'. (s, s') \<notin> local.Step a) \<and> (u \<leadsto> u \<longrightarrow> (\<forall>s'. (s, s') \<notin> local.Step a)) \<longrightarrow> (\<forall>s'. (t, s') \<notin> local.Step a) \<and> (u \<leadsto> u \<longrightarrow> (\<forall>s'. (t, s') \<notin> local.Step a)))) \<and> (dom a t \<leadsto> u \<longrightarrow> ((\<exists>s'. (s, s') \<in> local.Step a) \<longrightarrow> (\<exists>s'. (t, s') \<in> local.Step a) \<and> dom a t = u \<or> (\<exists>s'. (t, s') \<in> local.Step a)) \<and> (u \<leadsto> u \<and> (\<exists>s'. (s, s') \<in> local.Step a) \<longrightarrow> (\<exists>s'. (t, s') \<in> local.Step a) \<and> dom a t = u \<or> (\<exists>s'. (t, s') \<in> local.Step a)) \<and> ((\<forall>s'. (s, s') \<notin> local.Step a) \<and> (u \<leadsto> u \<longrightarrow> (\<forall>s'. (s, s') \<notin> local.Step a)) \<longrightarrow> ((\<forall>s'. (t, s') \<notin> local.Step a) \<or> dom a t \<noteq> u) \<and> (\<forall>s'. (t, s') \<notin> local.Step a)))<\STATESEP>apply (auto dest: enabled_Step)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_pg_confidentiality_u_weak:
+  "Noninfluence_strong_uwr_pg \<Longrightarrow> confidentiality_u_weak"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr_pg \<Longrightarrow> confidentiality_u_weak<\STATESEP>apply (clarsimp simp: Noninfluence_strong_uwr_pg_def confidentiality_u_weak_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {t} \<longrightarrow> uwr_equiv s as t bs u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[a]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u [a] {s} = ipurge u [a] {t} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u; s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u [a] {s} = ipurge u [a] {t} \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: sources_Step_2 sameFor_dom_def uwr_equiv_def Step_def ipurge_single_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context complete_unwinding_system begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma Nonleakage_gen_xNonleakage_gen:
+  "confidentiality_u \<Longrightarrow> Nonleakage_gen = xNonleakage_gen"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> Nonleakage_gen = xNonleakage_gen<\STATESEP>apply (simp add: Nonleakage_gen_def xNonleakage_gen_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> (\<forall>as s u t. reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> uwr_equiv s as t as u) = (\<forall>as s u t. reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> uwr_equiv s as t as u)<\STATESEP>apply (fastforce simp: xources_sources)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNonleakage_gen:
+  "confidentiality_u \<Longrightarrow> xNonleakage_gen"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> xNonleakage_gen<\STATESEP>apply (simp add: Nonleakage_gen_xNonleakage_gen[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. confidentiality_u \<Longrightarrow> Nonleakage_gen<\STATESEP>apply (erule Nonleakage_gen)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNonleakage_gen_confidentiality_u:
+  "xNonleakage_gen \<Longrightarrow> confidentiality_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNonleakage_gen \<Longrightarrow> confidentiality_u<\STATESEP>apply (clarsimp simp: xNonleakage_gen_def confidentiality_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>\<forall>as s u t. reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> uwr_equiv s as t as u; reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u \<longrightarrow> s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x="[a]" in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u \<longrightarrow> s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; \<forall>u t. reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x=t in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u \<longrightarrow> s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> uwr_equiv s [a] t [a] u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (case_tac "dom a s \<leadsto> u")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u \<longrightarrow> s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> uwr_equiv s [a] t [a] u; dom a s \<leadsto> u\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'
+ 2. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u \<longrightarrow> s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> uwr_equiv s [a] t [a] u; (dom a s, u) \<notin> policy\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: xources_Step_2 uwr_equiv_def sameFor_dom_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s t s' t'. \<lbrakk>reachable s; reachable t; s \<sim>schedDomain\<sim> t; dom a s \<leadsto> u \<longrightarrow> s \<sim>dom a s\<sim> t; s \<sim>u\<sim> t; (s, s') \<in> local.Step a; (t, t') \<in> local.Step a; reachable s \<and> reachable t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> uwr_equiv s [a] t [a] u; (dom a s, u) \<notin> policy\<rbrakk> \<Longrightarrow> s' \<sim>u\<sim> t'<\STATESEP>apply (simp add: xources_Step uwr_equiv_def sameFor_dom_def Step_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_ipurge_integrity_u:
+  "xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_ipurge_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u [a] {s} = ipurge u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>xources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> ipurge u [a] {s} = ipurge u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: sources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def ipurge_Cons ipurge_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_xpurge_integrity_u:
+  "xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_xpurge_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u [a] {s} = xpurge u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>sources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> xpurge u [a] {s} = xpurge u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: xources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def xpurge_Cons xpurge_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_xpurge_integrity_u:
+  "xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_xpurge_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u as {s} = xpurge u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurge u [a] {s} = xpurge u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>xources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> xpurge u [a] {s} = xpurge u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: xources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def xpurge_Cons xpurge_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_ipurgx_integrity_u:
+  "xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_ipurgx_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u [a] {s} = ipurgx u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>sources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> ipurgx u [a] {s} = ipurgx u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: sources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def ipurgx_Cons ipurgx_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_ipurgx_integrity_u:
+  "xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_ipurgx_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u as {s} = ipurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurgx u [a] {s} = ipurgx u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>xources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> ipurgx u [a] {s} = ipurgx u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: sources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def ipurgx_Cons ipurgx_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_sources_xpurgx_integrity_u:
+  "xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_sources_xpurgx_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u [a] {s} = xpurgx u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>sources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> xpurgx u [a] {s} = xpurgx u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: xources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def xpurgx_Cons xpurgx_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma xNoninfluence_strong_uwr_xources_xpurgx_integrity_u:
+  "xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: xNoninfluence_strong_uwr_xources_xpurgx_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u as {s} = xpurgx u bs {s} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>xources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> xpurgx u [a] {s} = xpurgx u [] {s} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>xources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> xpurgx u [a] {s} = xpurgx u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: xources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def xpurgx_Cons xpurgx_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_pg_integrity_u:
+  "Noninfluence_strong_uwr_pg \<Longrightarrow> integrity_u"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr_pg \<Longrightarrow> integrity_u<\STATESEP>apply (clarsimp simp: Noninfluence_strong_uwr_pg_def integrity_u_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>\<forall>u as bs s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources as s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u as {s} = ipurge u bs {t} \<longrightarrow> uwr_equiv s as t bs u; reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=u in spec, drule_tac x="[a]" in spec, drule_tac x="[]" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; \<forall>s t. reachable s \<and> reachable t \<longrightarrow> s \<approx>sources [a] s u\<approx> t \<longrightarrow> s \<sim>schedDomain\<sim> t \<longrightarrow> ipurge u [a] {s} = ipurge u [] {t} \<longrightarrow> uwr_equiv s [a] t [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (drule_tac x=s in spec, drule_tac x=s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; (s, s') \<in> local.Step a; reachable s \<and> reachable s \<longrightarrow> s \<approx>sources [a] s u\<approx> s \<longrightarrow> s \<sim>schedDomain\<sim> s \<longrightarrow> ipurge u [a] {s} = ipurge u [] {s} \<longrightarrow> uwr_equiv s [a] s [] u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: sources_Step sameFor_dom_def uwr_refl
+                   uwr_equiv_def Step_def ipurge_Cons ipurge_Nil
+            split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (u, u) \<notin> policy; s' \<in> execution A s [a]; dom a s = u\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'
+ 2. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: policy_refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s' t'. s' \<in> execution A s [a] \<and> t' \<in> execution A s [] \<longrightarrow> s' \<sim>u\<sim> t'\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (simp add: execution_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a u s s'. \<lbrakk>reachable s; (dom a s, u) \<notin> policy; s' \<in> execution A s [a]; dom a s \<noteq> u; \<forall>s'. s' \<in> execution A s [a] \<longrightarrow> s' \<sim>u\<sim> s\<rbrakk> \<Longrightarrow> s \<sim>u\<sim> s'<\STATESEP>apply (blast intro: uwr_sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_xources_ipurge:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_ipurge"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_ipurge<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_xources_ipurge
+ 2. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_xources_ipurge_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_ipurge_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurge \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_ipurge_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_sources_xpurge:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_sources_xpurge"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_sources_xpurge<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_sources_xpurge
+ 2. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_sources_xpurge_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_sources_xpurge_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurge \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_sources_xpurge_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_xources_xpurge:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_xpurge"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_xpurge<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_xources_xpurge
+ 2. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_xources_xpurge_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_xpurge_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurge \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_xpurge_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_sources_ipurgx:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_sources_ipurgx"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_sources_ipurgx<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_sources_ipurgx
+ 2. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_sources_ipurgx_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_sources_ipurgx_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_ipurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_sources_ipurgx_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_xources_ipurgx:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_ipurgx"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_ipurgx<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_xources_ipurgx
+ 2. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_xources_ipurgx_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_ipurgx_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_ipurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_ipurgx_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_sources_xpurgx:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_sources_xpurgx"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_sources_xpurgx<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_sources_xpurgx
+ 2. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_sources_xpurgx_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_sources_xpurgx_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_sources_xpurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_sources_xpurgx_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_xNoninfluence_strong_uwr_xources_xpurgx:
+  "Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_xpurgx"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = xNoninfluence_strong_uwr_xources_xpurgx<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> xNoninfluence_strong_uwr_xources_xpurgx
+ 2. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst xNoninfluence_strong_uwr_xources_xpurgx_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> confidentiality_u_weak
+ 2. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_xpurgx_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. xNoninfluence_strong_uwr_xources_xpurgx \<Longrightarrow> integrity_u<\STATESEP>apply (erule xNoninfluence_strong_uwr_xources_xpurgx_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Noninfluence_strong_uwr_equiv_Noninfluence_strong_uwr_pg:
+  "Noninfluence_strong_uwr = Noninfluence_strong_uwr_pg"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr = Noninfluence_strong_uwr_pg<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr_pg
+ 2. Noninfluence_strong_uwr_pg \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (subst Noninfluence_strong_uwr_pg_Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 3. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 4. Noninfluence_strong_uwr_pg \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> integrity_u
+ 2. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 3. Noninfluence_strong_uwr_pg \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (erule Noninfluence_strong_uwr_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr \<Longrightarrow> Noninfluence_strong_uwr
+ 2. Noninfluence_strong_uwr_pg \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr_pg \<Longrightarrow> Noninfluence_strong_uwr<\STATESEP>apply (rule Noninfluence_strong_uwr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. Noninfluence_strong_uwr_pg \<Longrightarrow> confidentiality_u_weak
+ 2. Noninfluence_strong_uwr_pg \<Longrightarrow> integrity_u<\STATESEP>apply (erule Noninfluence_strong_uwr_pg_confidentiality_u_weak)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Noninfluence_strong_uwr_pg \<Longrightarrow> integrity_u<\STATESEP>apply (erule Noninfluence_strong_uwr_pg_integrity_u)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

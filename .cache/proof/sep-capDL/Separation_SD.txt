@@ -1,0 +1,644 @@
+<\STATESEP>theory Separation_SD
+imports
+  AbstractSeparation_SD
+  Sep_Tactic_Helper
+  Types_SD
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_at_heap :: "(cdl_object \<Rightarrow> bool) \<Rightarrow> cdl_object_id \<Rightarrow> cdl_heap \<Rightarrow> bool"
+where
+  "object_at_heap P obj_id s \<equiv> \<exists>object. s obj_id = Some object \<and> P object"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "ko_at_heap k \<equiv> object_at_heap ((=) k)"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym sep_pred = "sep_state \<Rightarrow> bool"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  intent_reset :: "cdl_object \<Rightarrow> cdl_object"
+where
+  "intent_reset \<equiv> \<lambda>object.
+    case object  of
+        Tcb tcb \<Rightarrow> Tcb (tcb\<lparr> cdl_tcb_intent := undefined \<rparr>)
+      | other \<Rightarrow> other"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  reset_cap_asid :: "cdl_cap \<Rightarrow> cdl_cap"
+where
+  "reset_cap_asid \<equiv> \<lambda>c. case c of
+      FrameCap dev f1 f2 f3 f4 ad \<Rightarrow> FrameCap dev f1 f2 f3 f4 None
+    | PageTableCap f1 f2 ad     \<Rightarrow> PageTableCap f1 f2 None
+    | PageDirectoryCap f1 f2 ad \<Rightarrow> PageDirectoryCap f1 f2 None
+    | _ \<Rightarrow> c"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  asid_reset :: "cdl_object \<Rightarrow> cdl_object"
+where
+  "asid_reset \<equiv> \<lambda>obj. update_slots (reset_cap_asid \<circ>\<^sub>M object_slots obj) obj"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_clean :: "cdl_object \<Rightarrow> cdl_object"
+where
+  "object_clean \<equiv> intent_reset \<circ> asid_reset"<\STATESEP>0<\TRANSEP><\STATESEP>lemma object_clean_def2:
+  "object_clean = asid_reset \<circ> intent_reset"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_clean = asid_reset \<circ> intent_reset<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. object_clean x = (asid_reset \<circ> intent_reset) x<\STATESEP>apply (clarsimp simp: object_clean_def intent_reset_def asid_reset_def
+                        map_comp'_def object_slots_def update_slots_def
+                 split:  cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  object_wipe_slots :: "cdl_object \<Rightarrow> cdl_object"
+where
+  "object_wipe_slots obj \<equiv> update_slots Map.empty obj"<\STATESEP>0<\TRANSEP><\STATESEP>definition object_project :: "cdl_component_id \<Rightarrow> cdl_object \<Rightarrow> cdl_component"
+  where "object_project comp_id obj \<equiv> case comp_id of
+     Fields \<Rightarrow> CDL_Object (object_wipe_slots (object_clean obj))
+   | Slot slot \<Rightarrow> CDL_Cap (object_slots (object_clean obj) slot)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_state_projection :: "cdl_state \<Rightarrow> sep_state"
+where
+  "sep_state_projection s \<equiv> SepState
+    (\<lambda>(obj_id, comp_id). option_map (object_project comp_id) (cdl_objects s obj_id))
+    (\<lambda>irq. Some (cdl_irq_node s irq))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_state_projection2 :: "user_state \<Rightarrow> sep_state"
+where
+  "sep_state_projection2 \<equiv> sep_state_projection \<circ> kernel_state"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  lift' :: "(sep_state \<Rightarrow> 'a) \<Rightarrow> cdl_state \<Rightarrow> 'a" ("<_>")
+where
+  "<P> s \<equiv> P (sep_state_projection s)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  lift'' :: "(sep_state \<Rightarrow> 'a) \<Rightarrow> user_state \<Rightarrow> 'a" ("\<guillemotleft>_\<guillemotright>")
+where
+  "\<guillemotleft>P\<guillemotright> s \<equiv> P (sep_state_projection2 s)"<\STATESEP>0<\TRANSEP><\STATESEP>interpretation sep_lifted "sep_state_projection2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>interpretation cdl: sep_lifted "sep_state_projection"<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  sep_state_to_entity_map :: "(cdl_object_id \<Rightarrow> cdl_component_ids) \<Rightarrow> cdl_heap \<Rightarrow> sep_state_heap"
+where
+  "sep_state_to_entity_map component_map \<equiv> \<lambda>s (obj_id,comp_id).
+  if comp_id \<in> component_map obj_id
+  then map_option (object_project comp_id) (s obj_id)
+  else None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_to_sep_state :: "cdl_object_id \<Rightarrow> cdl_object \<Rightarrow> cdl_component_ids \<Rightarrow> sep_state_heap"
+where
+  "object_to_sep_state obj_id object comp_ids  \<equiv> \<lambda>(obj_id',comp_id).
+  if obj_id' = obj_id \<and> comp_id \<in> comp_ids
+  then Some (object_project comp_id object)
+  else None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_map_general :: "cdl_object_id \<Rightarrow> cdl_object \<Rightarrow> cdl_component_ids \<Rightarrow> sep_pred"
+where
+  "sep_map_general obj_id object comp_id \<equiv> \<lambda>s.
+    sep_heap s = (object_to_sep_state obj_id object comp_id) \<and>
+    sep_irq_node s = Map.empty"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_map_general_def2:
+  "sep_map_general obj_id object comp_id = (\<lambda>s.
+    s = SepState (object_to_sep_state obj_id object comp_id) Map.empty)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_map_general obj_id object comp_id = (\<lambda>s. s = SepState (object_to_sep_state obj_id object comp_id) (\<lambda>x. None))<\STATESEP>apply (clarsimp simp: sep_map_general_def, rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (sep_heap s = object_to_sep_state obj_id object comp_id \<and> sep_irq_node s = (\<lambda>x. None)) = (s = SepState (object_to_sep_state obj_id object comp_id) (\<lambda>x. None))<\STATESEP>apply (case_tac s, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  sep_map_o :: "cdl_object_id \<Rightarrow> cdl_object \<Rightarrow> sep_pred" ("_ \<mapsto>o _" [76,71] 76)
+where
+  "obj_id \<mapsto>o object \<equiv> sep_map_general obj_id object UNIV"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_map_f :: "cdl_object_id \<Rightarrow> cdl_object \<Rightarrow> sep_pred" ("_ \<mapsto>f _" [76,71] 76)
+where
+  "obj_id \<mapsto>f object \<equiv> sep_map_general obj_id object {Fields}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_map_S :: "cdl_object_id \<Rightarrow> cdl_object \<Rightarrow> sep_pred" ("_ \<mapsto>S _" [76,71] 76)
+where
+  "obj_id \<mapsto>S object \<equiv> sep_map_general obj_id object (UNIV - {Fields})"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_map_S' :: "(cdl_object_id \<times> cdl_cnode_index set) \<Rightarrow> cdl_object \<Rightarrow> sep_pred" ("_ \<mapsto>S'' _" [76,71] 76)
+where
+  "p \<mapsto>S' object \<equiv> let (obj_id, slots) = p in sep_map_general obj_id object (Slot ` slots)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_map_S'_def2:
+  "(obj_id, slots) \<mapsto>S' object \<equiv> sep_map_general obj_id object (Slot ` slots)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (obj_id, slots) \<mapsto>S' object \<equiv> sep_map_general obj_id object (Slot ` slots)<\STATESEP>by (simp add: sep_map_S'_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  sep_map_E :: "cdl_object_id \<Rightarrow> cdl_object \<Rightarrow> sep_pred" ("_ \<mapsto>E _" [76,71] 76)
+where
+  "obj_id \<mapsto>E object \<equiv> (obj_id, UNIV- dom (object_slots object)) \<mapsto>S' object"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_map_s :: "cdl_cap_ref \<Rightarrow> cdl_object \<Rightarrow> sep_pred" ("_ \<mapsto>s _" [76,71] 76)
+where
+  "p \<mapsto>s object \<equiv> let (obj_id, slot) = p in sep_map_general obj_id object {Slot slot}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_map_s_def2:
+  "(obj_id, slot) \<mapsto>s object \<equiv> sep_map_general obj_id object {Slot slot}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (obj_id, slot) \<mapsto>s object \<equiv> sep_map_general obj_id object {Slot slot}<\STATESEP>by (simp add: sep_map_s_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  sep_map_c :: "cdl_cap_ref \<Rightarrow> cdl_cap \<Rightarrow> sep_pred" ("_ \<mapsto>c _" [76,71] 76)
+where
+  "p \<mapsto>c cap \<equiv> \<lambda>s. let (obj_id, slot) = p in
+  \<exists>obj. sep_map_general obj_id obj {Slot slot} s \<and> object_slots obj = [slot \<mapsto> cap]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sep_map_irq :: "cdl_irq \<Rightarrow> cdl_object_id \<Rightarrow> sep_pred" ("_ \<mapsto>irq _" [76,71] 76)
+where
+  "sep_map_irq irq obj_id \<equiv> \<lambda>s.
+    sep_heap s = Map.empty \<and>
+    sep_irq_node s = [irq \<mapsto> obj_id]"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_o \<equiv> sep_any sep_map_o"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_o ("(_ \<mapsto>o -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_f \<equiv> sep_any sep_map_f"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_f ("(_ \<mapsto>f -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_S \<equiv> sep_any sep_map_S"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_S ("(_ \<mapsto>S -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_S' \<equiv> sep_any sep_map_S'"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_S' ("(_ \<mapsto>S' -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_s \<equiv> sep_any sep_map_s"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_s ("(_ \<mapsto>s -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_c \<equiv> sep_any sep_map_c"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_c ("(_ \<mapsto>c -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_E \<equiv> sep_any sep_map_E"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_E ("(_ \<mapsto>E -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "sep_any_map_irq \<equiv> sep_any sep_map_irq"<\STATESEP>0<\TRANSEP><\STATESEP>notation sep_any_map_irq ("(_ \<mapsto>irq -)" [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_o   ("_ \<mapsto>\<^sub>o\<^sub>b\<^sub>j _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_f   ("_ \<mapsto>\<^sub>f\<^sub>i\<^sub>e\<^sub>l\<^sub>d\<^sub>s _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_S   ("_ \<mapsto>\<^sub>s\<^sub>l\<^sub>o\<^sub>t\<^sub>s _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_S'  ("_ \<mapsto>\<^sub>s\<^sub>l\<^sub>o\<^sub>t\<^sub>s' _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_s   ("_ \<mapsto>\<^sub>s\<^sub>l\<^sub>o\<^sub>t _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_c   ("_ \<mapsto>\<^sub>c\<^sub>a\<^sub>p _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_E   ("_ \<mapsto>\<^sub>e\<^sub>m\<^sub>p\<^sub>t\<^sub>y _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_map_irq ("_ \<mapsto>\<^sub>I\<^sub>R\<^sub>Q _" [76,71] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_o   ("(_ \<mapsto>\<^sub>o\<^sub>b\<^sub>j -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_f   ("(_ \<mapsto>\<^sub>f\<^sub>i\<^sub>e\<^sub>l\<^sub>d\<^sub>s -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_S   ("(_ \<mapsto>\<^sub>s\<^sub>l\<^sub>o\<^sub>t\<^sub>s -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_S'  ("(_ \<mapsto>\<^sub>s\<^sub>l\<^sub>o\<^sub>t\<^sub>s\<^sub>' -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_s   ("(_ \<mapsto>\<^sub>s\<^sub>l\<^sub>o\<^sub>t -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_c   ("(_ \<mapsto>\<^sub>c\<^sub>a\<^sub>p -)"   [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_E   ("(_ \<mapsto>\<^sub>e\<^sub>m\<^sub>p\<^sub>t\<^sub>y -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>notation (latex output) sep_any_map_irq ("(_ \<mapsto>\<^sub>I\<^sub>R\<^sub>Q -)"  [1000] 76)<\STATESEP>0<\TRANSEP><\STATESEP>definition offset :: "cdl_cptr \<Rightarrow> cdl_size_bits \<Rightarrow> cdl_cnode_index"
+ where
+  "offset cap_ptr radix \<equiv>  unat $ cap_ptr && mask radix"<\STATESEP>0<\TRANSEP><\STATESEP>definition one_lvl_lookup :: "cdl_cap \<Rightarrow> cdl_size_bits \<Rightarrow> cdl_size_bits \<Rightarrow> bool"
+  where
+   "one_lvl_lookup cnode_cap remaining_size radix \<equiv>
+      let level_size = radix + cap_guard_size cnode_cap
+      in remaining_size = level_size"<\STATESEP>0<\TRANSEP><\STATESEP>definition guard_equal :: "cdl_cap \<Rightarrow> cdl_cptr \<Rightarrow> cdl_size_bits \<Rightarrow> bool"
+where
+ "guard_equal cnode_cap cap_ptr remaining_size \<equiv>
+      let guard_size = cap_guard_size cnode_cap;
+          cap_guard' =  cap_guard cnode_cap
+      in (cap_ptr >> remaining_size - guard_size) && mask guard_size = cap_guard'"<\STATESEP>0<\TRANSEP><\STATESEP>definition user_pointer_at :: "(cdl_size_bits * cdl_size_bits) \<Rightarrow> cdl_cap \<Rightarrow> cdl_cptr \<Rightarrow> cdl_cap \<Rightarrow> sep_pred " ("(\<box> _ : _ _ \<mapsto>u _)" [76,71] 76)
+  where
+   "user_pointer_at k_stuff cnode_cap cap_ptr cap  \<equiv> \<lambda>s.
+    let (sz, remaining_size) = k_stuff;
+        slot = offset cap_ptr sz;
+        c = cap_object cnode_cap
+    in ( c \<mapsto>f CNode (empty_cnode sz) \<and>*
+        (c, slot) \<mapsto>c cap ) s \<and>
+         (one_lvl_lookup cnode_cap remaining_size sz \<and>
+           guard_equal cnode_cap cap_ptr remaining_size \<and>
+           is_cnode_cap cnode_cap)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma offset_0 [simp]:
+  "offset 0 root_cnode_size = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. offset 0 root_cnode_size = 0<\STATESEP>by (clarsimp simp: offset_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma offset_slot':
+  "\<lbrakk>slot < 2^radix\<rbrakk> \<Longrightarrow> offset slot radix = unat slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. slot < 2 ^ radix \<Longrightarrow> offset slot radix = unat slot<\STATESEP>by (clarsimp simp: offset_def Word.less_mask_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma offset_slot:
+  "\<lbrakk>slot < 2^radix; radix < word_bits\<rbrakk> \<Longrightarrow> offset (of_nat slot) radix = slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> offset (word_of_nat slot) radix = slot<\STATESEP>apply (clarsimp simp: offset_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> unat (word_of_nat slot && mask radix) = slot<\STATESEP>apply (subst Word.less_mask_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> word_of_nat slot < 2 ^ radix
+ 2. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> unat (word_of_nat slot) = slot<\STATESEP>apply (erule (1) of_nat_less_pow_32)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> unat (word_of_nat slot) = slot<\STATESEP>apply (subst unat_of_nat_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> slot < 2 ^ LENGTH(32)
+ 2. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> slot = slot<\STATESEP>apply (drule_tac a="2::nat" and n=radix and N = word_bits in power_strict_increasing)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. slot < 2 ^ radix \<Longrightarrow> 1 < 2
+ 2. \<lbrakk>slot < 2 ^ radix; 2 ^ radix < 2 ^ word_bits\<rbrakk> \<Longrightarrow> slot < 2 ^ LENGTH(32)
+ 3. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> slot = slot<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>slot < 2 ^ radix; 2 ^ radix < 2 ^ word_bits\<rbrakk> \<Longrightarrow> slot < 2 ^ LENGTH(32)
+ 2. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> slot = slot<\STATESEP>apply (simp add: word_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slot < 2 ^ radix; radix < word_bits\<rbrakk> \<Longrightarrow> slot = slot<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_general_inj:
+  "cmps \<noteq> {} \<Longrightarrow> inj (\<lambda>obj_id. sep_map_general obj_id object cmps)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cmps \<noteq> {} \<Longrightarrow> inj (\<lambda>obj_id. sep_map_general obj_id object cmps)<\STATESEP>apply (clarsimp simp: inj_on_def fun_eq_iff sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>cmps \<noteq> {}; \<forall>xa. ((\<forall>a b. sep_heap xa (a, b) = object_to_sep_state x object cmps (a, b)) \<and> (\<forall>x. sep_irq_node xa x = None)) = ((\<forall>a b. sep_heap xa (a, b) = object_to_sep_state y object cmps (a, b)) \<and> (\<forall>x. sep_irq_node xa x = None))\<rbrakk> \<Longrightarrow> x = y<\STATESEP>apply (erule_tac x="SepState (object_to_sep_state x object cmps) Map.empty" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>cmps \<noteq> {}; ((\<forall>a b. sep_heap (SepState (object_to_sep_state x object cmps) (\<lambda>x. None)) (a, b) = object_to_sep_state x object cmps (a, b)) \<and> (\<forall>xa. sep_irq_node (SepState (object_to_sep_state x object cmps) (\<lambda>x. None)) xa = None)) = ((\<forall>a b. sep_heap (SepState (object_to_sep_state x object cmps) (\<lambda>x. None)) (a, b) = object_to_sep_state y object cmps (a, b)) \<and> (\<forall>xa. sep_irq_node (SepState (object_to_sep_state x object cmps) (\<lambda>x. None)) xa = None))\<rbrakk> \<Longrightarrow> x = y<\STATESEP>apply (fastforce simp: object_to_sep_state_def
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_o_inj:
+  "inj (\<lambda>obj_id. obj_id \<mapsto>o obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj (\<lambda>obj_id. obj_id \<mapsto>o obj)<\STATESEP>by (clarsimp simp: sep_map_o_def sep_map_general_inj)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_f_inj:
+  "inj (\<lambda>obj_id. obj_id \<mapsto>f obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj (\<lambda>obj_id. obj_id \<mapsto>f obj)<\STATESEP>by (clarsimp simp: sep_map_f_def sep_map_general_inj)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_s_inj:
+  "inj (\<lambda>obj_id. obj_id \<mapsto>s obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj (\<lambda>obj_id. obj_id \<mapsto>s obj)<\STATESEP>apply (clarsimp simp: inj_on_def fun_eq_iff sep_map_s_def sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa ba. \<forall>x. ((\<forall>aa ba. sep_heap x (aa, ba) = object_to_sep_state a obj {Slot b} (aa, ba)) \<and> (\<forall>xa. sep_irq_node x xa = None)) = ((\<forall>a b. sep_heap x (a, b) = object_to_sep_state aa obj {Slot ba} (a, b)) \<and> (\<forall>xa. sep_irq_node x xa = None)) \<Longrightarrow> a = aa \<and> b = ba<\STATESEP>apply (erule_tac x="SepState (object_to_sep_state a obj {Slot b}) Map.empty" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa ba. ((\<forall>aa ba. sep_heap (SepState (object_to_sep_state a obj {Slot b}) (\<lambda>x. None)) (aa, ba) = object_to_sep_state a obj {Slot b} (aa, ba)) \<and> (\<forall>x. sep_irq_node (SepState (object_to_sep_state a obj {Slot b}) (\<lambda>x. None)) x = None)) = ((\<forall>ab bb. sep_heap (SepState (object_to_sep_state a obj {Slot b}) (\<lambda>x. None)) (ab, bb) = object_to_sep_state aa obj {Slot ba} (ab, bb)) \<and> (\<forall>x. sep_irq_node (SepState (object_to_sep_state a obj {Slot b}) (\<lambda>x. None)) x = None)) \<Longrightarrow> a = aa \<and> b = ba<\STATESEP>apply (fastforce simp: object_to_sep_state_def
+                  split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_c_inj:
+  "inj (\<lambda>(obj_id,slot). (obj_id,slot) \<mapsto>c cap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj (\<lambda>(obj_id, slot). (obj_id, slot) \<mapsto>c cap)<\STATESEP>apply (clarsimp simp: inj_on_def fun_eq_iff sep_map_c_def sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa ba. \<forall>x. (\<exists>obj. (\<forall>aa ba. sep_heap x (aa, ba) = object_to_sep_state a obj {Slot b} (aa, ba)) \<and> (\<forall>xa. sep_irq_node x xa = None) \<and> (\<forall>x. (x = b \<longrightarrow> object_slots obj b = Some cap) \<and> (x \<noteq> b \<longrightarrow> object_slots obj x = None))) = (\<exists>obj. (\<forall>a b. sep_heap x (a, b) = object_to_sep_state aa obj {Slot ba} (a, b)) \<and> (\<forall>xa. sep_irq_node x xa = None) \<and> (\<forall>x. (x = ba \<longrightarrow> object_slots obj ba = Some cap) \<and> (x \<noteq> ba \<longrightarrow> object_slots obj x = None))) \<Longrightarrow> a = aa \<and> b = ba<\STATESEP>apply (erule_tac x="SepState (object_to_sep_state a
+                                                 (CNode \<lparr> cdl_cnode_caps = [b \<mapsto> cap],
+                                                          cdl_cnode_size_bits = 0 \<rparr>)
+                                                 {Slot b})
+                                Map.empty" in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa ba. (\<exists>obj. (\<forall>aa ba. sep_heap (SepState (object_to_sep_state a (CNode \<lparr>cdl_cnode_caps = [b \<mapsto> cap], cdl_cnode_size_bits = 0\<rparr>) {Slot b}) (\<lambda>x. None)) (aa, ba) = object_to_sep_state a obj {Slot b} (aa, ba)) \<and> (\<forall>x. sep_irq_node (SepState (object_to_sep_state a (CNode \<lparr>cdl_cnode_caps = [b \<mapsto> cap], cdl_cnode_size_bits = 0\<rparr>) {Slot b}) (\<lambda>x. None)) x = None) \<and> (\<forall>x. (x = b \<longrightarrow> object_slots obj b = Some cap) \<and> (x \<noteq> b \<longrightarrow> object_slots obj x = None))) = (\<exists>obj. (\<forall>ab bb. sep_heap (SepState (object_to_sep_state a (CNode \<lparr>cdl_cnode_caps = [b \<mapsto> cap], cdl_cnode_size_bits = 0\<rparr>) {Slot b}) (\<lambda>x. None)) (ab, bb) = object_to_sep_state aa obj {Slot ba} (ab, bb)) \<and> (\<forall>x. sep_irq_node (SepState (object_to_sep_state a (CNode \<lparr>cdl_cnode_caps = [b \<mapsto> cap], cdl_cnode_size_bits = 0\<rparr>) {Slot b}) (\<lambda>x. None)) x = None) \<and> (\<forall>x. (x = ba \<longrightarrow> object_slots obj ba = Some cap) \<and> (x \<noteq> ba \<longrightarrow> object_slots obj x = None))) \<Longrightarrow> a = aa \<and> b = ba<\STATESEP>apply (auto simp: object_to_sep_state_def object_project_def object_slots_def
+             split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_Slot [simp]:
+  "(range Slot) = (UNIV - {Fields})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. range Slot = UNIV - {Fields}<\STATESEP>apply (clarsimp simp: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {y. \<exists>x. y = Slot x} = UNIV - {Fields}<\STATESEP>apply rule<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. {y. \<exists>x. y = Slot x} \<subseteq> UNIV - {Fields}
+ 2. UNIV - {Fields} \<subseteq> {y. \<exists>x. y = Slot x}<\STATESEP>apply clarsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<noteq> Fields \<Longrightarrow> \<exists>xa. x = Slot xa<\STATESEP>apply (case_tac x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>x \<noteq> Fields; x = Fields\<rbrakk> \<Longrightarrow> \<exists>xa. x = Slot xa
+ 2. \<And>x x2. \<lbrakk>x \<noteq> Fields; x = Slot x2\<rbrakk> \<Longrightarrow> \<exists>xa. x = Slot xa<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Slot_slot_union:
+  "insert (Slot slot) (Slot ` (UNIV - {slot})) = UNIV - {Fields}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert (Slot slot) (Slot ` (UNIV - {slot})) = UNIV - {Fields}<\STATESEP>apply rule<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. insert (Slot slot) (Slot ` (UNIV - {slot})) \<subseteq> UNIV - {Fields}
+ 2. UNIV - {Fields} \<subseteq> insert (Slot slot) (Slot ` (UNIV - {slot}))<\STATESEP>apply clarsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>x \<notin> Slot ` (UNIV - {slot}); x \<noteq> Slot slot\<rbrakk> \<Longrightarrow> x = Fields<\STATESEP>apply (case_tac x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>x \<notin> Slot ` (UNIV - {slot}); x \<noteq> Slot slot; x = Fields\<rbrakk> \<Longrightarrow> x = Fields
+ 2. \<And>x x2. \<lbrakk>x \<notin> Slot ` (UNIV - {slot}); x \<noteq> Slot slot; x = Slot x2\<rbrakk> \<Longrightarrow> x = Fields<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_intent_reset [simp]:
+  "object_type (intent_reset obj) = object_type obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type (intent_reset obj) = object_type obj<\STATESEP>by (clarsimp simp: intent_reset_def object_type_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_asid_reset [simp]:
+  "object_type (asid_reset obj) = object_type obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type (asid_reset obj) = object_type obj<\STATESEP>by (clarsimp simp: asid_reset_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_object_clean [simp]:
+  "object_type (object_clean obj) = object_type obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type (object_clean obj) = object_type obj<\STATESEP>by (clarsimp simp: object_clean_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_map_restrict:
+  "dom (f |` a) \<subseteq> dom f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom (f |` a) \<subseteq> dom f<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_general_disjoint:
+  "\<lbrakk>(sep_map_general obj_id obj cmps \<and>* sep_map_general obj_id obj' cmps') s\<rbrakk>
+  \<Longrightarrow> cmps \<inter> cmps' = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sep_map_general obj_id obj cmps \<and>* sep_map_general obj_id obj' cmps') s \<Longrightarrow> cmps \<inter> cmps' = {}<\STATESEP>apply (clarsimp simp:sep_map_general_def sep_conj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>x ## y; s = x + y; sep_heap x = object_to_sep_state obj_id obj cmps; sep_irq_node x = (\<lambda>x. None); sep_heap y = object_to_sep_state obj_id obj' cmps'; sep_irq_node y = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> cmps \<inter> cmps' = {}<\STATESEP>apply (case_tac x,case_tac y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y x1 x2 x1a x2a. \<lbrakk>x ## y; s = x + y; sep_heap x = object_to_sep_state obj_id obj cmps; sep_irq_node x = (\<lambda>x. None); sep_heap y = object_to_sep_state obj_id obj' cmps'; sep_irq_node y = (\<lambda>x. None); x = SepState x1 x2; y = SepState x1a x2a\<rbrakk> \<Longrightarrow> cmps \<inter> cmps' = {}<\STATESEP>apply (clarsimp simp:object_to_sep_state_def map_disj_def
+    sep_disj_sep_state_def sep_state_disj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) \<inter> dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) = {}; s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None)\<rbrakk> \<Longrightarrow> cmps \<inter> cmps' = {}<\STATESEP>apply (drule_tac a1 = "{obj_id}\<times>cmps" in
+    disjoint_subset[OF dom_map_restrict])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None); dom ((\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) |` ({obj_id} \<times> cmps)) \<inter> dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) = {}\<rbrakk> \<Longrightarrow> cmps \<inter> cmps' = {}<\STATESEP>apply (drule_tac a1 = "{obj_id}\<times>cmps'" in
+    disjoint_subset2[OF dom_map_restrict])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None); dom ((\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) |` ({obj_id} \<times> cmps)) \<inter> dom ((\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) |` ({obj_id} \<times> cmps')) = {}\<rbrakk> \<Longrightarrow> cmps \<inter> cmps' = {}<\STATESEP>apply (rule ccontr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None); dom ((\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) |` ({obj_id} \<times> cmps)) \<inter> dom ((\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) |` ({obj_id} \<times> cmps')) = {}; cmps \<inter> cmps' \<noteq> {}\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (clarsimp dest!:int_not_emptyD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None); dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) \<inter> {obj_id} \<times> cmps \<inter> (dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) \<inter> {obj_id} \<times> cmps') = {}; x \<in> cmps; x \<in> cmps'\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (erule_tac x = "(obj_id,x)" in in_empty_interE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None); x \<in> cmps; x \<in> cmps'\<rbrakk> \<Longrightarrow> (obj_id, x) \<in> dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) \<inter> {obj_id} \<times> cmps
+ 2. \<And>x. \<lbrakk>s = SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) (\<lambda>x. None) + SepState (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) (\<lambda>x. None); x \<in> cmps; x \<in> cmps'\<rbrakk> \<Longrightarrow> (obj_id, x) \<in> dom (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id \<in> cmps' then Some (object_project comp_id obj') else None) \<inter> {obj_id} \<times> cmps'<\STATESEP>apply (clarsimp simp:object_project_def split:cdl_component_id.splits)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_object_wipe_slots[simp]:
+  "object_type (object_wipe_slots obj) = object_type obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type (object_wipe_slots obj) = object_type obj<\STATESEP>by (clarsimp simp: object_wipe_slots_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_intent_reset [simp]:
+  "object_slots (intent_reset obj) = object_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots (intent_reset obj) = object_slots obj<\STATESEP>by (clarsimp simp: intent_reset_def object_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_intent_reset [simp]:
+  "intent_reset (update_slots slots obj) = update_slots slots (intent_reset obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intent_reset (update_slots slots obj) = update_slots slots (intent_reset obj)<\STATESEP>by (clarsimp simp: intent_reset_def update_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_wipe_slots_intent_reset [simp]:
+  "intent_reset (object_wipe_slots obj)
+  = object_wipe_slots (intent_reset obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intent_reset (object_wipe_slots obj) = object_wipe_slots (intent_reset obj)<\STATESEP>by (clarsimp simp: object_wipe_slots_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_wipe_slots_asid_reset [simp]:
+  "object_wipe_slots (asid_reset obj) = asid_reset (object_wipe_slots obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_wipe_slots (asid_reset obj) = asid_reset (object_wipe_slots obj)<\STATESEP>apply (clarsimp simp: object_wipe_slots_def asid_reset_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. update_slots (\<lambda>x. None) obj = update_slots (reset_cap_asid o_M object_slots (update_slots (\<lambda>x. None) obj)) obj<\STATESEP>apply (case_tac "has_slots obj", simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_object_clean:
+  "object_slots (object_clean obj) = reset_cap_asid \<circ>\<^sub>M object_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots (object_clean obj) = reset_cap_asid o_M object_slots obj<\STATESEP>apply (clarsimp simp: object_clean_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots (asid_reset obj) = reset_cap_asid o_M object_slots obj<\STATESEP>apply (clarsimp simp: asid_reset_def object_slots_def update_slots_def
+                 split: cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_filds_update_slots[simp]:
+  "object_wipe_slots (update_slots slots obj) = object_wipe_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_wipe_slots (update_slots slots obj) = object_wipe_slots obj<\STATESEP>apply (simp add:update_slots_def split:cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>x3. obj = Tcb x3 \<longrightarrow> object_wipe_slots (Tcb (x3\<lparr>cdl_tcb_caps := slots\<rparr>)) = object_wipe_slots (Tcb x3)) \<and> (\<forall>x4. obj = CNode x4 \<longrightarrow> object_wipe_slots (CNode (x4\<lparr>cdl_cnode_caps := slots\<rparr>)) = object_wipe_slots (CNode x4)) \<and> (\<forall>x5. obj = AsidPool x5 \<longrightarrow> object_wipe_slots (AsidPool (x5\<lparr>cdl_asid_pool_caps := slots\<rparr>)) = object_wipe_slots (AsidPool x5)) \<and> (\<forall>x6. obj = PageTable x6 \<longrightarrow> object_wipe_slots (PageTable (x6\<lparr>cdl_page_table_caps := slots\<rparr>)) = object_wipe_slots (PageTable x6)) \<and> (\<forall>x7. obj = PageDirectory x7 \<longrightarrow> object_wipe_slots (PageDirectory (x7\<lparr>cdl_page_directory_caps := slots\<rparr>)) = object_wipe_slots (PageDirectory x7)) \<and> (\<forall>x10. obj = IRQNode x10 \<longrightarrow> object_wipe_slots (IRQNode (x10\<lparr>cdl_irq_node_caps := slots\<rparr>)) = object_wipe_slots (IRQNode x10))<\STATESEP>apply (simp add:object_wipe_slots_def update_slots_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_wipe_slots_idem[simp]:
+  "object_wipe_slots (object_wipe_slots obj) = object_wipe_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_wipe_slots (object_wipe_slots obj) = object_wipe_slots obj<\STATESEP>by (case_tac obj,simp_all add: object_wipe_slots_def object_slots_def
+     update_slots_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_update_slots[simp]:
+  "\<lbrakk>has_slots obj'; object_type obj = object_type obj'\<rbrakk>
+  \<Longrightarrow> object_slots (update_slots slots obj) slot = slots slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>has_slots obj'; object_type obj = object_type obj'\<rbrakk> \<Longrightarrow> object_slots (update_slots slots obj) slot = slots slot<\STATESEP>by (clarsimp simp:has_slots_def object_type_def split:cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_remerge':
+  "(f |` S) ++ (f |` T) = f |` (S \<union> T)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f |` S ++ f |` T = f |` (S \<union> T)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (f |` S ++ f |` T) x = (f |` (S \<union> T)) x<\STATESEP>apply (clarsimp simp: restrict_map_def map_add_def
+                 split: if_split_asm option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma product_union:
+  "{p} \<times> (cmps \<union> cmps') = ({p} \<times> cmps) \<union> ({p} \<times> cmps')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {p} \<times> (cmps \<union> cmps') = {p} \<times> cmps \<union> {p} \<times> cmps'<\STATESEP>by (rule Sigma_Un_distrib2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_to_sep_state_add:
+  "object_to_sep_state p obj cmps ++ object_to_sep_state p obj cmps' =
+  object_to_sep_state p obj (cmps \<union> cmps')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_to_sep_state p obj cmps ++ object_to_sep_state p obj cmps' = object_to_sep_state p obj (cmps \<union> cmps')<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (object_to_sep_state p obj cmps ++ object_to_sep_state p obj cmps') x = object_to_sep_state p obj (cmps \<union> cmps') x<\STATESEP>apply (clarsimp simp:object_to_sep_state_def split_def
+    map_add_def split:if_splits option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_decomp:
+  "\<lbrakk>cmps \<inter> cmps' = {}\<rbrakk>
+  \<Longrightarrow> (sep_map_general p obj cmps \<and>* sep_map_general p obj cmps') s =
+      sep_map_general p obj (cmps \<union> cmps') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cmps \<inter> cmps' = {} \<Longrightarrow> (sep_map_general p obj cmps \<and>* sep_map_general p obj cmps') s = sep_map_general p obj (cmps \<union> cmps') s<\STATESEP>apply (clarsimp simp: sep_conj_def map_disj_def sep_disj_sep_state_def sep_state_disj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cmps \<inter> cmps' = {} \<Longrightarrow> (\<exists>x y. dom (sep_heap x) \<inter> dom (sep_heap y) = {} \<and> dom (sep_irq_node x) \<inter> dom (sep_irq_node y) = {} \<and> s = x + y \<and> sep_map_general p obj cmps x \<and> sep_map_general p obj cmps' y) = sep_map_general p obj (cmps \<union> cmps') s<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; \<exists>x y. dom (sep_heap x) \<inter> dom (sep_heap y) = {} \<and> dom (sep_irq_node x) \<inter> dom (sep_irq_node y) = {} \<and> s = x + y \<and> sep_map_general p obj cmps x \<and> sep_map_general p obj cmps' y\<rbrakk> \<Longrightarrow> sep_map_general p obj (cmps \<union> cmps') s
+ 2. \<lbrakk>cmps \<inter> cmps' = {}; sep_map_general p obj (cmps \<union> cmps') s\<rbrakk> \<Longrightarrow> \<exists>x y. dom (sep_heap x) \<inter> dom (sep_heap y) = {} \<and> dom (sep_irq_node x) \<inter> dom (sep_irq_node y) = {} \<and> s = x + y \<and> sep_map_general p obj cmps x \<and> sep_map_general p obj cmps' y<\STATESEP>apply (clarsimp simp: sep_map_general_def plus_sep_state_def
+                         sep_state_add_def object_to_sep_state_add)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; sep_map_general p obj (cmps \<union> cmps') s\<rbrakk> \<Longrightarrow> \<exists>x y. dom (sep_heap x) \<inter> dom (sep_heap y) = {} \<and> dom (sep_irq_node x) \<inter> dom (sep_irq_node y) = {} \<and> s = x + y \<and> sep_map_general p obj cmps x \<and> sep_map_general p obj cmps' y<\STATESEP>apply (clarsimp simp:sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> \<exists>x y. dom (sep_heap x) \<inter> dom (sep_heap y) = {} \<and> dom (sep_irq_node x) \<inter> dom (sep_irq_node y) = {} \<and> s = x + y \<and> sep_heap x = object_to_sep_state p obj cmps \<and> sep_irq_node x = (\<lambda>x. None) \<and> sep_heap y = object_to_sep_state p obj cmps' \<and> sep_irq_node y = (\<lambda>x. None)<\STATESEP>apply (rule_tac x = "SepState (object_to_sep_state p obj cmps) Map.empty" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> \<exists>y. dom (sep_heap (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None))) \<inter> dom (sep_heap y) = {} \<and> dom (sep_irq_node (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None))) \<inter> dom (sep_irq_node y) = {} \<and> s = SepState (object_to_sep_state p obj cmps) (\<lambda>x. None) + y \<and> sep_heap (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None)) = object_to_sep_state p obj cmps \<and> sep_irq_node (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None)) = (\<lambda>x. None) \<and> sep_heap y = object_to_sep_state p obj cmps' \<and> sep_irq_node y = (\<lambda>x. None)<\STATESEP>apply (rule_tac x = "SepState (object_to_sep_state p obj cmps') Map.empty" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> dom (sep_heap (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None))) \<inter> dom (sep_heap (SepState (object_to_sep_state p obj cmps') (\<lambda>x. None))) = {} \<and> dom (sep_irq_node (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None))) \<inter> dom (sep_irq_node (SepState (object_to_sep_state p obj cmps') (\<lambda>x. None))) = {} \<and> s = SepState (object_to_sep_state p obj cmps) (\<lambda>x. None) + SepState (object_to_sep_state p obj cmps') (\<lambda>x. None) \<and> sep_heap (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None)) = object_to_sep_state p obj cmps \<and> sep_irq_node (SepState (object_to_sep_state p obj cmps) (\<lambda>x. None)) = (\<lambda>x. None) \<and> sep_heap (SepState (object_to_sep_state p obj cmps') (\<lambda>x. None)) = object_to_sep_state p obj cmps' \<and> sep_irq_node (SepState (object_to_sep_state p obj cmps') (\<lambda>x. None)) = (\<lambda>x. None)<\STATESEP>apply (clarsimp simp: plus_sep_state_def sep_state_add_def object_to_sep_state_add)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> dom (object_to_sep_state p obj cmps) \<inter> dom (object_to_sep_state p obj cmps') = {} \<and> s = SepState (object_to_sep_state p obj (cmps \<union> cmps')) (\<lambda>x. None)<\STATESEP>apply (intro conjI disjointI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x y. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None); x \<in> dom (object_to_sep_state p obj cmps); y \<in> dom (object_to_sep_state p obj cmps')\<rbrakk> \<Longrightarrow> x \<noteq> y
+ 2. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> s = SepState (object_to_sep_state p obj (cmps \<union> cmps')) (\<lambda>x. None)<\STATESEP>apply (clarsimp simp: dom_def object_to_sep_state_def
+                  split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ba. \<lbrakk>sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = p \<and> (comp_id \<in> cmps \<or> comp_id \<in> cmps') then Some (object_project comp_id obj) else None); sep_irq_node s = (\<lambda>x. None); cmps \<inter> cmps' = {}; ba \<in> cmps; ba \<in> cmps'\<rbrakk> \<Longrightarrow> False
+ 2. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> s = SepState (object_to_sep_state p obj (cmps \<union> cmps')) (\<lambda>x. None)<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cmps \<inter> cmps' = {}; sep_heap s = object_to_sep_state p obj (cmps \<union> cmps'); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> s = SepState (object_to_sep_state p obj (cmps \<union> cmps')) (\<lambda>x. None)<\STATESEP>apply (case_tac s,simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_o_decomp:
+  "p \<mapsto>o obj = (p \<mapsto>f obj \<and>* p \<mapsto>S obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. p \<mapsto>o obj = (p \<mapsto>f obj \<and>* p \<mapsto>S obj)<\STATESEP>apply (rule ext, rename_tac s)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (p \<mapsto>o obj) s = (p \<mapsto>f obj \<and>* p \<mapsto>S obj) s<\STATESEP>apply (clarsimp simp: sep_map_o_def sep_map_f_def sep_map_S_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. sep_map_general p obj UNIV s = (sep_map_general p obj {Fields} \<and>* sep_map_general p obj (UNIV - {Fields})) s<\STATESEP>apply (subgoal_tac "{Fields} \<inter> (UNIV - {Fields}) = {}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. {Fields} \<inter> (UNIV - {Fields}) = {} \<Longrightarrow> sep_map_general p obj UNIV s = (sep_map_general p obj {Fields} \<and>* sep_map_general p obj (UNIV - {Fields})) s
+ 2. \<And>s. {Fields} \<inter> (UNIV - {Fields}) = {}<\STATESEP>apply (drule sep_map_decomp, fastforce+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma intent_reset_has_slots[simp]:
+  "has_slots (intent_reset obj) = has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. has_slots (intent_reset obj) = has_slots obj<\STATESEP>apply (simp add:intent_reset_def
+    split:cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x3. obj = Tcb x3 \<longrightarrow> has_slots (Tcb (x3\<lparr>cdl_tcb_intent := undefined\<rparr>)) = has_slots (Tcb x3)<\STATESEP>apply (simp add:has_slots_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_c_def2:
+  "((obj_id,slot) \<mapsto>c cap) =
+  (\<lambda>s. \<exists>obj. ((obj_id,slot) \<mapsto>s obj) s \<and> ((object_slots obj) slot = Some cap))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (obj_id, slot) \<mapsto>c cap = (\<lambda>s. \<exists>obj. ((obj_id, slot) \<mapsto>s obj) s \<and> object_slots obj slot = Some cap)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. ((obj_id, slot) \<mapsto>c cap) s = (\<exists>obj. ((obj_id, slot) \<mapsto>s obj) s \<and> object_slots obj slot = Some cap)<\STATESEP>apply (clarsimp simp: sep_map_c_def sep_map_s_def sep_map_S_def sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (\<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap]) = (\<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap] \<Longrightarrow> \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap
+ 2. \<And>s. \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<Longrightarrow> \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap]<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj = [slot \<mapsto> cap]\<rbrakk> \<Longrightarrow> \<exists>obja. object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id obja {Slot slot} \<and> object_slots obja slot = Some cap
+ 2. \<And>s. \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<Longrightarrow> \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap]<\STATESEP>apply (rule_tac x="update_slots [slot \<mapsto> cap] obj" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj = [slot \<mapsto> cap]\<rbrakk> \<Longrightarrow> object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id (update_slots [slot \<mapsto> cap] obj) {Slot slot} \<and> object_slots (update_slots [slot \<mapsto> cap] obj) slot = Some cap
+ 2. \<And>s. \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<Longrightarrow> \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap]<\STATESEP>apply (case_tac "has_slots obj")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj = [slot \<mapsto> cap]; has_slots obj\<rbrakk> \<Longrightarrow> object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id (update_slots [slot \<mapsto> cap] obj) {Slot slot} \<and> object_slots (update_slots [slot \<mapsto> cap] obj) slot = Some cap
+ 2. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj = [slot \<mapsto> cap]; \<not> has_slots obj\<rbrakk> \<Longrightarrow> object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id (update_slots [slot \<mapsto> cap] obj) {Slot slot} \<and> object_slots (update_slots [slot \<mapsto> cap] obj) slot = Some cap
+ 3. \<And>s. \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<Longrightarrow> \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap]<\STATESEP>apply (fastforce simp: object_wipe_slots_def object_to_sep_state_def
+                          object_project_def object_clean_def asid_reset_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<Longrightarrow> \<exists>obj. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj = [slot \<mapsto> cap]<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> \<exists>obja. object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id obja {Slot slot} \<and> object_slots obja = [slot \<mapsto> cap]<\STATESEP>apply (rule_tac x="update_slots [slot \<mapsto> cap] obj" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id (update_slots [slot \<mapsto> cap] obj) {Slot slot} \<and> object_slots (update_slots [slot \<mapsto> cap] obj) = [slot \<mapsto> cap]<\STATESEP>apply (case_tac "has_slots obj")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj slot = Some cap; has_slots obj\<rbrakk> \<Longrightarrow> object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id (update_slots [slot \<mapsto> cap] obj) {Slot slot} \<and> object_slots (update_slots [slot \<mapsto> cap] obj) = [slot \<mapsto> cap]
+ 2. \<And>s obj. \<lbrakk>sep_heap s = object_to_sep_state obj_id obj {Slot slot}; sep_irq_node s = (\<lambda>x. None); object_slots obj slot = Some cap; \<not> has_slots obj\<rbrakk> \<Longrightarrow> object_to_sep_state obj_id obj {Slot slot} = object_to_sep_state obj_id (update_slots [slot \<mapsto> cap] obj) {Slot slot} \<and> object_slots (update_slots [slot \<mapsto> cap] obj) = [slot \<mapsto> cap]<\STATESEP>apply (fastforce simp: object_wipe_slots_def object_to_sep_state_def
+                          object_project_def object_clean_def asid_reset_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "cap_project cap \<equiv> CDL_Cap (Some (reset_cap_asid cap))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_to_sep_state  :: "cdl_object_id \<Rightarrow> cdl_cap \<Rightarrow> nat \<Rightarrow> sep_state_heap"
+where
+  "cap_to_sep_state obj_id cap slot \<equiv>
+    \<lambda>(obj_id', comp_id).
+    if obj_id' = obj_id \<and> comp_id = Slot slot
+    then Some (cap_project cap)
+    else None"<\STATESEP>0<\TRANSEP><\STATESEP>lemma object_slots_some_has_slots:
+  "object_slots obj slot = Some cap \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots obj slot = Some cap \<Longrightarrow> has_slots obj<\STATESEP>by (metis object_slots_has_slots option.distinct(1))<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_project_cap_project:
+  "object_slots obj slot = Some cap \<Longrightarrow>
+  object_project (Slot slot) obj = cap_project cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots obj slot = Some cap \<Longrightarrow> object_project (Slot slot) obj = cap_project cap<\STATESEP>apply (frule object_slots_some_has_slots)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>object_slots obj slot = Some cap; has_slots obj\<rbrakk> \<Longrightarrow> object_project (Slot slot) obj = cap_project cap<\STATESEP>apply (clarsimp simp: object_project_def cap_project_def object_clean_def asid_reset_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_c_def_alt:
+  "(obj_id, slot) \<mapsto>c cap \<equiv>  \<lambda>s.
+    sep_heap s = cap_to_sep_state obj_id cap slot \<and>
+    sep_irq_node s = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (obj_id, slot) \<mapsto>c cap \<equiv> \<lambda>s. sep_heap s = cap_to_sep_state obj_id cap slot \<and> sep_irq_node s = (\<lambda>x. None)<\STATESEP>apply (clarsimp simp: sep_map_c_def2 sep_map_s_def sep_map_general_def
+                        object_to_sep_state_def cap_to_sep_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lambda>s. \<exists>obj. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id obj) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<equiv> \<lambda>s. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) \<and> sep_irq_node s = (\<lambda>x. None)<\STATESEP>apply (rule eq_reflection, rule ext, rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<exists>obj. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id obj) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap \<Longrightarrow> sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) \<and> sep_irq_node s = (\<lambda>x. None)
+ 2. \<And>s. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<Longrightarrow> \<exists>obj. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id obj) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap<\STATESEP>apply (clarsimp, rule ext, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s obj a b. \<lbrakk>sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id obj) else None); sep_irq_node s = (\<lambda>x. None); object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> (a = obj_id \<and> b = Slot slot \<longrightarrow> object_project (Slot slot) obj = cap_project cap) \<and> ((a = obj_id \<longrightarrow> b \<noteq> Slot slot) \<longrightarrow> a = obj_id \<and> b = Slot slot \<longrightarrow> object_project (Slot slot) obj = cap_project cap)
+ 2. \<And>s. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<Longrightarrow> \<exists>obj. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id obj) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap<\STATESEP>apply (drule object_project_cap_project [symmetric], simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<Longrightarrow> \<exists>obj. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id obj) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots obj slot = Some cap<\STATESEP>apply (rule exI [where x="update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1))"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<Longrightarrow> sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))) else None) \<and> sep_irq_node s = (\<lambda>x. None) \<and> object_slots (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1))) slot = Some cap<\STATESEP>apply (clarsimp simp: object_slots_def update_slots_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None); sep_irq_node s = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))) else None)<\STATESEP>apply (case_tac "has_slots (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None); sep_irq_node s = (\<lambda>x. None); has_slots (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))\<rbrakk> \<Longrightarrow> (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))) else None)
+ 2. \<And>s. \<lbrakk>sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None); sep_irq_node s = (\<lambda>x. None); \<not> has_slots (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))\<rbrakk> \<Longrightarrow> (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))) else None)<\STATESEP>apply (fastforce simp: cap_project_def object_project_def
+                          object_clean_def asid_reset_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None); sep_irq_node s = (\<lambda>x. None); \<not> has_slots (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))\<rbrakk> \<Longrightarrow> (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (cap_project cap) else None) = (\<lambda>(obj_id', comp_id). if obj_id' = obj_id \<and> comp_id = Slot slot then Some (object_project comp_id (update_slots [slot \<mapsto> cap] (CNode (empty_cnode 1)))) else None)<\STATESEP>apply (clarsimp simp: update_slots_def has_slots_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_s_sep_map_c_eq:
+  "\<lbrakk>object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow>
+  (obj_id, slot) \<mapsto>s obj = (obj_id, slot) \<mapsto>c cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots obj slot = Some cap \<Longrightarrow> (obj_id, slot) \<mapsto>s obj = (obj_id, slot) \<mapsto>c cap<\STATESEP>by (fastforce simp: sep_map_c_def_alt sep_map_s_def sep_map_S_def sep_map_general_def
+                      object_to_sep_state_def cap_to_sep_state_def
+                      object_project_cap_project)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_c_sep_map_s:
+  "\<lbrakk>((obj_id,slot) \<mapsto>s obj) s; (object_slots obj) slot = Some cap\<rbrakk> \<Longrightarrow>
+   ((obj_id,slot) \<mapsto>c cap) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>((obj_id, slot) \<mapsto>s obj) s; object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> ((obj_id, slot) \<mapsto>c cap) s<\STATESEP>by (fastforce simp: sep_map_s_sep_map_c_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_s_sep_map_c:
+  "\<lbrakk>((obj_id, slot) \<mapsto>c cap) s; object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow>
+    ((obj_id, slot) \<mapsto>s obj) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>((obj_id, slot) \<mapsto>c cap) s; object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> ((obj_id, slot) \<mapsto>s obj) s<\STATESEP>by (fastforce simp: sep_map_s_sep_map_c_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_s_object_slots_equal:
+  "\<lbrakk>object_slots obj slot = object_slots obj' slot; object_type obj = object_type obj'\<rbrakk>
+  \<Longrightarrow> ((obj_id, slot) \<mapsto>s obj) = ((obj_id, slot) \<mapsto>s obj')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>object_slots obj slot = object_slots obj' slot; object_type obj = object_type obj'\<rbrakk> \<Longrightarrow> (obj_id, slot) \<mapsto>s obj = (obj_id, slot) \<mapsto>s obj'<\STATESEP>apply (clarsimp simp: sep_map_s_def sep_map_general_def split: sep_state.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>object_slots obj slot = object_slots obj' slot; object_type obj = object_type obj'\<rbrakk> \<Longrightarrow> (\<lambda>s. sep_heap s = object_to_sep_state obj_id obj {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None)) = (\<lambda>s. sep_heap s = object_to_sep_state obj_id obj' {Slot slot} \<and> sep_irq_node s = (\<lambda>x. None))<\STATESEP>apply (intro iffI ext conjI |
+         clarsimp simp: object_to_sep_state_def object_project_def
+                        object_slots_object_clean)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S_def2:
+  "(obj_id \<mapsto>S obj) = ((obj_id,UNIV) \<mapsto>S' obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. obj_id \<mapsto>S obj = (obj_id, UNIV) \<mapsto>S' obj<\STATESEP>by (clarsimp simp: sep_map_S_def sep_map_S'_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S'_def_singleton:
+  "(obj_id, {slot}) \<mapsto>S' obj = (obj_id, slot) \<mapsto>s obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (obj_id, {slot}) \<mapsto>S' obj = (obj_id, slot) \<mapsto>s obj<\STATESEP>by (rule ext)(clarsimp simp: sep_map_S'_def sep_map_s_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S'_decomp':
+  "\<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk>
+  \<Longrightarrow> (obj_id, insert slot slots) \<mapsto>S' obj =
+      ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, slot) \<mapsto>s obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> (obj_id, insert slot slots) \<mapsto>S' obj = ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, slot) \<mapsto>s obj)<\STATESEP>apply (rule ext, rename_tac s)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> ((obj_id, insert slot slots) \<mapsto>S' obj) s = ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, slot) \<mapsto>s obj) s<\STATESEP>apply (clarsimp simp: sep_map_S'_def sep_map_s_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (insert (Slot slot) (Slot ` slots)) s = (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj {Slot slot}) s<\STATESEP>apply (subgoal_tac "Slot ` slots \<inter> {Slot slot} = {}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}; Slot ` slots \<inter> {Slot slot} = {}\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (insert (Slot slot) (Slot ` slots)) s = (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj {Slot slot}) s
+ 2. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> {Slot slot} = {}<\STATESEP>apply (drule_tac p=obj_id and obj=obj and s=s in sep_map_decomp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}; (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj {Slot slot}) s = sep_map_general obj_id obj (Slot ` slots \<union> {Slot slot}) s\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (insert (Slot slot) (Slot ` slots)) s = (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj {Slot slot}) s
+ 2. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> {Slot slot} = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>slot \<notin> slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> {Slot slot} = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S'_decomp_helper:
+  "\<lbrakk>distinct slots; slots \<noteq> []\<rbrakk>
+  \<Longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct slots; slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots<\STATESEP>apply (induct slots arbitrary: obj)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>obj. \<lbrakk>distinct []; [] \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set []) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) []
+ 2. \<And>a slots obj. \<lbrakk>\<And>obj. \<lbrakk>distinct slots; slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; distinct (a # slots); a # slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set (a # slots)) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) (a # slots)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>\<And>obj. \<lbrakk>distinct slots; slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; distinct (a # slots); a # slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set (a # slots)) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) (a # slots)<\STATESEP>apply (atomize)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>\<forall>obj. distinct slots \<longrightarrow> slots \<noteq> [] \<longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; distinct (a # slots); a # slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set (a # slots)) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) (a # slots)<\STATESEP>apply (case_tac "slots = []")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a slots obj. \<lbrakk>\<forall>obj. distinct slots \<longrightarrow> slots \<noteq> [] \<longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; distinct (a # slots); a # slots \<noteq> []; slots = []\<rbrakk> \<Longrightarrow> (obj_id, set (a # slots)) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) (a # slots)
+ 2. \<And>a slots obj. \<lbrakk>\<forall>obj. distinct slots \<longrightarrow> slots \<noteq> [] \<longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; distinct (a # slots); a # slots \<noteq> []; slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set (a # slots)) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) (a # slots)<\STATESEP>apply (clarsimp simp: sep_map_S'_def sep_map_s_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>\<forall>obj. distinct slots \<longrightarrow> slots \<noteq> [] \<longrightarrow> (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; distinct (a # slots); a # slots \<noteq> []; slots \<noteq> []\<rbrakk> \<Longrightarrow> (obj_id, set (a # slots)) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) (a # slots)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>\<forall>obj. (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; slots \<noteq> []; a \<notin> set slots; distinct slots\<rbrakk> \<Longrightarrow> (obj_id, insert a (set slots)) \<mapsto>S' obj = ((obj_id, a) \<mapsto>s obj \<and>* \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots)<\STATESEP>apply (erule_tac x=obj in allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>slots \<noteq> []; a \<notin> set slots; distinct slots; (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots\<rbrakk> \<Longrightarrow> (obj_id, insert a (set slots)) \<mapsto>S' obj = ((obj_id, a) \<mapsto>s obj \<and>* \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots)<\STATESEP>apply (subgoal_tac "(obj_id, insert a (set slots)) \<mapsto>S' obj =
+                      ((obj_id, set slots) \<mapsto>S' obj \<and>* (obj_id, a) \<mapsto>s obj)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a slots obj. \<lbrakk>slots \<noteq> []; a \<notin> set slots; distinct slots; (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots; (obj_id, insert a (set slots)) \<mapsto>S' obj = ((obj_id, set slots) \<mapsto>S' obj \<and>* (obj_id, a) \<mapsto>s obj)\<rbrakk> \<Longrightarrow> (obj_id, insert a (set slots)) \<mapsto>S' obj = ((obj_id, a) \<mapsto>s obj \<and>* \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots)
+ 2. \<And>a slots obj. \<lbrakk>slots \<noteq> []; a \<notin> set slots; distinct slots; (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots\<rbrakk> \<Longrightarrow> (obj_id, insert a (set slots)) \<mapsto>S' obj = ((obj_id, set slots) \<mapsto>S' obj \<and>* (obj_id, a) \<mapsto>s obj)<\STATESEP>apply (clarsimp simp: sep_conj_ac)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>slots \<noteq> []; a \<notin> set slots; distinct slots; (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots\<rbrakk> \<Longrightarrow> (obj_id, insert a (set slots)) \<mapsto>S' obj = ((obj_id, set slots) \<mapsto>S' obj \<and>* (obj_id, a) \<mapsto>s obj)<\STATESEP>apply (erule sep_map_S'_decomp')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a slots obj. \<lbrakk>slots \<noteq> []; distinct slots; (obj_id, set slots) \<mapsto>S' obj = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots\<rbrakk> \<Longrightarrow> set slots \<noteq> {}<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S'_decomp:
+  "\<lbrakk>finite slots; slots \<noteq> {}\<rbrakk>
+  \<Longrightarrow> (obj_id, slots) \<mapsto>S' obj = (\<And>* slot \<in> slots. (obj_id, slot) \<mapsto>s obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> (obj_id, slots) \<mapsto>S' obj = (SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj)<\STATESEP>apply (drule sep_map_set_conj_sep_list_conj [where P="\<lambda>slot. (obj_id, slot) \<mapsto>s obj"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots \<noteq> {}; \<exists>xs. set xs = slots \<and> distinct xs \<and> (SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) xs\<rbrakk> \<Longrightarrow> (obj_id, slots) \<mapsto>S' obj = (SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>slots = set xs; (obj_id, set xs) \<mapsto>S' obj \<noteq> \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) xs; distinct xs; (SETSEPCONJ slot:set xs. (obj_id, slot) \<mapsto>s obj) = \<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) xs\<rbrakk> \<Longrightarrow> xs = []<\STATESEP>apply (metis sep_map_S'_decomp_helper)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S_decomp':
+  "\<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk>
+  \<Longrightarrow> obj_id \<mapsto>S obj = ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, UNIV - slots) \<mapsto>S' obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, UNIV - slots) \<mapsto>S' obj)<\STATESEP>apply (rule ext, rename_tac s)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> (obj_id \<mapsto>S obj) s = ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, UNIV - slots) \<mapsto>S' obj) s<\STATESEP>apply (clarsimp simp: sep_map_S_def sep_map_S'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (UNIV - {Fields}) s = (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj (Slot ` (UNIV - slots))) s<\STATESEP>apply (subgoal_tac "(Slot ` slots) \<inter> (Slot ` (UNIV - slots)) = {}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV; Slot ` slots \<inter> Slot ` (UNIV - slots) = {}\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (UNIV - {Fields}) s = (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj (Slot ` (UNIV - slots))) s
+ 2. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> Slot ` (UNIV - slots) = {}<\STATESEP>apply (drule_tac p=obj_id and obj=obj and s=s in sep_map_decomp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV; (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj (Slot ` (UNIV - slots))) s = sep_map_general obj_id obj (Slot ` slots \<union> Slot ` (UNIV - slots)) s\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (UNIV - {Fields}) s = (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj (Slot ` (UNIV - slots))) s
+ 2. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> Slot ` (UNIV - slots) = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV; (sep_map_general obj_id obj (Slot ` slots) \<and>* sep_map_general obj_id obj (Slot ` (UNIV - slots))) s = sep_map_general obj_id obj (Slot ` slots \<union> Slot ` (UNIV - slots)) s\<rbrakk> \<Longrightarrow> sep_map_general obj_id obj (UNIV - {Fields}) s = sep_map_general obj_id obj (Slot ` slots \<union> Slot ` (UNIV - slots)) s
+ 2. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> Slot ` (UNIV - slots) = {}<\STATESEP>apply (clarsimp simp: image_Un [THEN sym])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>slots \<noteq> {}; slots \<noteq> UNIV\<rbrakk> \<Longrightarrow> Slot ` slots \<inter> Slot ` (UNIV - slots) = {}<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S_decomp:
+  "\<lbrakk>dom (object_slots obj) = slots; finite slots\<rbrakk> \<Longrightarrow>
+   (obj_id \<mapsto>S obj) = ((\<And>* slot \<in> slots. (obj_id,slot) \<mapsto>s obj)  \<and>* obj_id \<mapsto>E obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>dom (object_slots obj) = slots; finite slots\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply (case_tac "slots = {}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots = {}\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)
+ 2. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>object_slots obj = (\<lambda>x. None); slots = {}\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = obj_id \<mapsto>E obj
+ 2. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply (clarsimp simp: sep_map_E_def sep_map_S'_def sep_map_S_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply (subst sep_map_S_decomp' [where slots = slots])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> slots \<noteq> {}
+ 2. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> slots \<noteq> UNIV
+ 3. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, UNIV - slots) \<mapsto>S' obj) = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> slots \<noteq> UNIV
+ 2. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, UNIV - slots) \<mapsto>S' obj) = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>dom (object_slots obj) = slots; finite slots; slots \<noteq> {}\<rbrakk> \<Longrightarrow> ((obj_id, slots) \<mapsto>S' obj \<and>* (obj_id, UNIV - slots) \<mapsto>S' obj) = ((SETSEPCONJ slot:slots. (obj_id, slot) \<mapsto>s obj) \<and>* obj_id \<mapsto>E obj)<\STATESEP>apply (clarsimp simp: sep_map_E_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>finite (dom (object_slots obj)); object_slots obj \<noteq> (\<lambda>x. None); slots = dom (object_slots obj)\<rbrakk> \<Longrightarrow> ((obj_id, dom (object_slots obj)) \<mapsto>S' obj \<and>* (obj_id, UNIV - dom (object_slots obj)) \<mapsto>S' obj) = ((SETSEPCONJ slot:dom (object_slots obj). (obj_id, slot) \<mapsto>s obj) \<and>* (obj_id, UNIV - dom (object_slots obj)) \<mapsto>S' obj)<\STATESEP>apply (subst sep_map_S'_decomp, simp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_S_decomp_list:
+  "\<lbrakk>dom (object_slots obj) = set slots; distinct slots\<rbrakk> \<Longrightarrow>
+   (obj_id \<mapsto>S obj) = (\<And>* map (\<lambda>slot. (obj_id,slot) \<mapsto>s obj) slots  \<and>* obj_id \<mapsto>E obj)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>dom (object_slots obj) = set slots; distinct slots\<rbrakk> \<Longrightarrow> obj_id \<mapsto>S obj = (\<And>* map (\<lambda>slot. (obj_id, slot) \<mapsto>s obj) slots \<and>* obj_id \<mapsto>E obj)<\STATESEP>by (metis sep_list_conj_sep_map_set_conj sep_map_S_decomp List.finite_set)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_general_strictly_exact:
+  "strictly_exact (sep_map_general obj_id obj comp_ids)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. strictly_exact (sep_map_general obj_id obj comp_ids)<\STATESEP>apply (clarsimp simp: strictly_exact_def sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>sep_heap h = object_to_sep_state obj_id obj comp_ids; sep_irq_node h = (\<lambda>x. None); sep_heap h' = object_to_sep_state obj_id obj comp_ids; sep_irq_node h' = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply (case_tac h, case_tac h', clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_general_precise:
+  "precise (sep_map_general obj_id obj comp_ids)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. precise (sep_map_general obj_id obj comp_ids)<\STATESEP>by (rule strictly_precise, rule sep_map_general_strictly_exact)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_c_strictly_exact:
+  "strictly_exact (ptr \<mapsto>c cap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. strictly_exact (ptr \<mapsto>c cap)<\STATESEP>apply (case_tac ptr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. ptr = (a, b) \<Longrightarrow> strictly_exact (ptr \<mapsto>c cap)<\STATESEP>apply (clarsimp simp: strictly_exact_def sep_map_c_def_alt)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b h h'. \<lbrakk>ptr = (a, b); sep_heap h = cap_to_sep_state a cap b; sep_irq_node h = (\<lambda>x. None); sep_heap h' = cap_to_sep_state a cap b; sep_irq_node h' = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply (case_tac h, case_tac h', clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_c_precise:
+  "precise (ptr \<mapsto>c cap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. precise (ptr \<mapsto>c cap)<\STATESEP>by (rule strictly_precise, rule sep_map_c_strictly_exact)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_irq_strictly_exact:
+  "strictly_exact (irq \<mapsto>irq obj_id)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. strictly_exact (irq \<mapsto>irq obj_id)<\STATESEP>apply (clarsimp simp: strictly_exact_def sep_map_irq_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h h'. \<lbrakk>sep_heap h = (\<lambda>x. None); sep_irq_node h = [irq \<mapsto> obj_id]; sep_heap h' = (\<lambda>x. None); sep_irq_node h' = [irq \<mapsto> obj_id]\<rbrakk> \<Longrightarrow> h = h'<\STATESEP>apply (case_tac h, case_tac h', clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_irq_precise:
+  "precise (irq \<mapsto>irq obb_id)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. precise (irq \<mapsto>irq obb_id)<\STATESEP>by (rule strictly_precise, rule sep_map_irq_strictly_exact)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

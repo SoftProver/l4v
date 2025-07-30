@@ -1,0 +1,530 @@
+<\STATESEP>theory Bits_R
+imports Corres
+begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (add:
+  bind return "when" get gets fail assert put modify unless select alternative assert_opt gets_the
+  returnOk throwError lift bindE liftE whenE unlessE throw_opt assertE liftM liftME sequence_x
+  zipWithM_x mapM_x sequence mapM sequenceE_x sequenceE mapME mapME_x catch select_f
+  handleE' handleE handle_elseE forM forM_x forME_x zipWithM filterM forME_x
+  withoutFailure throw catchFailure rethrowFailure capFaultOnFailure lookupErrorOnFailure
+  nullCapOnFailure nothingOnFailure without_preemption withoutPreemption preemptionPoint
+  cap_fault_on_failure lookup_error_on_failure const_on_failure ignore_failure ignoreFailure
+  empty_on_failure emptyOnFailure unifyFailure unify_failure throw_on_false
+  storeWordVM loadWord setRegister getRegister getRestartPC
+  debugPrint setNextPC maskInterrupt clearMemory throw_on_false
+  unifyFailure ignoreFailure empty_on_failure emptyOnFailure clearMemoryVM null_cap_on_failure
+  setNextPC getRestartPC assertDerived throw_on_false getObject setObject updateObject loadObject)<\STATESEP>0<\TRANSEP><\STATESEP>context Arch begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (add:
+  invalidateLocalTLB_ASID invalidateLocalTLB_VAASID
+  cleanByVA cleanByVA_PoU invalidateByVA invalidateByVA_I invalidate_I_PoU
+  cleanInvalByVA branchFlush clean_D_PoU cleanInvalidate_D_PoC cleanInvalidateL2Range
+  invalidateL2Range cleanL2Range flushBTAC writeContextID isb dsb dmb
+  setHardwareASID setCurrentPD)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma throwE_R: "\<lbrace>\<top>\<rbrace> throw f \<lbrace>P\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> throw f \<lbrace>P\<rbrace>, -<\STATESEP>by (simp add: validE_R_def) wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma withoutFailure_wp [wp]:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> withoutFailure f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> withoutFailure f \<lbrace>Q\<rbrace>,-"
+  "\<lbrace>\<top>\<rbrace> withoutFailure f -,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> withoutFailure f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>) &&& (\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> withoutFailure f \<lbrace>Q\<rbrace>, -) &&& \<lbrace>\<lambda>_. True\<rbrace> withoutFailure f -, \<lbrace>E\<rbrace><\STATESEP>by (auto simp: validE_R_def validE_E_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_typeError [simp, wp]:
+  "no_fail \<bottom> (typeError xs ko)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. False) (typeError xs ko)<\STATESEP>by (simp add: typeError_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma isCap_simps:
+  "isZombie v = (\<exists>v0 v1 v2. v = Zombie v0 v1 v2)"
+  "isArchObjectCap v = (\<exists>v0. v = ArchObjectCap v0)"
+  "isThreadCap v = (\<exists>v0. v = ThreadCap v0)"
+  "isCNodeCap v = (\<exists>v0 v1 v2 v3. v = CNodeCap v0 v1 v2 v3)"
+  "isNotificationCap v = (\<exists>v0 v1 v2 v3. v = NotificationCap v0 v1 v2 v3)"
+  "isEndpointCap v = (\<exists>v0 v1 v2 v3 v4 v5. v = EndpointCap v0 v1 v2 v3 v4 v5)"
+  "isUntypedCap v = (\<exists>d v0 v1 f. v = UntypedCap d v0 v1 f)"
+  "isReplyCap v = (\<exists>v0 v1 v2. v = ReplyCap v0 v1 v2)"
+  "isIRQControlCap v = (v = IRQControlCap)"
+  "isIRQHandlerCap v = (\<exists>v0. v = IRQHandlerCap v0)"
+  "isNullCap v = (v = NullCap)"
+  "isDomainCap v = (v = DomainCap)"
+  "isPageCap w = (\<exists>d v0 v1 v2 v3. w = PageCap d v0 v1 v2 v3)"
+  "isPageTableCap w = (\<exists>v0 v1. w = PageTableCap v0 v1)"
+  "isPageDirectoryCap w = (\<exists>v0 v1. w = PageDirectoryCap v0 v1)"
+  "isASIDControlCap w = (w = ASIDControlCap)"
+  "isASIDPoolCap w = (\<exists>v0 v1. w = ASIDPoolCap v0 v1)"
+  "isArchPageCap cap = (\<exists>d ref rghts sz data. cap = ArchObjectCap (PageCap d ref rghts sz data))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (((isZombie v = (\<exists>v0 v1 v2. v = capability.Zombie v0 v1 v2) &&& isArchObjectCap v = (\<exists>v0. v = capability.ArchObjectCap v0)) &&& isThreadCap v = (\<exists>v0. v = capability.ThreadCap v0) &&& isCNodeCap v = (\<exists>v0 v1 v2 v3. v = capability.CNodeCap v0 v1 v2 v3)) &&& (isNotificationCap v = (\<exists>v0 v1 v2 v3. v = capability.NotificationCap v0 v1 v2 v3) &&& isEndpointCap v = (\<exists>v0 v1 v2 v3 v4 v5. v = capability.EndpointCap v0 v1 v2 v3 v4 v5)) &&& isUntypedCap v = (\<exists>d v0 v1 f. v = capability.UntypedCap d v0 v1 f) &&& isReplyCap v = (\<exists>v0 v1 v2. v = capability.ReplyCap v0 v1 v2) &&& isIRQControlCap v = (v = capability.IRQControlCap)) &&& ((isIRQHandlerCap v = (\<exists>v0. v = capability.IRQHandlerCap v0) &&& isNullCap v = (v = capability.NullCap)) &&& isDomainCap v = (v = capability.DomainCap) &&& isPageCap w = (\<exists>d v0 v1 v2 v3. w = arch_capability.PageCap d v0 v1 v2 v3)) &&& (isPageTableCap w = (\<exists>v0 v1. w = arch_capability.PageTableCap v0 v1) &&& isPageDirectoryCap w = (\<exists>v0 v1. w = arch_capability.PageDirectoryCap v0 v1)) &&& isASIDControlCap w = (w = arch_capability.ASIDControlCap) &&& isASIDPoolCap w = (\<exists>v0 v1. w = arch_capability.ASIDPoolCap v0 v1) &&& isArchPageCap cap = (\<exists>d ref rghts sz data. cap = capability.ArchObjectCap (arch_capability.PageCap d ref rghts sz data))<\STATESEP>by (auto simp: isCap_defs split: capability.splits arch_capability.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma untyped_not_null [simp]:
+  "\<not> isUntypedCap NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> isUntypedCap capability.NullCap<\STATESEP>by (simp add: isCap_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_tcb:
+  "(projectKO_opt ko = Some t) = (ko = KOTCB t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (tcb_of' ko = Some t) = (ko = KOTCB t)<\STATESEP>by (cases ko) (auto simp: projectKO_opts_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_of'_TCB[simp]:
+  "tcb_of' (KOTCB tcb) = Some tcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_of' (KOTCB tcb) = Some tcb<\STATESEP>by (simp add: projectKO_tcb)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_cte:
+  "(projectKO_opt ko = Some t) = (ko = KOCTE t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOCTE t)<\STATESEP>by (cases ko) (auto simp: projectKO_opts_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_ep:
+  "(projectKO_opt ko = Some t) = (ko = KOEndpoint t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOEndpoint t)<\STATESEP>by (cases ko) (auto simp: projectKO_opts_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_ntfn:
+  "(projectKO_opt ko = Some t) = (ko = KONotification t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KONotification t)<\STATESEP>by (cases ko) (auto simp: projectKO_opts_defs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_ASID:
+  "(projectKO_opt ko = Some t) = (ko = KOArch (KOASIDPool t))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOArch (KOASIDPool t))<\STATESEP>by (cases ko)
+     (auto simp: projectKO_opts_defs split: arch_kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_PTE:
+  "(projectKO_opt ko = Some t) = (ko = KOArch (KOPTE t))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOArch (KOPTE t))<\STATESEP>by (cases ko)
+     (auto simp: projectKO_opts_defs split: arch_kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_PDE:
+  "(projectKO_opt ko = Some t) = (ko = KOArch (KOPDE t))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOArch (KOPDE t))<\STATESEP>by (cases ko)
+     (auto simp: projectKO_opts_defs split: arch_kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_user_data:
+  "(projectKO_opt ko = Some (t :: user_data)) = (ko = KOUserData)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOUserData)<\STATESEP>by (cases ko)
+     (auto simp: projectKO_opts_defs split: arch_kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma projectKO_user_data_device:
+  "(projectKO_opt ko = Some (t :: user_data_device)) = (ko = KOUserDataDevice)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (projectKO_opt ko = Some t) = (ko = KOUserDataDevice)<\STATESEP>by (cases ko)
+     (auto simp: projectKO_opts_defs split: arch_kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas projectKOs =
+  projectKO_ntfn projectKO_ep projectKO_cte projectKO_tcb
+  projectKO_ASID projectKO_PTE projectKO_PDE projectKO_user_data projectKO_user_data_device
+  projectKO_eq projectKO_eq2<\STATESEP>0<\TRANSEP><\STATESEP>lemma capAligned_epI:
+  "ep_at' p s \<Longrightarrow> capAligned (EndpointCap p a b c d e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ep_at' p s \<Longrightarrow> capAligned (capability.EndpointCap p a b c d e)<\STATESEP>apply (clarsimp simp: obj_at'_real_def capAligned_def
+                        objBits_simps word_bits_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_wp_at' (\<lambda>ko. \<exists>obj. projectKO_opt ko = Some obj) p s \<Longrightarrow> is_aligned (global.capUntypedPtr (capability.EndpointCap p a b c d e)) epSizeBits \<and> epSizeBits < 32<\STATESEP>apply (drule ko_wp_at_norm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>ko. (\<exists>obj. projectKO_opt ko = Some obj) \<and> ko_wp_at' ((=) ko) p s \<Longrightarrow> is_aligned (global.capUntypedPtr (capability.EndpointCap p a b c d e)) epSizeBits \<and> epSizeBits < 32<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko obj. \<lbrakk>ko_wp_at' ((=) ko) p s; projectKO_opt ko = Some obj\<rbrakk> \<Longrightarrow> is_aligned (global.capUntypedPtr (capability.EndpointCap p a b c d e)) epSizeBits \<and> epSizeBits < 32<\STATESEP>apply (drule ko_wp_at_aligned)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko obj. \<lbrakk>projectKO_opt ko = Some obj; is_aligned p (objBitsKO ko)\<rbrakk> \<Longrightarrow> is_aligned (global.capUntypedPtr (capability.EndpointCap p a b c d e)) epSizeBits \<and> epSizeBits < 32<\STATESEP>apply (simp add: objBits_simps' projectKOs capUntypedPtr_def isCap_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma capAligned_ntfnI:
+  "ntfn_at' p s \<Longrightarrow> capAligned (NotificationCap p a b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ntfn_at' p s \<Longrightarrow> capAligned (capability.NotificationCap p a b c)<\STATESEP>apply (clarsimp simp: obj_at'_real_def capAligned_def
+                        objBits_simps word_bits_def capUntypedPtr_def isCap_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_wp_at' (\<lambda>ko. \<exists>obj. projectKO_opt ko = Some obj) p s \<Longrightarrow> is_aligned p ntfnSizeBits \<and> ntfnSizeBits < 32<\STATESEP>apply (fastforce dest: ko_wp_at_norm
+                  dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma capAligned_tcbI:
+  "tcb_at' p s \<Longrightarrow> capAligned (ThreadCap p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_at' p s \<Longrightarrow> capAligned (capability.ThreadCap p)<\STATESEP>apply (clarsimp simp: obj_at'_real_def capAligned_def
+                        objBits_simps word_bits_def capUntypedPtr_def isCap_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_wp_at' (\<lambda>ko. \<exists>obj. tcb_of' ko = Some obj) p s \<Longrightarrow> is_aligned p tcbBlockSizeBits \<and> tcbBlockSizeBits < 32<\STATESEP>apply (fastforce dest: ko_wp_at_norm
+                  dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma capAligned_reply_tcbI:
+  "tcb_at' p s \<Longrightarrow> capAligned (ReplyCap p m r)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_at' p s \<Longrightarrow> capAligned (capability.ReplyCap p m r)<\STATESEP>apply (clarsimp simp: obj_at'_real_def capAligned_def
+                        objBits_simps word_bits_def capUntypedPtr_def isCap_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_wp_at' (\<lambda>ko. \<exists>obj. tcb_of' ko = Some obj) p s \<Longrightarrow> is_aligned p tcbBlockSizeBits \<and> tcbBlockSizeBits < 32<\STATESEP>apply (fastforce dest: ko_wp_at_norm
+                  dest!: ko_wp_at_aligned simp: objBits_simps' projectKOs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ko_at_valid_objs':
+  assumes ko: "ko_at' k p s"
+  assumes vo: "valid_objs' s"
+  assumes k: "\<And>ko. projectKO_opt ko = Some k \<Longrightarrow> injectKO k = ko"
+  shows "valid_obj' (injectKO k) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. valid_obj' (injectKO k) s<\STATESEP>using ko vo<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+ko_at' k p s
+valid_objs' s
+
+goal (1 subgoal):
+ 1. valid_obj' (injectKO k) s<\STATESEP>by (clarsimp simp: valid_objs'_def obj_at'_def projectKOs
+                     project_inject ranI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma obj_at_valid_objs':
+  "\<lbrakk> obj_at' P p s; valid_objs' s \<rbrakk> \<Longrightarrow>
+  \<exists>k. P k \<and>
+      ((\<forall>ko. projectKO_opt ko = Some k \<longrightarrow> injectKO k = ko)
+       \<longrightarrow> valid_obj' (injectKO k) s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>obj_at' P p s; valid_objs' s\<rbrakk> \<Longrightarrow> \<exists>k. P k \<and> ((\<forall>ko. projectKO_opt ko = Some k \<longrightarrow> injectKO k = ko) \<longrightarrow> valid_obj' (injectKO k) s)<\STATESEP>apply (drule obj_at_ko_at')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>valid_objs' s; \<exists>ko. ko_at' ko p s \<and> P ko\<rbrakk> \<Longrightarrow> \<exists>k. P k \<and> ((\<forall>ko. projectKO_opt ko = Some k \<longrightarrow> injectKO k = ko) \<longrightarrow> valid_obj' (injectKO k) s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko. \<lbrakk>valid_objs' s; ko_at' ko p s; P ko\<rbrakk> \<Longrightarrow> \<exists>k. P k \<and> ((\<forall>ko. projectKO_opt ko = Some k \<longrightarrow> injectKO k = ko) \<longrightarrow> valid_obj' (injectKO k) s)<\STATESEP>apply (rule_tac x=ko in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko. \<lbrakk>valid_objs' s; ko_at' ko p s; P ko\<rbrakk> \<Longrightarrow> P ko \<and> ((\<forall>koa. projectKO_opt koa = Some ko \<longrightarrow> injectKO ko = koa) \<longrightarrow> valid_obj' (injectKO ko) s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko. \<lbrakk>valid_objs' s; ko_at' ko p s; P ko; \<forall>koa. projectKO_opt koa = Some ko \<longrightarrow> injectKO ko = koa\<rbrakk> \<Longrightarrow> valid_obj' (injectKO ko) s<\STATESEP>apply (erule (1) ko_at_valid_objs')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko koa. \<lbrakk>valid_objs' s; P ko; \<forall>koa. projectKO_opt koa = Some ko \<longrightarrow> injectKO ko = koa; projectKO_opt koa = Some ko\<rbrakk> \<Longrightarrow> injectKO ko = koa<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_in_valid_state':
+  "\<lbrakk> st_tcb_at' P t s; valid_objs' s \<rbrakk> \<Longrightarrow> \<exists>st. P st \<and> valid_tcb_state' st s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>st_tcb_at' P t s; valid_objs' s\<rbrakk> \<Longrightarrow> \<exists>st. P st \<and> valid_tcb_state' st s<\STATESEP>apply (clarsimp simp: pred_tcb_at'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>obj_at' (\<lambda>ko. P (tcbState ko)) t s; valid_objs' s\<rbrakk> \<Longrightarrow> \<exists>st. P st \<and> valid_tcb_state' st s<\STATESEP>apply (drule obj_at_valid_objs')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. valid_objs' s \<Longrightarrow> valid_objs' s
+ 2. \<lbrakk>valid_objs' s; \<exists>k. P (tcbState k) \<and> ((\<forall>ko. tcb_of' ko = Some k \<longrightarrow> injectKO k = ko) \<longrightarrow> valid_obj' (injectKO k) s)\<rbrakk> \<Longrightarrow> \<exists>st. P st \<and> valid_tcb_state' st s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>valid_objs' s; \<exists>k. P (tcbState k) \<and> ((\<forall>ko. tcb_of' ko = Some k \<longrightarrow> injectKO k = ko) \<longrightarrow> valid_obj' (injectKO k) s)\<rbrakk> \<Longrightarrow> \<exists>st. P st \<and> valid_tcb_state' st s<\STATESEP>apply (clarsimp simp: projectKOs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>k. \<lbrakk>valid_objs' s; P (tcbState k); valid_obj' (KOTCB k) s\<rbrakk> \<Longrightarrow> \<exists>st. P st \<and> valid_tcb_state' st s<\STATESEP>apply (fastforce simp add: valid_obj'_def valid_tcb'_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma getCurThread_corres [corres]: "corres (=) \<top> \<top> (gets cur_thread) getCurThread"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres (=) (\<lambda>_. True) (\<lambda>_. True) (gets cur_thread) getCurThread<\STATESEP>by (simp add: getCurThread_def curthread_relation)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gct_wp [wp]: "\<lbrace>\<lambda>s. P (ksCurThread s) s\<rbrace> getCurThread \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksCurThread s) s\<rbrace> getCurThread \<lbrace>P\<rbrace><\STATESEP>by (unfold getCurThread_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma getIdleThread_corres [corres]:
+  "corres (=) \<top> \<top> (gets idle_thread) getIdleThread"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres (=) (\<lambda>_. True) (\<lambda>_. True) (gets idle_thread) getIdleThread<\STATESEP>by (simp add: getIdleThread_def state_relation_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma git_wp [wp]: "\<lbrace>\<lambda>s. P (ksIdleThread s) s\<rbrace> getIdleThread \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksIdleThread s) s\<rbrace> getIdleThread \<lbrace>P\<rbrace><\STATESEP>by (unfold getIdleThread_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gsa_wp [wp]: "\<lbrace>\<lambda>s. P (ksSchedulerAction s) s\<rbrace> getSchedulerAction \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksSchedulerAction s) s\<rbrace> getSchedulerAction \<lbrace>P\<rbrace><\STATESEP>by (unfold getSchedulerAction_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  fr :: "ExceptionTypes_A.fault \<Rightarrow> Fault_H.fault \<Rightarrow> bool"
+where
+  fr_def[simp]:
+ "fr x y \<equiv> (y = fault_map x)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ser :: "ExceptionTypes_A.syscall_error \<Rightarrow> Fault_H.syscall_error \<Rightarrow> bool"
+where
+  ser_def[simp]:
+ "ser x y \<equiv> (y = syscall_error_map x)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lfr :: "ExceptionTypes_A.lookup_failure \<Rightarrow> Fault_H.lookup_failure \<Rightarrow> bool"
+where
+  lfr_def[simp]:
+ "lfr x y \<equiv> (y = lookup_failure_map x)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_injection:
+  assumes x: "t = injection_handler fn"
+  assumes y: "t' = injection_handler fn'"
+  assumes z: "\<And>ft ft'. f' ft ft' \<Longrightarrow> f (fn ft) (fn' ft')"
+  shows      "corres (f' \<oplus> r) P P' m m'
+     \<Longrightarrow> corres (f \<oplus> r) P P' (t m) (t' m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> corres (f \<oplus> r) P P' (t m) (t' m')<\STATESEP>apply (simp add: injection_handler_def handleE'_def x y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> corres (f \<oplus> r) P P' (do v <- m;
+case v of Inl e \<Rightarrow> throwError (fn e) | Inr v' \<Rightarrow> return (Inr v')
+od) (do v <- m';
+case v of Inl e \<Rightarrow> throwError (fn' e) | Inr v' \<Rightarrow> return (Inr v')
+od)<\STATESEP>apply (rule corres_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> corres (f \<oplus> r) ?Q2 ?Q'2 (do v <- m;
+case v of Inl e \<Rightarrow> throwError (fn e) | Inr v' \<Rightarrow> return (Inr v')
+od) (do v <- m';
+case v of Inl e \<Rightarrow> throwError (fn' e) | Inr v' \<Rightarrow> return (Inr v')
+od)
+ 2. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> ?Q2 s
+ 3. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> ?Q'2 s<\STATESEP>apply (rule corres_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> corres ?r'6 ?P6 ?P'6 m m'
+ 2. \<And>v va. \<lbrakk>corres (f' \<oplus> r) P P' m m'; ?r'6 v va\<rbrakk> \<Longrightarrow> corres (f \<oplus> r) (?R6 v) (?R'6 va) (case v of Inl e \<Rightarrow> throwError (fn e) | Inr v' \<Rightarrow> return (Inr v')) (case va of Inl e \<Rightarrow> throwError (fn' e) | Inr v' \<Rightarrow> return (Inr v'))
+ 3. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q6\<rbrace> m \<lbrace>?R6\<rbrace>
+ 4. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'6\<rbrace> m' \<lbrace>?R'6\<rbrace>
+ 5. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (?P6 and ?Q6) s
+ 6. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (?P'6 and ?Q'6) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>v va. \<lbrakk>corres (f' \<oplus> r) P P' m m'; (f' \<oplus> r) v va\<rbrakk> \<Longrightarrow> corres (f \<oplus> r) (?R6 v) (?R'6 va) (case v of Inl e \<Rightarrow> throwError (fn e) | Inr v' \<Rightarrow> return (Inr v')) (case va of Inl e \<Rightarrow> throwError (fn' e) | Inr v' \<Rightarrow> return (Inr v'))
+ 2. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q6\<rbrace> m \<lbrace>?R6\<rbrace>
+ 3. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'6\<rbrace> m' \<lbrace>?R'6\<rbrace>
+ 4. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q6) s
+ 5. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'6) s<\STATESEP>apply (case_tac v, (clarsimp simp: z)+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q6\<rbrace> m \<lbrace>?R6\<rbrace>
+ 2. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'6\<rbrace> m' \<lbrace>?R'6\<rbrace>
+ 3. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q6) s
+ 4. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'6) s<\STATESEP>apply (rule wp_post_taut)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. corres (f' \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'6\<rbrace> m' \<lbrace>?R'6\<rbrace>
+ 2. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and (\<lambda>_. True)) s
+ 3. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'6) s<\STATESEP>apply (rule wp_post_taut)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and (\<lambda>_. True)) s
+ 2. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>corres (f' \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and (\<lambda>_. True)) s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma rethrowFailure_injection:
+  "rethrowFailure = injection_handler"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. rethrowFailure = injection_handler<\STATESEP>by (intro ext, simp add: rethrowFailure_def injection_handler_def o_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma capFault_injection:
+ "capFaultOnFailure addr b = injection_handler (Fault_H.CapFault addr b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. capFaultOnFailure addr b = injection_handler (Fault_H.fault.CapFault addr b)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. capFaultOnFailure addr b x = injection_handler (Fault_H.fault.CapFault addr b) x<\STATESEP>apply (simp add: capFaultOnFailure_def rethrowFailure_injection)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookupError_injection:
+ "lookupErrorOnFailure b = injection_handler (Fault_H.FailedLookup b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookupErrorOnFailure b = injection_handler (Fault_H.syscall_error.FailedLookup b)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. lookupErrorOnFailure b x = injection_handler (Fault_H.syscall_error.FailedLookup b) x<\STATESEP>apply (simp add: lookupErrorOnFailure_def rethrowFailure_injection)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_cap_fault:
+  "corres (lfr \<oplus> r) P P' f g \<Longrightarrow>
+   corres (fr \<oplus> r) P P' (cap_fault_on_failure addr b f)
+                        (capFaultOnFailure addr b g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres (lfr \<oplus> r) P P' f g \<Longrightarrow> corres (fr \<oplus> r) P P' (cap_fault_on_failure addr b f) (capFaultOnFailure addr b g)<\STATESEP>by (fastforce intro: corres_injection[where f'=lfr]
+         simp: cap_fault_injection capFault_injection)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corresK_cap_fault = corres_cap_fault[atomized, THEN corresK_lift_rule, rule_format, corresK]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas capFault_wp[wp] = injection_wp[OF capFault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas capFault_wp_E[wp] = injection_wp_E[OF capFault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas capFault_bindE = injection_bindE[OF capFault_injection capFault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas capFault_liftE[simp] = injection_liftE[OF capFault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_lookup_error:
+  "\<lbrakk> corres (lfr \<oplus> r) P P' f g \<rbrakk>
+     \<Longrightarrow> corres (ser \<oplus> r) P P' (lookup_error_on_failure b f) (lookupErrorOnFailure b g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres (lfr \<oplus> r) P P' f g \<Longrightarrow> corres (ser \<oplus> r) P P' (lookup_error_on_failure b f) (lookupErrorOnFailure b g)<\STATESEP>by (fastforce intro: corres_injection[where f'=lfr]
+         simp: lookup_error_injection lookupError_injection)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corresK_lookup_error =
+  corres_lookup_error[atomized, THEN corresK_lift_rule, rule_format, corresK]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookupError_wp[wp] = injection_wp[OF lookupError_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookupError_wp_E[wp] = injection_wp_E[OF lookupError_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookupError_bindE = injection_bindE[OF lookupError_injection lookupError_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookupError_liftE[simp] = injection_liftE[OF lookupError_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemma unifyFailure_injection:
+  "unifyFailure = injection_handler (\<lambda>x. ())"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unifyFailure = injection_handler (\<lambda>x. ())<\STATESEP>by (rule ext,
+      simp add: unifyFailure_def injection_handler_def
+                rethrowFailure_def o_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas unifyFailure_injection_corres
+   = corres_injection [where f=dc, simplified, OF _ unifyFailure_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas unifyFailure_discard
+   = unifyFailure_injection_corres [OF id_injection, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas unifyFailure_wp = injection_wp [OF unifyFailure_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas unifyFailure_wp_E[wp] = injection_wp_E [OF unifyFailure_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas corres_unify_failure =
+    corres_injection [OF unify_failure_injection unifyFailure_injection, rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemma ignoreFailure_wp[wp_split]:
+  "\<lbrace>P\<rbrace> v \<lbrace>\<lambda>rv. Q ()\<rbrace>,\<lbrace>\<lambda>rv. Q ()\<rbrace> \<Longrightarrow>
+    \<lbrace>P\<rbrace> ignoreFailure v \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> v \<lbrace>\<lambda>rv. Q ()\<rbrace>, \<lbrace>\<lambda>rv. Q ()\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> ignoreFailure v \<lbrace>Q\<rbrace><\STATESEP>by (simp add: ignoreFailure_def const_def) wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma ep'_cases_weak_wp:
+  assumes "\<lbrace>P_A\<rbrace> a \<lbrace>Q\<rbrace>"
+  assumes "\<And>q. \<lbrace>P_B\<rbrace> b q \<lbrace>Q\<rbrace>"
+  assumes "\<And>q. \<lbrace>P_C\<rbrace> c q \<lbrace>Q\<rbrace>"
+  shows
+  "\<lbrace>P_A and P_B and P_C\<rbrace>
+    case ts of
+      IdleEP \<Rightarrow> a
+    | SendEP q \<Rightarrow> b q
+    | RecvEP q \<Rightarrow> c q \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.endpoint.RecvEP q \<Rightarrow> c q | Structures_H.endpoint.IdleEP \<Rightarrow> a | Structures_H.endpoint.SendEP q \<Rightarrow> b q \<lbrace>Q\<rbrace><\STATESEP>apply (cases ts)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x1. ts = Structures_H.endpoint.RecvEP x1 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.endpoint.RecvEP q \<Rightarrow> c q | Structures_H.endpoint.IdleEP \<Rightarrow> a | Structures_H.endpoint.SendEP q \<Rightarrow> b q \<lbrace>Q\<rbrace>
+ 2. ts = Structures_H.endpoint.IdleEP \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.endpoint.RecvEP q \<Rightarrow> c q | Structures_H.endpoint.IdleEP \<Rightarrow> a | Structures_H.endpoint.SendEP q \<Rightarrow> b q \<lbrace>Q\<rbrace>
+ 3. \<And>x3. ts = Structures_H.endpoint.SendEP x3 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.endpoint.RecvEP q \<Rightarrow> c q | Structures_H.endpoint.IdleEP \<Rightarrow> a | Structures_H.endpoint.SendEP q \<Rightarrow> b q \<lbrace>Q\<rbrace><\STATESEP>apply (simp, rule hoare_weaken_pre, rule assms, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ntfn'_cases_weak_wp:
+  assumes "\<lbrace>P_A\<rbrace> a \<lbrace>Q\<rbrace>"
+  assumes "\<And>q. \<lbrace>P_B\<rbrace> b q \<lbrace>Q\<rbrace>"
+  assumes "\<And>bdg. \<lbrace>P_C\<rbrace> c bdg \<lbrace>Q\<rbrace>"
+  shows
+  "\<lbrace>P_A and P_B and P_C\<rbrace>
+    case ts of
+      IdleNtfn \<Rightarrow> a
+    | WaitingNtfn q \<Rightarrow> b q
+    | ActiveNtfn bdg \<Rightarrow> c bdg \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.ntfn.IdleNtfn \<Rightarrow> a | Structures_H.ntfn.ActiveNtfn bdg \<Rightarrow> c bdg | Structures_H.ntfn.WaitingNtfn q \<Rightarrow> b q \<lbrace>Q\<rbrace><\STATESEP>apply (cases ts)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. ts = Structures_H.ntfn.IdleNtfn \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.ntfn.IdleNtfn \<Rightarrow> a | Structures_H.ntfn.ActiveNtfn bdg \<Rightarrow> c bdg | Structures_H.ntfn.WaitingNtfn q \<Rightarrow> b q \<lbrace>Q\<rbrace>
+ 2. \<And>x2. ts = Structures_H.ntfn.ActiveNtfn x2 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.ntfn.IdleNtfn \<Rightarrow> a | Structures_H.ntfn.ActiveNtfn bdg \<Rightarrow> c bdg | Structures_H.ntfn.WaitingNtfn q \<Rightarrow> b q \<lbrace>Q\<rbrace>
+ 3. \<And>x3. ts = Structures_H.ntfn.WaitingNtfn x3 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of Structures_H.ntfn.IdleNtfn \<Rightarrow> a | Structures_H.ntfn.ActiveNtfn bdg \<Rightarrow> c bdg | Structures_H.ntfn.WaitingNtfn q \<Rightarrow> b q \<lbrace>Q\<rbrace><\STATESEP>apply (simp, rule hoare_weaken_pre, rule assms, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ko_at_imp_cte_wp_at':
+  fixes x :: cte
+  shows "\<lbrakk> ko_at' x ptr s \<rbrakk> \<Longrightarrow> cte_wp_at' (\<lambda>cte. cte = x) ptr s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_at' x ptr s \<Longrightarrow> cte_wp_at' (\<lambda>cte. cte = x) ptr s<\STATESEP>apply (erule obj_atE')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ko obj. \<lbrakk>ksPSpace s ptr = Some ko; is_aligned ptr (objBitsKO ko); fst (projectKO ko s) = {(obj, s)}; obj = x; ps_clear ptr (objBitsKO ko) s\<rbrakk> \<Longrightarrow> cte_wp_at' (\<lambda>cte. cte = x) ptr s<\STATESEP>apply (clarsimp simp: projectKOs objBits_simps')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ksPSpace s ptr = Some (KOCTE x); is_aligned ptr 4; ps_clear ptr 4 s\<rbrakk> \<Longrightarrow> cte_wp_at' (\<lambda>cte. cte = x) ptr s<\STATESEP>apply (erule cte_wp_at_cteI')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>is_aligned ptr 4; ps_clear ptr 4 s\<rbrakk> \<Longrightarrow> is_aligned ptr cte_level_bits
+ 2. \<lbrakk>is_aligned ptr 4; ps_clear ptr 4 s\<rbrakk> \<Longrightarrow> ps_clear ptr cte_level_bits s
+ 3. \<lbrakk>is_aligned ptr 4; ps_clear ptr 4 s\<rbrakk> \<Longrightarrow> x = x<\STATESEP>apply (simp add: cte_level_bits_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_casesD:
+  "modify_map m p f p' = Some cte \<Longrightarrow>
+  (p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and>
+  (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. modify_map m p f p' = Some cte \<Longrightarrow> (p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and> (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte))<\STATESEP>apply (simp add: modify_map_def split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>p' = p; \<exists>z. m p = Some z \<and> f z = cte\<rbrakk> \<Longrightarrow> \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>z. \<lbrakk>p' = p; m p = Some z; cte = f z\<rbrakk> \<Longrightarrow> \<exists>cap node. z = CTE cap node \<and> f (CTE cap node) = f z<\STATESEP>apply (case_tac z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>z x1 x2. \<lbrakk>p' = p; m p = Some z; cte = f z; z = CTE x1 x2\<rbrakk> \<Longrightarrow> \<exists>cap node. z = CTE cap node \<and> f (CTE cap node) = f z<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_casesE:
+  "\<lbrakk> modify_map m p f p' = Some cte;
+     \<lbrakk> p \<noteq> p'; m p' = Some cte \<rbrakk> \<Longrightarrow> P;
+     \<And>cap node. \<lbrakk> p = p'; m p = Some (CTE cap node); cte = f (CTE cap node) \<rbrakk> \<Longrightarrow> P
+  \<rbrakk> \<Longrightarrow> P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>modify_map m p f p' = Some cte; \<lbrakk>p \<noteq> p'; m p' = Some cte\<rbrakk> \<Longrightarrow> P; \<And>cap node. \<lbrakk>p = p'; m p = Some (CTE cap node); cte = f (CTE cap node)\<rbrakk> \<Longrightarrow> P\<rbrakk> \<Longrightarrow> P<\STATESEP>by (auto dest: modify_map_casesD)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_cases:
+  "(modify_map m p f p' = Some cte) =
+  ((p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and>
+   (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (modify_map m p f p' = Some cte) = ((p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and> (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte)))<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. modify_map m p f p' = Some cte \<Longrightarrow> (p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and> (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte))
+ 2. (p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and> (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte)) \<Longrightarrow> modify_map m p f p' = Some cte<\STATESEP>apply (erule modify_map_casesD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and> (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte)) \<Longrightarrow> modify_map m p f p' = Some cte<\STATESEP>apply (clarsimp simp: modify_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_0_modify_map [simp]:
+  "no_0 (modify_map m p f) = no_0 m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_0 (modify_map m p f) = no_0 m<\STATESEP>by (simp add: no_0_def modify_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_0 [simp]:
+  "no_0 m \<Longrightarrow> modify_map m 0 f = m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_0 m \<Longrightarrow> modify_map m (0::'a) f = m<\STATESEP>by (rule ext) (auto simp add: modify_map_def no_0_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_exists:
+  "\<exists>cap node. m p = Some (CTE cap node) \<Longrightarrow> \<exists>cap' node'. modify_map m q f p = Some (CTE cap' node')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>cap node. m p = Some (CTE cap node) \<Longrightarrow> \<exists>cap' node'. modify_map m q f p = Some (CTE cap' node')<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cap node. m p = Some (CTE cap node) \<Longrightarrow> \<exists>cap' node'. modify_map m q f p = Some (CTE cap' node')<\STATESEP>apply (case_tac "f (CTE cap node)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cap node x1 x2. \<lbrakk>m p = Some (CTE cap node); f (CTE cap node) = CTE x1 x2\<rbrakk> \<Longrightarrow> \<exists>cap' node'. modify_map m q f p = Some (CTE cap' node')<\STATESEP>apply (cases "q=p")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>cap node x1 x2. \<lbrakk>m p = Some (CTE cap node); f (CTE cap node) = CTE x1 x2; q = p\<rbrakk> \<Longrightarrow> \<exists>cap' node'. modify_map m q f p = Some (CTE cap' node')
+ 2. \<And>cap node x1 x2. \<lbrakk>m p = Some (CTE cap node); f (CTE cap node) = CTE x1 x2; q \<noteq> p\<rbrakk> \<Longrightarrow> \<exists>cap' node'. modify_map m q f p = Some (CTE cap' node')<\STATESEP>apply (auto simp add: modify_map_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_exists_rev:
+  "modify_map m q f p = Some (CTE cap node) \<Longrightarrow> \<exists>cap' node'. m p = Some (CTE cap' node')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. modify_map m q f p = Some (CTE cap node) \<Longrightarrow> \<exists>cap' node'. m p = Some (CTE cap' node')<\STATESEP>apply (case_tac "f (CTE cap node)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2. \<lbrakk>modify_map m q f p = Some (CTE cap node); f (CTE cap node) = CTE x1 x2\<rbrakk> \<Longrightarrow> \<exists>cap' node'. m p = Some (CTE cap' node')<\STATESEP>apply (cases "q=p")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x1 x2. \<lbrakk>modify_map m q f p = Some (CTE cap node); f (CTE cap node) = CTE x1 x2; q = p\<rbrakk> \<Longrightarrow> \<exists>cap' node'. m p = Some (CTE cap' node')
+ 2. \<And>x1 x2. \<lbrakk>modify_map m q f p = Some (CTE cap node); f (CTE cap node) = CTE x1 x2; q \<noteq> p\<rbrakk> \<Longrightarrow> \<exists>cap' node'. m p = Some (CTE cap' node')<\STATESEP>apply (auto simp add: modify_map_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_map_if:
+  "(modify_map m p f p' = Some cte) =
+   (if p = p'
+    then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte
+    else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (modify_map m p f p' = Some cte) = (if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node)<\STATESEP>apply (cases cte)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2. cte = CTE x1 x2 \<Longrightarrow> (modify_map m p f p' = Some cte) = (if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x1 x2. \<lbrakk>cte = CTE x1 x2; modify_map m p f p' = Some cte\<rbrakk> \<Longrightarrow> if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node
+ 2. \<And>x1 x2. \<lbrakk>cte = CTE x1 x2; if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node\<rbrakk> \<Longrightarrow> modify_map m p f p' = Some cte<\STATESEP>apply (drule modify_map_casesD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x1 x2. \<lbrakk>cte = CTE x1 x2; (p \<noteq> p' \<longrightarrow> m p' = Some cte) \<and> (p = p' \<longrightarrow> (\<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte))\<rbrakk> \<Longrightarrow> if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node
+ 2. \<And>x1 x2. \<lbrakk>cte = CTE x1 x2; if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node\<rbrakk> \<Longrightarrow> modify_map m p f p' = Some cte<\STATESEP>apply auto[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2. \<lbrakk>cte = CTE x1 x2; if p = p' then \<exists>cap node. m p = Some (CTE cap node) \<and> f (CTE cap node) = cte else \<exists>cap node. m p' = Some (CTE cap node) \<and> cte = CTE cap node\<rbrakk> \<Longrightarrow> modify_map m p f p' = Some cte<\STATESEP>apply (auto simp: modify_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_empty_on_failure:
+  "corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow>
+   corres r P P' (empty_on_failure m) (emptyOnFailure m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> corres r P P' (empty_on_failure m) (emptyOnFailure m')<\STATESEP>apply (simp add: empty_on_failure_def emptyOnFailure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> corres r P P' (m <catch> (\<lambda>x. return [])) (m' <catch> (\<lambda>x. return []))<\STATESEP>apply (rule corres_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> corres r ?Q ?Q' (m <catch> (\<lambda>x. return [])) (m' <catch> (\<lambda>x. return []))
+ 2. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> ?Q s
+ 3. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> ?Q' s<\STATESEP>apply (rule corres_split_catch)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> corres (?f4 \<oplus> r) ?P4 ?P'4 m m'
+ 2. \<And>x xa. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; ?f4 x xa\<rbrakk> \<Longrightarrow> corres r (?E4 x) (?E'4 xa) (return []) (return [])
+ 3. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E4\<rbrace>
+ 4. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'4\<rbrace>
+ 5. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (?P4 and ?Q4) s
+ 6. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (?P'4 and ?Q'4) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>x xa. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; r [] []\<rbrakk> \<Longrightarrow> corres r (?E4 x) (?E'4 xa) (return []) (return [])
+ 2. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E4\<rbrace>
+ 3. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'4\<rbrace>
+ 4. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q4) s
+ 5. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'4) s<\STATESEP>apply (rule corres_trivial, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>x _. True\<rbrace>
+ 2. corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>xa _. True\<rbrace>
+ 3. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q4) s
+ 4. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'4) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and (\<lambda>s. True \<and> True)) s
+ 2. \<And>s. \<lbrakk>corres ((\<lambda>x y. r [] []) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and (\<lambda>s. True \<and> True)) s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corresK_empty_on_failure =
+  corres_empty_on_failure[atomized, THEN corresK_lift_rule, rule_format, corresK]<\STATESEP>0<\TRANSEP><\STATESEP>lemma emptyOnFailure_wp[wp]:
+  "\<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>,\<lbrace>\<lambda>rv. Q []\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> emptyOnFailure m \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv. Q []\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> emptyOnFailure m \<lbrace>Q\<rbrace><\STATESEP>by (simp add: emptyOnFailure_def) wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma withoutPreemption_lift:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> withoutPreemption f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> withoutPreemption f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma withoutPreemption_R:
+  "\<lbrace>\<top>\<rbrace> withoutPreemption f -, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> withoutPreemption f -, \<lbrace>Q\<rbrace><\STATESEP>by (wp withoutPreemption_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ko_at_cte_ipcbuffer:
+  "ko_at' tcb p s \<Longrightarrow> cte_wp_at' (\<lambda>x. x = tcbIPCBufferFrame tcb) (p + tcbIPCBufferSlot * 0x10) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_at' tcb p s \<Longrightarrow> cte_wp_at' (\<lambda>x. x = tcbIPCBufferFrame tcb) (p + tcbIPCBufferSlot * 0x10) s<\STATESEP>apply (clarsimp simp: obj_at'_def projectKOs objBits_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ksPSpace s p = Some (KOTCB tcb); is_aligned p tcbBlockSizeBits; ps_clear p tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> cte_wp_at' (\<lambda>x. x = tcbIPCBufferFrame tcb) (p + tcbIPCBufferSlot * 0x10) s<\STATESEP>apply (erule (2) cte_wp_at_tcbI')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned p tcbBlockSizeBits; ps_clear p tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> tcb_cte_cases (p + tcbIPCBufferSlot * 0x10 - p) = Some (?getF2, ?setF2)
+ 2. \<lbrakk>is_aligned p tcbBlockSizeBits; ps_clear p tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> ?getF2 tcb = tcbIPCBufferFrame tcb<\STATESEP>apply (fastforce simp add: tcb_cte_cases_def tcbIPCBufferSlot_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p tcbBlockSizeBits; ps_clear p tcbBlockSizeBits s\<rbrakk> \<Longrightarrow> tcbIPCBufferFrame tcb = tcbIPCBufferFrame tcb<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_ep_arch':  "\<lbrace>\<lambda>s. P (ksArchState s)\<rbrace> setEndpoint ntfn p \<lbrace>\<lambda>_ s. P (ksArchState s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksArchState s)\<rbrace> setEndpoint ntfn p \<lbrace>\<lambda>_ s. P (ksArchState s)\<rbrace><\STATESEP>apply (simp add: setEndpoint_def setObject_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksArchState s)\<rbrace> do ps <- gets ksPSpace;
+pa <- assert_opt (fst (lookupAround2 ntfn ps));
+obj' <- updateObject_default p (snd pa) ntfn (fst pa) (snd (lookupAround2 ntfn ps));
+modify (ksPSpace_update (\<lambda>_. ps(fst pa \<mapsto> obj')))
+od \<lbrace>\<lambda>_ s. P (ksArchState s)\<rbrace><\STATESEP>apply (wp updateObject_default_inv|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_const_on_failure:
+  "corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow>
+   corres r P P' (const_on_failure x m) (constOnFailure y m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> corres r P P' (const_on_failure x m) (constOnFailure y m')<\STATESEP>apply (simp add: const_on_failure_def constOnFailure_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> corres r P P' (m <catch> (\<lambda>xa. return x)) (m' <catch> const (return y))<\STATESEP>apply (rule corres_guard_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> corres r ?Q ?Q' (m <catch> (\<lambda>xa. return x)) (m' <catch> const (return y))
+ 2. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> ?Q s
+ 3. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> ?Q' s<\STATESEP>apply (rule corres_split_catch)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> corres (?f4 \<oplus> r) ?P4 ?P'4 m m'
+ 2. \<And>xa ft'. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; ?f4 xa ft'\<rbrakk> \<Longrightarrow> corres r (?E4 xa) (?E'4 ft') (return x) (const (return y) ft')
+ 3. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E4\<rbrace>
+ 4. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'4\<rbrace>
+ 5. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (?P4 and ?Q4) s
+ 6. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (?P'4 and ?Q'4) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>xa ft'. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; r x y\<rbrakk> \<Longrightarrow> corres r (?E4 xa) (?E'4 ft') (return x) (const (return y) ft')
+ 2. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E4\<rbrace>
+ 3. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>?E'4\<rbrace>
+ 4. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q4) s
+ 5. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'4) s<\STATESEP>apply (rule corres_trivial, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>ft'. \<lbrakk>corres ((\<lambda>_ _. True) \<oplus> r) P P' m m'; r x y\<rbrakk> \<Longrightarrow> corres r (\<lambda>_. True) (\<lambda>_. True) (return x) (const (return y) ft')
+ 2. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>x _. True\<rbrace>
+ 3. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>ft' _. True\<rbrace>
+ 4. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q4) s
+ 5. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'4) s<\STATESEP>apply (clarsimp simp: const_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q4\<rbrace> m \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>x _. True\<rbrace>
+ 2. corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m' \<Longrightarrow> \<lbrace>?Q'4\<rbrace> m' \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>ft' _. True\<rbrace>
+ 3. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and ?Q4) s
+ 4. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and ?Q'4) s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P s\<rbrakk> \<Longrightarrow> (P and (\<lambda>s. True \<and> True)) s
+ 2. \<And>s. \<lbrakk>corres ((\<lambda>_ _. r x y) \<oplus> r) P P' m m'; P' s\<rbrakk> \<Longrightarrow> (P' and (\<lambda>s. True \<and> True)) s<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corresK_const_on_failure =
+  corres_const_on_failure[atomized, THEN corresK_lift_rule, rule_format, corresK]<\STATESEP>0<\TRANSEP><\STATESEP>lemma constOnFailure_wp :
+  "\<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv. Q n\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> constOnFailure n m \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv. Q n\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> constOnFailure n m \<lbrace>Q\<rbrace><\STATESEP>apply (simp add: constOnFailure_def const_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv. Q n\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> m <catch> (\<lambda>y. return n) \<lbrace>Q\<rbrace><\STATESEP>apply (wp|simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

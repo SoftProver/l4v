@@ -1,0 +1,94 @@
+<\STATESEP>theory Crunch_Test_Trace
+imports
+  Lib.Crunch_Instances_Trace
+  Crunch_Test_Qualified_Trace
+  Lib.Defs
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo1 (x :: nat) \<equiv> do
+    modify ((+) x);
+    modify ((+) x)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo2 \<equiv> do
+    crunch_foo1 12;
+    crunch_foo1 13
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (add: crunch_foo1)<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt: crunch_foo2 "\<lambda>x. x > y"
+  (ignore: modify bind ignore_del: crunch_foo1)<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (del: crunch_foo1)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_always_true (x :: nat) \<equiv> \<lambda>y :: nat. True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma crunch_foo1_at_2:
+  "True \<Longrightarrow> \<lbrace>crunch_always_true 3 and crunch_always_true 2\<rbrace>
+      crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 2 and K True\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<Longrightarrow> \<lbrace>crunch_always_true 3 and crunch_always_true 2\<rbrace> crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 2 and K True\<rbrace><\STATESEP>by (simp add: crunch_always_true_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma crunch_foo1_at_3[wp]:
+  "\<lbrace>crunch_always_true 3\<rbrace> crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 3\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>crunch_always_true 3\<rbrace> crunch_foo1 x \<lbrace>\<lambda>rv. crunch_always_true 3\<rbrace><\STATESEP>by (simp add: crunch_always_true_def, wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_crunch_foo1:
+  "True \<Longrightarrow> no_fail (crunch_always_true 2 and crunch_always_true 3) (crunch_foo1 x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<Longrightarrow> no_fail (crunch_always_true 2 and crunch_always_true 3) (crunch_foo1 x)<\STATESEP>apply (simp add:crunch_always_true_def crunch_foo1_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>y. True) (do y <- modify ((+) x);
+modify ((+) x)
+od)<\STATESEP>apply (rule no_fail_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. no_fail ?P (do y <- modify ((+) x);
+modify ((+) x)
+od)
+ 2. \<And>s. True \<Longrightarrow> ?P s<\STATESEP>apply (wp, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch (no_fail) no_fail: crunch_foo2
+  (ignore: modify bind wp: crunch_foo1_at_2[simplified])<\STATESEP>0<\TRANSEP><\STATESEP>crunch (valid) at_2: crunch_foo2 "crunch_always_true 2"
+  (ignore: modify bind wp: crunch_foo1_at_2[simplified])<\STATESEP>0<\TRANSEP><\STATESEP>fun crunch_foo3 :: "nat => nat => 'a => (nat,unit) tmonad" where
+  "crunch_foo3 0 x _ = crunch_foo1 x"
+| "crunch_foo3 (Suc n) x y = crunch_foo3 n x y"<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt2: crunch_foo3 "\<lambda>x. x > y"
+  (ignore: modify bind)<\STATESEP>0<\TRANSEP><\STATESEP>class foo_class =
+  fixes stuff :: 'a
+begin<\STATESEP>0<\TRANSEP><\STATESEP>fun crunch_foo4 :: "nat => nat => 'a => (nat,unit) tmonad" where
+  "crunch_foo4 0 x _ = crunch_foo1 x"
+| "crunch_foo4 (Suc n) x y = crunch_foo4 n x y"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo5 x (y::'a) \<equiv> crunch_foo1 x"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma crunch_foo4_alt:
+  "crunch_foo4 n x y \<equiv> crunch_foo1 x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. crunch_foo4 n x y \<equiv> crunch_foo1 x<\STATESEP>apply (induct n)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. crunch_foo4 0 x y = crunch_foo1 x
+ 2. \<And>n. crunch_foo4 n x y = crunch_foo1 x \<Longrightarrow> crunch_foo4 (Suc n) x y = crunch_foo1 x<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>crunch gt3: crunch_foo4 "\<lambda>x. x > y"
+  (ignore: modify bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch (no_fail) no_fail2: crunch_foo4
+  (rule: crunch_foo4_alt ignore: modify bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt3': crunch_foo4 "\<lambda>x. x > y"
+  (rule: crunch_foo4_alt ignore: modify bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch gt4: crunch_foo5 "\<lambda>x. x > y"
+  (ignore: modify bind)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo6 \<equiv> return () >>= (\<lambda>_. return ())"<\STATESEP>0<\TRANSEP><\STATESEP>locale test_locale =
+fixes fixed_return_unit :: "(unit, unit) tmonad"
+
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo7 \<equiv> return () >>= (\<lambda>_. return ())"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo6 P
+(ignore: bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo7 P
+(ignore: bind)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo8 \<equiv> fixed_return_unit >>= (\<lambda>_. fixed_return_unit)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo9 (x :: nat) \<equiv> do
+    modify ((+) x);
+    modify ((+) x)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test: crunch_foo9 "\<lambda>x. x > y" (ignore: bind)<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "crunch_foo10 (x :: nat) \<equiv> do
+    modify ((+) x);
+    modify ((+) x)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>lemma crunch_foo10_def2[crunch_def]:
+  "crunch_foo10 = crunch_foo9"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. crunch_foo10 = crunch_foo9<\STATESEP>unfolding crunch_foo10_def[abs_def] crunch_foo9_def[abs_def]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>x. do modify ((+) x);
+modify ((+) x)
+od) = (\<lambda>x. do modify ((+) x);
+modify ((+) x)
+od)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo10 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>crunch_ignore (add: bind)<\STATESEP>0<\TRANSEP><\STATESEP>crunch test': crunch_foo9 "\<lambda>x. x > y"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>interpretation test_locale "return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<lbrace>Q\<rbrace> crunch_foo7 \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> crunch_foo7 \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by wp<\STATESEP>1<\TRANSEP><\STATESEP>crunch test2: crunch_foo7 P
+  (wp_del: crunch_foo7_test)<\STATESEP>0<\TRANSEP><\STATESEP>locale test_sublocale<\STATESEP>0<\TRANSEP><\STATESEP>sublocale test_sublocale < test_locale "return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>context test_sublocale begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch test[wp]: crunch_foo8 P<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>consts foo_const :: "(unit, unit) tmonad"<\STATESEP>0<\TRANSEP><\STATESEP>defs foo_const_def: "foo_const \<equiv> Crunch_Test_Qualified_Trace.foo_const"<\STATESEP>0<\TRANSEP><\STATESEP>crunch test: foo_const P<\STATESEP>0<\TRANSEP><\STATESEP>crunches crunch_foo3, crunch_foo4, crunch_foo5
+  for silly: "\<lambda>s. True \<noteq> False"
+  and (no_fail) nf
+  (ignore: modify bind rule: crunch_foo4_alt wp_del: hoare_vcg_prop)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

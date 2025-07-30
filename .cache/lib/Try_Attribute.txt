@@ -1,0 +1,48 @@
+<\STATESEP>theory Try_Attribute
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+local
+
+val parse_warn = Scan.lift (Scan.optional (Args.parens (Parse.reserved "warn") >> K true) false)
+
+val attribute_generic = Context.cases Attrib.attribute_global Attrib.attribute
+
+fun try_attribute_cmd (warn, attr_srcs) (ctxt, thm) =
+  let
+    val attrs = map (attribute_generic ctxt) attr_srcs
+    val (th', context') =
+      \<^try>\<open>
+         fold (uncurry o Thm.apply_attribute) attrs (thm, ctxt)
+       catch e =>
+         (if warn then warning ("TRY: ignoring exception: " ^ (@{make_string} e)) else ();
+          (thm, ctxt))\<close>
+  in (SOME context', SOME th') end
+
+in
+
+val _ = Theory.setup
+  (Attrib.setup @{binding TRY}
+    (parse_warn -- Attrib.attribs >> try_attribute_cmd)
+    "higher order attribute combinator to try other attributes, ignoring failure")
+
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Examples\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma eq1: "(1 :: nat) = 1 + 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 1 = 1 + 0<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma eq2: "(2 :: nat) = 1 + 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 2 = 1 + 1<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas eqs = eq1 TrueI eq2<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+    "1 + 0 = (1 :: nat)"
+    "True"
+    "1 + 1 = (2 :: nat)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 1 + 0 = 1 &&& True &&& 1 + 1 = 2<\STATESEP>by (rule eqs[TRY [symmetric]])+<\STATESEP>1<\TRANSEP><\STATESEP>lemma ineq: "(1 :: nat) < 2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 1 < 2<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas ineqs = eq1 ineq<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+    "1 + 0 = (1 :: nat)"
+    "(1 :: nat) \<le> 2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 1 + 0 = 1 &&& 1 \<le> 2<\STATESEP>by (rule ineqs[TRY [symmetric], TRY [THEN order.strict_implies_order]])+<\STATESEP>1<\TRANSEP><\STATESEP>lemmas more_eqs = eq1 eq2<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+    "1 = (1 :: nat)"
+    "1 + 1 = (2 :: nat)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 1 = 1 &&& 1 + 1 = 2<\STATESEP>by (rule more_eqs[TRY [symmetric, TRY [simplified add_0_right]]])+<\STATESEP>1<\TRANSEP><\STATESEP>lemmas yet_another_group = eq1 TrueI eq2 ineq<\STATESEP>0<\TRANSEP><\STATESEP>thm yet_another_group[TRY (warn) [symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>thm eq1[TRY (warn) [where x=5]]<\STATESEP>0<\TRANSEP><\STATESEP>thm eq1[TRY (warn) [OF refl]]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

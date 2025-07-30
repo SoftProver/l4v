@@ -1,0 +1,224 @@
+<\STATESEP>theory InvariantsPre_AI
+imports LevityCatch_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_types
+  aa_type<\STATESEP>0<\TRANSEP><\STATESEP>requalify_consts
+  aa_type<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>declare ranI [intro]<\STATESEP>0<\TRANSEP><\STATESEP>section "Locale Setup"<\STATESEP>0<\TRANSEP><\STATESEP>locale pspace_update_eq =
+  fixes f :: "'z::state_ext state \<Rightarrow> 'c::state_ext state"
+  assumes pspace: "kheap (f s) = kheap s"<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_pspace_update_eq = pspace_update_eq + Arch<\STATESEP>0<\TRANSEP><\STATESEP>locale arch_update_eq =
+  fixes f :: "'z::state_ext state \<Rightarrow> 'c::state_ext state"
+  assumes arch: "arch_state (f s) = arch_state s"<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_arch_update_eq = arch_update_eq + Arch<\STATESEP>0<\TRANSEP><\STATESEP>locale arch_idle_update_eq_more =
+  fixes f :: "'z::state_ext state \<Rightarrow> 'c::state_ext state"
+  assumes idle: "idle_thread (f s) = idle_thread s"
+  assumes irq: "interrupt_irq_node (f s) = interrupt_irq_node s"<\STATESEP>0<\TRANSEP><\STATESEP>locale arch_idle_update_eq = arch_update_eq + arch_idle_update_eq_more<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_arch_idle_update_eq = Arch_arch_update_eq + arch_idle_update_eq_more<\STATESEP>0<\TRANSEP><\STATESEP>locale p_arch_update_eq = pspace_update_eq + arch_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_p_arch_update_eq = Arch_pspace_update_eq + Arch_arch_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale p_arch_idle_update_eq = p_arch_update_eq + arch_idle_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_p_arch_idle_update_eq = Arch_p_arch_update_eq + Arch_arch_idle_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale irq_states_update_eq =
+  fixes f :: "'z::state_ext state \<Rightarrow> 'c::state_ext state"
+  assumes int: "interrupt_states (f s) = interrupt_states s"<\STATESEP>0<\TRANSEP><\STATESEP>locale pspace_int_update_eq = pspace_update_eq + irq_states_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_pspace_int_update_eq = Arch_pspace_update_eq + irq_states_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale p_arch_idle_update_int_eq = p_arch_idle_update_eq + pspace_int_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>locale Arch_p_arch_idle_update_int_eq = Arch_p_arch_idle_update_eq + Arch_pspace_int_update_eq<\STATESEP>0<\TRANSEP><\STATESEP>section "Base definitions for Invariants"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  obj_at :: "(kernel_object \<Rightarrow> bool) \<Rightarrow> obj_ref \<Rightarrow> 'z::state_ext state \<Rightarrow> bool"
+where
+  "obj_at P ref s \<equiv> \<exists>ko. kheap s ref = Some ko \<and> P ko"<\STATESEP>0<\TRANSEP><\STATESEP>lemma obj_at_pspaceI:
+  "\<lbrakk> obj_at P ref s; kheap s = kheap s' \<rbrakk> \<Longrightarrow> obj_at P ref s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>obj_at P ref s; kheap s = kheap s'\<rbrakk> \<Longrightarrow> obj_at P ref s'<\STATESEP>by (simp add: obj_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation "ko_at k \<equiv> obj_at ((=) k)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "ako_at ako == ko_at (ArchObj ako)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma obj_atE:
+  "\<lbrakk> obj_at P p s; \<And>ko. \<lbrakk> kheap s p = Some ko; P ko \<rbrakk> \<Longrightarrow> R \<rbrakk> \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>obj_at P p s; \<And>ko. \<lbrakk>kheap s p = Some ko; P ko\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (auto simp: obj_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma obj_at_weakenE:
+  "\<lbrakk> obj_at P r s; \<And>ko. P ko \<Longrightarrow> P' ko \<rbrakk> \<Longrightarrow> obj_at P' r s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>obj_at P r s; \<And>ko. P ko \<Longrightarrow> P' ko\<rbrakk> \<Longrightarrow> obj_at P' r s<\STATESEP>by (clarsimp simp: obj_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ko_at_weakenE:
+  "\<lbrakk> ko_at k ptr s; P k \<rbrakk> \<Longrightarrow> obj_at P ptr s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ko_at k ptr s; P k\<rbrakk> \<Longrightarrow> obj_at P ptr s<\STATESEP>by (erule obj_at_weakenE, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ko_atD:
+  "ko_at obj pos s \<Longrightarrow> kheap s pos = Some obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_at obj pos s \<Longrightarrow> kheap s pos = Some obj<\STATESEP>by (blast elim: obj_atE)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas a_type_simps =
+  a_type_def[split_simps kernel_object.split]<\STATESEP>0<\TRANSEP><\STATESEP>lemma [simp]:
+  "a_type (Endpoint x) = AEndpoint"
+  "a_type (Notification v) = ANTFN"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a_type (Endpoint x) = AEndpoint &&& a_type (Notification v) = ANTFN<\STATESEP>by (simp_all add: a_type_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma a_type_aa_type: "(a_type (ArchObj ako) = AArch T) = (aa_type ako = T)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a_type (ArchObj ako) = AArch T) = (aa_type ako = T)<\STATESEP>by (simp add: a_type_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation
+  "typ_at T \<equiv> obj_at (\<lambda>ob. a_type ob = T)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "typs_of \<equiv> \<lambda>s. kheap s ||> a_type"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pspace_aligned :: "'z::state_ext state \<Rightarrow> bool"
+where
+  "pspace_aligned s \<equiv>
+     \<forall>x \<in> dom (kheap s). is_aligned x (obj_bits (the (kheap s x)))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma pspace_alignedD [intro?]:
+  "\<lbrakk> kheap s p = Some ko; pspace_aligned s \<rbrakk> \<Longrightarrow> is_aligned p (obj_bits ko)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>kheap s p = Some ko; pspace_aligned s\<rbrakk> \<Longrightarrow> is_aligned p (obj_bits ko)<\STATESEP>unfolding pspace_aligned_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>kheap s p = Some ko; \<forall>x\<in>dom (kheap s). is_aligned x (obj_bits (the (kheap s x)))\<rbrakk> \<Longrightarrow> is_aligned p (obj_bits ko)<\STATESEP>by (drule bspec, blast, simp)<\STATESEP>1<\TRANSEP><\STATESEP>text "objects don't overlap"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pspace_distinct :: "'z::state_ext state \<Rightarrow> bool"
+where
+  "pspace_distinct \<equiv>
+   \<lambda>s. \<forall>x y ko ko'. kheap s x = Some ko \<and> kheap s y = Some ko' \<and> x \<noteq> y \<longrightarrow>
+         {x .. x + (2 ^ obj_bits ko - 1)} \<inter>
+         {y .. y + (2 ^ obj_bits ko' - 1)} = {}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma pspace_distinctD:
+  "\<lbrakk> kheap s x = Some ko; kheap s y = Some ko'; x \<noteq> y; pspace_distinct s \<rbrakk>
+   \<Longrightarrow> mask_range x (obj_bits ko) \<inter> mask_range y (obj_bits ko') = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>kheap s x = Some ko; kheap s y = Some ko'; x \<noteq> y; pspace_distinct s\<rbrakk> \<Longrightarrow> mask_range x (obj_bits ko) \<inter> mask_range y (obj_bits ko') = {}<\STATESEP>by (simp add: pspace_distinct_def mask_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  caps_of_state :: "'z::state_ext state \<Rightarrow> cslot_ptr \<Rightarrow> cap option"
+where
+ "caps_of_state s \<equiv> (\<lambda>p. if (\<exists>cap. fst (get_cap p s) = {(cap, s)})
+                         then Some (THE cap. fst (get_cap p s) = {(cap, s)})
+                         else None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "arch_cap_fun_lift P F c \<equiv> case c of ArchObjectCap ac \<Rightarrow> P ac | _ \<Rightarrow> F"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas arch_cap_fun_lift_simps[simp] =
+  arch_cap_fun_lift_def[split_simps cap.split]<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "arch_obj_fun_lift P F c \<equiv> case c of ArchObj ac \<Rightarrow> P ac | _ \<Rightarrow> F"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas arch_obj_fun_lift_simps[simp] =
+  arch_obj_fun_lift_def[split_simps kernel_object.split]<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  arch_obj_fun_lift_in_empty[dest!]:
+  "x \<in> arch_obj_fun_lift f {} ko
+    \<Longrightarrow> \<exists>ako. ko = ArchObj ako \<and> x \<in> f ako"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> arch_obj_fun_lift f {} ko \<Longrightarrow> \<exists>ako. ko = ArchObj ako \<and> x \<in> f ako<\STATESEP>by (cases ko; simp add: arch_obj_fun_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_obj_fun_lift_Some[dest!]:
+  "arch_obj_fun_lift f None ko = Some x
+    \<Longrightarrow> \<exists>ako. ko = ArchObj ako \<and> f ako = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_obj_fun_lift f None ko = Some x \<Longrightarrow> \<exists>ako. ko = ArchObj ako \<and> f ako = Some x<\STATESEP>by (cases ko; simp add: arch_obj_fun_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_obj_fun_lift_True[dest!]:
+  "arch_obj_fun_lift f False ko
+    \<Longrightarrow> \<exists>ako. ko = ArchObj ako \<and> f ako"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_obj_fun_lift f False ko \<Longrightarrow> \<exists>ako. ko = ArchObj ako \<and> f ako<\STATESEP>by (cases ko; simp add: arch_obj_fun_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_cap_fun_lift_in_empty[dest!]:
+  "x \<in> arch_cap_fun_lift f {} cap
+    \<Longrightarrow> \<exists>acap. cap = ArchObjectCap acap \<and> x \<in> f acap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> arch_cap_fun_lift f {} cap \<Longrightarrow> \<exists>acap. cap = ArchObjectCap acap \<and> x \<in> f acap<\STATESEP>by (cases cap; simp add: arch_cap_fun_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_cap_fun_lift_Some[dest!]:
+  "arch_cap_fun_lift f None cap = Some x
+    \<Longrightarrow> \<exists>acap. cap = ArchObjectCap acap \<and> f acap = Some x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_cap_fun_lift f None cap = Some x \<Longrightarrow> \<exists>acap. cap = ArchObjectCap acap \<and> f acap = Some x<\STATESEP>by (cases cap; simp add: arch_cap_fun_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_cap_fun_lift_True[dest!]:
+  "arch_cap_fun_lift f False cap
+    \<Longrightarrow> \<exists>acap. cap = ArchObjectCap acap \<and> f acap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. arch_cap_fun_lift f False cap \<Longrightarrow> \<exists>acap. cap = ArchObjectCap acap \<and> f acap<\STATESEP>by (cases cap; simp add: arch_cap_fun_lift_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_obj_fun_lift_non_arch[simp]:
+  "\<forall>ako. ko \<noteq> ArchObj ako \<Longrightarrow> arch_obj_fun_lift f F ko = F"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>ako. ko \<noteq> ArchObj ako \<Longrightarrow> arch_obj_fun_lift f F ko = F<\STATESEP>by (cases ko; fastforce)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+  arch_cap_fun_lift_non_arch[simp]:
+  "\<forall>ako. cap \<noteq> ArchObjectCap ako \<Longrightarrow> arch_cap_fun_lift f F cap = F"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>ako. cap \<noteq> ArchObjectCap ako \<Longrightarrow> arch_cap_fun_lift f F cap = F<\STATESEP>by (cases cap; fastforce)<\STATESEP>1<\TRANSEP><\STATESEP>datatype reftype
+  = TCBBlockedSend | TCBBlockedRecv
+     | TCBSignal | TCBBound | EPSend | EPRecv | NTFNSignal | NTFNBound
+     | TCBHypRef | HypTCBRef<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+ symreftype :: "reftype \<Rightarrow> reftype"
+where
+  "symreftype TCBBlockedSend = EPSend"
+| "symreftype TCBBlockedRecv = EPRecv"
+| "symreftype TCBSignal       = NTFNSignal"
+| "symreftype TCBBound       = NTFNBound"
+| "symreftype EPSend         = TCBBlockedSend"
+| "symreftype EPRecv         = TCBBlockedRecv"
+| "symreftype NTFNSignal       = TCBSignal"
+| "symreftype NTFNBound       = TCBBound"
+| "symreftype TCBHypRef = HypTCBRef"
+| "symreftype HypTCBRef = TCBHypRef"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sym_refs :: "(obj_ref \<Rightarrow> (obj_ref \<times> reftype) set) \<Rightarrow> bool"
+where
+ "sym_refs st \<equiv> \<forall>x. \<forall>(y, tp) \<in> st x. (x, symreftype tp) \<in> st y"<\STATESEP>0<\TRANSEP><\STATESEP>lemma symreftype_inverse[simp]:
+  "symreftype (symreftype t) = t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. symreftype (symreftype t) = t<\STATESEP>by (cases t, simp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_refsD:
+  "\<lbrakk> (y, tp) \<in> st x; sym_refs st \<rbrakk> \<Longrightarrow> (x, symreftype tp) \<in> st y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(y, tp) \<in> st x; sym_refs st\<rbrakk> \<Longrightarrow> (x, symreftype tp) \<in> st y<\STATESEP>apply (simp add: sym_refs_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(y, tp) \<in> st x; \<forall>x. \<forall>xa\<in>st x. case xa of (y, tp) \<Rightarrow> (x, symreftype tp) \<in> st y\<rbrakk> \<Longrightarrow> (x, symreftype tp) \<in> st y<\STATESEP>apply (drule spec, drule(1) bspec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(y, tp) \<in> st x; case (y, tp) of (y, tp) \<Rightarrow> (x, symreftype tp) \<in> st y\<rbrakk> \<Longrightarrow> (x, symreftype tp) \<in> st y<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_refsE:
+  "\<lbrakk> sym_refs st; (y, symreftype tp) \<in> st x \<rbrakk> \<Longrightarrow> (x, tp) \<in> st y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_refs st; (y, symreftype tp) \<in> st x\<rbrakk> \<Longrightarrow> (x, tp) \<in> st y<\STATESEP>by (drule(1) sym_refsD, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sym_refs_simp:
+  "\<lbrakk> sym_refs S \<rbrakk> \<Longrightarrow> ((y, symreftype tp) \<in> S x) = ((x, tp) \<in> S y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sym_refs S \<Longrightarrow> ((y, symreftype tp) \<in> S x) = ((x, tp) \<in> S y)<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>sym_refs S; (y, symreftype tp) \<in> S x\<rbrakk> \<Longrightarrow> (x, tp) \<in> S y
+ 2. \<lbrakk>sym_refs S; (x, tp) \<in> S y\<rbrakk> \<Longrightarrow> (y, symreftype tp) \<in> S x<\STATESEP>apply (erule(1) sym_refsE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sym_refs S; (x, tp) \<in> S y\<rbrakk> \<Longrightarrow> (y, symreftype tp) \<in> S x<\STATESEP>apply (erule(1) sym_refsD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma delta_sym_refs:
+  assumes x: "sym_refs rfs'"
+      and y: "\<And>x y tp. \<lbrakk> (y, tp) \<in> rfs x; (y, tp) \<notin> rfs' x \<rbrakk> \<Longrightarrow> (x, symreftype tp) \<in> rfs y"
+      and z: "\<And>x y tp. \<lbrakk> (y, tp) \<in> rfs' x; (y, tp) \<notin> rfs x \<rbrakk> \<Longrightarrow> (x, symreftype tp) \<notin> rfs y"
+  shows      "sym_refs rfs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sym_refs rfs<\STATESEP>unfolding sym_refs_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. \<forall>(y, tp)\<in>rfs x. (x, symreftype tp) \<in> rfs y<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. (a, b) \<in> rfs x \<Longrightarrow> (x, symreftype b) \<in> rfs a<\STATESEP>apply (case_tac "(a, b) \<in> rfs' x")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (a, b) \<in> rfs' x\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a
+ 2. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (a, b) \<notin> rfs' x\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a<\STATESEP>apply (drule sym_refsD [OF _ x])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (x, symreftype b) \<in> rfs' a\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a
+ 2. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (a, b) \<notin> rfs' x\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a<\STATESEP>apply (rule ccontr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (x, symreftype b) \<in> rfs' a; (x, symreftype b) \<notin> rfs a\<rbrakk> \<Longrightarrow> False
+ 2. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (a, b) \<notin> rfs' x\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a<\STATESEP>apply (frule(1) z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (x, symreftype b) \<in> rfs' a; (x, symreftype b) \<notin> rfs a; (a, symreftype (symreftype b)) \<notin> rfs x\<rbrakk> \<Longrightarrow> False
+ 2. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (a, b) \<notin> rfs' x\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>(a, b) \<in> rfs x; (a, b) \<notin> rfs' x\<rbrakk> \<Longrightarrow> (x, symreftype b) \<in> rfs a<\STATESEP>apply (erule(1) y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation (input)
+  "bound a \<equiv> a \<noteq> None"<\STATESEP>0<\TRANSEP><\STATESEP>lemma inj_ObjRef[simp]: "inj ObjRef"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj ObjRef<\STATESEP>by (auto intro!: injI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma inj_IRQRef[simp]: "inj IRQRef"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj IRQRef<\STATESEP>by (auto intro!: injI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma inj_ArchRef[simp]: "inj ArchRef"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj ArchRef<\STATESEP>by (auto intro!: injI)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas arch_cap_set_map_simps[simp] = arch_cap_set_map_def[split_simps cap.split]<\STATESEP>0<\TRANSEP><\STATESEP>lemma a_typeE:
+  "\<lbrakk>a_type ko = ACapTable sz; (\<And>cs. \<lbrakk> ko = CNode sz cs; well_formed_cnode_n sz cs \<rbrakk> \<Longrightarrow> R)\<rbrakk> \<Longrightarrow> R"
+  "\<lbrakk>a_type ko = ATCB; (\<And>tcb. ko = TCB tcb \<Longrightarrow> R)\<rbrakk> \<Longrightarrow> R"
+  "\<lbrakk>a_type ko = AEndpoint; (\<And>ep. ko = Endpoint ep \<Longrightarrow> R)\<rbrakk> \<Longrightarrow> R"
+  "\<lbrakk>a_type ko = ANTFN; (\<And>ntfn. ko = Notification ntfn \<Longrightarrow> R)\<rbrakk> \<Longrightarrow> R"
+  "\<lbrakk>a_type ko = AArch T; (\<And>ao. \<lbrakk> ko = ArchObj ao; aa_type ao = T \<rbrakk> \<Longrightarrow> R)\<rbrakk> \<Longrightarrow> R"
+  "\<lbrakk>a_type ko = AGarbage sz;
+    (\<And>sz' cs. \<lbrakk> ko = CNode (sz - cte_level_bits) cs; \<not>well_formed_cnode_n sz' cs;
+                cte_level_bits \<le> sz \<rbrakk> \<Longrightarrow> R)\<rbrakk>
+   \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lbrakk>a_type ko = ACapTable sz; \<And>cs. \<lbrakk>ko = CNode sz cs; well_formed_cnode_n sz cs\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R) &&& (\<lbrakk>a_type ko = ATCB; \<And>tcb. ko = TCB tcb \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R) &&& (\<lbrakk>a_type ko = AEndpoint; \<And>ep. ko = Endpoint ep \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R)) &&& (\<lbrakk>a_type ko = ANTFN; \<And>ntfn. ko = Notification ntfn \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R) &&& (\<lbrakk>a_type ko = AArch T; \<And>ao. \<lbrakk>ko = ArchObj ao; aa_type ao = T\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R) &&& (\<lbrakk>a_type ko = AGarbage sz; \<And>sz' cs. \<lbrakk>ko = CNode (sz - cte_level_bits) cs; \<not> well_formed_cnode_n sz' cs; cte_level_bits \<le> sz\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R)<\STATESEP>by (cases ko; clarsimp simp add: a_type_def split: if_split_asm)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma typ_at_typs_of:
+  "typ_at T p s = (typs_of s p = Some T)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. typ_at T p s = (typs_of s p = Some T)<\STATESEP>by (auto simp: obj_at_def in_opt_map_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pd_shifting_gen:
+  "\<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c \<rbrakk> \<Longrightarrow> pd + (vptr >> a << b) && ~~ mask c = pd"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> pd + (vptr >> a << b) && ~~ mask c = pd<\STATESEP>apply (subgoal_tac "(vptr >> a << b) && ~~ mask c = 0")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c; (vptr >> a << b) && ~~ mask c = 0\<rbrakk> \<Longrightarrow> pd + (vptr >> a << b) && ~~ mask c = pd
+ 2. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> (vptr >> a << b) && ~~ mask c = 0<\STATESEP>apply (subst word_plus_and_or_coroll)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c; (vptr >> a << b) && ~~ mask c = 0\<rbrakk> \<Longrightarrow> pd && (vptr >> a << b) = 0
+ 2. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c; (vptr >> a << b) && ~~ mask c = 0\<rbrakk> \<Longrightarrow> (pd || (vptr >> a << b)) && ~~ mask c = pd
+ 3. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> (vptr >> a << b) && ~~ mask c = 0<\STATESEP>apply (erule aligned_mask_disjoint)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; (vptr >> a << b) && ~~ mask c = 0\<rbrakk> \<Longrightarrow> vptr >> a << b \<le> mask c
+ 2. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c; (vptr >> a << b) && ~~ mask c = 0\<rbrakk> \<Longrightarrow> (pd || (vptr >> a << b)) && ~~ mask c = pd
+ 3. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> (vptr >> a << b) && ~~ mask c = 0<\STATESEP>apply (simp add: and_mask_0_iff_le_mask[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c; (vptr >> a << b) && ~~ mask c = 0\<rbrakk> \<Longrightarrow> (pd || (vptr >> a << b)) && ~~ mask c = pd
+ 2. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> (vptr >> a << b) && ~~ mask c = 0<\STATESEP>apply (simp add: bit.conj_disj_distrib2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> (vptr >> a << b) && ~~ mask c = 0<\STATESEP>apply (simp add: shiftr_shiftl1 neg_mask_twice word_bw_assocs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> (vptr >> a - b) && ~~ mask (max b c) = 0<\STATESEP>apply (rule shiftr_not_mask_0)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>b \<le> a; size pd - c \<le> a - b; is_aligned pd c\<rbrakk> \<Longrightarrow> LENGTH('a) \<le> a - b + max b c<\STATESEP>apply (fastforce simp: max_def word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

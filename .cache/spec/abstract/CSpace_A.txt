@@ -1,0 +1,671 @@
+<\STATESEP>chapter "CSpace"<\STATESEP>0<\TRANSEP><\STATESEP>theory CSpace_A
+imports
+  ArchVSpace_A
+  IpcCancel_A
+  ArchCSpace_A
+  "Monads.Nondet_Lemmas"
+  "HOL-Library.Prefix_Order"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_consts
+  aobjs_of
+  arch_update_cap_data
+  arch_derive_cap
+  arch_finalise_cap
+  arch_is_physical
+  arch_same_region_as
+  same_aobject_as
+  prepare_thread_delete
+  update_cnode_cap_data
+  cnode_padding_bits
+  cnode_guard_size_bits
+  arch_is_cap_revocable<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Basic capability manipulation\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  data_to_rights :: "data \<Rightarrow> cap_rights" where
+  "data_to_rights data \<equiv> let
+    w = data_to_16 data
+   in {x. case x of AllowWrite \<Rightarrow> w !! 0
+                  | AllowRead \<Rightarrow> w !! 1
+                  | AllowGrant \<Rightarrow> w !! 2
+                  | AllowGrantReply \<Rightarrow> w !! 3}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ensure_no_children :: "cslot_ptr \<Rightarrow> (unit,'z::state_ext) se_monad" where
+  "ensure_no_children cslot_ptr \<equiv> doE
+    cdt \<leftarrow> liftE $ gets cdt;
+    whenE (\<exists>c. cdt c = Some cslot_ptr) (throwError RevokeFirst)
+  odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  max_free_index :: "nat \<Rightarrow> nat" where
+  "max_free_index magnitude_bits \<equiv> 2 ^ magnitude_bits"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  free_index_update :: "(nat \<Rightarrow> nat) \<Rightarrow> cap \<Rightarrow> cap"
+where
+  "free_index_update g cap \<equiv>
+   case cap of UntypedCap dev ref sz f \<Rightarrow> UntypedCap dev ref sz (g f) | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  untyped_sz_bits :: "cap \<Rightarrow> nat"
+where
+  "untyped_sz_bits (UntypedCap dev ref sz f) = sz"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  max_free_index_update :: "cap \<Rightarrow> cap"
+where
+  "max_free_index_update cap \<equiv> cap \<lparr> free_index:= max_free_index (untyped_sz_bits cap) \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  set_untyped_cap_as_full :: "cap \<Rightarrow> cap \<Rightarrow> obj_ref \<times> bool list \<Rightarrow> (unit,'z::state_ext) s_monad"
+where
+  "set_untyped_cap_as_full src_cap new_cap src_slot \<equiv>
+   if (is_untyped_cap src_cap \<and> is_untyped_cap new_cap
+       \<and> obj_ref_of src_cap = obj_ref_of new_cap \<and> cap_bits_untyped src_cap = cap_bits_untyped new_cap)
+       then set_cap (max_free_index_update src_cap) src_slot else return ()"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+derive_cap :: "cslot_ptr \<Rightarrow> cap \<Rightarrow> (cap,'z::state_ext) se_monad" where
+"derive_cap slot cap \<equiv>
+ case cap of
+    ArchObjectCap c \<Rightarrow> arch_derive_cap c
+    | UntypedCap dev ptr sz f \<Rightarrow> doE ensure_no_children slot; returnOk cap odE
+    | Zombie ptr n sz \<Rightarrow> returnOk NullCap
+    | ReplyCap ptr m cr \<Rightarrow> returnOk NullCap
+    | IRQControlCap \<Rightarrow> returnOk NullCap
+    | _ \<Rightarrow> returnOk cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  update_cap_data :: "bool \<Rightarrow> data \<Rightarrow> cap \<Rightarrow> cap" where
+"update_cap_data preserve w cap \<equiv>
+  if is_ep_cap cap then
+    if cap_ep_badge cap = 0 \<and> \<not> preserve then
+      badge_update w cap
+    else NullCap
+  else if is_ntfn_cap cap then
+    if cap_ep_badge cap = 0 \<and> \<not> preserve then
+      badge_update w cap
+    else NullCap
+  else if is_cnode_cap cap then
+    let
+        (oref, bits, guard) = the_cnode_cap cap;
+        (guard_size', guard'') = update_cnode_cap_data w;
+        guard' = drop (size guard'' - guard_size') (to_bl guard'')
+    in
+        if guard_size' + bits > word_bits
+        then NullCap
+        else CNodeCap oref bits guard'
+  else if is_arch_cap cap then
+    arch_update_cap_data preserve w (the_arch_cap cap)
+  else
+    cap"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Resolving capability references\<close><\STATESEP>0<\TRANSEP><\STATESEP>function resolve_address_bits' :: "'z itself \<Rightarrow> cap \<times> cap_ref \<Rightarrow> (cslot_ptr \<times> cap_ref,'z::state_ext) lf_monad"
+where
+  "resolve_address_bits' z (cap, cref) =
+  (case cap of
+     CNodeCap oref radix_bits guard  \<Rightarrow>
+     if radix_bits + size guard = 0 then
+       fail \<comment> \<open>nothing is translated: table broken\<close>
+     else doE
+       whenE (\<not> guard \<le> cref)
+             \<comment> \<open>guard does not match\<close>
+             (throwError $ GuardMismatch (size cref) guard);
+
+       whenE (size cref < radix_bits + size guard)
+             \<comment> \<open>not enough bits to resolve: table malformed\<close>
+             (throwError $ DepthMismatch (size cref) (radix_bits+size guard));
+
+       offset \<leftarrow> returnOk $ take radix_bits (drop (size guard) cref);
+       rest \<leftarrow> returnOk $ drop (radix_bits + size guard) cref;
+       if rest = [] then
+         returnOk ((oref,offset), [])
+       else doE
+         next_cap \<leftarrow> liftE $ get_cap (oref, offset);
+         if is_cnode_cap next_cap then
+           resolve_address_bits' z (next_cap, rest)
+         else
+           returnOk ((oref,offset), rest)
+       odE
+     odE
+   | _ \<Rightarrow> throwError InvalidRoot)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. (\<And>z cap cref. x = (z, cap, cref) \<Longrightarrow> P) \<Longrightarrow> P
+ 2. \<And>z cap cref za capa crefa. (z, cap, cref) = (za, capa, crefa) \<Longrightarrow> (case cap of CNodeCap oref radix_bits guard \<Rightarrow> if radix_bits + length guard = 0 then fail else doE whenE (\<not> guard \<le> cref) (throwError $ GuardMismatch (length cref) guard);
+whenE (length cref < radix_bits + length guard) (throwError $ DepthMismatch (length cref) (radix_bits + length guard));
+offset <- returnOk $ take radix_bits (drop (length guard) cref);
+rest <- returnOk $ drop (radix_bits + length guard) cref;
+if rest = [] then returnOk ((oref, offset), []) else doE next_cap <- liftE $ get_cap (oref, offset);
+if is_cnode_cap next_cap then resolve_address_bits'_sumC (z, next_cap, rest) else returnOk ((oref, offset), rest)
+odE
+odE | _ \<Rightarrow> throwError InvalidRoot) = (case capa of CNodeCap oref radix_bits guard \<Rightarrow> if radix_bits + length guard = 0 then fail else doE whenE (\<not> guard \<le> crefa) (throwError $ GuardMismatch (length crefa) guard);
+whenE (length crefa < radix_bits + length guard) (throwError $ DepthMismatch (length crefa) (radix_bits + length guard));
+offset <- returnOk $ take radix_bits (drop (length guard) crefa);
+rest <- returnOk $ drop (radix_bits + length guard) crefa;
+if rest = [] then returnOk ((oref, offset), []) else doE next_cap <- liftE $ get_cap (oref, offset);
+if is_cnode_cap next_cap then resolve_address_bits'_sumC (za, next_cap, rest) else returnOk ((oref, offset), rest)
+odE
+odE | _ \<Rightarrow> throwError InvalidRoot)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma rab_termination:
+  "\<forall>cref guard radix_bits.
+    \<not> length cref \<le> radix_bits + length guard \<and>
+    (0 < radix_bits \<or> guard \<noteq> []) \<longrightarrow>
+      length cref - (radix_bits + length guard) < length cref"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>cref guard radix_bits. \<not> length cref \<le> radix_bits + length guard \<and> (0 < radix_bits \<or> guard \<noteq> []) \<longrightarrow> length cref - (radix_bits + length guard) < length cref<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cref guard radix_bits. \<lbrakk>\<not> length cref \<le> radix_bits + length guard; 0 < radix_bits \<or> guard \<noteq> []\<rbrakk> \<Longrightarrow> length cref - (radix_bits + length guard) < length cref<\STATESEP>apply (erule disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>cref guard radix_bits. \<lbrakk>\<not> length cref \<le> radix_bits + length guard; 0 < radix_bits\<rbrakk> \<Longrightarrow> length cref - (radix_bits + length guard) < length cref
+ 2. \<And>cref guard radix_bits. \<lbrakk>\<not> length cref \<le> radix_bits + length guard; guard \<noteq> []\<rbrakk> \<Longrightarrow> length cref - (radix_bits + length guard) < length cref<\STATESEP>apply arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cref guard radix_bits. \<lbrakk>\<not> length cref \<le> radix_bits + length guard; guard \<noteq> []\<rbrakk> \<Longrightarrow> length cref - (radix_bits + length guard) < length cref<\STATESEP>apply (clarsimp simp: neq_Nil_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cref radix_bits ys. \<not> length cref \<le> Suc (radix_bits + length ys) \<Longrightarrow> length cref - Suc (radix_bits + length ys) < length cref<\STATESEP>apply arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>termination<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. All resolve_address_bits'_dom<\STATESEP>apply (relation "measure (\<lambda>(z,cap, cs). size cs)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. wf (measure (\<lambda>(z, cap, y). length y))
+ 2. \<And>z cap cref x61 x62 x63 v s s' rv st rva sta rvb stb rvc stc. \<lbrakk>cap = CNodeCap x61 x62 x63; x62 + length x63 \<noteq> 0; (Inr v, s') \<in> fst (whenE (\<not> x63 \<le> cref) (throwError $ GuardMismatch (length cref) x63) s); (Inr rv, st) \<in> fst (whenE (length cref < x62 + length x63) (throwError $ DepthMismatch (length cref) (x62 + length x63)) s'); (Inr rva, sta) \<in> fst ((returnOk $ take x62 (drop (length x63) cref)) st); (Inr rvb, stb) \<in> fst ((returnOk $ drop (x62 + length x63) cref) sta); rvb \<noteq> []; (Inr rvc, stc) \<in> fst ((liftE $ get_cap (x61, rva)) stb); is_cnode_cap rvc\<rbrakk> \<Longrightarrow> ((z, rvc, rvb), z, cap, cref) \<in> measure (\<lambda>(z, cap, y). length y)<\STATESEP>apply (auto simp: whenE_def returnOk_def return_def rab_termination)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>declare resolve_address_bits'.simps[simp del]<\STATESEP>0<\TRANSEP><\STATESEP>definition resolve_address_bits where
+"resolve_address_bits \<equiv> resolve_address_bits' TYPE('z::state_ext)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_slot_for_thread :: "obj_ref \<Rightarrow> cap_ref \<Rightarrow> (cslot_ptr \<times> cap_ref,'z::state_ext) lf_monad"
+where
+  "lookup_slot_for_thread thread cref \<equiv> doE
+     tcb \<leftarrow> liftE $ gets_the $ get_tcb thread;
+     resolve_address_bits (tcb_ctable tcb, cref)
+  odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_cap_and_slot :: "obj_ref \<Rightarrow> cap_ref \<Rightarrow> (cap \<times> cslot_ptr,'z::state_ext) lf_monad" where
+  "lookup_cap_and_slot thread cptr \<equiv> doE
+      (slot, cr) \<leftarrow> lookup_slot_for_thread thread cptr;
+      cap \<leftarrow> liftE $ get_cap slot;
+      returnOk (cap, slot)
+  odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_cap :: "obj_ref \<Rightarrow> cap_ref \<Rightarrow> (cap,'z::state_ext) lf_monad" where
+  "lookup_cap thread ref \<equiv> doE
+     (ref', _) \<leftarrow> lookup_slot_for_thread thread ref;
+     liftE $ get_cap ref'
+   odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_slot_for_cnode_op ::
+  "bool \<Rightarrow> cap \<Rightarrow> cap_ref \<Rightarrow> nat \<Rightarrow> (cslot_ptr,'z::state_ext) se_monad"
+where
+ "lookup_slot_for_cnode_op is_source croot ptr depth \<equiv>
+  if is_cnode_cap croot then
+  doE
+    whenE (depth < 1 \<or> depth > word_bits)
+      $ throwError (RangeError 1 (of_nat word_bits));
+    lookup_error_on_failure is_source $ doE
+      ptrbits_for_depth \<leftarrow> returnOk $ drop (length ptr - depth) ptr;
+      (slot, rem) \<leftarrow> resolve_address_bits (croot, ptrbits_for_depth);
+      case rem of
+        [] \<Rightarrow> returnOk slot
+      | _  \<Rightarrow> throwError $ DepthMismatch (length rem) 0
+    odE
+  odE
+  else
+    throwError (FailedLookup is_source InvalidRoot)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_source_slot :: "cap \<Rightarrow> cap_ref \<Rightarrow> nat \<Rightarrow> (cslot_ptr,'z::state_ext) se_monad"
+where
+ "lookup_source_slot \<equiv> lookup_slot_for_cnode_op True"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_target_slot :: "cap \<Rightarrow> cap_ref \<Rightarrow> nat \<Rightarrow> (cslot_ptr,'z::state_ext) se_monad"
+where
+ "lookup_target_slot \<equiv> lookup_slot_for_cnode_op False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  lookup_pivot_slot :: "cap \<Rightarrow> cap_ref \<Rightarrow> nat \<Rightarrow> (cslot_ptr,'z::state_ext) se_monad"
+where
+ "lookup_pivot_slot  \<equiv> lookup_slot_for_cnode_op True"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Transferring capabilities\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  captransfer_from_words :: "machine_word \<Rightarrow> (captransfer,'z::state_ext) s_monad"
+where
+  "captransfer_from_words ptr \<equiv> do
+     w0 \<leftarrow> do_machine_op $ loadWord ptr;
+     w1 \<leftarrow> do_machine_op $ loadWord (ptr + word_size);
+     w2 \<leftarrow> do_machine_op $ loadWord (ptr + 2 * word_size);
+     return \<lparr> ct_receive_root = data_to_cptr w0,
+              ct_receive_index = data_to_cptr w1,
+              ct_receive_depth = w2 \<rparr>
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  load_cap_transfer :: "obj_ref \<Rightarrow> (captransfer,'z::state_ext) s_monad" where
+ "load_cap_transfer buffer \<equiv> do
+     offset \<leftarrow> return $ msg_max_length + msg_max_extra_caps + 2;
+     captransfer_from_words (buffer + of_nat offset * word_size)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>fun
+  get_receive_slots :: "obj_ref \<Rightarrow> obj_ref option \<Rightarrow>
+                         (cslot_ptr list,'z::state_ext) s_monad"
+where
+  "get_receive_slots thread (Some buffer) = do
+     ct \<leftarrow> load_cap_transfer buffer;
+
+     empty_on_failure $ doE
+       cnode \<leftarrow> unify_failure $
+                  lookup_cap thread (ct_receive_root ct);
+       slot \<leftarrow> unify_failure $ lookup_target_slot cnode
+                  (ct_receive_index ct) (unat (ct_receive_depth ct));
+
+       cap \<leftarrow> liftE $ get_cap slot;
+
+       whenE (cap \<noteq> NullCap) (throwError ());
+
+       returnOk [slot]
+     odE
+   od"
+|  "get_receive_slots x None = return []"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Revoking and deleting capabilities\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  long_running_delete :: "cap \<Rightarrow> bool" where
+ "long_running_delete cap \<equiv> case cap of
+    CNodeCap ptr bits gd \<Rightarrow> True
+  | Zombie ptr bits n \<Rightarrow> True
+  | ThreadCap ptr \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  slot_cap_long_running_delete :: "cslot_ptr \<Rightarrow> (bool,'z::state_ext) s_monad"
+where
+  "slot_cap_long_running_delete slot \<equiv> do
+     cap \<leftarrow> get_cap slot;
+     case cap of
+         NullCap \<Rightarrow> return False
+       | _ \<Rightarrow> do
+           final \<leftarrow> is_final_cap cap;
+           return (final \<and> long_running_delete cap)
+         od
+   od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_swap :: "cap \<Rightarrow> cslot_ptr \<Rightarrow> cap \<Rightarrow> cslot_ptr \<Rightarrow> (unit,'z::state_ext) s_monad"
+where
+  "cap_swap cap1 slot1 cap2 slot2 \<equiv>
+  do
+    set_cap cap2 slot1;
+    set_cap cap1 slot2;
+    slot1_p \<leftarrow> gets (\<lambda>s. cdt s slot1);
+    slot2_p \<leftarrow> gets (\<lambda>s. cdt s slot2);
+    cdt \<leftarrow> gets cdt;
+    \<comment> \<open>update children:\<close>
+    cdt' \<leftarrow> return (\<lambda>n. if cdt n = Some slot1
+                        then Some slot2
+                        else if cdt n = Some slot2
+                        then Some slot1
+                        else cdt n);
+    \<comment> \<open>update parents:\<close>
+    set_cdt (cdt' (slot1 := cdt' slot2, slot2 := cdt' slot1));
+    do_extended_op (cap_swap_ext slot1 slot2 slot1_p slot2_p);
+    is_original \<leftarrow> gets is_original_cap;
+    set_original slot1 (is_original slot2);
+    set_original slot2 (is_original slot1)
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_move :: "cap \<Rightarrow> cslot_ptr \<Rightarrow> cslot_ptr \<Rightarrow> (unit,'z::state_ext) s_monad"
+where
+  "cap_move new_cap src_slot dest_slot \<equiv> do
+    set_cap new_cap dest_slot;
+    set_cap NullCap src_slot;
+    src_p \<leftarrow> gets (\<lambda>s. cdt s src_slot);
+    dest_p \<leftarrow> gets (\<lambda>s. cdt s dest_slot);
+    cdt \<leftarrow> gets cdt;
+    parent \<leftarrow> return $ cdt src_slot;
+    cdt' \<leftarrow> return $ cdt(dest_slot := parent, src_slot := None);
+    set_cdt (\<lambda>r. if cdt' r = Some src_slot then Some dest_slot else cdt' r);
+    do_extended_op (cap_move_ext src_slot dest_slot src_p dest_p);
+    is_original \<leftarrow> gets is_original_cap;
+    set_original dest_slot (is_original src_slot);
+    set_original src_slot False
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_swap_for_delete :: "cslot_ptr \<Rightarrow> cslot_ptr \<Rightarrow> (unit,'z::state_ext) s_monad"
+where
+  "cap_swap_for_delete slot1 slot2 \<equiv>
+  when (slot1 \<noteq> slot2) $ do
+    cap1 \<leftarrow> get_cap slot1;
+    cap2 \<leftarrow> get_cap slot2;
+    cap_swap cap1 slot1 cap2 slot2
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>datatype
+  rec_del_call
+  = CTEDeleteCall cslot_ptr bool
+  | FinaliseSlotCall cslot_ptr bool
+  | ReduceZombieCall cap cslot_ptr bool<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  locate_slot :: "cslot_ptr \<Rightarrow> nat \<Rightarrow> cslot_ptr" where
+ "locate_slot \<equiv> \<lambda>(a, b) n. (a, drop (32 - length b)
+                           (to_bl (of_bl b + of_nat n :: word32)))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  deleting_irq_handler :: "irq \<Rightarrow> (unit,'z::state_ext) s_monad"
+where
+ "deleting_irq_handler irq \<equiv> do
+    slot \<leftarrow> get_irq_slot irq;
+    cap_delete_one slot
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>fun
+  finalise_cap :: "cap \<Rightarrow> bool \<Rightarrow> (cap \<times> cap,'z::state_ext) s_monad"
+where
+  "finalise_cap NullCap                  final = return (NullCap, NullCap)"
+| "finalise_cap (UntypedCap dev r bits f)    final = return (NullCap, NullCap)"
+| "finalise_cap (ReplyCap r m R)         final = return (NullCap, NullCap)"
+| "finalise_cap (EndpointCap r b R)      final =
+      (liftM (K (NullCap, NullCap)) $ when final $ cancel_all_ipc r)"
+| "finalise_cap (NotificationCap r b R)  final =
+      (liftM (K (NullCap, NullCap)) $ when final $ do
+          unbind_maybe_notification r;
+          cancel_all_signals r
+        od)"
+| "finalise_cap (CNodeCap r bits g)  final =
+      return (if final then Zombie r (Some bits) (2 ^ bits) else NullCap, NullCap)"
+| "finalise_cap (ThreadCap r)            final =
+      do
+         when final $ unbind_notification r;
+         when final $ suspend r;
+         when final $ prepare_thread_delete r;
+         return (if final then (Zombie r None 5) else NullCap, NullCap)
+      od"
+| "finalise_cap DomainCap                final = return (NullCap, NullCap)"
+| "finalise_cap (Zombie r b n)           final =
+      do assert final; return (Zombie r b n, NullCap) od"
+| "finalise_cap IRQControlCap            final = return (NullCap, NullCap)"
+| "finalise_cap (IRQHandlerCap irq)      final = (
+       if final then do
+         deleting_irq_handler irq;
+         return (NullCap, (IRQHandlerCap irq))
+       od
+       else return (NullCap, NullCap))"
+| "finalise_cap (ArchObjectCap a)        final =
+      (arch_finalise_cap a final)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  can_fast_finalise :: "cap \<Rightarrow> bool" where
+ "can_fast_finalise cap \<equiv> case cap of
+    ReplyCap r m R \<Rightarrow> True
+  | EndpointCap r b R \<Rightarrow> True
+  | NotificationCap r b R \<Rightarrow> True
+  | NullCap \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>lemma fast_finalise_def2:
+  "fast_finalise cap final = do
+     assert (can_fast_finalise cap);
+     result \<leftarrow> finalise_cap cap final;
+     assert (result = (NullCap, NullCap))
+   od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fast_finalise cap final = do assert (can_fast_finalise cap);
+result <- finalise_cap cap final;
+assert (result = (NullCap, NullCap))
+od<\STATESEP>supply K_def[simp]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fast_finalise cap final = do assert (can_fast_finalise cap);
+result <- finalise_cap cap final;
+assert (result = (NullCap, NullCap))
+od<\STATESEP>by (cases cap, simp_all add: liftM_def assert_def can_fast_finalise_def)<\STATESEP>1<\TRANSEP><\STATESEP>primrec (nonexhaustive)
+  cap_removeable :: "cap \<Rightarrow> cslot_ptr \<Rightarrow> bool"
+where
+  "cap_removeable NullCap slot = True"
+| "cap_removeable (Zombie slot' bits n) slot =
+    ((n = 0) \<or> (n = 1 \<and> (slot', replicate (zombie_cte_bits bits) False) = slot))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_cyclic_zombie :: "cap \<Rightarrow> cslot_ptr \<Rightarrow> bool" where
+ "cap_cyclic_zombie cap slot \<equiv> case cap of
+         Zombie slot' bits n \<Rightarrow> (slot', replicate (zombie_cte_bits bits) False) = slot
+       | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>function (sequential)
+  rec_del :: "rec_del_call \<Rightarrow> (bool * cap,'z::state_ext) p_monad"
+where
+  "rec_del (CTEDeleteCall slot exposed) s =
+ (doE
+    (success, cleanup_info) \<leftarrow> rec_del (FinaliseSlotCall slot exposed);
+    without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+    returnOk undefined
+  odE) s"
+|
+  "rec_del (FinaliseSlotCall slot exposed) s =
+ (doE
+    cap \<leftarrow> without_preemption $ get_cap slot;
+    if (cap = NullCap)
+    then returnOk (True, NullCap)
+    else (doE
+      is_final \<leftarrow> without_preemption $ is_final_cap cap;
+      (remainder, cleanup_info) \<leftarrow> without_preemption $ finalise_cap cap is_final;
+      if (cap_removeable remainder slot)
+      then returnOk (True, cleanup_info)
+      else if (cap_cyclic_zombie remainder slot \<and> \<not> exposed)
+      then doE
+        without_preemption $ set_cap remainder slot;
+        returnOk (False, NullCap)
+      odE
+      else doE
+        without_preemption $ set_cap remainder slot;
+        rec_del (ReduceZombieCall remainder slot exposed);
+        preemption_point;
+        rec_del (FinaliseSlotCall slot exposed)
+      odE
+    odE)
+  odE) s"
+
+| "rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False) s =
+ (doE
+    cn \<leftarrow> returnOk $ first_cslot_of (Zombie ptr bits (Suc n));
+    assertE (cn \<noteq> slot);
+    without_preemption $ cap_swap_for_delete cn slot;
+    returnOk undefined
+  odE) s"
+|
+ "rec_del (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True) s =
+ (doE
+    end_slot \<leftarrow> returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n);
+    rec_del (CTEDeleteCall end_slot False);
+    new_cap \<leftarrow> without_preemption $ get_cap slot;
+    if (new_cap = Zombie ptr bits (Suc n))
+    then without_preemption $ set_cap (Zombie ptr bits n) slot
+    else assertE (new_cap = NullCap \<or>
+                  is_zombie new_cap \<and> first_cslot_of new_cap = slot
+                   \<and> first_cslot_of (Zombie ptr bits (Suc n)) \<noteq> slot);
+    returnOk undefined
+  odE) s"
+|
+ "rec_del (ReduceZombieCall cap slot exposed) s =
+  fail s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (407 subgoals):
+ 1. \<And>P x. \<lbrakk>\<And>slot exposed s. x = (CTEDeleteCall slot exposed, s) \<Longrightarrow> P; \<And>slot exposed s. x = (FinaliseSlotCall slot exposed, s) \<Longrightarrow> P; \<And>ptr bits n slot s. x = (ReduceZombieCall (Zombie ptr bits (Suc n)) slot False, s) \<Longrightarrow> P; \<And>ptr bits n slot s. x = (ReduceZombieCall (Zombie ptr bits (Suc n)) slot True, s) \<Longrightarrow> P; \<And>slot exposed s. x = (ReduceZombieCall NullCap slot exposed, s) \<Longrightarrow> P; \<And>v va vb vc slot exposed s. x = (ReduceZombieCall (UntypedCap v va vb vc) slot exposed, s) \<Longrightarrow> P; \<And>v va vb slot exposed s. x = (ReduceZombieCall (EndpointCap v va vb) slot exposed, s) \<Longrightarrow> P; \<And>v va vb slot exposed s. x = (ReduceZombieCall (NotificationCap v va vb) slot exposed, s) \<Longrightarrow> P; \<And>v va vb slot exposed s. x = (ReduceZombieCall (ReplyCap v va vb) slot exposed, s) \<Longrightarrow> P; \<And>v va vb slot exposed s. x = (ReduceZombieCall (CNodeCap v va vb) slot exposed, s) \<Longrightarrow> P; \<And>v slot exposed s. x = (ReduceZombieCall (ThreadCap v) slot exposed, s) \<Longrightarrow> P; \<And>slot exposed s. x = (ReduceZombieCall DomainCap slot exposed, s) \<Longrightarrow> P; \<And>slot exposed s. x = (ReduceZombieCall IRQControlCap slot exposed, s) \<Longrightarrow> P; \<And>v slot exposed s. x = (ReduceZombieCall (IRQHandlerCap v) slot exposed, s) \<Longrightarrow> P; \<And>v va slot exposed s. x = (ReduceZombieCall (Zombie v va 0) slot exposed, s) \<Longrightarrow> P; \<And>v slot exposed s. x = (ReduceZombieCall (ArchObjectCap v) slot exposed, s) \<Longrightarrow> P; \<And>slot s. x = (ReduceZombieCall NullCap slot True, s) \<Longrightarrow> P; \<And>v va vb vc slot s. x = (ReduceZombieCall (UntypedCap v va vb vc) slot True, s) \<Longrightarrow> P; \<And>v va vb slot s. x = (ReduceZombieCall (EndpointCap v va vb) slot True, s) \<Longrightarrow> P; \<And>v va vb slot s. x = (ReduceZombieCall (NotificationCap v va vb) slot True, s) \<Longrightarrow> P; \<And>v va vb slot s. x = (ReduceZombieCall (ReplyCap v va vb) slot True, s) \<Longrightarrow> P; \<And>v va vb slot s. x = (ReduceZombieCall (CNodeCap v va vb) slot True, s) \<Longrightarrow> P; \<And>v slot s. x = (ReduceZombieCall (ThreadCap v) slot True, s) \<Longrightarrow> P; \<And>slot s. x = (ReduceZombieCall DomainCap slot True, s) \<Longrightarrow> P; \<And>slot s. x = (ReduceZombieCall IRQControlCap slot True, s) \<Longrightarrow> P; \<And>v slot s. x = (ReduceZombieCall (IRQHandlerCap v) slot True, s) \<Longrightarrow> P; \<And>v va slot s. x = (ReduceZombieCall (Zombie v va 0) slot True, s) \<Longrightarrow> P; \<And>v slot s. x = (ReduceZombieCall (ArchObjectCap v) slot True, s) \<Longrightarrow> P\<rbrakk> \<Longrightarrow> P
+ 2. \<And>slot exposed s slota exposeda sa. (CTEDeleteCall slot exposed, s) = (CTEDeleteCall slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slota exposeda, x1);
+without_preemption $ when (exposeda \<or> success) $ empty_slot slota cleanup_info;
+returnOk undefined
+odE) sa
+ 3. \<And>slot exposed s slota exposeda sa. (CTEDeleteCall slot exposed, s) = (FinaliseSlotCall slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = (doE cap <- without_preemption $ get_cap slota;
+if cap = NullCap then returnOk (True, NullCap) else doE is_final <- without_preemption $ is_final_cap cap;
+(remainder, cleanup_info) <- without_preemption $ finalise_cap cap is_final;
+if cap_removeable remainder slota then returnOk (True, cleanup_info) else if cap_cyclic_zombie remainder slota \<and> \<not> exposeda then doE without_preemption $ set_cap remainder slota;
+returnOk (False, NullCap)
+odE else doE without_preemption $ set_cap remainder slota;
+\<lambda>x1. rec_del_sumC (ReduceZombieCall remainder slota exposeda, x1);
+preemption_point;
+\<lambda>x1. rec_del_sumC (FinaliseSlotCall slota exposeda, x1)
+odE
+odE
+odE) sa
+ 4. \<And>slot exposed s ptr bits n slota sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall (Zombie ptr bits (Suc n)) slota False, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = (doE cn <- returnOk $ first_cslot_of (Zombie ptr bits (Suc n));
+assertE (cn \<noteq> slota);
+without_preemption $ cap_swap_for_delete cn slota;
+returnOk undefined
+odE) sa
+ 5. \<And>slot exposed s ptr bits n slota sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall (Zombie ptr bits (Suc n)) slota True, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = (doE end_slot <- returnOk (ptr, nat_to_cref (zombie_cte_bits bits) n);
+\<lambda>x1. rec_del_sumC (CTEDeleteCall end_slot False, x1);
+new_cap <- without_preemption $ get_cap slota;
+if new_cap = Zombie ptr bits (Suc n) then without_preemption $ set_cap (Zombie ptr bits n) slota else assertE (new_cap = NullCap \<or> is_zombie new_cap \<and> first_cslot_of new_cap = slota \<and> first_cslot_of (Zombie ptr bits (Suc n)) \<noteq> slota);
+returnOk undefined
+odE) sa
+ 6. \<And>slot exposed s slota exposeda sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall NullCap slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = fail sa
+ 7. \<And>slot exposed s v va vb vc slota exposeda sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall (UntypedCap v va vb vc) slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = fail sa
+ 8. \<And>slot exposed s v va vb slota exposeda sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall (EndpointCap v va vb) slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = fail sa
+ 9. \<And>slot exposed s v va vb slota exposeda sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall (NotificationCap v va vb) slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = fail sa
+ 10. \<And>slot exposed s v va vb slota exposeda sa. (CTEDeleteCall slot exposed, s) = (ReduceZombieCall (ReplyCap v va vb) slota exposeda, sa) \<Longrightarrow> (doE (success, cleanup_info) <- \<lambda>x1. rec_del_sumC (FinaliseSlotCall slot exposed, x1);
+without_preemption $ when (exposed \<or> success) $ empty_slot slot cleanup_info;
+returnOk undefined
+odE) s = fail sa
+A total of 407 subgoals...<\STATESEP>by pat_completeness auto<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  cap_delete :: "cslot_ptr \<Rightarrow> (unit,'z::state_ext) p_monad" where
+ "cap_delete slot \<equiv> doE rec_del (CTEDeleteCall slot True); returnOk () odE"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  finalise_slot :: "cslot_ptr \<Rightarrow> bool \<Rightarrow> (bool * cap,'z::state_ext) p_monad"
+where
+  "finalise_slot p e \<equiv> rec_del (FinaliseSlotCall p e)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  exposed_rdcall :: "rec_del_call \<Rightarrow> bool"
+where
+  "exposed_rdcall (CTEDeleteCall slot exposed) = exposed"
+| "exposed_rdcall (FinaliseSlotCall slot exposed) = exposed"
+| "exposed_rdcall (ReduceZombieCall cap slot exposed) = exposed"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  isCTEDeleteCall :: "rec_del_call \<Rightarrow> bool"
+where
+  "isCTEDeleteCall (CTEDeleteCall slot exposed) = True"
+| "isCTEDeleteCall (FinaliseSlotCall slot exposed) = False"
+| "isCTEDeleteCall (ReduceZombieCall cap slot exposed) = False"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  slot_rdcall :: "rec_del_call \<Rightarrow> cslot_ptr"
+where
+  "slot_rdcall (CTEDeleteCall slot exposed) = slot"
+| "slot_rdcall (FinaliseSlotCall slot exposed) = slot"
+| "slot_rdcall (ReduceZombieCall cap slot exposed) = slot"<\STATESEP>0<\TRANSEP><\STATESEP>function cap_revoke :: "cslot_ptr \<Rightarrow> (unit,'z::state_ext) p_monad"
+where
+"cap_revoke slot s = (doE
+    cap \<leftarrow> without_preemption $ get_cap slot;
+    cdt \<leftarrow> without_preemption $ gets cdt;
+    descendants \<leftarrow> returnOk $ descendants_of slot cdt;
+    whenE (cap \<noteq> NullCap \<and> descendants \<noteq> {}) (doE
+      child \<leftarrow> without_preemption $ select_ext (next_revoke_cap slot) descendants;
+      cap \<leftarrow> without_preemption $ get_cap child;
+      assertE (cap \<noteq> NullCap);
+      cap_delete child;
+      preemption_point;
+      cap_revoke slot
+    odE)
+odE) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. (\<And>slot s. x = (slot, s) \<Longrightarrow> P) \<Longrightarrow> P
+ 2. \<And>slot s slota sa. (slot, s) = (slota, sa) \<Longrightarrow> (doE cap <- without_preemption $ get_cap slot;
+cdt <- without_preemption $ gets cdt;
+descendants <- returnOk $ descendants_of slot cdt;
+whenE (cap \<noteq> NullCap \<and> descendants \<noteq> {}) (doE child <- without_preemption $ select_ext (next_revoke_cap slot) descendants;
+cap <- without_preemption $ get_cap child;
+assertE (cap \<noteq> NullCap);
+cap_delete child;
+preemption_point;
+\<lambda>x1. cap_revoke_sumC (slot, x1)
+odE)
+odE) s = (doE cap <- without_preemption $ get_cap slota;
+cdt <- without_preemption $ gets cdt;
+descendants <- returnOk $ descendants_of slota cdt;
+whenE (cap \<noteq> NullCap \<and> descendants \<noteq> {}) (doE child <- without_preemption $ select_ext (next_revoke_cap slota) descendants;
+cap <- without_preemption $ get_cap child;
+assertE (cap \<noteq> NullCap);
+cap_delete child;
+preemption_point;
+\<lambda>x1. cap_revoke_sumC (slota, x1)
+odE)
+odE) sa<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Inserting and moving capabilities\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  get_badge :: "cap \<Rightarrow> badge option" where
+ "get_badge cap \<equiv> case cap of
+    NotificationCap oref badge cr \<Rightarrow> Some badge
+  | EndpointCap oref badge cr      \<Rightarrow> Some badge
+  | _                              \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_physical :: "cap \<Rightarrow> bool" where
+  "is_physical cap \<equiv> case cap of
+    NullCap \<Rightarrow> False
+  | DomainCap \<Rightarrow> False
+  | IRQControlCap \<Rightarrow> False
+  | IRQHandlerCap _ \<Rightarrow> False
+  | ReplyCap _ _ _ \<Rightarrow> False
+  | ArchObjectCap c \<Rightarrow> arch_is_physical c
+  | _ \<Rightarrow> True"<\STATESEP>0<\TRANSEP><\STATESEP>fun
+  same_region_as :: "cap \<Rightarrow> cap \<Rightarrow> bool"
+where
+  "same_region_as NullCap c' = False"
+| "same_region_as (UntypedCap dev r bits free) c' =
+    (is_physical c' \<and>
+     r \<le> obj_ref_of c' \<and>
+     obj_ref_of c' \<le> obj_ref_of c' + obj_size c' - 1 \<and>
+     obj_ref_of c' + obj_size c' - 1 \<le> r + (1 << bits) - 1)"
+| "same_region_as (EndpointCap r b R) c' =
+    (is_ep_cap c' \<and> obj_ref_of c' = r)"
+| "same_region_as (NotificationCap r b R) c' =
+    (is_ntfn_cap c' \<and> obj_ref_of c' = r)"
+| "same_region_as (CNodeCap r bits g) c' =
+    (is_cnode_cap c' \<and> obj_ref_of c' = r \<and> bits_of c' = bits)"
+| "same_region_as (ReplyCap n m cr) c' = (\<exists>m' cr. c' = ReplyCap n m' cr)"
+| "same_region_as (ThreadCap r) c' =
+    (is_thread_cap c' \<and> obj_ref_of c' = r)"
+| "same_region_as (Zombie r b n) c' = False"
+| "same_region_as (IRQControlCap) c' =
+    (c' = IRQControlCap \<or> (\<exists>n. c' = IRQHandlerCap n))"
+| "same_region_as DomainCap c' = (c' = DomainCap)"
+| "same_region_as (IRQHandlerCap n) c' =
+    (c' = IRQHandlerCap n)"
+| "same_region_as (ArchObjectCap a) c' =
+    (case c' of ArchObjectCap a' \<Rightarrow> arch_same_region_as a a' | _ \<Rightarrow> False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  same_object_as :: "cap \<Rightarrow> cap \<Rightarrow> bool" where
+ "same_object_as cp cp' \<equiv>
+   (case (cp, cp') of
+      (UntypedCap dev r bits free, _) \<Rightarrow> False
+    | (IRQControlCap, IRQHandlerCap n) \<Rightarrow> False
+    | (ArchObjectCap ac, ArchObjectCap ac') \<Rightarrow> same_aobject_as ac ac'
+    | _ \<Rightarrow> same_region_as cp cp')"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  should_be_parent_of :: "cap \<Rightarrow> bool \<Rightarrow> cap \<Rightarrow> bool \<Rightarrow> bool" where
+  "should_be_parent_of c original c' original' \<equiv>
+   original \<and>
+   same_region_as c c' \<and>
+   (case c of
+      EndpointCap ref badge R \<Rightarrow> badge \<noteq> 0 \<longrightarrow> cap_ep_badge c' = badge \<and> \<not>original'
+    | NotificationCap ref badge R \<Rightarrow> badge \<noteq> 0 \<longrightarrow> cap_ep_badge c' = badge \<and> \<not>original'
+    | _ \<Rightarrow> True)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_cap_revocable :: "cap \<Rightarrow> cap \<Rightarrow> bool"
+where
+  "is_cap_revocable new_cap src_cap \<equiv> case new_cap of
+      ArchObjectCap acap \<Rightarrow> arch_is_cap_revocable new_cap src_cap
+    | EndpointCap _ _ _ \<Rightarrow> cap_ep_badge new_cap \<noteq> cap_ep_badge src_cap
+    | NotificationCap _ _ _ \<Rightarrow> cap_ep_badge new_cap \<noteq> cap_ep_badge src_cap
+    | IRQHandlerCap _ \<Rightarrow> src_cap = IRQControlCap
+    | UntypedCap _ _ _ _ \<Rightarrow> True
+    | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  cap_insert :: "cap \<Rightarrow> cslot_ptr \<Rightarrow> cslot_ptr \<Rightarrow> (unit,'z::state_ext) s_monad" where
+  "cap_insert new_cap src_slot dest_slot \<equiv> do
+    src_cap \<leftarrow> get_cap src_slot;
+
+    dest_original \<leftarrow> return $ is_cap_revocable new_cap src_cap;
+
+    old_cap \<leftarrow> get_cap dest_slot;
+    assert (old_cap = NullCap);
+    set_untyped_cap_as_full src_cap new_cap src_slot;
+    set_cap new_cap dest_slot;
+
+    is_original \<leftarrow> gets is_original_cap;
+    src_parent \<leftarrow> return $
+       should_be_parent_of src_cap (is_original src_slot) new_cap dest_original;
+    src_p \<leftarrow> gets (\<lambda>s. cdt s src_slot);
+    dest_p \<leftarrow> gets (\<lambda>s. cdt s dest_slot);
+    update_cdt (\<lambda>cdt. cdt (dest_slot := if src_parent
+                                        then Some src_slot
+                                        else cdt src_slot));
+    do_extended_op (cap_insert_ext src_parent src_slot dest_slot src_p dest_p);
+    set_original dest_slot dest_original
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  has_cancel_send_rights :: "cap \<Rightarrow> bool" where
+  "has_cancel_send_rights cap \<equiv> case cap of
+   EndpointCap _ _ R \<Rightarrow> R = all_rights
+   | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  tcb_registers_caps_merge :: "tcb \<Rightarrow> tcb \<Rightarrow> tcb"
+where
+ "tcb_registers_caps_merge regtcb captcb \<equiv>
+  regtcb \<lparr> tcb_ctable := tcb_ctable captcb,
+           tcb_vtable := tcb_vtable captcb,
+           tcb_reply := tcb_reply captcb,
+           tcb_caller := tcb_caller captcb,
+           tcb_ipcframe := tcb_ipcframe captcb \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Invoking CNode capabilities\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  invoke_cnode :: "cnode_invocation \<Rightarrow> (unit,'z::state_ext) p_monad" where
+  "invoke_cnode i \<equiv> case i of
+    RevokeCall dest_slot \<Rightarrow> cap_revoke dest_slot
+  | DeleteCall dest_slot \<Rightarrow> cap_delete dest_slot
+  | InsertCall cap src_slot dest_slot \<Rightarrow>
+       without_preemption $ cap_insert cap src_slot dest_slot
+  | MoveCall cap src_slot dest_slot \<Rightarrow>
+       without_preemption $ cap_move cap src_slot dest_slot
+  | RotateCall cap1 cap2 slot1 slot2 slot3 \<Rightarrow>
+       without_preemption $
+       if slot1 = slot3 then
+         cap_swap cap1 slot1 cap2 slot2
+       else
+         do cap_move cap2 slot2 slot3; cap_move cap1 slot1 slot2 od
+  | SaveCall slot \<Rightarrow> without_preemption $ do
+    thread \<leftarrow> gets cur_thread;
+    src_slot \<leftarrow> return (thread, tcb_cnode_index 3);
+    cap \<leftarrow> get_cap src_slot;
+    (case cap of
+          NullCap \<Rightarrow> return ()
+        | ReplyCap _ False _ \<Rightarrow> cap_move cap src_slot slot
+        | _ \<Rightarrow> fail) od
+  | CancelBadgedSendsCall (EndpointCap ep b R) \<Rightarrow>
+    without_preemption $ when (b \<noteq> 0) $ cancel_badged_sends ep b
+  | CancelBadgedSendsCall _ \<Rightarrow> fail"<\STATESEP>0<\TRANSEP><\STATESEP>section "Cap classification used to define invariants"<\STATESEP>0<\TRANSEP><\STATESEP>datatype capclass =
+  PhysicalClass | ReplyClass "obj_ref" | IRQClass | ASIDMasterClass | NullClass | DomainClass | IOPortClass<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

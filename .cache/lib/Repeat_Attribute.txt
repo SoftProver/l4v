@@ -1,0 +1,37 @@
+<\STATESEP>theory Repeat_Attribute
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+local
+
+val attribute_generic = Context.cases Attrib.attribute_global Attrib.attribute
+
+fun apply_attributes attrs thm ctxt =
+  let
+    val (thm', ctxt') = fold (uncurry o Thm.apply_attribute) attrs (thm, ctxt)
+  in if Thm.eq_thm (thm, thm')
+     then (SOME ctxt', SOME thm)
+     else
+       \<^try>\<open>apply_attributes attrs thm' ctxt' catch _ => (SOME ctxt', SOME thm')\<close>
+  end
+
+fun repeat_attribute_cmd attr_srcs (ctxt, thm) =
+  let val attrs = map (attribute_generic ctxt) attr_srcs
+  in apply_attributes attrs thm ctxt end
+
+in
+
+val _ = Theory.setup
+  (Attrib.setup @{binding REPEAT}
+    (Attrib.attribs >> repeat_attribute_cmd)
+    "higher order attribute combinator to repeatedly apply other attributes one or more times")
+
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Examples\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma test1: "True \<Longrightarrow> True"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<Longrightarrow> True<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma test2: "True \<Longrightarrow> True \<Longrightarrow> True"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>True; True\<rbrakk> \<Longrightarrow> True<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemmas tests = test1 test2<\STATESEP>0<\TRANSEP><\STATESEP>thm tests[REPEAT [OF TrueI]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+    assumes P[REPEAT [simplified], REPEAT [simp]]: "P \<or> False"
+    shows P<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

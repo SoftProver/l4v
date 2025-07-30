@@ -1,0 +1,235 @@
+<\STATESEP>theory SubMonad_R
+imports KHeap_R EmptyFail
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma submonad_doMachineOp:
+  "submonad ksMachineState (ksMachineState_update \<circ> K) \<top> doMachineOp"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad ksMachineState (ksMachineState_update \<circ> K) (\<lambda>_. True) doMachineOp<\STATESEP>apply (unfold_locales)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<forall>x s. True \<longrightarrow> ksMachineState ((ksMachineState_update \<circ> K) x s) = x
+ 2. \<forall>x y s. (ksMachineState_update \<circ> K) x ((ksMachineState_update \<circ> K) y s) = (ksMachineState_update \<circ> K) x s
+ 3. \<forall>s. (ksMachineState_update \<circ> K) (ksMachineState s) s = s
+ 4. \<And>s x. True = True
+ 5. doMachineOp = submonad_fn ksMachineState (ksMachineState_update \<circ> K) (\<lambda>_. True)<\STATESEP>apply (clarsimp simp: ext stateAssert_def doMachineOp_def o_def gets_def
+                             get_def bind_def return_def submonad_fn_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>interpretation submonad_doMachineOp:
+  submonad ksMachineState "(ksMachineState_update \<circ> K)" \<top> doMachineOp<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad ksMachineState (ksMachineState_update \<circ> K) (\<lambda>_. True) doMachineOp<\STATESEP>by (rule submonad_doMachineOp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_machine_op:
+  assumes P: "corres_underlying Id False True r \<top> \<top> x x'"
+  shows      "corres r \<top> \<top> (do_machine_op x) (doMachineOp x')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres r (\<lambda>_. True) (\<lambda>_. True) (do_machine_op x) (doMachineOp x')<\STATESEP>apply (rule corres_submonad [OF submonad_do_machine_op submonad_doMachineOp _ _ P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>s s'. (s, s') \<in> state_relation \<and> True \<and> True \<longrightarrow> (machine_state s, ksMachineState s') \<in> Id
+ 2. \<forall>s s' ss ss'. (s, s') \<in> state_relation \<and> (ss, ss') \<in> Id \<longrightarrow> ((machine_state_update \<circ> K) ss s, (ksMachineState_update \<circ> K) ss' s') \<in> state_relation<\STATESEP>apply (simp_all add: state_relation_def swp_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas corresK_machine_op =
+  corres_machine_op[atomized, THEN corresK_lift_rule, rule_format, corresK]<\STATESEP>0<\TRANSEP><\STATESEP>lemma doMachineOp_mapM:
+  assumes "\<And>x. empty_fail (m x)"
+  shows "doMachineOp (mapM m l) = mapM (doMachineOp \<circ> m) l"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. doMachineOp (mapM m l) = mapM (doMachineOp \<circ> m) l<\STATESEP>apply (rule submonad_mapM [OF submonad_doMachineOp submonad_doMachineOp,
+                                simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail (m x)<\STATESEP>apply (rule assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma doMachineOp_mapM_x:
+  assumes "\<And>x. empty_fail (m x)"
+  shows "doMachineOp (mapM_x m l) = mapM_x (doMachineOp \<circ> m) l"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. doMachineOp (mapM_x m l) = mapM_x (doMachineOp \<circ> m) l<\STATESEP>apply (rule submonad_mapM_x [OF submonad_doMachineOp submonad_doMachineOp,
+                                simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail (m x)<\STATESEP>apply (rule assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "asUser_fetch \<equiv> \<lambda>t s. case (ksPSpace s t) of
+      Some (KOTCB tcb) \<Rightarrow> (atcbContextGet o tcbArch) tcb
+    | None \<Rightarrow> undefined"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "asUser_replace \<equiv> \<lambda>t uc s.
+      let obj = case (ksPSpace s t) of
+                   Some (KOTCB tcb) \<Rightarrow> Some (KOTCB (tcb \<lparr>tcbArch := atcbContextSet uc (tcbArch tcb)\<rparr>))
+                 | obj \<Rightarrow> obj
+      in s \<lparr> ksPSpace := (ksPSpace s) (t := obj) \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma threadGet_stateAssert_gets_asUser:
+  "threadGet (atcbContextGet o tcbArch) t = do stateAssert (tcb_at' t) []; gets (asUser_fetch t) od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. threadGet (atcbContextGet \<circ> tcbArch) t = do stateAssert (tcb_at' t) [];
+gets (asUser_fetch t)
+od<\STATESEP>apply (rule is_stateAssert_gets [OF _ _ empty_fail_threadGet no_fail_threadGet])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<forall>s. \<lbrace>(=) s\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>_. (=) s\<rbrace>
+ 2. \<lbrace>\<lambda>_. True\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>_. tcb_at' t\<rbrace>
+ 3. \<lbrace>tcb_at' t\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>rv s. asUser_fetch t s = rv\<rbrace><\STATESEP>apply (clarsimp simp: threadGet_def liftM_def, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>_. tcb_at' t\<rbrace>
+ 2. \<lbrace>tcb_at' t\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>rv s. asUser_fetch t s = rv\<rbrace><\STATESEP>apply (simp add: threadGet_def liftM_def, wp getObject_tcb_at')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>tcb_at' t\<rbrace> threadGet (atcbContextGet \<circ> tcbArch) t \<lbrace>\<lambda>rv s. asUser_fetch t s = rv\<rbrace><\STATESEP>apply (simp add: threadGet_def liftM_def, wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q23\<rbrace> getObject t \<lbrace>\<lambda>x a. asUser_fetch t a = atcbContextGet (tcbArch x)\<rbrace>
+ 2. \<And>s. tcb_at' t s \<Longrightarrow> ?Q23 s<\STATESEP>apply (rule hoare_strengthen_post, rule getObject_obj_at')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>q n ko. loadObject t q n ko = loadObject_default t q n ko
+ 2. \<And>v. 1 < 2 ^ objBits v
+ 3. \<And>rv s. obj_at' ((=) rv) t s \<Longrightarrow> asUser_fetch t s = atcbContextGet (tcbArch rv)
+ 4. \<And>s. tcb_at' t s \<Longrightarrow> True<\STATESEP>apply (simp add: objBits_simps')+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. obj_at' ((=) rv) t s \<Longrightarrow> asUser_fetch t s = atcbContextGet (tcbArch rv)
+ 2. \<And>s. tcb_at' t s \<Longrightarrow> True<\STATESEP>apply (clarsimp simp: obj_at'_def asUser_fetch_def projectKOs atcbContextGet_def o_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma threadSet_modify_asUser:
+  "tcb_at' t st \<Longrightarrow>
+   threadSet (\<lambda>tcb. tcb\<lparr> tcbArch := atcbContextSet uc (tcbArch tcb)\<rparr>) t st = modify (asUser_replace t uc) st"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_at' t st \<Longrightarrow> threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch tcb)) tcb) t st = modify (asUser_replace t uc) st<\STATESEP>apply (rule is_modify [OF _ empty_fail_threadSet no_fail_threadSet])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. tcb_at' t st \<Longrightarrow> \<lbrace>(=) st\<rbrace> threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch tcb)) tcb) t \<lbrace>\<lambda>_. (=) (asUser_replace t uc st)\<rbrace>
+ 2. tcb_at' t st \<Longrightarrow> tcb_at' t st<\STATESEP>apply (clarsimp simp: threadSet_def setObject_def split_def
+                         updateObject_default_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. tcb_at' t st \<Longrightarrow> \<lbrace>(=) st\<rbrace> do tcb <- getObject t;
+ps <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 t ps));
+obj' <- do y <- assert (t = fst p);
+_ <- projectKO (snd p);
+y <- alignCheck t (objBits (tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch tcb)) tcb));
+y <- magnitudeCheck t (snd (lookupAround2 t ps)) (objBits (tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch tcb)) tcb));
+return (KOTCB (tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch tcb)) tcb))
+od;
+modify (ksPSpace_update (\<lambda>_. ps(fst p \<mapsto> obj')))
+od \<lbrace>\<lambda>_. (=) (asUser_replace t uc st)\<rbrace>
+ 2. tcb_at' t st \<Longrightarrow> tcb_at' t st<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. tcb_at' t st \<Longrightarrow> \<lbrace>?Q9\<rbrace> getObject t \<lbrace>\<lambda>tcb s. fst (lookupAround2 t (ksPSpace s)) \<noteq> None \<longrightarrow> t = fst (the (fst (lookupAround2 t (ksPSpace s)))) \<longrightarrow> asUser_replace t uc st = s\<lparr>ksPSpace := (ksPSpace s)(fst (the (fst (lookupAround2 t (ksPSpace s)))) \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch tcb)) tcb))\<rparr>\<rbrace>
+ 2. \<And>s. \<lbrakk>tcb_at' t st; st = s\<rbrakk> \<Longrightarrow> ?Q9 s
+ 3. tcb_at' t st \<Longrightarrow> tcb_at' t st<\STATESEP>apply (rule_tac Q="\<lambda>rv. obj_at' ((=) rv) t and ((=) st)" in hoare_post_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>rv s. \<lbrakk>tcb_at' t st; (obj_at' ((=) rv) t and (=) st) s\<rbrakk> \<Longrightarrow> fst (lookupAround2 t (ksPSpace s)) \<noteq> None \<longrightarrow> t = fst (the (fst (lookupAround2 t (ksPSpace s)))) \<longrightarrow> asUser_replace t uc st = s\<lparr>ksPSpace := (ksPSpace s)(fst (the (fst (lookupAround2 t (ksPSpace s)))) \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContextSet uc (tcbArch rv)) rv))\<rparr>
+ 2. tcb_at' t st \<Longrightarrow> \<lbrace>?Q9\<rbrace> getObject t \<lbrace>\<lambda>rv. obj_at' ((=) rv) t and (=) st\<rbrace>
+ 3. \<And>s. \<lbrakk>tcb_at' t st; st = s\<rbrakk> \<Longrightarrow> ?Q9 s
+ 4. tcb_at' t st \<Longrightarrow> tcb_at' t st<\STATESEP>apply (clarsimp simp: asUser_replace_def Let_def obj_at'_def
+                          projectKOs fun_upd_def
+                   split: option.split kernel_object.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. tcb_at' t st \<Longrightarrow> \<lbrace>?Q9\<rbrace> getObject t \<lbrace>\<lambda>rv. obj_at' ((=) rv) t and (=) st\<rbrace>
+ 2. \<And>s. \<lbrakk>tcb_at' t st; st = s\<rbrakk> \<Longrightarrow> ?Q9 s
+ 3. tcb_at' t st \<Longrightarrow> tcb_at' t st<\STATESEP>apply (wp getObject_obj_at' | clarsimp simp: objBits_simps' atcbContextSet_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma atcbContext_get_eq[simp] : "atcbContextGet (atcbContextSet x atcb) = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. atcbContextGet (atcbContextSet x atcb) = x<\STATESEP>by(simp add: atcbContextGet_def atcbContextSet_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma atcbContext_set_eq[simp] : "atcbContextSet (atcbContextGet t) t = t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. atcbContextSet (atcbContextGet t) t = t<\STATESEP>by (cases t, simp add: atcbContextGet_def atcbContextSet_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma atcbContext_set_set[simp] : "atcbContextSet x (atcbContextSet y atcb) = atcbContextSet x atcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. atcbContextSet x (atcbContextSet y atcb) = atcbContextSet x atcb<\STATESEP>by (cases atcb ,simp add: atcbContextSet_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_asUser:
+  "submonad (asUser_fetch t) (asUser_replace t) (tcb_at' t) (asUser t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad (asUser_fetch t) (asUser_replace t) (tcb_at' t) (asUser t)<\STATESEP>apply (unfold_locales)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<forall>x s. tcb_at' t s \<longrightarrow> asUser_fetch t (asUser_replace t x s) = x
+ 2. \<forall>x y s. asUser_replace t x (asUser_replace t y s) = asUser_replace t x s
+ 3. \<forall>s. asUser_replace t (asUser_fetch t s) s = s
+ 4. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 5. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (clarsimp simp: asUser_fetch_def asUser_replace_def
+                            Let_def obj_at'_def projectKOs
+                     split: kernel_object.split option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<forall>x y s. asUser_replace t x (asUser_replace t y s) = asUser_replace t x s
+ 2. \<forall>s. asUser_replace t (asUser_fetch t s) s = s
+ 3. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 4. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (clarsimp simp: asUser_replace_def Let_def
+                    split: kernel_object.split option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y s x6. ksPSpace s t = Some (KOTCB x6) \<Longrightarrow> s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContextSet x (tcbArch x6)) (tcbArch_update (\<lambda>_. atcbContextSet y (tcbArch x6)) x6)))\<rparr> = s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContextSet x (tcbArch x6)) x6))\<rparr>
+ 2. \<forall>s. asUser_replace t (asUser_fetch t s) s = s
+ 3. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 4. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (rename_tac tcb)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x y s tcb. ksPSpace s t = Some (KOTCB tcb) \<Longrightarrow> s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContextSet x (tcbArch tcb)) (tcbArch_update (\<lambda>_. atcbContextSet y (tcbArch tcb)) tcb)))\<rparr> = s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContextSet x (tcbArch tcb)) tcb))\<rparr>
+ 2. \<forall>s. asUser_replace t (asUser_fetch t s) s = s
+ 3. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 4. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (case_tac tcb, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<forall>s. asUser_replace t (asUser_fetch t s) s = s
+ 2. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 3. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (clarsimp simp: asUser_fetch_def asUser_replace_def Let_def
+                          fun_upd_idem
+                   split: kernel_object.splits option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s x6. ksPSpace s t = Some (KOTCB x6) \<Longrightarrow> s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. tcbArch x6) x6))\<rparr> = s
+ 2. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 3. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (rename_tac tcb)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s tcb. ksPSpace s t = Some (KOTCB tcb) \<Longrightarrow> s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. tcbArch tcb) tcb))\<rparr> = s
+ 2. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 3. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (case_tac tcb, simp add: map_upd_triv atcbContextSet_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. tcb_at' t (asUser_replace t x s) = tcb_at' t s
+ 2. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (clarsimp simp: obj_at'_def asUser_replace_def
+                         Let_def projectKOs atcbContextSet_def
+                  split: kernel_object.splits option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x x6. ksPSpace s t = Some (KOTCB x6) \<Longrightarrow> (is_aligned t (objBitsKO (KOTCB (tcbArch_update (\<lambda>_. atcbContext_update (\<lambda>_. x) (tcbArch x6)) x6))) \<and> ps_clear t (objBitsKO (KOTCB (tcbArch_update (\<lambda>_. atcbContext_update (\<lambda>_. x) (tcbArch x6)) x6))) (s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContext_update (\<lambda>_. x) (tcbArch x6)) x6))\<rparr>)) = (is_aligned t (objBitsKO (KOTCB x6)) \<and> ps_clear t (objBitsKO (KOTCB x6)) s)
+ 2. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (rename_tac tcb)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x tcb. ksPSpace s t = Some (KOTCB tcb) \<Longrightarrow> (is_aligned t (objBitsKO (KOTCB (tcbArch_update (\<lambda>_. atcbContext_update (\<lambda>_. x) (tcbArch tcb)) tcb))) \<and> ps_clear t (objBitsKO (KOTCB (tcbArch_update (\<lambda>_. atcbContext_update (\<lambda>_. x) (tcbArch tcb)) tcb))) (s\<lparr>ksPSpace := (ksPSpace s)(t \<mapsto> KOTCB (tcbArch_update (\<lambda>_. atcbContext_update (\<lambda>_. x) (tcbArch tcb)) tcb))\<rparr>)) = (is_aligned t (objBitsKO (KOTCB tcb)) \<and> ps_clear t (objBitsKO (KOTCB tcb)) s)
+ 2. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (case_tac tcb, simp add: objBitsKO_def ps_clear_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. asUser t = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. asUser t x = submonad_fn (asUser_fetch t) (asUser_replace t) (tcb_at' t) x<\STATESEP>apply (clarsimp simp: submonad_fn_def asUser_def bind_assoc split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. do uc <- threadGet (atcbContextGet \<circ> tcbArch) t;
+p <- select_f (x uc);
+y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od = do y <- stateAssert (tcb_at' t) [];
+substate <- gets (asUser_fetch t);
+p <- select_f (x substate);
+y <- modify (asUser_replace t (snd p));
+return (fst p)
+od<\STATESEP>apply (subst threadGet_stateAssert_gets_asUser, simp add: bind_assoc, rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. (do xa <- stateAssert (tcb_at' t) [];
+uc <- gets (asUser_fetch t);
+p <- select_f (x uc);
+y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd p) (tcbArch tcb)) tcb) t;
+return (fst p)
+od) xa = (do y <- stateAssert (tcb_at' t) [];
+substate <- gets (asUser_fetch t);
+p <- select_f (x substate);
+y <- modify (asUser_replace t (snd p));
+return (fst p)
+od) xa<\STATESEP>apply (rule bind_apply_cong [OF refl])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa rv st rva sta rvb stb. \<lbrakk>(rv, st) \<in> fst (stateAssert (tcb_at' t) [] xa); (rva, sta) \<in> fst (gets (asUser_fetch t) st); (rvb, stb) \<in> fst (select_f (x rva) sta)\<rbrakk> \<Longrightarrow> (do y <- threadSet (\<lambda>tcb. tcbArch_update (\<lambda>_. atcbContextSet (snd rvb) (tcbArch tcb)) tcb) t;
+return (fst rvb)
+od) stb = (do y <- modify (asUser_replace t (snd rvb));
+return (fst rvb)
+od) stb<\STATESEP>apply (rule bind_apply_cong [OF threadSet_modify_asUser])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xa rv st rva sta rvb stb. \<lbrakk>(rv, st) \<in> fst (stateAssert (tcb_at' t) [] xa); (rva, sta) \<in> fst (gets (asUser_fetch t) st); (rvb, stb) \<in> fst (select_f (x rva) sta)\<rbrakk> \<Longrightarrow> tcb_at' t stb
+ 2. \<And>x xa rv st rva sta rvb stb rvc stc. \<lbrakk>(rv, st) \<in> fst (stateAssert (tcb_at' t) [] xa); (rva, sta) \<in> fst (gets (asUser_fetch t) st); (rvb, stb) \<in> fst (select_f (x rva) sta); (rvc, stc) \<in> fst (modify (asUser_replace t (snd rvb)) stb)\<rbrakk> \<Longrightarrow> return (fst rvb) stc = return (fst rvb) stc<\STATESEP>apply (clarsimp simp: in_monad stateAssert_def select_f_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa rv st rva sta rvb stb rvc stc. \<lbrakk>(rv, st) \<in> fst (stateAssert (tcb_at' t) [] xa); (rva, sta) \<in> fst (gets (asUser_fetch t) st); (rvb, stb) \<in> fst (select_f (x rva) sta); (rvc, stc) \<in> fst (modify (asUser_replace t (snd rvb)) stb)\<rbrakk> \<Longrightarrow> return (fst rvb) stc = return (fst rvb) stc<\STATESEP>apply (rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>global_interpretation submonad_asUser:
+  submonad "asUser_fetch t" "asUser_replace t" "tcb_at' t" "asUser t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad (asUser_fetch t) (asUser_replace t) (tcb_at' t) (asUser t)<\STATESEP>by (rule submonad_asUser)<\STATESEP>1<\TRANSEP><\STATESEP>lemma doMachineOp_nosch [wp]:
+  "\<lbrace>\<lambda>s. P (ksSchedulerAction s)\<rbrace> doMachineOp m \<lbrace>\<lambda>rv s. P (ksSchedulerAction s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksSchedulerAction s)\<rbrace> doMachineOp m \<lbrace>\<lambda>rv s. P (ksSchedulerAction s)\<rbrace><\STATESEP>apply (simp add: doMachineOp_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (ksSchedulerAction s)\<rbrace> do ms <- gets ksMachineState;
+p <- select_f (m ms);
+y <- modify (ksMachineState_update (\<lambda>_. snd p));
+return (fst p)
+od \<lbrace>\<lambda>rv s. P (ksSchedulerAction s)\<rbrace><\STATESEP>apply (wp select_f_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (ksSchedulerAction s) \<Longrightarrow> \<forall>x\<in>fst (m (ksMachineState s)). P (ksSchedulerAction (s\<lparr>ksMachineState := snd x\<rparr>))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

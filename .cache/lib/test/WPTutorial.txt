@@ -1,0 +1,155 @@
+<\STATESEP>theory WPTutorial
+imports "Refine.Bits_R"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma example_1:
+  "\<lbrace>\<lambda>s. True\<rbrace> return 1 \<lbrace>\<lambda>rv s. rv = 1\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. True\<rbrace> return (1::'b) \<lbrace>\<lambda>rv s. rv = (1::'b)\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. True \<Longrightarrow> (1::'b) = (1::'b)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_2:
+  "\<lbrace>\<lambda>s. s = [(True, False), (False, True)]\<rbrace> do
+     v \<leftarrow> gets length;
+     (x, y) \<leftarrow> gets hd;
+     return x
+   od \<lbrace>\<lambda>rv s. rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. s = [(True, False), (False, True)]\<rbrace> do v <- gets length;
+(x, y) <- gets hd;
+return x
+od \<lbrace>\<lambda>rv s. rv\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>v rv. \<lbrace>?Q'2 v rv\<rbrace> case rv of (x, y) \<Rightarrow> return x \<lbrace>\<lambda>rv s. rv\<rbrace>
+ 2. \<And>v. \<lbrace>?Q'1 v\<rbrace> gets hd \<lbrace>?Q'2 v\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> gets length \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. s = [(True, False), (False, True)] \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>v rv. \<lbrace>?Q'2 v rv\<rbrace> return (fst rv) \<lbrace>\<lambda>rv s. rv\<rbrace>
+ 2. \<And>v. \<lbrace>?Q'1 v\<rbrace> gets hd \<lbrace>?Q'2 v\<rbrace>
+ 3. \<lbrace>?Q\<rbrace> gets length \<lbrace>?Q'1\<rbrace>
+ 4. \<And>s. s = [(True, False), (False, True)] \<Longrightarrow> ?Q s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. s = [(True, False), (False, True)] \<Longrightarrow> fst (hd s)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_3:
+  "\<lbrace>\<lambda>s. s = [False, True]\<rbrace> do
+     x \<leftarrow> gets hd;
+     possible_state_change_that_isnt_defined;
+     y \<leftarrow> gets (if x then \<bottom> else \<top>);
+     return $ y \<and> \<not> x
+   od \<lbrace>\<lambda>rv s. rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. s = [False, True]\<rbrace> do x <- gets hd;
+possible_state_change_that_isnt_defined;
+y <- gets (if x then \<lambda>_. False else (\<lambda>_. True));
+return $ y \<and> \<not> x
+od \<lbrace>\<lambda>rv s. rv\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrace>?Q'1 x\<rbrace> possible_state_change_that_isnt_defined \<lbrace>\<lambda>rv s. (if x then \<lambda>_. False else (\<lambda>_. True)) s \<and> \<not> x\<rbrace>
+ 2. \<lbrace>?Q\<rbrace> gets hd \<lbrace>?Q'1\<rbrace>
+ 3. \<And>s. s = [False, True] \<Longrightarrow> ?Q s<\STATESEP>apply (simp add: if_apply_def2 split del: if_split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrace>?Q'1 x\<rbrace> possible_state_change_that_isnt_defined \<lbrace>\<lambda>rv s. \<not> x\<rbrace>
+ 2. \<lbrace>?Q\<rbrace> gets hd \<lbrace>?Q'1\<rbrace>
+ 3. \<And>s. s = [False, True] \<Longrightarrow> ?Q s<\STATESEP>apply wp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. s = [False, True] \<Longrightarrow> \<not> hd s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_4:
+  "\<lbrace>\<lambda>s. cdt s (42, [True, False]) = None\<rbrace>
+      set_endpoint ptr Structures_A.IdleEP
+   \<lbrace>\<lambda>rv s. cdt s (42, [True, False]) = None\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. cdt s (0x2A, [True, False]) = None\<rbrace> set_endpoint ptr Structures_A.endpoint.IdleEP \<lbrace>\<lambda>rv s. cdt s (0x2A, [True, False]) = None\<rbrace><\STATESEP>apply (simp add: set_simple_ko_def set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. cdt s (0x2A, [True, False]) = None\<rbrace> do obj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh ptr = Some y);
+return (the (kh ptr))
+od;
+y <- assert (a_type obj = AEndpoint \<or> a_type obj = ANTFN);
+y <- assert (\<exists>y. Endpoint y = obj);
+kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh ptr = Some y);
+return (the (kh ptr))
+od;
+y <- assert (a_type kobj = AEndpoint);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(ptr \<mapsto> Endpoint Structures_A.endpoint.IdleEP)\<rparr>)
+od \<lbrace>\<lambda>rv s. cdt s (0x2A, [True, False]) = None\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. cdt s (0x2A, [True, False]) = None \<Longrightarrow> (\<exists>y. kheap s ptr = Some y) \<longrightarrow> a_type (the (kheap s ptr)) = AEndpoint \<or> a_type (the (kheap s ptr)) = ANTFN \<longrightarrow> (\<exists>y. Endpoint y = the (kheap s ptr)) \<longrightarrow> (\<exists>y. kheap s ptr = Some y) \<longrightarrow> a_type (the (kheap s ptr)) = AEndpoint \<longrightarrow> cdt (s\<lparr>kheap := (kheap s)(ptr \<mapsto> Endpoint Structures_A.endpoint.IdleEP)\<rparr>) (0x2A, [True, False]) = None<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_5:
+  "\<lbrace>\<lambda>s. P (cdt s)\<rbrace>
+      set_endpoint ptr Structures_A.IdleEP
+   \<lbrace>\<lambda>rv s. P (cdt s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cdt s)\<rbrace> set_endpoint ptr Structures_A.endpoint.IdleEP \<lbrace>\<lambda>rv s. P (cdt s)\<rbrace><\STATESEP>apply (simp add: set_simple_ko_def set_object_def get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cdt s)\<rbrace> do obj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh ptr = Some y);
+return (the (kh ptr))
+od;
+y <- assert (a_type obj = AEndpoint \<or> a_type obj = ANTFN);
+y <- assert (\<exists>y. Endpoint y = obj);
+kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh ptr = Some y);
+return (the (kh ptr))
+od;
+y <- assert (a_type kobj = AEndpoint);
+s <- get;
+put (s\<lparr>kheap := (kheap s)(ptr \<mapsto> Endpoint Structures_A.endpoint.IdleEP)\<rparr>)
+od \<lbrace>\<lambda>rv s. P (cdt s)\<rbrace><\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (cdt s) \<Longrightarrow> (\<exists>y. kheap s ptr = Some y) \<longrightarrow> a_type (the (kheap s ptr)) = AEndpoint \<or> a_type (the (kheap s ptr)) = ANTFN \<longrightarrow> (\<exists>y. Endpoint y = the (kheap s ptr)) \<longrightarrow> (\<exists>y. kheap s ptr = Some y) \<longrightarrow> a_type (the (kheap s ptr)) = AEndpoint \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(ptr \<mapsto> Endpoint Structures_A.endpoint.IdleEP)\<rparr>))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_6:
+  "\<lbrace>\<lambda>s. P (cdt s)\<rbrace>
+     set_cap cap ptr
+   \<lbrace>\<lambda>rv s. P (cdt s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cdt s)\<rbrace> set_cap cap ptr \<lbrace>\<lambda>rv s. P (cdt s)\<rbrace><\STATESEP>apply (simp add: set_cap_def split_def set_object_def
+                   get_object_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (cdt s)\<rbrace> do obj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh (fst ptr) = Some y);
+return (the (kh (fst ptr)))
+od;
+obj' <- case obj of CNode sz cn \<Rightarrow> if snd ptr \<in> dom cn \<and> well_formed_cnode_n sz cn then return $ CNode sz $ cn(snd ptr \<mapsto> cap) else fail | TCB tcb \<Rightarrow> if snd ptr = tcb_cnode_index 0 then return $ TCB $ tcb\<lparr>tcb_ctable := cap\<rparr> else if snd ptr = tcb_cnode_index 1 then return $ TCB $ tcb\<lparr>tcb_vtable := cap\<rparr> else if snd ptr = tcb_cnode_index 2 then return $ TCB $ tcb\<lparr>tcb_reply := cap\<rparr> else if snd ptr = tcb_cnode_index 3 then return $ TCB $ tcb\<lparr>tcb_caller := cap\<rparr> else if snd ptr = tcb_cnode_index 4 then return $ TCB $ tcb\<lparr>tcb_ipcframe := cap\<rparr> else fail | _ \<Rightarrow> fail;
+kobj <- do kh <- gets kheap;
+y <- assert (\<exists>y. kh (fst ptr) = Some y);
+return (the (kh (fst ptr)))
+od;
+y <- assert (a_type kobj = a_type obj');
+s <- get;
+put (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> obj')\<rparr>)
+od \<lbrace>\<lambda>rv s. P (cdt s)\<rbrace><\STATESEP>apply (wp | wpc)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P (cdt s) \<Longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> (\<forall>x xa. the (kheap s (fst ptr)) = CNode x xa \<longrightarrow> (snd ptr \<in> dom xa \<and> well_formed_cnode_n x xa \<longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> a_type (the (kheap s (fst ptr))) = a_type (CNode x $ xa(snd ptr \<mapsto> cap)) \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> CNode x $ xa(snd ptr \<mapsto> cap))\<rparr>))) \<and> (\<not> (snd ptr \<in> dom xa \<and> well_formed_cnode_n x xa) \<longrightarrow> True)) \<and> (\<forall>x. the (kheap s (fst ptr)) = TCB x \<longrightarrow> (snd ptr = tcb_cnode_index 0 \<longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> a_type (the (kheap s (fst ptr))) = a_type (TCB $ x\<lparr>tcb_ctable := cap\<rparr>) \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> TCB $ x\<lparr>tcb_ctable := cap\<rparr>)\<rparr>))) \<and> (snd ptr \<noteq> tcb_cnode_index 0 \<longrightarrow> (snd ptr = tcb_cnode_index 1 \<longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> a_type (the (kheap s (fst ptr))) = a_type (TCB $ x\<lparr>tcb_vtable := cap\<rparr>) \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> TCB $ x\<lparr>tcb_vtable := cap\<rparr>)\<rparr>))) \<and> (snd ptr \<noteq> tcb_cnode_index 1 \<longrightarrow> (snd ptr = tcb_cnode_index 2 \<longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> a_type (the (kheap s (fst ptr))) = a_type (TCB $ x\<lparr>tcb_reply := cap\<rparr>) \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> TCB $ x\<lparr>tcb_reply := cap\<rparr>)\<rparr>))) \<and> (snd ptr \<noteq> tcb_cnode_index 2 \<longrightarrow> (snd ptr = tcb_cnode_index 3 \<longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> a_type (the (kheap s (fst ptr))) = a_type (TCB $ x\<lparr>tcb_caller := cap\<rparr>) \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> TCB $ x\<lparr>tcb_caller := cap\<rparr>)\<rparr>))) \<and> (snd ptr \<noteq> tcb_cnode_index 3 \<longrightarrow> (snd ptr = tcb_cnode_index 4 \<longrightarrow> (\<exists>y. kheap s (fst ptr) = Some y) \<longrightarrow> a_type (the (kheap s (fst ptr))) = a_type (TCB $ x\<lparr>tcb_ipcframe := cap\<rparr>) \<longrightarrow> P (cdt (s\<lparr>kheap := (kheap s)(fst ptr \<mapsto> TCB $ x\<lparr>tcb_ipcframe := cap\<rparr>)\<rparr>))) \<and> (snd ptr \<noteq> tcb_cnode_index 4 \<longrightarrow> True)))))) \<and> (\<forall>x. the (kheap s (fst ptr)) = Endpoint x \<longrightarrow> True) \<and> (\<forall>x. the (kheap s (fst ptr)) = Notification x \<longrightarrow> True) \<and> (\<forall>x. the (kheap s (fst ptr)) = ArchObj x \<longrightarrow> True)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma example_7:
+  "\<lbrace>\<lambda>s. cdt s ptr' = None\<rbrace> do
+     set_cap cap.NullCap ptr;
+     v \<leftarrow> gets (\<lambda>s. cdt s ptr);
+     assert (v = None);
+     set_cap cap.NullCap ptr';
+     set_cap cap.IRQControlCap ptr';
+     return True
+   od \<lbrace>\<lambda>rv s. cdt s ptr = None \<and> cdt s ptr' = None\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. cdt s ptr' = None\<rbrace> do set_cap cap.NullCap ptr;
+v <- gets (\<lambda>s. cdt s ptr);
+assert (v = None);
+set_cap cap.NullCap ptr';
+set_cap cap.IRQControlCap ptr';
+return True
+od \<lbrace>\<lambda>rv s. cdt s ptr = None \<and> cdt s ptr' = None\<rbrace><\STATESEP>apply (wp example_6)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. cdt s ptr' = None \<Longrightarrow> cdt s ptr = None \<longrightarrow> cdt s ptr = None \<and> cdt s ptr' = None<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>context
+notes if_cong[cong]
+begin<\STATESEP>0<\TRANSEP><\STATESEP>crunch machine_state_preserved:
+  setup_reply_master, set_simple_ko
+    "\<lambda>s. P (machine_state s)"
+  (simp: split_def wp: crunch_wps)<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

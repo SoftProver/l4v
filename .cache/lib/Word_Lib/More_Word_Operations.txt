@@ -1,0 +1,2955 @@
+<\STATESEP>section \<open>Misc word operations\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory More_Word_Operations
+  imports
+    "HOL-Library.Word"
+    Aligned
+    Reversed_Bit_Lists
+    More_Misc
+    Signed_Words
+    Word_Lemmas
+    Many_More
+    Word_EqI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context
+  includes bit_operations_syntax
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ptr_add :: "'a :: len word \<Rightarrow> nat \<Rightarrow> 'a word" where
+  "ptr_add ptr n \<equiv> ptr + of_nat n"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  alignUp :: "'a::len word \<Rightarrow> nat \<Rightarrow> 'a word" where
+ "alignUp x n \<equiv> x + 2 ^ n - 1 AND NOT (2 ^ n - 1)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma alignUp_unfold:
+  \<open>alignUp w n = (w + mask n) AND NOT (mask n)\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp w n = w + mask n AND NOT (mask n)<\STATESEP>by (simp add: alignUp_def mask_eq_exp_minus_1 add_mask_fold)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation mask_range :: "'a::len word \<Rightarrow> nat \<Rightarrow> 'a word set" where
+  "mask_range p n \<equiv> {p .. p + mask n}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  w2byte :: "'a :: len word \<Rightarrow> 8 word" where
+  "w2byte \<equiv> ucast"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  word_clz :: "'a::len word \<Rightarrow> nat"
+where
+  "word_clz w \<equiv> length (takeWhile Not (to_bl w))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  word_ctz :: "'a::len word \<Rightarrow> nat"
+where
+  "word_ctz w \<equiv> length (takeWhile Not (rev (to_bl w)))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma word_ctz_unfold:
+  \<open>word_ctz w = length (takeWhile (Not \<circ> bit w) [0..<LENGTH('a)])\<close> for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_ctz w = length (takeWhile (Not \<circ> bit w) [0..<LENGTH('a)])<\STATESEP>by (simp add: word_ctz_def rev_to_bl_eq takeWhile_map)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_ctz_unfold':
+  \<open>word_ctz w = Min (insert LENGTH('a) {n. bit w n})\<close> for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>proof (cases \<open>\<exists>n. bit w n\<close>)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<exists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})
+ 2. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>case True<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<exists>n. bit w n
+
+goal (2 subgoals):
+ 1. \<exists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})
+ 2. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<exists>n. bit w n<\STATESEP>obtain n where \<open>bit w n\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<exists>n. bit w n
+
+goal (1 subgoal):
+ 1. (\<And>n. bit w n \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>..<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit w n
+
+goal (2 subgoals):
+ 1. \<exists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})
+ 2. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>from \<open>bit w n\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit w n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit w n
+
+goal (1 subgoal):
+ 1. word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>apply (simp add: word_ctz_unfold)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w n \<Longrightarrow> length (takeWhile (Not \<circ> bit w) [0..<LENGTH('a)]) = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>apply (subst Min_eq_length_takeWhile [symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>m. \<lbrakk>bit w n; bit w m\<rbrakk> \<Longrightarrow> m < LENGTH('a)
+ 2. bit w n \<Longrightarrow> Ex (bit w)
+ 3. bit w n \<Longrightarrow> Min (Collect (bit w)) = Min (insert LENGTH('a) (Collect (bit w)))<\STATESEP>apply (auto simp add: bit_imp_le_length)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w n \<Longrightarrow> Min (Collect (bit w)) = Min (insert LENGTH('a) (Collect (bit w)))<\STATESEP>apply (subst Min_insert)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. bit w n \<Longrightarrow> finite (Collect (bit w))
+ 2. bit w n \<Longrightarrow> Collect (bit w) \<noteq> {}
+ 3. bit w n \<Longrightarrow> Min (Collect (bit w)) = min LENGTH('a) (Min (Collect (bit w)))<\STATESEP>apply auto<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w n \<Longrightarrow> Min (Collect (bit w)) = min LENGTH('a) (Min (Collect (bit w)))<\STATESEP>apply (subst min.absorb2)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. bit w n \<Longrightarrow> Min (Collect (bit w)) \<le> LENGTH('a)
+ 2. bit w n \<Longrightarrow> Min (Collect (bit w)) = Min (Collect (bit w))<\STATESEP>apply (subst Min_le_iff)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. bit w n \<Longrightarrow> finite (Collect (bit w))
+ 2. bit w n \<Longrightarrow> Collect (bit w) \<noteq> {}
+ 3. bit w n \<Longrightarrow> \<exists>a\<in>Collect (bit w). a \<le> LENGTH('a)
+ 4. bit w n \<Longrightarrow> Min (Collect (bit w)) = Min (Collect (bit w))<\STATESEP>apply auto<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w n \<Longrightarrow> \<exists>a. bit w a \<and> a \<le> LENGTH('a)<\STATESEP>apply (meson bit_imp_le_length order_less_le)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_ctz w = Min (insert LENGTH('a) {n. bit w n})
+
+goal (1 subgoal):
+ 1. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>case False<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<nexists>n. bit w n
+
+goal (1 subgoal):
+ 1. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<nexists>n. bit w n<\STATESEP>have \<open>bit w = bot\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<nexists>n. bit w n
+
+goal (1 subgoal):
+ 1. bit w = bot<\STATESEP>by auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit w = bot
+
+goal (1 subgoal):
+ 1. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit w = bot<\STATESEP>have \<open>word_ctz w = LENGTH('a)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit w = bot
+
+goal (1 subgoal):
+ 1. word_ctz w = LENGTH('a)<\STATESEP>by (simp add: word_ctz_def rev_to_bl_eq bot_fun_def map_replicate_const)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_ctz w = LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<nexists>n. bit w n \<Longrightarrow> word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>with \<open>bit w = bot\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit w = bot
+word_ctz w = LENGTH('a)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit w = bot
+word_ctz w = LENGTH('a)
+
+goal (1 subgoal):
+ 1. word_ctz w = Min (insert LENGTH('a) {n. bit w n})<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_ctz w = Min (insert LENGTH('a) {n. bit w n})
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_ctz_le:
+  "word_ctz (w :: ('a::len word)) \<le> LENGTH('a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_ctz w \<le> LENGTH('a)<\STATESEP>apply (clarsimp simp: word_ctz_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (takeWhile Not (rev (to_bl w))) \<le> LENGTH('a)<\STATESEP>using length_takeWhile_le<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+length (takeWhile ?P ?xs) \<le> length ?xs
+
+goal (1 subgoal):
+ 1. length (takeWhile Not (rev (to_bl w))) \<le> LENGTH('a)<\STATESEP>apply (rule order_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (rev (to_bl w)) \<le> LENGTH('a)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_ctz_less:
+  "w \<noteq> 0 \<Longrightarrow> word_ctz (w :: ('a::len word)) < LENGTH('a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_ctz w < LENGTH('a)<\STATESEP>apply (clarsimp simp: word_ctz_def eq_zero_set_bl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. True \<in> set (to_bl w) \<Longrightarrow> length (takeWhile Not (rev (to_bl w))) < LENGTH('a)<\STATESEP>using length_takeWhile_less<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<exists>x\<in>set ?xs. \<not> ?P x \<Longrightarrow> length (takeWhile ?P ?xs) < length ?xs
+
+goal (1 subgoal):
+ 1. True \<in> set (to_bl w) \<Longrightarrow> length (takeWhile Not (rev (to_bl w))) < LENGTH('a)<\STATESEP>apply (rule less_le_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. True \<in> set (to_bl w) \<Longrightarrow> \<exists>x\<in>set (rev (to_bl w)). \<not> \<not> x
+ 2. True \<in> set (to_bl w) \<Longrightarrow> length (rev (to_bl w)) \<le> LENGTH('a)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma take_bit_word_ctz_eq [simp]:
+  \<open>take_bit LENGTH('a) (word_ctz w) = word_ctz w\<close>
+  for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. take_bit LENGTH('a) (word_ctz w) = word_ctz w<\STATESEP>apply (simp add: take_bit_nat_eq_self_iff word_ctz_def to_bl_unfold)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (takeWhile Not (map (bit w) [0..<LENGTH('a)])) < 2 ^ LENGTH('a)<\STATESEP>using length_takeWhile_le<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+length (takeWhile ?P ?xs) \<le> length ?xs
+
+goal (1 subgoal):
+ 1. length (takeWhile Not (map (bit w) [0..<LENGTH('a)])) < 2 ^ LENGTH('a)<\STATESEP>apply (rule le_less_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (map (bit w) [0..<LENGTH('a)]) < 2 ^ LENGTH('a)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_ctz_not_minus_1:
+  \<open>word_of_nat (word_ctz (w :: 'a :: len word)) \<noteq> (- 1 :: 'a::len word)\<close> if \<open>1 < LENGTH('a)\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>note word_ctz_le<\STATESEP>2<\TRANSEP>proof (state)
+this:
+word_ctz ?w \<le> LENGTH(?'a)
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+word_ctz ?w \<le> LENGTH(?'a)
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>from that<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+1 < LENGTH('a)<\STATESEP>have \<open>LENGTH('a) < mask LENGTH('a)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+1 < LENGTH('a)
+
+goal (1 subgoal):
+ 1. LENGTH('a) < mask LENGTH('a)<\STATESEP>by (simp add: less_mask)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+LENGTH('a) < mask LENGTH('a)
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+word_ctz ?w1 < mask LENGTH('a)<\STATESEP>have \<open>word_ctz w < mask LENGTH('a)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+word_ctz ?w1 < mask LENGTH('a)
+
+goal (1 subgoal):
+ 1. word_ctz w < mask LENGTH('a)<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_ctz w < mask LENGTH('a)
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+word_ctz w < mask LENGTH('a)<\STATESEP>have \<open>word_of_nat (word_ctz w) < (word_of_nat (mask LENGTH('a)) :: 'a word)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+word_ctz w < mask LENGTH('a)
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) < word_of_nat (mask LENGTH('a))<\STATESEP>by (simp add: of_nat_word_less_iff)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_of_nat (word_ctz w) < word_of_nat (mask LENGTH('a))
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+word_of_nat (word_ctz w) < word_of_nat (mask LENGTH('a))
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>have \<open>\<dots> = - 1\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_of_nat (mask LENGTH('a)) = - 1<\STATESEP>by (rule bit_word_eqI) (simp add: bit_simps)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_of_nat (mask LENGTH('a)) = - 1
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+word_of_nat (word_ctz w) < - 1<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+word_of_nat (word_ctz w) < - 1
+
+goal (1 subgoal):
+ 1. word_of_nat (word_ctz w) \<noteq> - 1<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_of_nat (word_ctz w) \<noteq> - 1
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma unat_of_nat_ctz_mw:
+  "unat (of_nat (word_ctz (w :: 'a :: len word)) :: 'a :: len word) = word_ctz w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unat (word_of_nat (word_ctz w)) = word_ctz w<\STATESEP>by (simp add: unsigned_of_nat)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unat_of_nat_ctz_smw:
+  "unat (of_nat (word_ctz (w :: 'a :: len word)) :: 'a :: len signed word) = word_ctz w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unat (word_of_nat (word_ctz w)) = word_ctz w<\STATESEP>by (simp add: unsigned_of_nat)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  word_log2 :: "'a::len word \<Rightarrow> nat"
+where
+  "word_log2 (w::'a::len word) \<equiv> size w - 1 - word_clz w"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  pop_count :: "('a::len) word \<Rightarrow> nat"
+where
+  "pop_count w \<equiv> length (filter id (to_bl w))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sign_extend :: "nat \<Rightarrow> 'a::len word \<Rightarrow> 'a word"
+where
+  "sign_extend n w \<equiv> if bit w n then w OR NOT (mask n) else w AND mask n"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sign_extend_eq_signed_take_bit:
+  \<open>sign_extend = signed_take_bit\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extend = signed_take_bit<\STATESEP>proof (rule ext)+<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x xa. sign_extend x xa = signed_take_bit x xa<\STATESEP>fix n and w :: \<open>'a::len word\<close><\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>x xa. sign_extend x xa = signed_take_bit x xa<\STATESEP>show \<open>sign_extend n w = signed_take_bit n w\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extend n w = signed_take_bit n w<\STATESEP>proof (rule bit_word_eqI)<\STATESEP>3<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>na. na < LENGTH('a) \<Longrightarrow> bit (sign_extend n w) na = bit (signed_take_bit n w) na<\STATESEP>fix q<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>na. na < LENGTH('a) \<Longrightarrow> bit (sign_extend n w) na = bit (signed_take_bit n w) na<\STATESEP>assume \<open>q < LENGTH('a)\<close><\STATESEP>4<\TRANSEP>proof (state)
+this:
+q < LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<And>na. na < LENGTH('a) \<Longrightarrow> bit (sign_extend n w) na = bit (signed_take_bit n w) na<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+q < LENGTH('a)<\STATESEP>show \<open>bit (sign_extend n w) q \<longleftrightarrow> bit (signed_take_bit n w) q\<close><\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+q < LENGTH('a)
+
+goal (1 subgoal):
+ 1. bit (sign_extend n w) q = bit (signed_take_bit n w) q<\STATESEP>by (auto simp add: bit_signed_take_bit_iff
+        sign_extend_def bit_and_iff bit_or_iff bit_not_iff bit_mask_iff not_less
+        exp_eq_0_imp_not_bit not_le min_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+bit (sign_extend n w) q = bit (signed_take_bit n w) q
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+sign_extend n w = signed_take_bit n w
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>definition
+  sign_extended :: "nat \<Rightarrow> 'a::len word \<Rightarrow> bool"
+where
+  "sign_extended n w \<equiv> \<forall>i. n < i \<longrightarrow> i < size w \<longrightarrow> bit w i = bit w n"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ptr_add_0 [simp]:
+  "ptr_add ref 0 = ref "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ptr_add ref 0 = ref<\STATESEP>unfolding ptr_add_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ref + word_of_nat 0 = ref<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma pop_count_0[simp]:
+  "pop_count 0 = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pop_count 0 = 0<\STATESEP>by (clarsimp simp:pop_count_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pop_count_1[simp]:
+  "pop_count 1 = 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pop_count 1 = 1<\STATESEP>by (clarsimp simp:pop_count_def to_bl_1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pop_count_0_imp_0:
+  "(pop_count w = 0) = (w = 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (pop_count w = 0) = (w = 0)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. pop_count w = 0 \<Longrightarrow> w = 0
+ 2. w = 0 \<Longrightarrow> pop_count w = 0<\STATESEP>apply (clarsimp simp:pop_count_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. filter id (to_bl w) = [] \<Longrightarrow> w = 0
+ 2. w = 0 \<Longrightarrow> pop_count w = 0<\STATESEP>apply (subst (asm) filter_empty_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>x\<in>set (to_bl w). \<not> id x \<Longrightarrow> w = 0
+ 2. w = 0 \<Longrightarrow> pop_count w = 0<\STATESEP>apply (clarsimp simp:eq_zero_set_bl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<forall>x\<in>set (to_bl w). \<not> x; True \<in> set (to_bl w)\<rbrakk> \<Longrightarrow> False
+ 2. w = 0 \<Longrightarrow> pop_count w = 0<\STATESEP>apply fast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w = 0 \<Longrightarrow> pop_count w = 0<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_log2_zero_eq [simp]:
+  \<open>word_log2 0 = 0\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_log2 0 = 0<\STATESEP>by (simp add: word_log2_def word_clz_def word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_log2_unfold:
+  \<open>word_log2 w = (if w = 0 then 0 else Max {n. bit w n})\<close>
+  for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>proof (cases \<open>w = 0\<close>)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. w = 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})
+ 2. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>case True<\STATESEP>2<\TRANSEP>proof (state)
+this:
+w = 0
+
+goal (2 subgoals):
+ 1. w = 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})
+ 2. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w = 0<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w = 0
+
+goal (1 subgoal):
+ 1. word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_log2 w = (if w = 0 then 0 else Max {n. bit w n})
+
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>case False<\STATESEP>2<\TRANSEP>proof (state)
+this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0<\STATESEP>obtain r where \<open>bit w r\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. (\<And>r. bit w r \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (auto simp add: bit_eq_iff)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit w r
+
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit w r<\STATESEP>have \<open>Max {m. bit w m} = LENGTH('a) - Suc (length
+    (takeWhile (Not \<circ> bit w) (rev [0..<LENGTH('a)])))\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit w r
+
+goal (1 subgoal):
+ 1. Max {m. bit w m} = LENGTH('a) - Suc (length (takeWhile (Not \<circ> bit w) (rev [0..<LENGTH('a)])))<\STATESEP>by (subst Max_eq_length_takeWhile [of _ \<open>LENGTH('a)\<close>])
+      (auto simp add: bit_imp_le_length)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Max {m. bit w m} = LENGTH('a) - Suc (length (takeWhile (Not \<circ> bit w) (rev [0..<LENGTH('a)])))
+
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+Max {m. bit w m} = LENGTH('a) - Suc (length (takeWhile (Not \<circ> bit w) (rev [0..<LENGTH('a)])))<\STATESEP>have \<open>word_log2 w = Max {x. bit w x}\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+Max {m. bit w m} = LENGTH('a) - Suc (length (takeWhile (Not \<circ> bit w) (rev [0..<LENGTH('a)])))
+
+goal (1 subgoal):
+ 1. word_log2 w = Max {x. bit w x}<\STATESEP>by (simp add: word_log2_def word_clz_def word_size to_bl_unfold rev_map takeWhile_map)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_log2 w = Max {x. bit w x}
+
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>with \<open>w \<noteq> 0\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0
+word_log2 w = Max {x. bit w x}<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+word_log2 w = Max {x. bit w x}
+
+goal (1 subgoal):
+ 1. word_log2 w = (if w = 0 then 0 else Max {n. bit w n})<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_log2 w = (if w = 0 then 0 else Max {n. bit w n})
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_log2_eqI:
+  \<open>word_log2 w = n\<close>
+  if \<open>w \<noteq> 0\<close> \<open>bit w n\<close> \<open>\<And>m. bit w m \<Longrightarrow> m \<le> n\<close>
+  for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_log2 w = n<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. word_log2 w = n<\STATESEP>from \<open>w \<noteq> 0\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0<\STATESEP>have \<open>word_log2 w = Max {n. bit w n}\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. word_log2 w = Max {n. bit w n}<\STATESEP>by (simp add: word_log2_unfold)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_log2 w = Max {n. bit w n}
+
+goal (1 subgoal):
+ 1. word_log2 w = n<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+word_log2 w = Max {n. bit w n}
+
+goal (1 subgoal):
+ 1. word_log2 w = n<\STATESEP>have \<open>Max {n. bit w n} = n\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Max {n. bit w n} = n<\STATESEP>using that<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+bit w n
+bit w ?m \<Longrightarrow> ?m \<le> n
+
+goal (1 subgoal):
+ 1. Max {n. bit w n} = n<\STATESEP>by (auto intro: Max_eqI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Max {n. bit w n} = n
+
+goal (1 subgoal):
+ 1. word_log2 w = n<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+word_log2 w = n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+word_log2 w = n
+
+goal (1 subgoal):
+ 1. word_log2 w = n<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_log2 w = n
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bit_word_log2:
+  \<open>bit w (word_log2 w)\<close> if \<open>w \<noteq> 0\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>from \<open>w \<noteq> 0\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0<\STATESEP>have \<open>\<exists>r. bit w r\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. \<exists>r. bit w r<\STATESEP>by (auto intro: bit_eqI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<exists>r. bit w r
+
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<exists>r. bit w r<\STATESEP>obtain r where \<open>bit w r\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<exists>r. bit w r
+
+goal (1 subgoal):
+ 1. (\<And>r. bit w r \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>..<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit w r
+
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>from \<open>w \<noteq> 0\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0<\STATESEP>have \<open>word_log2 w = Max {n. bit w n}\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. word_log2 w = Max {n. bit w n}<\STATESEP>by (simp add: word_log2_unfold)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_log2 w = Max {n. bit w n}
+
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+word_log2 w = Max {n. bit w n}
+
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>have \<open>Max {n. bit w n} \<in> {n. bit w n}\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Max {n. bit w n} \<in> {n. bit w n}<\STATESEP>using \<open>bit w r\<close><\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+bit w r
+
+goal (1 subgoal):
+ 1. Max {n. bit w n} \<in> {n. bit w n}<\STATESEP>by (subst Max_in) auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Max {n. bit w n} \<in> {n. bit w n}
+
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+word_log2 w \<in> {n. bit w n}<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+word_log2 w \<in> {n. bit w n}
+
+goal (1 subgoal):
+ 1. bit w (word_log2 w)<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit w (word_log2 w)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_log2_maximum:
+  \<open>n \<le> word_log2 w\<close> if \<open>bit w n\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>have \<open>n \<le> Max {n. bit w n}\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n \<le> Max {n. bit w n}<\STATESEP>using that<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+bit w n
+
+goal (1 subgoal):
+ 1. n \<le> Max {n. bit w n}<\STATESEP>by (auto intro: Max_ge)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+n \<le> Max {n. bit w n}
+
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+n \<le> Max {n. bit w n}
+
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>from that<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit w n<\STATESEP>have \<open>w \<noteq> 0\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit w n
+
+goal (1 subgoal):
+ 1. w \<noteq> 0<\STATESEP>by force<\STATESEP>3<\TRANSEP>proof (state)
+this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0<\STATESEP>have \<open>Max {n. bit w n} = word_log2 w\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. Max {n. bit w n} = word_log2 w<\STATESEP>by (simp add: word_log2_unfold)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+Max {n. bit w n} = word_log2 w
+
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+n \<le> word_log2 w<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+n \<le> word_log2 w
+
+goal (1 subgoal):
+ 1. n \<le> word_log2 w<\STATESEP>.<\STATESEP>3<\TRANSEP>proof (state)
+this:
+n \<le> word_log2 w
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_log2_nth_same:
+  "w \<noteq> 0 \<Longrightarrow> bit w (word_log2 w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> bit w (word_log2 w)<\STATESEP>by (drule bit_word_log2) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_log2_nth_not_set:
+  "\<lbrakk> word_log2 w < i ; i < size w \<rbrakk> \<Longrightarrow> \<not> bit w i"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>word_log2 w < i; i < size w\<rbrakk> \<Longrightarrow> \<not> bit w i<\STATESEP>using word_log2_maximum [of w i]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+bit w i \<Longrightarrow> i \<le> word_log2 w
+
+goal (1 subgoal):
+ 1. \<lbrakk>word_log2 w < i; i < size w\<rbrakk> \<Longrightarrow> \<not> bit w i<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_log2_highest:
+  assumes a: "bit w i"
+  shows "i \<le> word_log2 w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i \<le> word_log2 w<\STATESEP>using a<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+bit w i
+
+goal (1 subgoal):
+ 1. i \<le> word_log2 w<\STATESEP>by (simp add: word_log2_maximum)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_log2_max:
+  "word_log2 w < size w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_log2 w < size w<\STATESEP>apply (cases \<open>w = 0\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. w = 0 \<Longrightarrow> word_log2 w < size w
+ 2. w \<noteq> 0 \<Longrightarrow> word_log2 w < size w<\STATESEP>apply (simp_all add: word_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w \<noteq> 0 \<Longrightarrow> word_log2 w < LENGTH('a)<\STATESEP>apply (drule bit_word_log2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit w (word_log2 w) \<Longrightarrow> word_log2 w < LENGTH('a)<\STATESEP>apply (fact bit_imp_le_length)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clz_0[simp]:
+  "word_clz (0::'a::len word) = LENGTH('a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_clz 0 = LENGTH('a)<\STATESEP>unfolding word_clz_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (takeWhile Not (to_bl 0)) = LENGTH('a)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clz_minus_one[simp]:
+  "word_clz (-1::'a::len word) = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_clz (- 1) = 0<\STATESEP>unfolding word_clz_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (takeWhile Not (to_bl (- 1))) = 0<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_aligned_alignUp[simp]:
+  "is_aligned (alignUp p n) n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned (alignUp p n) n<\STATESEP>by (simp add: alignUp_def is_aligned_mask mask_eq_decr_exp word_bw_assocs)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignUp_le[simp]:
+  "alignUp p n \<le> p + 2 ^ n - 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp p n \<le> p + 2 ^ n - 1<\STATESEP>unfolding alignUp_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. p + 2 ^ n - 1 AND NOT (2 ^ n - 1) \<le> p + 2 ^ n - 1<\STATESEP>by (rule word_and_le2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignUp_idem:
+  fixes a :: "'a::len word"
+  assumes "is_aligned a n" "n < LENGTH('a)"
+  shows "alignUp a n = a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n = a<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. alignUp a n = a<\STATESEP>unfolding alignUp_def<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. a + 2 ^ n - 1 AND NOT (2 ^ n - 1) = a<\STATESEP>by (metis add_cancel_right_right add_diff_eq and_mask_eq_iff_le_mask mask_eq_decr_exp mask_out_add_aligned order_refl word_plus_and_or_coroll2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignUp_not_aligned_eq:
+  fixes a :: "'a :: len word"
+  assumes al: "\<not> is_aligned a n"
+  and     sz: "n < LENGTH('a)"
+  shows   "alignUp a n = (a div 2 ^ n + 1) * 2 ^ n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>from \<open>n < LENGTH('a)\<close><\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+n < LENGTH('a)<\STATESEP>have \<open>(2::int) ^ n < 2 ^ LENGTH('a)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ n < 2 ^ LENGTH('a)<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+2 ^ n < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>with take_bit_int_less_exp [of n]<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+take_bit n ?k < 2 ^ n
+2 ^ n < 2 ^ LENGTH('a)<\STATESEP>have *: \<open>take_bit n k < 2 ^ LENGTH('a)\<close> for k :: int<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+take_bit n ?k < 2 ^ n
+2 ^ n < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. take_bit n k < 2 ^ LENGTH('a)<\STATESEP>by (rule less_trans)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+take_bit n ?k < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>have anz: "a mod 2 ^ n \<noteq> 0"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a mod 2 ^ n \<noteq> 0<\STATESEP>by (rule not_aligned_mod_nz) fact+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a mod 2 ^ n \<noteq> 0<\STATESEP>have um: "unat (a mod 2 ^ n - 1) div 2 ^ n = 0"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. unat (a mod 2 ^ n - 1) div 2 ^ n = 0<\STATESEP>apply (transfer fixing: n)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. take_bit LENGTH('a) (take_bit LENGTH('a) a mod take_bit LENGTH('a) (2 ^ n)) \<noteq> take_bit LENGTH('a) 0 \<Longrightarrow> (nat \<circ> take_bit LENGTH('a)) (take_bit LENGTH('a) a mod take_bit LENGTH('a) (2 ^ n) - 1) div 2 ^ n = 0<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<And>a. take_bit LENGTH('a) (take_bit LENGTH('a) a mod take_bit LENGTH('a) (2 ^ n)) \<noteq> take_bit LENGTH('a) 0 \<Longrightarrow> (nat \<circ> take_bit LENGTH('a)) (take_bit LENGTH('a) a mod take_bit LENGTH('a) (2 ^ n) - 1) div 2 ^ n = 0<\STATESEP>apply (simp flip: take_bit_eq_mod add: div_eq_0_iff)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> take_bit LENGTH('a) (take_bit n a - 1) < 2 ^ n<\STATESEP>apply (subst take_bit_int_eq_self)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> 0 \<le> take_bit n a - 1
+ 2. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> take_bit n a - 1 < 2 ^ LENGTH('a)
+ 3. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> take_bit n a - 1 < 2 ^ n<\STATESEP>using *<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+take_bit n ?k < 2 ^ LENGTH('a)
+
+goal (3 subgoals):
+ 1. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> 0 \<le> take_bit n a - 1
+ 2. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> take_bit n a - 1 < 2 ^ LENGTH('a)
+ 3. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> take_bit n a - 1 < 2 ^ n<\STATESEP>apply (auto simp add: diff_less_eq intro: less_imp_le)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>take_bit n a \<noteq> 0; n < LENGTH('a); \<And>k. take_bit n k < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> 0 < take_bit n a<\STATESEP>apply (simp add: less_le)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+unat (a mod 2 ^ n - 1) div 2 ^ n = 0
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>have "a + 2 ^ n - 1 = (a div 2 ^ n) * 2 ^ n + (a mod 2 ^ n) + 2 ^ n - 1"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a + 2 ^ n - 1 = a div 2 ^ n * 2 ^ n + a mod 2 ^ n + 2 ^ n - 1<\STATESEP>by (simp add: word_mod_div_equality)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a + 2 ^ n - 1 = a div 2 ^ n * 2 ^ n + a mod 2 ^ n + 2 ^ n - 1
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+a + 2 ^ n - 1 = a div 2 ^ n * 2 ^ n + a mod 2 ^ n + 2 ^ n - 1
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>have "\<dots> = (a mod 2 ^ n - 1) + (a div 2 ^ n + 1) * 2 ^ n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a div 2 ^ n * 2 ^ n + a mod 2 ^ n + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>by (simp add: field_simps)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a div 2 ^ n * 2 ^ n + a mod 2 ^ n + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>show "alignUp a n = (a div 2 ^ n + 1) * 2 ^ n"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+a + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>unfolding alignUp_def<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+a + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. a + 2 ^ n - 1 AND NOT (2 ^ n - 1) = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>apply (subst mask_eq_decr_exp [symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a + 2 ^ n - 1 = a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> a + 2 ^ n - 1 AND NOT (mask n) = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>apply (erule ssubst)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n AND NOT (mask n) = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>apply (subst neg_mask_is_div)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> (a mod 2 ^ n - 1 + (a div 2 ^ n + 1) * 2 ^ n) div 2 ^ n * 2 ^ n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>apply (simp add: word_arith_nat_div)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (unat (a mod 2 ^ n - 1 + (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n) div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst unat_word_ariths(1) unat_word_ariths(2))+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((unat (a mod 2 ^ n - 1) + (unat (word_of_nat (unat a div 2 ^ n)) + unat 1) mod 2 ^ LENGTH('a) * unat (2 ^ n) mod 2 ^ LENGTH('a)) mod 2 ^ LENGTH('a) div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst uno_simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((unat (a mod 2 ^ n - 1) + (unat a div 2 ^ n + unat 1) mod 2 ^ LENGTH('a) * unat (2 ^ n) mod 2 ^ LENGTH('a)) mod 2 ^ LENGTH('a) div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst unat_1)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((unat (a mod 2 ^ n - 1) + (unat a div 2 ^ n + 1) mod 2 ^ LENGTH('a) * unat (2 ^ n) mod 2 ^ LENGTH('a)) mod 2 ^ LENGTH('a) div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst mod_add_right_eq)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((unat (a mod 2 ^ n - 1) + (unat a div 2 ^ n + 1) mod 2 ^ LENGTH('a) * unat (2 ^ n)) mod 2 ^ LENGTH('a) div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((unat (a mod 2 ^ n - 1) + Suc (unat a div 2 ^ n) mod 2 ^ LENGTH('a) * 2 ^ n) mod 2 ^ LENGTH('a) div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst power_mod_div)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((unat (a mod 2 ^ n - 1) + Suc (unat a div 2 ^ n) mod 2 ^ LENGTH('a) * 2 ^ n) div 2 ^ n mod 2 ^ (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst div_mult_self1)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. n < LENGTH('a) \<Longrightarrow> 2 ^ n \<noteq> 0
+ 2. n < LENGTH('a) \<Longrightarrow> word_of_nat ((Suc (unat a div 2 ^ n) mod 2 ^ LENGTH('a) + unat (a mod 2 ^ n - 1) div 2 ^ n) mod 2 ^ (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((Suc (unat a div 2 ^ n) mod 2 ^ LENGTH('a) + unat (a mod 2 ^ n - 1) div 2 ^ n) mod 2 ^ (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst um)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat ((Suc (unat a div 2 ^ n) mod 2 ^ LENGTH('a) + 0) mod 2 ^ (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (Suc (unat a div 2 ^ n) mod 2 ^ LENGTH('a) mod 2 ^ (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst mod_mod_power)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (Suc (unat a div 2 ^ n) mod 2 ^ min LENGTH('a) (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (Suc (unat a div 2 ^ n) mod 2 ^ (LENGTH('a) - n)) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst word_unat_power, subst Abs_fnat_hom_mult)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (Suc (unat a div 2 ^ n) mod 2 ^ (LENGTH('a) - n) * 2 ^ n) = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst mult_mod_left)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (Suc (unat a div 2 ^ n) * 2 ^ n mod (2 ^ (LENGTH('a) - n) * 2 ^ n)) = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst power_add [symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> word_of_nat (Suc (unat a div 2 ^ n) * 2 ^ n mod 2 ^ (LENGTH('a) - n + n)) = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> 2 ^ n + word_of_nat (unat a div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + 1) * 2 ^ n<\STATESEP>apply (subst Abs_fnat_hom_1)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> 2 ^ n + word_of_nat (unat a div 2 ^ n) * 2 ^ n = (word_of_nat (unat a div 2 ^ n) + word_of_nat (Suc 0)) * 2 ^ n<\STATESEP>apply (subst Abs_fnat_hom_add)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> 2 ^ n + word_of_nat (unat a div 2 ^ n) * 2 ^ n = word_of_nat (unat a div 2 ^ n + Suc 0) * 2 ^ n<\STATESEP>apply (subst word_unat_power, subst Abs_fnat_hom_mult)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> 2 ^ n + word_of_nat (unat a div 2 ^ n * 2 ^ n) = word_of_nat (unat a div 2 ^ n + Suc 0) * 2 ^ n<\STATESEP>apply (subst word_unat.Rep_inverse[symmetric], subst Abs_fnat_hom_mult)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a) \<Longrightarrow> 2 ^ n + word_of_nat (unat a div 2 ^ n * 2 ^ n) = word_of_nat ((unat a div 2 ^ n + Suc 0) * unat (2 ^ n))<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma alignUp_ge:
+  fixes a :: "'a :: len word"
+  assumes sz: "n < LENGTH('a)"
+  and nowrap: "alignUp a n \<noteq> 0"
+  shows "a \<le> alignUp a n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a \<le> alignUp a n<\STATESEP>proof (cases "is_aligned a n")<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> a \<le> alignUp a n
+ 2. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>case True<\STATESEP>2<\TRANSEP>proof (state)
+this:
+is_aligned a n
+
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> a \<le> alignUp a n
+ 2. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+is_aligned a n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+
+goal (1 subgoal):
+ 1. a \<le> alignUp a n<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. a \<le> alignUp a n<\STATESEP>by (subst alignUp_idem, simp_all)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a \<le> alignUp a n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>case False<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<not> is_aligned a n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>have lt0: "unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)<\STATESEP>by (metis le_add_diff_inverse2 less_mult_imp_div_less order_less_imp_le power_add unsigned_less)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>have"2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)<\STATESEP>by (metis One_nat_def Suc_leI add.right_neutral add_Suc_right lt0 nat_le_power_trans nat_less_le)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>have "2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)<\STATESEP>using nowrap sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+alignUp a n \<noteq> 0
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)<\STATESEP>apply -<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>alignUp a n \<noteq> 0; n < LENGTH('a)\<rbrakk> \<Longrightarrow> 2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)<\STATESEP>apply (erule contrapos_nn)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> alignUp a n = 0<\STATESEP>apply (subst alignUp_not_aligned_eq [OF False sz])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> (a div 2 ^ n + 1) * 2 ^ n = 0<\STATESEP>apply (subst unat_arith_simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> unat ((a div 2 ^ n + 1) * 2 ^ n) = unat 0<\STATESEP>apply (subst unat_word_ariths)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> unat (a div 2 ^ n + 1) * unat (2 ^ n) mod 2 ^ LENGTH('a) = unat 0<\STATESEP>apply (subst unat_word_ariths)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> (unat (a div 2 ^ n) + unat 1) mod 2 ^ LENGTH('a) * unat (2 ^ n) mod 2 ^ LENGTH('a) = unat 0<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> Suc (unat (a div 2 ^ n)) mod 2 ^ LENGTH('a) * 2 ^ n mod 2 ^ LENGTH('a) = 0<\STATESEP>apply (subst mult_mod_left)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) = 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> Suc (unat (a div 2 ^ n)) * 2 ^ n mod (2 ^ LENGTH('a) * 2 ^ n) mod 2 ^ LENGTH('a) = 0<\STATESEP>apply (simp add: unat_div field_simps power_add[symmetric] mod_mod_power)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)<\STATESEP>have lt: "2 ^ n * (unat a div 2 ^ n + 1) < 2 ^ LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+2 ^ n * (unat a div 2 ^ n + 1) \<noteq> 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) < 2 ^ LENGTH('a)<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+2 ^ n * (unat a div 2 ^ n + 1) < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>have "a = a div 2 ^ n * 2 ^ n + a mod 2 ^ n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a = a div 2 ^ n * 2 ^ n + a mod 2 ^ n<\STATESEP>by (rule word_mod_div_equality [symmetric])<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a = a div 2 ^ n * 2 ^ n + a mod 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+a = a div 2 ^ n * 2 ^ n + a mod 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>have "\<dots> < (a div 2 ^ n + 1) * 2 ^ n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a div 2 ^ n * 2 ^ n + a mod 2 ^ n < (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>using sz lt<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+2 ^ n * (unat a div 2 ^ n + 1) < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. a div 2 ^ n * 2 ^ n + a mod 2 ^ n < (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>apply (simp add: field_simps)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> a mod 2 ^ n + 2 ^ n * (a div 2 ^ n) < 2 ^ n + 2 ^ n * (a div 2 ^ n)<\STATESEP>apply (rule word_add_less_mono1)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> a mod 2 ^ n < 2 ^ n
+ 2. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> unat (2 ^ n) + unat (2 ^ n * (a div 2 ^ n)) < 2 ^ LENGTH('a)<\STATESEP>apply (rule word_mod_less_divisor)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> 0 < 2 ^ n
+ 2. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> unat (2 ^ n) + unat (2 ^ n * (a div 2 ^ n)) < 2 ^ LENGTH('a)<\STATESEP>apply (simp add: word_less_nat_alt)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> unat (2 ^ n) + unat (2 ^ n * (a div 2 ^ n)) < 2 ^ LENGTH('a)<\STATESEP>apply (subst unat_word_ariths)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>n < LENGTH('a); 2 ^ n + 2 ^ n * (unat a div 2 ^ n) < 2 ^ LENGTH('a)\<rbrakk> \<Longrightarrow> unat (2 ^ n) + unat (2 ^ n) * unat (a div 2 ^ n) mod 2 ^ LENGTH('a) < 2 ^ LENGTH('a)<\STATESEP>apply (simp add: unat_div)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a div 2 ^ n * 2 ^ n + a mod 2 ^ n < (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+a div 2 ^ n * 2 ^ n + a mod 2 ^ n < (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>have "\<dots> =  alignUp a n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a div 2 ^ n + 1) * 2 ^ n = alignUp a n<\STATESEP>by (rule alignUp_not_aligned_eq [symmetric]) fact+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(a div 2 ^ n + 1) * 2 ^ n = alignUp a n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> a \<le> alignUp a n<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a < alignUp a n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a < alignUp a n
+
+goal (1 subgoal):
+ 1. a \<le> alignUp a n<\STATESEP>by (rule order_less_imp_le)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a \<le> alignUp a n
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma alignUp_le_greater_al:
+  fixes x :: "'a :: len word"
+  assumes le: "a \<le> x"
+  and     sz: "n < LENGTH('a)"
+  and     al: "is_aligned x n"
+  shows   "alignUp a n \<le> x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n \<le> x<\STATESEP>proof (cases "is_aligned a n")<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> alignUp a n \<le> x
+ 2. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>case True<\STATESEP>2<\TRANSEP>proof (state)
+this:
+is_aligned a n
+
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> alignUp a n \<le> x
+ 2. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+is_aligned a n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+
+goal (1 subgoal):
+ 1. alignUp a n \<le> x<\STATESEP>using sz le<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+n < LENGTH('a)
+a \<le> x
+
+goal (1 subgoal):
+ 1. alignUp a n \<le> x<\STATESEP>by (simp add: alignUp_idem)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n \<le> x
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>case False<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<not> is_aligned a n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<not> is_aligned a n<\STATESEP>have anz: "a mod 2 ^ n \<noteq> 0"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<not> is_aligned a n
+
+goal (1 subgoal):
+ 1. a mod 2 ^ n \<noteq> 0<\STATESEP>by (rule not_aligned_mod_nz)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>from al<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+is_aligned x n<\STATESEP>obtain k where xk: "x = 2 ^ n * of_nat k" and kv: "k < 2 ^ (LENGTH('a) - n)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+is_aligned x n
+
+goal (1 subgoal):
+ 1. (\<And>k. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n)\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (auto elim!: is_alignedE)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x = 2 ^ n * word_of_nat k
+k < 2 ^ (LENGTH('a) - n)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+x = 2 ^ n * word_of_nat k
+k < 2 ^ (LENGTH('a) - n)<\STATESEP>have kn: "unat (of_nat k :: 'a word) * unat ((2::'a word) ^ n) < 2 ^ LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+x = 2 ^ n * word_of_nat k
+k < 2 ^ (LENGTH('a) - n)
+
+goal (1 subgoal):
+ 1. unat (word_of_nat k) * unat (2 ^ n) < 2 ^ LENGTH('a)<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+x = 2 ^ n * word_of_nat k
+k < 2 ^ (LENGTH('a) - n)
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. unat (word_of_nat k) * unat (2 ^ n) < 2 ^ LENGTH('a)<\STATESEP>apply (subst unat_of_nat_eq)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> k < 2 ^ LENGTH('a)
+ 2. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> k * unat (2 ^ n) < 2 ^ LENGTH('a)<\STATESEP>apply (erule order_less_le_trans)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; n < LENGTH('a)\<rbrakk> \<Longrightarrow> 2 ^ (LENGTH('a) - n) \<le> 2 ^ LENGTH('a)
+ 2. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> k * unat (2 ^ n) < 2 ^ LENGTH('a)<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> k * unat (2 ^ n) < 2 ^ LENGTH('a)<\STATESEP>apply (subst mult.commute)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> unat (2 ^ n) * k < 2 ^ LENGTH('a)<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> 2 ^ n * k < 2 ^ LENGTH('a)<\STATESEP>apply (rule nat_less_power_trans)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> k < 2 ^ (LENGTH('a) - n)
+ 2. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> n \<le> LENGTH('a)<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x = 2 ^ n * word_of_nat k; k < 2 ^ (LENGTH('a) - n); n < LENGTH('a)\<rbrakk> \<Longrightarrow> n \<le> LENGTH('a)<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+unat (word_of_nat k) * unat (2 ^ n) < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>have au: "alignUp a n = (a div 2 ^ n + 1) * 2 ^ n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>by (rule alignUp_not_aligned_eq) fact+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>also<\STATESEP>2<\TRANSEP>proof (state)
+this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>have "\<dots> \<le> of_nat k * 2 ^ n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a div 2 ^ n + 1) * 2 ^ n \<le> word_of_nat k * 2 ^ n<\STATESEP>proof (rule word_mult_le_mono1 [OF inc_le _ kn])<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. a div 2 ^ n < word_of_nat k
+ 2. 0 < 2 ^ n<\STATESEP>show "a div 2 ^ n < of_nat k"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a div 2 ^ n < word_of_nat k<\STATESEP>using kv xk le sz anz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+k < 2 ^ (LENGTH('a) - n)
+x = 2 ^ n * word_of_nat k
+a \<le> x
+n < LENGTH('a)
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. a div 2 ^ n < word_of_nat k<\STATESEP>by (simp add: alignUp_div_helper)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+a div 2 ^ n < word_of_nat k
+
+goal (1 subgoal):
+ 1. 0 < 2 ^ n<\STATESEP>show "(0:: 'a word) < 2 ^ n"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < 2 ^ n<\STATESEP>using sz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 0 < 2 ^ n<\STATESEP>by (simp add: p2_gt_0 sz)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+0 < 2 ^ n
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+(a div 2 ^ n + 1) * 2 ^ n \<le> word_of_nat k * 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<le> x<\STATESEP>finally<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+alignUp a n \<le> word_of_nat k * 2 ^ n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+alignUp a n \<le> word_of_nat k * 2 ^ n
+
+goal (1 subgoal):
+ 1. alignUp a n \<le> x<\STATESEP>using xk<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+alignUp a n \<le> word_of_nat k * 2 ^ n
+x = 2 ^ n * word_of_nat k
+
+goal (1 subgoal):
+ 1. alignUp a n \<le> x<\STATESEP>by (simp add: field_simps)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n \<le> x
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma alignUp_is_aligned_nz:
+  fixes a :: "'a :: len word"
+  assumes al: "is_aligned x n"
+  and     sz: "n < LENGTH('a)"
+  and     ax: "a \<le> x"
+  and     az: "a \<noteq> 0"
+  shows   "alignUp (a::'a :: len word) n \<noteq> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n \<noteq> 0<\STATESEP>proof (cases "is_aligned a n")<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0
+ 2. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>case True<\STATESEP>2<\TRANSEP>proof (state)
+this:
+is_aligned a n
+
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0
+ 2. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+is_aligned a n<\STATESEP>have "alignUp a n = a"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+
+goal (1 subgoal):
+ 1. alignUp a n = a<\STATESEP>using sz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+is_aligned a n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. alignUp a n = a<\STATESEP>by (simp add: alignUp_idem)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n = a
+
+goal (2 subgoals):
+ 1. is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0
+ 2. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+alignUp a n = a<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+alignUp a n = a
+
+goal (1 subgoal):
+ 1. alignUp a n \<noteq> 0<\STATESEP>using az<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+alignUp a n = a
+a \<noteq> 0
+
+goal (1 subgoal):
+ 1. alignUp a n \<noteq> 0<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n \<noteq> 0
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>case False<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<not> is_aligned a n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<not> is_aligned a n<\STATESEP>have anz: "a mod 2 ^ n \<noteq> 0"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<not> is_aligned a n
+
+goal (1 subgoal):
+ 1. a mod 2 ^ n \<noteq> 0<\STATESEP>by (rule not_aligned_mod_nz)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>assume asm: "alignUp a n = 0"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+alignUp a n = 0
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>have lt0: "unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)<\STATESEP>using sz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)<\STATESEP>by (metis le_add_diff_inverse2 less_mult_imp_div_less order_less_imp_le power_add unsigned_less)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+unat a div 2 ^ n < 2 ^ (LENGTH('a) - n)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>have leq: "2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)<\STATESEP>using sz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)<\STATESEP>by (metis One_nat_def Suc_leI add.right_neutral add_Suc_right lt0 nat_le_power_trans
+                order_less_imp_le)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>from al<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+is_aligned x n<\STATESEP>obtain k where  kv: "k < 2 ^ (LENGTH('a) - n)" and xk: "x = 2 ^ n * of_nat k"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+is_aligned x n
+
+goal (1 subgoal):
+ 1. (\<And>k. \<lbrakk>k < 2 ^ (LENGTH('a) - n); x = 2 ^ n * word_of_nat k\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by (auto elim!: is_alignedE)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+k < 2 ^ (LENGTH('a) - n)
+x = 2 ^ n * word_of_nat k
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+k < 2 ^ (LENGTH('a) - n)
+x = 2 ^ n * word_of_nat k<\STATESEP>have "a div 2 ^ n < of_nat k"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+k < 2 ^ (LENGTH('a) - n)
+x = 2 ^ n * word_of_nat k
+
+goal (1 subgoal):
+ 1. a div 2 ^ n < word_of_nat k<\STATESEP>using ax sz anz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+k < 2 ^ (LENGTH('a) - n)
+x = 2 ^ n * word_of_nat k
+a \<le> x
+n < LENGTH('a)
+a mod 2 ^ n \<noteq> 0
+
+goal (1 subgoal):
+ 1. a div 2 ^ n < word_of_nat k<\STATESEP>by (rule alignUp_div_helper)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+a div 2 ^ n < word_of_nat k
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+a div 2 ^ n < word_of_nat k<\STATESEP>have r: "unat a div 2 ^ n < k"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+a div 2 ^ n < word_of_nat k
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n < k<\STATESEP>using sz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+a div 2 ^ n < word_of_nat k
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n < k<\STATESEP>by (simp flip: drop_bit_eq_div unat_drop_bit_eq) (metis leI le_unat_uoi unat_mono)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+unat a div 2 ^ n < k
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>have "alignUp a n = (a div 2 ^ n + 1) * 2 ^ n"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>by (rule alignUp_not_aligned_eq) fact+<\STATESEP>5<\TRANSEP>proof (state)
+this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n<\STATESEP>have "\<dots> = 0"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n
+
+goal (1 subgoal):
+ 1. (a div 2 ^ n + 1) * 2 ^ n = 0<\STATESEP>using asm<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+alignUp a n = (a div 2 ^ n + 1) * 2 ^ n
+alignUp a n = 0
+
+goal (1 subgoal):
+ 1. (a div 2 ^ n + 1) * 2 ^ n = 0<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+(a div 2 ^ n + 1) * 2 ^ n = 0
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+(a div 2 ^ n + 1) * 2 ^ n = 0<\STATESEP>have "2 ^ LENGTH('a) dvd 2 ^ n * (unat a div 2 ^ n + 1)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+(a div 2 ^ n + 1) * 2 ^ n = 0
+
+goal (1 subgoal):
+ 1. 2 ^ LENGTH('a) dvd 2 ^ n * (unat a div 2 ^ n + 1)<\STATESEP>using sz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+(a div 2 ^ n + 1) * 2 ^ n = 0
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ LENGTH('a) dvd 2 ^ n * (unat a div 2 ^ n + 1)<\STATESEP>by (simp add: unat_arith_simps ac_simps)
+                  (simp add: unat_word_ariths mod_simps mod_eq_0_iff_dvd)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+2 ^ LENGTH('a) dvd 2 ^ n * (unat a div 2 ^ n + 1)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>with leq<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+2 ^ LENGTH('a) dvd 2 ^ n * (unat a div 2 ^ n + 1)<\STATESEP>have "2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+2 ^ n * (unat a div 2 ^ n + 1) \<le> 2 ^ LENGTH('a)
+2 ^ LENGTH('a) dvd 2 ^ n * (unat a div 2 ^ n + 1)
+
+goal (1 subgoal):
+ 1. 2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)<\STATESEP>by (force elim!: le_SucE)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)<\STATESEP>have "unat a div 2 ^ n = 2 ^ LENGTH('a) div 2 ^ n - 1"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+2 ^ n * (unat a div 2 ^ n + 1) = 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n = 2 ^ LENGTH('a) div 2 ^ n - 1<\STATESEP>by (metis (no_types, opaque_lifting) Groups.add_ac(2) add.right_neutral
+                add_diff_cancel_left' div_le_dividend div_mult_self4 gr_implies_not0
+                le_neq_implies_less power_eq_0_iff zero_neq_numeral)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+unat a div 2 ^ n = 2 ^ LENGTH('a) div 2 ^ n - 1
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+unat a div 2 ^ n = 2 ^ LENGTH('a) div 2 ^ n - 1<\STATESEP>have "unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+unat a div 2 ^ n = 2 ^ LENGTH('a) div 2 ^ n - 1
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1<\STATESEP>using sz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+unat a div 2 ^ n = 2 ^ LENGTH('a) div 2 ^ n - 1
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1<\STATESEP>by (simp add: power_sub)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1<\STATESEP>have "2 ^ (LENGTH('a) - n) - 1 < k"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1
+
+goal (1 subgoal):
+ 1. 2 ^ (LENGTH('a) - n) - 1 < k<\STATESEP>using r<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+unat a div 2 ^ n = 2 ^ (LENGTH('a) - n) - 1
+unat a div 2 ^ n < k
+
+goal (1 subgoal):
+ 1. 2 ^ (LENGTH('a) - n) - 1 < k<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+2 ^ (LENGTH('a) - n) - 1 < k
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+2 ^ (LENGTH('a) - n) - 1 < k<\STATESEP>have False<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+2 ^ (LENGTH('a) - n) - 1 < k
+
+goal (1 subgoal):
+ 1. False<\STATESEP>using kv<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+2 ^ (LENGTH('a) - n) - 1 < k
+k < 2 ^ (LENGTH('a) - n)
+
+goal (1 subgoal):
+ 1. False<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+False
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+alignUp a n = 0 \<Longrightarrow> False
+
+goal (1 subgoal):
+ 1. \<not> is_aligned a n \<Longrightarrow> alignUp a n \<noteq> 0<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+alignUp a n = 0 \<Longrightarrow> False<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+alignUp a n = 0 \<Longrightarrow> False
+
+goal (1 subgoal):
+ 1. alignUp a n \<noteq> 0<\STATESEP>by clarsimp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+alignUp a n \<noteq> 0
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma alignUp_ar_helper:
+  fixes a :: "'a :: len word"
+  assumes al: "is_aligned x n"
+  and     sz: "n < LENGTH('a)"
+  and    sub: "{x..x + 2 ^ n - 1} \<subseteq> {a..b}"
+  and    anz: "a \<noteq> 0"
+  shows "a \<le> alignUp a n \<and> alignUp a n + 2 ^ n - 1 \<le> b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a \<le> alignUp a n \<and> alignUp a n + 2 ^ n - 1 \<le> b<\STATESEP>proof<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. a \<le> alignUp a n
+ 2. alignUp a n + 2 ^ n - 1 \<le> b<\STATESEP>from al<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+is_aligned x n<\STATESEP>have xl: "x \<le> x + 2 ^ n - 1"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+is_aligned x n
+
+goal (1 subgoal):
+ 1. x \<le> x + 2 ^ n - 1<\STATESEP>by (simp add: is_aligned_no_overflow)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x \<le> x + 2 ^ n - 1
+
+goal (2 subgoals):
+ 1. a \<le> alignUp a n
+ 2. alignUp a n + 2 ^ n - 1 \<le> b<\STATESEP>from xl sub<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+x \<le> x + 2 ^ n - 1
+{x..x + 2 ^ n - 1} \<subseteq> {a..b}<\STATESEP>have ax: "a \<le> x"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+x \<le> x + 2 ^ n - 1
+{x..x + 2 ^ n - 1} \<subseteq> {a..b}
+
+goal (1 subgoal):
+ 1. a \<le> x<\STATESEP>by auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a \<le> x
+
+goal (2 subgoals):
+ 1. a \<le> alignUp a n
+ 2. alignUp a n + 2 ^ n - 1 \<le> b<\STATESEP>show "a \<le> alignUp a n"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a \<le> alignUp a n<\STATESEP>proof (rule alignUp_ge)<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. n < LENGTH('a)
+ 2. alignUp a n \<noteq> 0<\STATESEP>show "alignUp a n \<noteq> 0"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n \<noteq> 0<\STATESEP>using al sz ax anz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+is_aligned x n
+n < LENGTH('a)
+a \<le> x
+a \<noteq> 0
+
+goal (1 subgoal):
+ 1. alignUp a n \<noteq> 0<\STATESEP>by (rule alignUp_is_aligned_nz)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+alignUp a n \<noteq> 0
+
+goal (1 subgoal):
+ 1. n < LENGTH('a)<\STATESEP>qed fact+<\STATESEP>4<\TRANSEP>proof (state)
+this:
+a \<le> alignUp a n
+
+goal (1 subgoal):
+ 1. alignUp a n + 2 ^ n - 1 \<le> b<\STATESEP>show "alignUp a n + 2 ^ n - 1 \<le> b"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a n + 2 ^ n - 1 \<le> b<\STATESEP>proof (rule order_trans)<\STATESEP>3<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. alignUp a n + 2 ^ n - 1 \<le> ?y
+ 2. ?y \<le> b<\STATESEP>from xl<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+x \<le> x + 2 ^ n - 1<\STATESEP>show tp: "x + 2 ^ n - 1 \<le> b"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+x \<le> x + 2 ^ n - 1
+
+goal (1 subgoal):
+ 1. x + 2 ^ n - 1 \<le> b<\STATESEP>using sub<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+x \<le> x + 2 ^ n - 1
+{x..x + 2 ^ n - 1} \<subseteq> {a..b}
+
+goal (1 subgoal):
+ 1. x + 2 ^ n - 1 \<le> b<\STATESEP>by auto<\STATESEP>5<\TRANSEP>proof (state)
+this:
+x + 2 ^ n - 1 \<le> b
+
+goal (1 subgoal):
+ 1. alignUp a n + 2 ^ n - 1 \<le> x + 2 ^ n - 1<\STATESEP>from ax<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+a \<le> x<\STATESEP>have "alignUp a n \<le> x"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+a \<le> x
+
+goal (1 subgoal):
+ 1. alignUp a n \<le> x<\STATESEP>by (rule alignUp_le_greater_al) fact+<\STATESEP>5<\TRANSEP>proof (state)
+this:
+alignUp a n \<le> x
+
+goal (1 subgoal):
+ 1. alignUp a n + 2 ^ n - 1 \<le> x + 2 ^ n - 1<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+alignUp a n \<le> x<\STATESEP>have "alignUp a n + (2 ^ n - 1) \<le> x + (2 ^ n - 1)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+alignUp a n \<le> x
+
+goal (1 subgoal):
+ 1. alignUp a n + (2 ^ n - 1) \<le> x + (2 ^ n - 1)<\STATESEP>using xl al is_aligned_no_overflow' olen_add_eqv word_plus_mcs_3<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+alignUp a n \<le> x
+x \<le> x + 2 ^ n - 1
+is_aligned x n
+is_aligned ?p ?n \<Longrightarrow> ?p \<le> ?p + (2 ^ ?n - 1)
+(?y \<le> ?y + ?x) = (?x \<le> ?y + ?x)
+\<lbrakk>?v \<le> ?w; ?x \<le> ?w + ?x\<rbrakk> \<Longrightarrow> ?v + ?x \<le> ?w + ?x
+
+goal (1 subgoal):
+ 1. alignUp a n + (2 ^ n - 1) \<le> x + (2 ^ n - 1)<\STATESEP>by blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+alignUp a n + (2 ^ n - 1) \<le> x + (2 ^ n - 1)
+
+goal (1 subgoal):
+ 1. alignUp a n + 2 ^ n - 1 \<le> x + 2 ^ n - 1<\STATESEP>then<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+alignUp a n + (2 ^ n - 1) \<le> x + (2 ^ n - 1)<\STATESEP>show "alignUp a n + 2 ^ n - 1 \<le> x + 2 ^ n - 1"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+alignUp a n + (2 ^ n - 1) \<le> x + (2 ^ n - 1)
+
+goal (1 subgoal):
+ 1. alignUp a n + 2 ^ n - 1 \<le> x + 2 ^ n - 1<\STATESEP>by (simp add: field_simps)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+alignUp a n + 2 ^ n - 1 \<le> x + 2 ^ n - 1
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>4<\TRANSEP>proof (state)
+this:
+alignUp a n + 2 ^ n - 1 \<le> b
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma alignUp_def2:
+  "alignUp a sz = a + 2 ^ sz - 1 AND NOT (mask sz)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a sz = a + 2 ^ sz - 1 AND NOT (mask sz)<\STATESEP>by (simp add: alignUp_def flip: mask_eq_decr_exp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignUp_def3:
+  "alignUp a sz = 2^ sz + (a - 1 AND NOT (mask sz))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp a sz = 2 ^ sz + (a - 1 AND NOT (mask sz))<\STATESEP>by (simp add: alignUp_def2 is_aligned_triv field_simps mask_out_add_aligned)<\STATESEP>1<\TRANSEP><\STATESEP>lemma  alignUp_plus:
+  "is_aligned w us \<Longrightarrow> alignUp (w + a) us  = w + alignUp a us"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned w us \<Longrightarrow> alignUp (w + a) us = w + alignUp a us<\STATESEP>by (clarsimp simp: alignUp_def2 mask_out_add_aligned field_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alignUp_distance:
+  "alignUp (q :: 'a :: len word) sz - q \<le> mask sz"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. alignUp q sz - q \<le> mask sz<\STATESEP>by (metis (no_types) add.commute add_diff_cancel_left alignUp_def2 diff_add_cancel
+                       mask_2pm1 subtract_mask(2) word_and_le1 word_sub_le_iff)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_aligned_diff_neg_mask:
+  "is_aligned p sz \<Longrightarrow> (p - q AND NOT (mask sz)) = (p - ((alignUp q sz) AND NOT (mask sz)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned p sz \<Longrightarrow> p - q AND NOT (mask sz) = p - (alignUp q sz AND NOT (mask sz))<\STATESEP>apply (clarsimp simp only:word_and_le2 diff_conv_add_uminus)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned p sz \<Longrightarrow> p + - q AND NOT (mask sz) = p + - (alignUp q sz AND NOT (mask sz))<\STATESEP>apply (subst mask_out_add_aligned[symmetric]; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned p sz \<Longrightarrow> - q AND NOT (mask sz) = - (alignUp q sz AND NOT (mask sz))<\STATESEP>apply (simp add: eq_neg_iff_add_eq_0)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned p sz \<Longrightarrow> (- q AND NOT (mask sz)) + (alignUp q sz AND NOT (mask sz)) = 0<\STATESEP>apply (subst add.commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned p sz \<Longrightarrow> (alignUp q sz AND NOT (mask sz)) + (- q AND NOT (mask sz)) = 0<\STATESEP>apply (simp add: alignUp_distance is_aligned_neg_mask_eq mask_out_add_aligned and_mask_eq_iff_le_mask flip: mask_eq_x_eq_0)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clz_max:
+  "word_clz w \<le> size (w::'a::len word)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_clz w \<le> size w<\STATESEP>unfolding word_clz_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (takeWhile Not (to_bl w)) \<le> size w<\STATESEP>by (metis length_takeWhile_le word_size_bl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clz_nonzero_max:
+  fixes w :: "'a::len word"
+  assumes nz: "w \<noteq> 0"
+  shows "word_clz w < size (w::'a::len word)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>assume a: "word_clz w = size (w::'a::len word)"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+word_clz w = size w
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>hence "length (takeWhile Not (to_bl w)) = length (to_bl w)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+word_clz w = size w
+
+goal (1 subgoal):
+ 1. length (takeWhile Not (to_bl w)) = length (to_bl w)<\STATESEP>by (simp add: word_clz_def word_size)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+length (takeWhile Not (to_bl w)) = length (to_bl w)
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>hence allj: "\<forall>j\<in>set(to_bl w). \<not> j"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+length (takeWhile Not (to_bl w)) = length (to_bl w)
+
+goal (1 subgoal):
+ 1. \<forall>j\<in>set (to_bl w). \<not> j<\STATESEP>by (metis a length_takeWhile_less less_irrefl_nat word_clz_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<forall>j\<in>set (to_bl w). \<not> j
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>hence "to_bl w = replicate (length (to_bl w)) False"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+\<forall>j\<in>set (to_bl w). \<not> j
+
+goal (1 subgoal):
+ 1. to_bl w = replicate (length (to_bl w)) False<\STATESEP>using eq_zero_set_bl nz<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+\<forall>j\<in>set (to_bl w). \<not> j
+(?w = 0) = (True \<notin> set (to_bl ?w))
+w \<noteq> 0
+
+goal (1 subgoal):
+ 1. to_bl w = replicate (length (to_bl w)) False<\STATESEP>by fastforce<\STATESEP>5<\TRANSEP>proof (state)
+this:
+to_bl w = replicate (length (to_bl w)) False
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>hence "w = 0"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+to_bl w = replicate (length (to_bl w)) False
+
+goal (1 subgoal):
+ 1. w = 0<\STATESEP>by (metis to_bl_0 word_bl.Rep_eqD word_bl_Rep')<\STATESEP>5<\TRANSEP>proof (state)
+this:
+w = 0
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>with nz<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+w \<noteq> 0
+w = 0<\STATESEP>have False<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+w \<noteq> 0
+w = 0
+
+goal (1 subgoal):
+ 1. False<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+False
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+word_clz w = size w \<Longrightarrow> False
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>thus ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+word_clz w = size w \<Longrightarrow> False
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>using word_clz_max<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+word_clz w = size w \<Longrightarrow> False
+word_clz ?w \<le> size ?w
+
+goal (1 subgoal):
+ 1. word_clz w < size w<\STATESEP>by (fastforce intro: le_neq_trans)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_clz w < size w
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma bin_sign_extend_iff [bit_simps]:
+  \<open>bit (sign_extend e w) i \<longleftrightarrow> bit w (min e i)\<close>
+  if \<open>i < LENGTH('a)\<close> for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. bit (sign_extend e w) i = bit w (min e i)<\STATESEP>using that<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+i < LENGTH('a)
+
+goal (1 subgoal):
+ 1. bit (sign_extend e w) i = bit w (min e i)<\STATESEP>by (simp add: sign_extend_def bit_simps min_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extend_bitwise_if:
+  "i < size w \<Longrightarrow> bit (sign_extend e w) i \<longleftrightarrow> (if i < e then bit w i else bit w e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < size w \<Longrightarrow> bit (sign_extend e w) i = (if i < e then bit w i else bit w e)<\STATESEP>by (simp add: word_size bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extend_bitwise_if'  [word_eqI_simps]:
+  \<open>i < LENGTH('a) \<Longrightarrow> bit (sign_extend e w) i \<longleftrightarrow> (if i < e then bit w i else bit w e)\<close>
+  for w :: \<open>'a::len word\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < LENGTH('a) \<Longrightarrow> bit (sign_extend e w) i = (if i < e then bit w i else bit w e)<\STATESEP>using sign_extend_bitwise_if [of i w e]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+i < size w \<Longrightarrow> bit (sign_extend e w) i = (if i < e then bit w i else bit w e)
+
+goal (1 subgoal):
+ 1. i < LENGTH('a) \<Longrightarrow> bit (sign_extend e w) i = (if i < e then bit w i else bit w e)<\STATESEP>by (simp add: word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extend_bitwise_disj:
+  "i < size w \<Longrightarrow> bit (sign_extend e w) i \<longleftrightarrow> i \<le> e \<and> bit w i \<or> e \<le> i \<and> bit w e"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < size w \<Longrightarrow> bit (sign_extend e w) i = (i \<le> e \<and> bit w i \<or> e \<le> i \<and> bit w e)<\STATESEP>by (auto simp: sign_extend_bitwise_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extend_bitwise_cases:
+  "i < size w \<Longrightarrow> bit (sign_extend e w) i \<longleftrightarrow> (i \<le> e \<longrightarrow> bit w i) \<and> (e \<le> i \<longrightarrow> bit w e)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < size w \<Longrightarrow> bit (sign_extend e w) i = ((i \<le> e \<longrightarrow> bit w i) \<and> (e \<le> i \<longrightarrow> bit w e))<\STATESEP>by (auto simp: sign_extend_bitwise_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas sign_extend_bitwise_disj' = sign_extend_bitwise_disj[simplified word_size]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas sign_extend_bitwise_cases' = sign_extend_bitwise_cases[simplified word_size]<\STATESEP>0<\TRANSEP><\STATESEP>lemma sign_extend_def':
+  "sign_extend n w = (if bit w n then w OR NOT (mask (Suc n)) else w AND mask (Suc n))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extend n w = (if bit w n then w OR NOT (mask (Suc n)) else w AND mask (Suc n))<\STATESEP>by (rule bit_word_eqI) (auto simp add: bit_simps sign_extend_eq_signed_take_bit min_def less_Suc_eq_le)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extended_sign_extend:
+  "sign_extended n (sign_extend n w)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extended n (sign_extend n w)<\STATESEP>by (clarsimp simp: sign_extended_def word_size sign_extend_bitwise_if)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extended_iff_sign_extend:
+  "sign_extended n w \<longleftrightarrow> sign_extend n w = w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extended n w = (sign_extend n w = w)<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. sign_extended n w \<Longrightarrow> sign_extend n w = w
+ 2. sign_extend n w = w \<Longrightarrow> sign_extended n w<\STATESEP>apply (auto simp add: bit_eq_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>na. \<lbrakk>sign_extended n w; na < LENGTH('a); bit (sign_extend n w) na\<rbrakk> \<Longrightarrow> bit w na
+ 2. \<And>na. \<lbrakk>sign_extended n w; na < LENGTH('a); bit w na\<rbrakk> \<Longrightarrow> bit (sign_extend n w) na
+ 3. \<forall>na<LENGTH('a). bit (sign_extend n w) na = bit w na \<Longrightarrow> sign_extended n w<\STATESEP>apply (simp_all add: bit_simps sign_extend_eq_signed_take_bit not_le min_def sign_extended_def word_size split: if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>na. \<lbrakk>\<forall>i>n. i < LENGTH('a) \<longrightarrow> bit w i; na < LENGTH('a); n \<le> na; bit w n\<rbrakk> \<Longrightarrow> bit w na
+ 2. \<And>na. \<lbrakk>\<forall>i>n. i < LENGTH('a) \<longrightarrow> bit w i = bit w n; na < LENGTH('a); bit w na\<rbrakk> \<Longrightarrow> n \<le> na \<longrightarrow> bit w n
+ 3. \<forall>na<LENGTH('a). na < n \<or> bit w n = bit w na \<Longrightarrow> \<forall>i>n. i < LENGTH('a) \<longrightarrow> bit w i = bit w n<\STATESEP>using le_imp_less_or_eq<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+?x \<le> ?y \<Longrightarrow> ?x < ?y \<or> ?x = ?y
+
+goal (3 subgoals):
+ 1. \<And>na. \<lbrakk>\<forall>i>n. i < LENGTH('a) \<longrightarrow> bit w i; na < LENGTH('a); n \<le> na; bit w n\<rbrakk> \<Longrightarrow> bit w na
+ 2. \<And>na. \<lbrakk>\<forall>i>n. i < LENGTH('a) \<longrightarrow> bit w i = bit w n; na < LENGTH('a); bit w na\<rbrakk> \<Longrightarrow> n \<le> na \<longrightarrow> bit w n
+ 3. \<forall>na<LENGTH('a). na < n \<or> bit w n = bit w na \<Longrightarrow> \<forall>i>n. i < LENGTH('a) \<longrightarrow> bit w i = bit w n<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extended_weaken:
+  "sign_extended n w \<Longrightarrow> n \<le> m \<Longrightarrow> sign_extended m w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sign_extended n w; n \<le> m\<rbrakk> \<Longrightarrow> sign_extended m w<\STATESEP>unfolding sign_extended_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>i>n. i < size w \<longrightarrow> bit w i = bit w n; n \<le> m\<rbrakk> \<Longrightarrow> \<forall>i>m. i < size w \<longrightarrow> bit w i = bit w m<\STATESEP>by (cases "n < m") auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extend_sign_extend_eq:
+  "sign_extend m (sign_extend n w) = sign_extend (min m n) w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extend m (sign_extend n w) = sign_extend (min m n) w<\STATESEP>by (rule bit_word_eqI) (simp add: sign_extend_eq_signed_take_bit bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extended_high_bits:
+  "\<lbrakk> sign_extended e p; j < size p; e \<le> i; i < j \<rbrakk> \<Longrightarrow> bit p i = bit p j"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sign_extended e p; j < size p; e \<le> i; i < j\<rbrakk> \<Longrightarrow> bit p i = bit p j<\STATESEP>by (drule (1) sign_extended_weaken; simp add: sign_extended_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extend_eq:
+  "w AND mask (Suc n) = v AND mask (Suc n) \<Longrightarrow> sign_extend n w = sign_extend n v"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. w AND mask (Suc n) = v AND mask (Suc n) \<Longrightarrow> sign_extend n w = sign_extend n v<\STATESEP>by (simp flip: take_bit_eq_mask add: sign_extend_eq_signed_take_bit signed_take_bit_eq_iff_take_bit_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sign_extended_add:
+  assumes p: "is_aligned p n"
+  assumes f: "f < 2 ^ n"
+  assumes e: "n \<le> e"
+  assumes "sign_extended e p"
+  shows "sign_extended e (p + f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extended e (p + f)<\STATESEP>proof (cases "e < size p")<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. e < size p \<Longrightarrow> sign_extended e (p + f)
+ 2. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>case True<\STATESEP>2<\TRANSEP>proof (state)
+this:
+e < size p
+
+goal (2 subgoals):
+ 1. e < size p \<Longrightarrow> sign_extended e (p + f)
+ 2. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>note and_or = is_aligned_add_or[OF p f]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+p + f = p OR f
+
+goal (2 subgoals):
+ 1. e < size p \<Longrightarrow> sign_extended e (p + f)
+ 2. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>have "\<not> bit f e"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> bit f e<\STATESEP>using True e less_2p_is_upper_bits_unset[THEN iffD1, OF f]<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+e < size p
+n \<le> e
+n < LENGTH('a) \<and> (\<forall>n'\<ge>n. n' < LENGTH('a) \<longrightarrow> \<not> bit f n')
+
+goal (1 subgoal):
+ 1. \<not> bit f e<\STATESEP>by (fastforce simp: word_size)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<not> bit f e
+
+goal (2 subgoals):
+ 1. e < size p \<Longrightarrow> sign_extended e (p + f)
+ 2. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>hence i: "bit (p + f) e = bit p e"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<not> bit f e
+
+goal (1 subgoal):
+ 1. bit (p + f) e = bit p e<\STATESEP>by (simp add: and_or bit_simps)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit (p + f) e = bit p e
+
+goal (2 subgoals):
+ 1. e < size p \<Longrightarrow> sign_extended e (p + f)
+ 2. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>have fm: "f AND mask e = f"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f AND mask e = f<\STATESEP>by (fastforce intro: subst[where P="\<lambda>f. f AND mask e = f", OF less_mask_eq[OF f]]
+                  simp: mask_twice e)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+f AND mask e = f
+
+goal (2 subgoals):
+ 1. e < size p \<Longrightarrow> sign_extended e (p + f)
+ 2. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sign_extended e (p + f)<\STATESEP>using assms<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+is_aligned p n
+f < 2 ^ n
+n \<le> e
+sign_extended e p
+
+goal (1 subgoal):
+ 1. sign_extended e (p + f)<\STATESEP>apply (simp add: sign_extended_iff_sign_extend sign_extend_def i)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; f < 2 ^ n; n \<le> e; (if bit p e then p OR NOT (mask e) else p AND mask e) = p\<rbrakk> \<Longrightarrow> (bit p e \<longrightarrow> p + f OR NOT (mask e) = p + f) \<and> (\<not> bit p e \<longrightarrow> p + f AND mask e = p + f)<\STATESEP>apply (simp add: and_or word_bw_comms[of p f])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; f < 2 ^ n; n \<le> e; (if bit p e then p OR NOT (mask e) else p AND mask e) = p\<rbrakk> \<Longrightarrow> (bit p e \<longrightarrow> (f OR p) OR NOT (mask e) = f OR p) \<and> (\<not> bit p e \<longrightarrow> (f OR p) AND mask e = f OR p)<\STATESEP>apply (clarsimp simp: word_ao_dist fm word_bw_assocs split: if_splits)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sign_extended e (p + f)
+
+goal (1 subgoal):
+ 1. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>case False<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<not> e < size p
+
+goal (1 subgoal):
+ 1. \<not> e < size p \<Longrightarrow> sign_extended e (p + f)<\STATESEP>thus ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<not> e < size p
+
+goal (1 subgoal):
+ 1. sign_extended e (p + f)<\STATESEP>by (simp add: sign_extended_def word_size)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sign_extended e (p + f)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma sign_extended_neq_mask:
+  "\<lbrakk>sign_extended n ptr; m \<le> n\<rbrakk> \<Longrightarrow> sign_extended n (ptr AND NOT (mask m))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sign_extended n ptr; m \<le> n\<rbrakk> \<Longrightarrow> sign_extended n (ptr AND NOT (mask m))<\STATESEP>by (fastforce simp: sign_extended_def word_size neg_mask_test_bit bit_simps)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "limited_and (x :: 'a :: len word) y \<longleftrightarrow> (x AND y = x)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma limited_and_eq_0:
+  "\<lbrakk> limited_and x z; y AND NOT z = y \<rbrakk> \<Longrightarrow> x AND y = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>limited_and x z; y AND NOT z = y\<rbrakk> \<Longrightarrow> x AND y = 0<\STATESEP>unfolding limited_and_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x AND z = x; y AND NOT z = y\<rbrakk> \<Longrightarrow> x AND y = 0<\STATESEP>apply (subst arg_cong2[where f="(AND)"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>x AND z = x; y AND NOT z = y\<rbrakk> \<Longrightarrow> x = ?b
+ 2. \<lbrakk>x AND z = x; y AND NOT z = y\<rbrakk> \<Longrightarrow> y = ?d
+ 3. \<lbrakk>x AND z = x; y AND NOT z = y\<rbrakk> \<Longrightarrow> ?b AND ?d = 0<\STATESEP>apply (erule sym)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x AND z = x; y AND NOT z = y\<rbrakk> \<Longrightarrow> (x AND z) AND y AND NOT z = 0<\STATESEP>apply (simp(no_asm) add: word_bw_assocs word_bw_comms word_bw_lcs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma limited_and_eq_id:
+  "\<lbrakk> limited_and x z; y AND z = z \<rbrakk> \<Longrightarrow> x AND y = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>limited_and x z; y AND z = z\<rbrakk> \<Longrightarrow> x AND y = x<\STATESEP>unfolding limited_and_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x AND z = x; y AND z = z\<rbrakk> \<Longrightarrow> x AND y = x<\STATESEP>by (erule subst, fastforce simp: word_bw_lcs word_bw_assocs word_bw_comms)<\STATESEP>1<\TRANSEP><\STATESEP>lemma lshift_limited_and:
+  "limited_and x z \<Longrightarrow> limited_and (x << n) (z << n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. limited_and x z \<Longrightarrow> limited_and (x << n) (z << n)<\STATESEP>using push_bit_and [of n x z]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+push_bit n (x AND z) = push_bit n x AND push_bit n z
+
+goal (1 subgoal):
+ 1. limited_and x z \<Longrightarrow> limited_and (x << n) (z << n)<\STATESEP>by (simp add: limited_and_def shiftl_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma rshift_limited_and:
+  "limited_and x z \<Longrightarrow> limited_and (x >> n) (z >> n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. limited_and x z \<Longrightarrow> limited_and (x >> n) (z >> n)<\STATESEP>using drop_bit_and [of n x z]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+drop_bit n (x AND z) = drop_bit n x AND drop_bit n z
+
+goal (1 subgoal):
+ 1. limited_and x z \<Longrightarrow> limited_and (x >> n) (z >> n)<\STATESEP>by (simp add: limited_and_def shiftr_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas limited_and_simps1 = limited_and_eq_0 limited_and_eq_id<\STATESEP>0<\TRANSEP><\STATESEP>lemmas is_aligned_limited_and
+    = is_aligned_neg_mask_eq[unfolded mask_eq_decr_exp, folded limited_and_def]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas limited_and_simps = limited_and_simps1
+       limited_and_simps1[OF is_aligned_limited_and]
+       limited_and_simps1[OF lshift_limited_and]
+       limited_and_simps1[OF rshift_limited_and]
+       limited_and_simps1[OF rshift_limited_and, OF is_aligned_limited_and]
+       not_one_eq<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  from_bool :: "bool \<Rightarrow> 'a::len word" where
+  "from_bool b \<equiv> case b of True \<Rightarrow> of_nat 1
+                         | False \<Rightarrow> of_nat 0"<\STATESEP>0<\TRANSEP><\STATESEP>lemma from_bool_eq:
+  \<open>from_bool = of_bool\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. from_bool = of_bool<\STATESEP>by (simp add: fun_eq_iff from_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_0:
+  "(from_bool x = 0) = (\<not> x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (from_bool x = 0) = (\<not> x)<\STATESEP>by (simp add: from_bool_def split: bool.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_eq_if':
+  "((if P then 1 else 0) = from_bool Q) = (P = Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((if P then 1 else 0) = from_bool Q) = (P = Q)<\STATESEP>by (cases Q) (simp_all add: from_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  to_bool :: "'a::len word \<Rightarrow> bool" where
+  "to_bool \<equiv> (\<noteq>) 0"<\STATESEP>0<\TRANSEP><\STATESEP>lemma to_bool_and_1:
+  "to_bool (x AND 1) \<longleftrightarrow> bit x 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. to_bool (x AND 1) = bit x 0<\STATESEP>by (simp add: to_bool_def word_and_1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma to_bool_from_bool [simp]:
+  "to_bool (from_bool r) = r"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. to_bool (from_bool r) = r<\STATESEP>unfolding from_bool_def to_bool_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 \<noteq> (case r of True \<Rightarrow> word_of_nat 1 | False \<Rightarrow> word_of_nat 0)) = r<\STATESEP>by (simp split: bool.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_neq_0 [simp]:
+  "(from_bool b \<noteq> 0) = b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (from_bool b \<noteq> 0) = b<\STATESEP>by (simp add: from_bool_def split: bool.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_mask_simp [simp]:
+  "(from_bool r :: 'a::len word) AND 1 = from_bool r"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. from_bool r AND 1 = from_bool r<\STATESEP>unfolding from_bool_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (case r of True \<Rightarrow> word_of_nat 1 | False \<Rightarrow> word_of_nat 0) AND 1 = (case r of True \<Rightarrow> word_of_nat 1 | False \<Rightarrow> word_of_nat 0)<\STATESEP>by (clarsimp split: bool.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_1 [simp]:
+  "(from_bool P = 1) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (from_bool P = 1) = P<\STATESEP>by (simp add: from_bool_def split: bool.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ge_0_from_bool [simp]:
+  "(0 < from_bool P) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (0 < from_bool P) = P<\STATESEP>by (simp add: from_bool_def split: bool.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma limited_and_from_bool:
+  "limited_and (from_bool b) 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. limited_and (from_bool b) 1<\STATESEP>by (simp add: from_bool_def limited_and_def split: bool.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma to_bool_1 [simp]: "to_bool 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. to_bool 1<\STATESEP>by (simp add: to_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma to_bool_0 [simp]: "\<not>to_bool 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> to_bool 0<\STATESEP>by (simp add: to_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_eq_if:
+  "(from_bool Q = (if P then 1 else 0)) = (P = Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (from_bool Q = (if P then 1 else 0)) = (P = Q)<\STATESEP>by (cases Q) (simp_all add: from_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma to_bool_eq_0:
+  "(\<not> to_bool x) = (x = 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> to_bool x) = (x = 0)<\STATESEP>by (simp add: to_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma to_bool_neq_0:
+  "(to_bool x) = (x \<noteq> 0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. to_bool x = (x \<noteq> 0)<\STATESEP>by (simp add: to_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_all_helper:
+  "(\<forall>bool. from_bool bool = val \<longrightarrow> P bool)
+      = ((\<exists>bool. from_bool bool = val) \<longrightarrow> P (val \<noteq> 0))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>bool. from_bool bool = val \<longrightarrow> P bool) = ((\<exists>bool. from_bool bool = val) \<longrightarrow> P (val \<noteq> 0))<\STATESEP>by (auto simp: from_bool_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fold_eq_0_to_bool:
+  "(v = 0) = (\<not> to_bool v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (v = 0) = (\<not> to_bool v)<\STATESEP>by (simp add: to_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_to_bool_iff:
+  "w = from_bool b \<longleftrightarrow> to_bool w = b \<and> (w = 0 \<or> w = 1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (w = from_bool b) = (to_bool w = b \<and> (w = 0 \<or> w = 1))<\STATESEP>by (cases b) (auto simp: from_bool_def to_bool_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_eqI:
+  "from_bool x = from_bool y \<Longrightarrow> x = y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. from_bool x = from_bool y \<Longrightarrow> x = y<\STATESEP>unfolding from_bool_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (case x of True \<Rightarrow> word_of_nat 1 | False \<Rightarrow> word_of_nat 0) = (case y of True \<Rightarrow> word_of_nat 1 | False \<Rightarrow> word_of_nat 0) \<Longrightarrow> x = y<\STATESEP>by (auto split: bool.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_bool_odd_eq_and:
+  "from_bool (odd w) = w AND 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. from_bool (odd w) = w AND 1<\STATESEP>unfolding from_bool_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (case odd w of True \<Rightarrow> word_of_nat 1 | False \<Rightarrow> word_of_nat 0) = w AND 1<\STATESEP>by (simp add: word_and_1 bit_0)<\STATESEP>1<\TRANSEP><\STATESEP>lemma neg_mask_in_mask_range:
+  "is_aligned ptr bits \<Longrightarrow> (ptr' AND NOT(mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned ptr bits \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (erule is_aligned_get_word_bits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a)\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr' AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> ptr' \<in> mask_range ptr bits
+ 2. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr' \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> ptr' AND NOT (mask bits) = ptr
+ 3. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (drule sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr = ptr' AND NOT (mask bits)\<rbrakk> \<Longrightarrow> ptr' \<in> mask_range ptr bits
+ 2. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr' \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> ptr' AND NOT (mask bits) = ptr
+ 3. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (simp add: word_and_le2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>bits < LENGTH('a); ptr = ptr' AND NOT (mask bits)\<rbrakk> \<Longrightarrow> ptr' \<le> (ptr' AND NOT (mask bits)) + mask bits
+ 2. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr' \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> ptr' AND NOT (mask bits) = ptr
+ 3. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (subst word_plus_and_or_coroll, word_eqI_solve)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>bits < LENGTH('a); ptr = ptr' AND NOT (mask bits)\<rbrakk> \<Longrightarrow> ptr' \<le> ptr' AND NOT (mask bits) OR mask bits
+ 2. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr' \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> ptr' AND NOT (mask bits) = ptr
+ 3. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (metis bit.disj_ac(2) bit.disj_conj_distrib2 le_word_or2 word_and_max word_or_not)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr' \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> ptr' AND NOT (mask bits) = ptr
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr'; ptr' \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> ptr' AND NOT (mask bits) = ptr
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (smt (verit) add.right_neutral eq_iff is_aligned_neg_mask_eq mask_out_add_aligned neg_mask_mono_le
+              word_and_not)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (ptr' AND NOT (mask bits) = ptr) = (ptr' \<in> mask_range ptr bits)<\STATESEP>apply (simp add: power_overflow mask_eq_decr_exp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma aligned_offset_in_range:
+  "\<lbrakk> is_aligned (x :: 'a :: len word) m; y < 2 ^ m; is_aligned p n; n \<ge> m; n < LENGTH('a) \<rbrakk>
+   \<Longrightarrow> (x + y \<in> {p .. p + mask n}) = (x \<in> mask_range p n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x + y \<in> mask_range p n) = (x \<in> mask_range p n)<\STATESEP>apply (subst disjunctive_add)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> \<not> bit x na \<or> \<not> bit y na
+ 2. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x OR y \<in> mask_range p n) = (x \<in> mask_range p n)<\STATESEP>apply (simp add: bit_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> bit x na \<longrightarrow> \<not> bit y na
+ 2. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x OR y \<in> mask_range p n) = (x \<in> mask_range p n)<\STATESEP>apply (erule is_alignedE')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na q. \<lbrakk>y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a); x = push_bit m (word_of_nat q); q < 2 ^ (LENGTH('a) - m)\<rbrakk> \<Longrightarrow> bit x na \<longrightarrow> \<not> bit y na
+ 2. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x OR y \<in> mask_range p n) = (x \<in> mask_range p n)<\STATESEP>apply (auto simp add: bit_simps not_le)[1]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>na q. \<lbrakk>y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a); x = push_bit m (word_of_nat q); q < 2 ^ (LENGTH('a) - m); m \<le> na; na < LENGTH('a); na - m < LENGTH('a); bit q (na - m); bit y na\<rbrakk> \<Longrightarrow> False
+ 2. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x OR y \<in> mask_range p n) = (x \<in> mask_range p n)<\STATESEP>apply (metis less_2p_is_upper_bits_unset)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x OR y \<in> mask_range p n) = (x \<in> mask_range p n)<\STATESEP>apply (simp only: is_aligned_add_or word_ao_dist flip: neg_mask_in_mask_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> (x AND NOT (mask n) OR y AND NOT (mask n) = p) = (x AND NOT (mask n) = p)<\STATESEP>apply (subgoal_tac \<open>y AND NOT (mask n) = 0\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a); y AND NOT (mask n) = 0\<rbrakk> \<Longrightarrow> (x AND NOT (mask n) OR y AND NOT (mask n) = p) = (x AND NOT (mask n) = p)
+ 2. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> y AND NOT (mask n) = 0<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x m; y < 2 ^ m; is_aligned p n; m \<le> n; n < LENGTH('a)\<rbrakk> \<Longrightarrow> y AND NOT (mask n) = 0<\STATESEP>apply (metis (full_types) is_aligned_mask is_aligned_neg_mask less_mask_eq word_bw_comms(1) word_bw_lcs(1))<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mask_range_to_bl':
+  "\<lbrakk> is_aligned (ptr :: 'a :: len word) bits; bits < LENGTH('a) \<rbrakk>
+   \<Longrightarrow> mask_range ptr bits
+       = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range ptr bits = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}<\STATESEP>apply (rule set_eqI, rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (subgoal_tac "\<exists>y. x = ptr + y \<and> y < 2 ^ bits")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits; \<exists>y. x = ptr + y \<and> y < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> \<exists>y. x = ptr + y \<and> y < 2 ^ bits
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> \<exists>y. x = ptr + y \<and> y < 2 ^ bits
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (subst is_aligned_add_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> is_aligned ptr (?n15 y)
+ 2. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> y < 2 ^ ?n15 y
+ 3. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (take (LENGTH('a) - ?n15 y) (to_bl ptr) @ drop (LENGTH('a) - ?n15 y) (to_bl y)) = take (LENGTH('a) - bits) (to_bl ptr)
+ 4. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> \<exists>y. x = ptr + y \<and> y < 2 ^ bits
+ 5. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> y < 2 ^ bits
+ 2. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (take (LENGTH('a) - bits) (to_bl ptr) @ drop (LENGTH('a) - bits) (to_bl y)) = take (LENGTH('a) - bits) (to_bl ptr)
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> \<exists>y. x = ptr + y \<and> y < 2 ^ bits
+ 4. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> ptr + y; ptr + y \<le> ptr + mask bits; y < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (take (LENGTH('a) - bits) (to_bl ptr) @ drop (LENGTH('a) - bits) (to_bl y)) = take (LENGTH('a) - bits) (to_bl ptr)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> \<exists>y. x = ptr + y \<and> y < 2 ^ bits
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> \<exists>y. x = ptr + y \<and> y < 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (rule_tac x="x - ptr" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> x = ptr + (x - ptr) \<and> x - ptr < 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (simp add: add_diff_eq[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> x - ptr < 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (simp only: word_less_sub_le[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> x - ptr \<le> 2 ^ bits - 1
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (rule word_diff_ls')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> x \<le> 2 ^ bits - 1 + ptr
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> ptr \<le> x
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply (simp add: field_simps mask_eq_decr_exp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); ptr \<le> x; x \<le> ptr + mask bits\<rbrakk> \<Longrightarrow> ptr \<le> x
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}\<rbrakk> \<Longrightarrow> x \<in> mask_range ptr bits<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> ptr \<le> x \<and> x \<le> ptr + mask bits<\STATESEP>apply (subgoal_tac "\<exists>y. y < 2 ^ bits \<and> to_bl (ptr + y) = to_bl x")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x\<rbrakk> \<Longrightarrow> ptr \<le> x \<and> x \<le> ptr + mask bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr \<le> ptr + y \<and> ptr + y \<le> ptr + mask bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr \<le> ptr + y
+ 2. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr + y \<le> ptr + mask bits
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply (erule(1) is_aligned_no_wrap')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr + y \<le> ptr + mask bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply (simp only: add_diff_eq[symmetric] mask_eq_decr_exp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr + y \<le> ptr + (2 ^ bits - 1)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply (rule word_plus_mono_right)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> y \<le> 2 ^ bits - 1
+ 2. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr \<le> ptr + (2 ^ bits - 1)
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> ptr \<le> ptr + (2 ^ bits - 1)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply (erule is_aligned_no_wrap')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y. \<lbrakk>bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl (ptr + y)) = take (LENGTH('a) - bits) (to_bl ptr); y < 2 ^ bits\<rbrakk> \<Longrightarrow> 2 ^ bits - 1 < 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> \<exists>y<2 ^ bits. to_bl (ptr + y) = to_bl x<\STATESEP>apply (rule_tac x="of_bl (drop (LENGTH('a) - bits) (to_bl x))" in exI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits \<and> to_bl (ptr + of_bl (drop (LENGTH('a) - bits) (to_bl x))) = to_bl x<\STATESEP>apply (rule context_conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> to_bl (ptr + of_bl (drop (LENGTH('a) - bits) (to_bl x))) = to_bl x<\STATESEP>apply (rule order_less_le_trans [OF of_bl_length])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> length (drop (LENGTH('a) - bits) (to_bl x)) < LENGTH('a)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> 2 ^ length (drop (LENGTH('a) - bits) (to_bl x)) \<le> 2 ^ bits
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> to_bl (ptr + of_bl (drop (LENGTH('a) - bits) (to_bl x))) = to_bl x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)\<rbrakk> \<Longrightarrow> 2 ^ length (drop (LENGTH('a) - bits) (to_bl x)) \<le> 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> to_bl (ptr + of_bl (drop (LENGTH('a) - bits) (to_bl x))) = to_bl x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> to_bl (ptr + of_bl (drop (LENGTH('a) - bits) (to_bl x))) = to_bl x<\STATESEP>apply (subst is_aligned_add_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> is_aligned ptr (?n46 x)
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ ?n46 x
+ 3. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - ?n46 x) (to_bl ptr) @ drop (LENGTH('a) - ?n46 x) (to_bl (of_bl (drop (LENGTH('a) - bits) (to_bl x)))) = to_bl x<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits
+ 2. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (to_bl ptr) @ drop (LENGTH('a) - bits) (to_bl (of_bl (drop (LENGTH('a) - bits) (to_bl x)))) = to_bl x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (to_bl ptr) @ drop (LENGTH('a) - bits) (to_bl (of_bl (drop (LENGTH('a) - bits) (to_bl x)))) = to_bl x<\STATESEP>apply (drule sym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a); of_bl (drop (LENGTH('a) - bits) (to_bl x)) < 2 ^ bits; take (LENGTH('a) - bits) (to_bl ptr) = take (LENGTH('a) - bits) (to_bl x)\<rbrakk> \<Longrightarrow> take (LENGTH('a) - bits) (to_bl ptr) @ drop (LENGTH('a) - bits) (to_bl (of_bl (drop (LENGTH('a) - bits) (to_bl x)))) = to_bl x<\STATESEP>apply (simp add: word_rep_drop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mask_range_to_bl:
+  "is_aligned (ptr :: 'a :: len word) bits
+   \<Longrightarrow> mask_range ptr bits
+        = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_aligned ptr bits \<Longrightarrow> mask_range ptr bits = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}<\STATESEP>apply (erule is_aligned_get_word_bits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr bits; bits < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range ptr bits = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> mask_range ptr bits = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}<\STATESEP>apply (erule(1) mask_range_to_bl')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> mask_range ptr bits = {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)}<\STATESEP>apply (rule set_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>ptr = 0; LENGTH('a) \<le> bits\<rbrakk> \<Longrightarrow> (x \<in> mask_range ptr bits) = (x \<in> {x. take (LENGTH('a) - bits) (to_bl x) = take (LENGTH('a) - bits) (to_bl ptr)})<\STATESEP>apply (simp add: power_overflow mask_eq_decr_exp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma aligned_mask_range_cases:
+  "\<lbrakk> is_aligned (p :: 'a :: len word) n; is_aligned (p' :: 'a :: len word) n' \<rbrakk>
+   \<Longrightarrow> mask_range p n \<inter> mask_range p' n' = {} \<or>
+       mask_range p n \<subseteq> mask_range p' n' \<or>
+       mask_range p n \<supseteq> mask_range p' n'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; is_aligned p' n'\<rbrakk> \<Longrightarrow> mask_range p n \<inter> mask_range p' n' = {} \<or> mask_range p n \<subseteq> mask_range p' n' \<or> mask_range p' n' \<subseteq> mask_range p n<\STATESEP>apply (simp add: mask_range_to_bl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; is_aligned p' n'\<rbrakk> \<Longrightarrow> {x. take (LENGTH('a) - n) (to_bl x) = take (LENGTH('a) - n) (to_bl p)} \<inter> {x. take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p')} = {} \<or> {x. take (LENGTH('a) - n) (to_bl x) = take (LENGTH('a) - n) (to_bl p)} \<subseteq> {x. take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p')} \<or> {x. take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p')} \<subseteq> {x. take (LENGTH('a) - n) (to_bl x) = take (LENGTH('a) - n) (to_bl p)}<\STATESEP>apply (rule Meson.disj_comm, rule disjCI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; is_aligned p' n'; {x. take (LENGTH('a) - n) (to_bl x) = take (LENGTH('a) - n) (to_bl p)} \<inter> {x. take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p')} \<noteq> {}\<rbrakk> \<Longrightarrow> {x. take (LENGTH('a) - n) (to_bl x) = take (LENGTH('a) - n) (to_bl p)} \<subseteq> {x. take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p')} \<or> {x. take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p')} \<subseteq> {x. take (LENGTH('a) - n) (to_bl x) = take (LENGTH('a) - n) (to_bl p)}<\STATESEP>apply auto<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa xb. \<lbrakk>is_aligned p n; is_aligned p' n'; take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xa) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n) (to_bl x) \<noteq> take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xa) \<noteq> take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xb) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xb) = take (LENGTH('a) - n') (to_bl p')\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (subgoal_tac "(\<exists>n''. LENGTH('a) - n = (LENGTH('a) - n') + n'')
+                    \<or> (\<exists>n''. LENGTH('a) - n' = (LENGTH('a) - n) + n'')")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xa xb. \<lbrakk>is_aligned p n; is_aligned p' n'; take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xa) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n) (to_bl x) \<noteq> take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xa) \<noteq> take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xb) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xb) = take (LENGTH('a) - n') (to_bl p'); (\<exists>n''. LENGTH('a) - n = LENGTH('a) - n' + n'') \<or> (\<exists>n''. LENGTH('a) - n' = LENGTH('a) - n + n'')\<rbrakk> \<Longrightarrow> False
+ 2. \<And>x xa xb. \<lbrakk>is_aligned p n; is_aligned p' n'; take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xa) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n) (to_bl x) \<noteq> take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xa) \<noteq> take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xb) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xb) = take (LENGTH('a) - n') (to_bl p')\<rbrakk> \<Longrightarrow> (\<exists>n''. LENGTH('a) - n = LENGTH('a) - n' + n'') \<or> (\<exists>n''. LENGTH('a) - n' = LENGTH('a) - n + n'')<\STATESEP>apply (fastforce simp: take_add)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa xb. \<lbrakk>is_aligned p n; is_aligned p' n'; take (LENGTH('a) - n') (to_bl x) = take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xa) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n) (to_bl x) \<noteq> take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xa) \<noteq> take (LENGTH('a) - n') (to_bl p'); take (LENGTH('a) - n) (to_bl xb) = take (LENGTH('a) - n) (to_bl p); take (LENGTH('a) - n') (to_bl xb) = take (LENGTH('a) - n') (to_bl p')\<rbrakk> \<Longrightarrow> (\<exists>n''. LENGTH('a) - n = LENGTH('a) - n' + n'') \<or> (\<exists>n''. LENGTH('a) - n' = LENGTH('a) - n + n'')<\STATESEP>apply arith<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma aligned_mask_range_offset_subset:
+  assumes al: "is_aligned (ptr :: 'a :: len word) sz" and al': "is_aligned x sz'"
+  and szv: "sz' \<le> sz"
+  and xsz: "x < 2 ^ sz"
+  shows "mask_range (ptr+x) sz' \<subseteq> mask_range ptr sz"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>using al<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+is_aligned ptr sz
+
+goal (1 subgoal):
+ 1. mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>proof (rule is_aligned_get_word_bits)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> sz\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>assume p0: "ptr = 0" and szv': "LENGTH ('a) \<le> sz"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+ptr = 0
+LENGTH('a) \<le> sz
+
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> sz\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+ptr = 0
+LENGTH('a) \<le> sz<\STATESEP>have "(2 ::'a word) ^ sz = 0"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+ptr = 0
+LENGTH('a) \<le> sz
+
+goal (1 subgoal):
+ 1. 2 ^ sz = 0<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+2 ^ sz = 0
+
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz
+ 2. \<lbrakk>ptr = 0; LENGTH('a) \<le> sz\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>using p0<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+ptr = 0
+
+goal (1 subgoal):
+ 1. mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>by (simp add: \<open>2 ^ sz = 0\<close> mask_eq_decr_exp)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz
+
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>assume szv': "sz < LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+sz < LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>hence blah: "2 ^ (sz - sz') < (2 :: nat) ^ LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+sz < LENGTH('a)
+
+goal (1 subgoal):
+ 1. 2 ^ (sz - sz') < 2 ^ LENGTH('a)<\STATESEP>using szv<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+sz < LENGTH('a)
+sz' \<le> sz
+
+goal (1 subgoal):
+ 1. 2 ^ (sz - sz') < 2 ^ LENGTH('a)<\STATESEP>by auto<\STATESEP>3<\TRANSEP>proof (state)
+this:
+2 ^ (sz - sz') < 2 ^ LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned ptr sz; sz < LENGTH('a)\<rbrakk> \<Longrightarrow> mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>using szv szv'<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+sz' \<le> sz
+sz < LENGTH('a)
+
+goal (1 subgoal):
+ 1. mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz<\STATESEP>apply auto<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + mask sz'\<rbrakk> \<Longrightarrow> ptr \<le> ptr + x
+ 2. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + mask sz'\<rbrakk> \<Longrightarrow> ptr + x + mask sz' \<le> ptr + mask sz<\STATESEP>using al assms(4) is_aligned_no_wrap'<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+is_aligned ptr sz
+x < 2 ^ sz
+\<lbrakk>is_aligned ?ptr ?sz; ?off < 2 ^ ?sz\<rbrakk> \<Longrightarrow> ?ptr \<le> ?ptr + ?off
+
+goal (2 subgoals):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + mask sz'\<rbrakk> \<Longrightarrow> ptr \<le> ptr + x
+ 2. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + mask sz'\<rbrakk> \<Longrightarrow> ptr + x + mask sz' \<le> ptr + mask sz<\STATESEP>apply blast<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + mask sz'\<rbrakk> \<Longrightarrow> ptr + x + mask sz' \<le> ptr + mask sz<\STATESEP>apply (simp only: flip: add_diff_eq add_mask_fold)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + (2 ^ sz' - 1)\<rbrakk> \<Longrightarrow> ptr + x + (2 ^ sz' - 1) \<le> ptr + (2 ^ sz - 1)<\STATESEP>apply (subst add.assoc, rule word_plus_mono_right)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + (2 ^ sz' - 1)\<rbrakk> \<Longrightarrow> x + (2 ^ sz' - 1) \<le> 2 ^ sz - 1
+ 2. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + (2 ^ sz' - 1)\<rbrakk> \<Longrightarrow> ptr \<le> ptr + (2 ^ sz - 1)<\STATESEP>using al' is_aligned_add_less_t2n xsz<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+is_aligned x sz'
+\<lbrakk>is_aligned ?p ?n; ?d < 2 ^ ?n; ?n \<le> ?m; ?p < 2 ^ ?m\<rbrakk> \<Longrightarrow> ?p + ?d < 2 ^ ?m
+x < 2 ^ sz
+
+goal (2 subgoals):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + (2 ^ sz' - 1)\<rbrakk> \<Longrightarrow> x + (2 ^ sz' - 1) \<le> 2 ^ sz - 1
+ 2. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + (2 ^ sz' - 1)\<rbrakk> \<Longrightarrow> ptr \<le> ptr + (2 ^ sz - 1)<\STATESEP>apply fastforce<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sz' \<le> sz; sz < LENGTH('a); ptr + x \<le> ptr + x + (2 ^ sz' - 1)\<rbrakk> \<Longrightarrow> ptr \<le> ptr + (2 ^ sz - 1)<\STATESEP>apply (simp add: field_simps szv al is_aligned_no_overflow)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+mask_range (ptr + x) sz' \<subseteq> mask_range ptr sz
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma aligned_mask_ranges_disjoint:
+  "\<lbrakk> is_aligned (p :: 'a :: len word) n; is_aligned (p' :: 'a :: len word) n';
+     p AND NOT(mask n') \<noteq> p'; p' AND NOT(mask n) \<noteq> p \<rbrakk>
+   \<Longrightarrow> mask_range p n \<inter> mask_range p' n' = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; is_aligned p' n'; p AND NOT (mask n') \<noteq> p'; p' AND NOT (mask n) \<noteq> p\<rbrakk> \<Longrightarrow> mask_range p n \<inter> mask_range p' n' = {}<\STATESEP>using aligned_mask_range_cases<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>is_aligned ?p ?n; is_aligned ?p' ?n'\<rbrakk> \<Longrightarrow> mask_range ?p ?n \<inter> mask_range ?p' ?n' = {} \<or> mask_range ?p ?n \<subseteq> mask_range ?p' ?n' \<or> mask_range ?p' ?n' \<subseteq> mask_range ?p ?n
+
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; is_aligned p' n'; p AND NOT (mask n') \<noteq> p'; p' AND NOT (mask n) \<noteq> p\<rbrakk> \<Longrightarrow> mask_range p n \<inter> mask_range p' n' = {}<\STATESEP>by (auto simp: neg_mask_in_mask_range)<\STATESEP>1<\TRANSEP><\STATESEP>lemma aligned_mask_ranges_disjoint2:
+  "\<lbrakk> is_aligned p n; is_aligned ptr bits; n \<ge> m; n < size p; m \<le> bits;
+     (\<forall>y < 2 ^ (n - m). p + (y << m) \<notin> mask_range ptr bits) \<rbrakk>
+   \<Longrightarrow> mask_range p n \<inter> mask_range ptr bits = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; \<forall>y<2 ^ (n - m). p + (y << m) \<notin> mask_range ptr bits\<rbrakk> \<Longrightarrow> mask_range p n \<inter> mask_range ptr bits = {}<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; \<forall>y<2 ^ (n - m). p + (y << m) \<notin> mask_range ptr bits; x \<in> mask_range p n; x \<in> mask_range ptr bits\<rbrakk> \<Longrightarrow> x \<in> {}<\STATESEP>apply (simp only: flip: neg_mask_in_mask_range)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; \<forall>y<2 ^ (n - m). p + (y << m) AND NOT (mask bits) \<noteq> ptr; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> x \<in> {}<\STATESEP>apply (drule_tac x="x AND mask n >> m" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr; x AND mask n >> m < 2 ^ (n - m) \<longrightarrow> p + (x AND mask n >> m << m) AND NOT (mask bits) \<noteq> ptr\<rbrakk> \<Longrightarrow> x \<in> {}<\STATESEP>apply (erule notE[OF mp])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> x AND mask n >> m < 2 ^ (n - m)
+ 2. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> p + (x AND mask n >> m << m) AND NOT (mask bits) = ptr<\STATESEP>apply (simp flip: take_bit_eq_mask add: shiftr_def drop_bit_take_bit)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> take_bit (n - m) (drop_bit m x) < 2 ^ (n - m)
+ 2. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> p + (x AND mask n >> m << m) AND NOT (mask bits) = ptr<\STATESEP>apply transfer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x p n ptr bits m. \<lbrakk>2 ^ n dvd take_bit LENGTH('a) p; 2 ^ bits dvd take_bit LENGTH('a) ptr; m \<le> n; n < LENGTH('a); m \<le> bits; take_bit LENGTH('a) (x AND NOT (mask n)) = take_bit LENGTH('a) p; take_bit LENGTH('a) (x AND NOT (mask bits)) = take_bit LENGTH('a) ptr\<rbrakk> \<Longrightarrow> take_bit LENGTH('a) (take_bit (min LENGTH('a) (n - m)) ((drop_bit m \<circ> take_bit LENGTH('a)) x)) < take_bit LENGTH('a) (2 ^ (n - m))
+ 2. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> p + (x AND mask n >> m << m) AND NOT (mask bits) = ptr<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < size p; m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> p + (x AND mask n >> m << m) AND NOT (mask bits) = ptr<\STATESEP>apply (simp add: word_size and_mask_less_size)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < LENGTH('a); m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> p + (x AND mask n >> m << m) AND NOT (mask bits) = ptr<\STATESEP>apply (subst disjunctive_add)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x na. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < LENGTH('a); m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> \<not> bit p na \<or> \<not> bit (x AND mask n >> m << m) na
+ 2. \<And>x. \<lbrakk>is_aligned p n; is_aligned ptr bits; m \<le> n; n < LENGTH('a); m \<le> bits; x AND NOT (mask n) = p; x AND NOT (mask bits) = ptr\<rbrakk> \<Longrightarrow> (p OR (x AND mask n >> m << m)) AND NOT (mask bits) = ptr<\STATESEP>apply (auto simp add: bit_simps word_size intro!: bit_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clz_sint_upper[simp]:
+  "LENGTH('a) \<ge> 3 \<Longrightarrow> sint (of_nat (word_clz (w :: 'a :: len word)) :: 'a sword) \<le> int (LENGTH('a))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 3 \<le> LENGTH('a) \<Longrightarrow> sint (word_of_nat (word_clz w)) \<le> int LENGTH('a)<\STATESEP>using word_clz_max [of w]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+word_clz w \<le> size w
+
+goal (1 subgoal):
+ 1. 3 \<le> LENGTH('a) \<Longrightarrow> sint (word_of_nat (word_clz w)) \<le> int LENGTH('a)<\STATESEP>apply (simp add: word_size signed_of_nat)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> signed_take_bit (LENGTH('a) - Suc 0) (int (word_clz w)) \<le> int LENGTH('a)<\STATESEP>apply (subst signed_take_bit_int_eq_self)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> - (2 ^ (LENGTH('a) - Suc 0)) \<le> int (word_clz w)
+ 2. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> int (word_clz w) < 2 ^ (LENGTH('a) - Suc 0)
+ 3. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> int (word_clz w) \<le> int LENGTH('a)<\STATESEP>apply simp_all<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> - (2 ^ (LENGTH('a) - Suc 0)) \<le> int (word_clz w)
+ 2. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (metis negative_zle of_nat_numeral semiring_1_class.of_nat_power)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (drule small_powers_of_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>word_clz w \<le> LENGTH('a); LENGTH('a) < 2 ^ (LENGTH('a) - 1)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (erule le_less_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LENGTH('a) < 2 ^ (LENGTH('a) - 1) \<Longrightarrow> LENGTH('a) < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_clz_sint_lower[simp]:
+  "LENGTH('a) \<ge> 3
+   \<Longrightarrow> - sint (of_nat (word_clz (w :: 'a :: len word)) :: 'a signed word) \<le> int (LENGTH('a))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 3 \<le> LENGTH('a) \<Longrightarrow> - sint (word_of_nat (word_clz w)) \<le> int LENGTH('a)<\STATESEP>apply (subst sint_eq_uint)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. 3 \<le> LENGTH('a) \<Longrightarrow> \<not> msb (word_of_nat (word_clz w))
+ 2. 3 \<le> LENGTH('a) \<Longrightarrow> - uint (word_of_nat (word_clz w)) \<le> int LENGTH('a)<\STATESEP>using word_clz_max [of w]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+word_clz w \<le> size w
+
+goal (2 subgoals):
+ 1. 3 \<le> LENGTH('a) \<Longrightarrow> \<not> msb (word_of_nat (word_clz w))
+ 2. 3 \<le> LENGTH('a) \<Longrightarrow> - uint (word_of_nat (word_clz w)) \<le> int LENGTH('a)<\STATESEP>apply (simp_all add: word_size unsigned_of_nat)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> \<not> msb (word_of_nat (word_clz w))<\STATESEP>apply (rule not_msb_from_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> word_of_nat (word_clz w) < 2 ^ (LENGTH('a signed) - 1)<\STATESEP>apply (simp add: word_less_nat_alt unsigned_of_nat)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> take_bit LENGTH('a) (word_clz w) < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (subst take_bit_nat_eq_self)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ LENGTH('a)
+ 2. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (simp add: le_less_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>3 \<le> LENGTH('a); word_clz w \<le> LENGTH('a)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (drule small_powers_of_2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>word_clz w \<le> LENGTH('a); LENGTH('a) < 2 ^ (LENGTH('a) - 1)\<rbrakk> \<Longrightarrow> word_clz w < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (erule le_less_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LENGTH('a) < 2 ^ (LENGTH('a) - 1) \<Longrightarrow> LENGTH('a) < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mask_range_subsetD:
+  "\<lbrakk> p' \<in> mask_range p n; x' \<in> mask_range p' n'; n' \<le> n; is_aligned p n; is_aligned p' n' \<rbrakk> \<Longrightarrow>
+   x' \<in> mask_range p n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>p' \<in> mask_range p n; x' \<in> mask_range p' n'; n' \<le> n; is_aligned p n; is_aligned p' n'\<rbrakk> \<Longrightarrow> x' \<in> mask_range p n<\STATESEP>using aligned_mask_step<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>?n' \<le> ?n; ?p' \<le> ?p + mask ?n; is_aligned ?p ?n; is_aligned ?p' ?n'\<rbrakk> \<Longrightarrow> ?p' + mask ?n' \<le> ?p + mask ?n
+
+goal (1 subgoal):
+ 1. \<lbrakk>p' \<in> mask_range p n; x' \<in> mask_range p' n'; n' \<le> n; is_aligned p n; is_aligned p' n'\<rbrakk> \<Longrightarrow> x' \<in> mask_range p n<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma add_mult_in_mask_range:
+  "\<lbrakk> is_aligned (base :: 'a :: len word) n; n < LENGTH('a); bits \<le> n; x < 2 ^ (n - bits) \<rbrakk>
+   \<Longrightarrow> base + x * 2^bits \<in> mask_range base n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned base n; n < LENGTH('a); bits \<le> n; x < 2 ^ (n - bits)\<rbrakk> \<Longrightarrow> base + x * 2 ^ bits \<in> mask_range base n<\STATESEP>by (simp add: is_aligned_no_wrap' mask_2pm1 nasty_split_lt word_less_power_trans2
+                word_plus_mono_right)<\STATESEP>1<\TRANSEP><\STATESEP>lemma from_to_bool_last_bit:
+  "from_bool (to_bool (x AND 1)) = x AND 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. from_bool (to_bool (x AND 1)) = x AND 1<\STATESEP>by (metis from_bool_to_bool_iff word_and_1)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sint_ctz:
+  \<open>0 \<le> sint (of_nat (word_ctz (x :: 'a :: len word)) :: 'a signed word)
+     \<and> sint (of_nat (word_ctz x) :: 'a signed word) \<le> int (LENGTH('a))\<close> (is \<open>?P \<and> ?Q\<close>)
+  if \<open>LENGTH('a) > 2\<close><\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 \<le> sint (word_of_nat (word_ctz x)) \<and> sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>proof<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. 0 \<le> sint (word_of_nat (word_ctz x))
+ 2. sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>have *: \<open>word_ctz x < 2 ^ (LENGTH('a) - Suc 0)\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_ctz x < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>using word_ctz_le<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+word_ctz ?w \<le> LENGTH(?'a)
+
+goal (1 subgoal):
+ 1. word_ctz x < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (rule le_less_trans)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LENGTH('a) < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>using that small_powers_of_2 [of \<open>LENGTH('a)\<close>]<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+2 < LENGTH('a)
+3 \<le> LENGTH('a) \<Longrightarrow> LENGTH('a) < 2 ^ (LENGTH('a) - 1)
+
+goal (1 subgoal):
+ 1. LENGTH('a) < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply simp<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+word_ctz x < 2 ^ (LENGTH('a) - Suc 0)
+
+goal (2 subgoals):
+ 1. 0 \<le> sint (word_of_nat (word_ctz x))
+ 2. sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>have \<open>int (word_ctz x) div 2 ^ (LENGTH('a) - Suc 0) = 0\<close><\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. int (word_ctz x) div 2 ^ (LENGTH('a) - Suc 0) = 0<\STATESEP>apply (rule div_pos_pos_trivial)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. 0 \<le> int (word_ctz x)
+ 2. int (word_ctz x) < 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (simp_all add: *)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+int (word_ctz x) div 2 ^ (LENGTH('a) - Suc 0) = 0
+
+goal (2 subgoals):
+ 1. 0 \<le> sint (word_of_nat (word_ctz x))
+ 2. sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+int (word_ctz x) div 2 ^ (LENGTH('a) - Suc 0) = 0<\STATESEP>show ?P<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+int (word_ctz x) div 2 ^ (LENGTH('a) - Suc 0) = 0
+
+goal (1 subgoal):
+ 1. 0 \<le> sint (word_of_nat (word_ctz x))<\STATESEP>by (simp add: signed_of_nat bit_iff_odd)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+0 \<le> sint (word_of_nat (word_ctz x))
+
+goal (1 subgoal):
+ 1. sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>show ?Q<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>apply (auto simp add: signed_of_nat)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. signed_take_bit (LENGTH('a) - Suc 0) (int (word_ctz x)) \<le> int LENGTH('a)<\STATESEP>apply (subst signed_take_bit_int_eq_self)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. - (2 ^ (LENGTH('a) - Suc 0)) \<le> int (word_ctz x)
+ 2. int (word_ctz x) < 2 ^ (LENGTH('a) - Suc 0)
+ 3. int (word_ctz x) \<le> int LENGTH('a)<\STATESEP>apply (auto simp add: word_ctz_le * minus_le_iff [of _ \<open>int (word_ctz x)\<close>])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. - int (word_ctz x) \<le> 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply (rule order.trans [of _ 0])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. - int (word_ctz x) \<le> 0
+ 2. 0 \<le> 2 ^ (LENGTH('a) - Suc 0)<\STATESEP>apply simp_all<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sint (word_of_nat (word_ctz x)) \<le> int LENGTH('a)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma unat_of_nat_word_log2:
+  "LENGTH('a) < 2 ^ LENGTH('b)
+   \<Longrightarrow> unat (of_nat (word_log2 (n :: 'a :: len word)) :: 'b :: len word) = word_log2 n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LENGTH('a) < 2 ^ LENGTH('b) \<Longrightarrow> unat (word_of_nat (word_log2 n)) = word_log2 n<\STATESEP>by (metis less_trans unat_of_nat_eq word_log2_max word_size)<\STATESEP>1<\TRANSEP><\STATESEP>lemma aligned_mask_diff:
+  "\<lbrakk> is_aligned (dest :: 'a :: len word) bits; is_aligned (ptr :: 'a :: len word) sz;
+     bits \<le> sz; sz < LENGTH('a); dest < ptr \<rbrakk>
+   \<Longrightarrow> mask bits + dest < ptr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr\<rbrakk> \<Longrightarrow> mask bits + dest < ptr<\STATESEP>apply (frule_tac p' = ptr in aligned_mask_range_cases, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range dest bits \<inter> mask_range ptr sz = {} \<or> mask_range dest bits \<subseteq> mask_range ptr sz \<or> mask_range ptr sz \<subseteq> mask_range dest bits\<rbrakk> \<Longrightarrow> mask bits + dest < ptr<\STATESEP>apply (elim disjE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range dest bits \<inter> mask_range ptr sz = {}\<rbrakk> \<Longrightarrow> mask bits + dest < ptr
+ 2. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range dest bits \<subseteq> mask_range ptr sz\<rbrakk> \<Longrightarrow> mask bits + dest < ptr
+ 3. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range ptr sz \<subseteq> mask_range dest bits\<rbrakk> \<Longrightarrow> mask bits + dest < ptr<\STATESEP>apply (drule_tac is_aligned_no_overflow_mask, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>bits \<le> sz; sz < LENGTH('a); dest < ptr; \<not> ptr \<le> dest + mask bits; dest \<le> dest + mask bits; ptr \<le> ptr + mask sz\<rbrakk> \<Longrightarrow> mask bits + dest < ptr
+ 2. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range dest bits \<subseteq> mask_range ptr sz\<rbrakk> \<Longrightarrow> mask bits + dest < ptr
+ 3. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range ptr sz \<subseteq> mask_range dest bits\<rbrakk> \<Longrightarrow> mask bits + dest < ptr<\STATESEP>apply (simp add: algebra_split_simps word_le_not_less)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range dest bits \<subseteq> mask_range ptr sz\<rbrakk> \<Longrightarrow> mask bits + dest < ptr
+ 2. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range ptr sz \<subseteq> mask_range dest bits\<rbrakk> \<Longrightarrow> mask bits + dest < ptr<\STATESEP>apply (drule is_aligned_no_overflow_mask; fastforce)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; mask_range ptr sz \<subseteq> mask_range dest bits\<rbrakk> \<Longrightarrow> mask bits + dest < ptr<\STATESEP>apply (simp add: is_aligned_weaken algebra_split_simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; ptr \<le> ptr + mask sz \<longrightarrow> dest \<le> ptr \<and> ptr + mask sz \<le> dest + mask bits\<rbrakk> \<Longrightarrow> dest + mask bits < ptr<\STATESEP>apply (auto simp add: not_le)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; ptr + mask sz < ptr\<rbrakk> \<Longrightarrow> dest + mask bits < ptr
+ 2. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; dest \<le> ptr; ptr + mask sz \<le> dest + mask bits\<rbrakk> \<Longrightarrow> dest + mask bits < ptr<\STATESEP>using is_aligned_no_overflow_mask leD<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+is_aligned ?x ?n \<Longrightarrow> ?x \<le> ?x + mask ?n
+?y \<le> ?x \<Longrightarrow> \<not> ?x < ?y
+
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; ptr + mask sz < ptr\<rbrakk> \<Longrightarrow> dest + mask bits < ptr
+ 2. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; dest \<le> ptr; ptr + mask sz \<le> dest + mask bits\<rbrakk> \<Longrightarrow> dest + mask bits < ptr<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned dest bits; is_aligned ptr sz; bits \<le> sz; sz < LENGTH('a); dest < ptr; dest \<le> ptr; ptr + mask sz \<le> dest + mask bits\<rbrakk> \<Longrightarrow> dest + mask bits < ptr<\STATESEP>apply (meson aligned_add_mask_less_eq is_aligned_weaken le_less_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma Suc_mask_eq_mask:
+  "\<not>bit a n \<Longrightarrow> a AND mask (Suc n) = a AND mask n" for a::"'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> bit a n \<Longrightarrow> a AND mask (Suc n) = a AND mask n<\STATESEP>by (metis sign_extend_def sign_extend_def')<\STATESEP>1<\TRANSEP><\STATESEP>lemma word_less_high_bits:
+  fixes a::"'a::len word"
+  assumes high_bits: "\<forall>i > n. bit a i = bit b i"
+  assumes less: "a AND mask (Suc n) < b AND mask (Suc n)"
+  shows "a < b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a < b<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. a < b<\STATESEP>let ?masked = "\<lambda>x. x AND NOT (mask (Suc n))"<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. a < b<\STATESEP>from high_bits<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<forall>i>n. bit a i = bit b i<\STATESEP>have "?masked a = ?masked b"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>i>n. bit a i = bit b i
+
+goal (1 subgoal):
+ 1. a AND NOT (mask (Suc n)) = b AND NOT (mask (Suc n))<\STATESEP>by - word_eqI_solve<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a AND NOT (mask (Suc n)) = b AND NOT (mask (Suc n))
+
+goal (1 subgoal):
+ 1. a < b<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a AND NOT (mask (Suc n)) = b AND NOT (mask (Suc n))<\STATESEP>have "?masked a + (a AND mask (Suc n)) < ?masked b + (b AND mask (Suc n))"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a AND NOT (mask (Suc n)) = b AND NOT (mask (Suc n))
+
+goal (1 subgoal):
+ 1. (a AND NOT (mask (Suc n))) + (a AND mask (Suc n)) < (b AND NOT (mask (Suc n))) + (b AND mask (Suc n))<\STATESEP>by (metis AND_NOT_mask_plus_AND_mask_eq less word_and_le2 word_plus_strict_mono_right)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(a AND NOT (mask (Suc n))) + (a AND mask (Suc n)) < (b AND NOT (mask (Suc n))) + (b AND mask (Suc n))
+
+goal (1 subgoal):
+ 1. a < b<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+(a AND NOT (mask (Suc n))) + (a AND mask (Suc n)) < (b AND NOT (mask (Suc n))) + (b AND mask (Suc n))<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(a AND NOT (mask (Suc n))) + (a AND mask (Suc n)) < (b AND NOT (mask (Suc n))) + (b AND mask (Suc n))
+
+goal (1 subgoal):
+ 1. a < b<\STATESEP>by (simp add: AND_NOT_mask_plus_AND_mask_eq)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a < b
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_less_bitI:
+  fixes a :: "'a::len word"
+  assumes hi_bits: "\<forall>i > n. bit a i = bit b i"
+  assumes a_bits: "\<not>bit a n"
+  assumes b_bits: "bit b n" "n < LENGTH('a)"
+  shows "a < b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a < b<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. a < b<\STATESEP>from b_bits<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+bit b n
+n < LENGTH('a)<\STATESEP>have "a AND mask n < b AND mask (Suc n)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+bit b n
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. a AND mask n < b AND mask (Suc n)<\STATESEP>by (metis bit_mask_iff impossible_bit le2p_bits_unset leI lessI less_Suc_eq_le mask_eq_decr_exp
+              word_and_less' word_ao_nth)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a AND mask n < b AND mask (Suc n)
+
+goal (1 subgoal):
+ 1. a < b<\STATESEP>with a_bits<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<not> bit a n
+a AND mask n < b AND mask (Suc n)<\STATESEP>have "a AND mask (Suc n) < b AND mask (Suc n)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<not> bit a n
+a AND mask n < b AND mask (Suc n)
+
+goal (1 subgoal):
+ 1. a AND mask (Suc n) < b AND mask (Suc n)<\STATESEP>by (simp add: Suc_mask_eq_mask)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a AND mask (Suc n) < b AND mask (Suc n)
+
+goal (1 subgoal):
+ 1. a < b<\STATESEP>with hi_bits<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<forall>i>n. bit a i = bit b i
+a AND mask (Suc n) < b AND mask (Suc n)<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>i>n. bit a i = bit b i
+a AND mask (Suc n) < b AND mask (Suc n)
+
+goal (1 subgoal):
+ 1. a < b<\STATESEP>by (rule word_less_high_bits)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a < b
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_less_bitD:
+  fixes a::"'a::len word"
+  assumes less: "a < b"
+  shows "\<exists>n. (\<forall>i > n. bit a i = bit b i) \<and> \<not>bit a n \<and> bit b n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>define xs where "xs \<equiv> zip (to_bl a) (to_bl b)"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+xs \<equiv> zip (to_bl a) (to_bl b)
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>define tk where "tk \<equiv> length (takeWhile (\<lambda>(x,y). x = y) xs)"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+tk \<equiv> length (takeWhile (\<lambda>(x, y). x = y) xs)
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>define  n where  "n \<equiv> LENGTH('a) - Suc tk"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+n \<equiv> LENGTH('a) - Suc tk
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>have n_less: "n < LENGTH('a)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n < LENGTH('a)<\STATESEP>by (simp add: n_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+n < LENGTH('a)
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>fix i<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>have "\<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i<\STATESEP>using bit_imp_le_length<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+bit ?w ?n \<Longrightarrow> ?n < LENGTH(?'a)
+
+goal (1 subgoal):
+ 1. \<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i<\STATESEP>by blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>moreover<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>assume "i > n"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+n < i
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>with n_less<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+n < LENGTH('a)
+n < i<\STATESEP>have "i < LENGTH('a) \<Longrightarrow> LENGTH('a) - Suc i < tk"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+n < i
+
+goal (1 subgoal):
+ 1. i < LENGTH('a) \<Longrightarrow> LENGTH('a) - Suc i < tk<\STATESEP>unfolding n_def<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+LENGTH('a) - Suc tk < LENGTH('a)
+LENGTH('a) - Suc tk < i
+
+goal (1 subgoal):
+ 1. i < LENGTH('a) \<Longrightarrow> LENGTH('a) - Suc i < tk<\STATESEP>by arith<\STATESEP>5<\TRANSEP>proof (state)
+this:
+i < LENGTH('a) \<Longrightarrow> LENGTH('a) - Suc i < tk
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>hence "i < LENGTH('a) \<Longrightarrow> bit a i = bit b i"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+i < LENGTH('a) \<Longrightarrow> LENGTH('a) - Suc i < tk
+
+goal (1 subgoal):
+ 1. i < LENGTH('a) \<Longrightarrow> bit a i = bit b i<\STATESEP>unfolding n_def tk_def xs_def<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+i < LENGTH('a) \<Longrightarrow> LENGTH('a) - Suc i < length (takeWhile (\<lambda>(x, y). x = y) (zip (to_bl a) (to_bl b)))
+
+goal (1 subgoal):
+ 1. i < LENGTH('a) \<Longrightarrow> bit a i = bit b i<\STATESEP>by (fastforce dest: takeWhile_take_has_property_nth simp: rev_nth simp flip: nth_rev_to_bl)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+i < LENGTH('a) \<Longrightarrow> bit a i = bit b i
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>ultimately<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+\<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i
+i < LENGTH('a) \<Longrightarrow> bit a i = bit b i<\STATESEP>have "bit a i = bit b i"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+\<not> i < LENGTH('a) \<Longrightarrow> bit a i = bit b i
+i < LENGTH('a) \<Longrightarrow> bit a i = bit b i
+
+goal (1 subgoal):
+ 1. bit a i = bit b i<\STATESEP>by blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+bit a i = bit b i
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>note all = this<\STATESEP>2<\TRANSEP>proof (state)
+this:
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>from less<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a < b<\STATESEP>have "a \<noteq> b"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a < b
+
+goal (1 subgoal):
+ 1. a \<noteq> b<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a \<noteq> b
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a \<noteq> b<\STATESEP>obtain i where "to_bl a ! i \<noteq> to_bl b ! i"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a \<noteq> b
+
+goal (1 subgoal):
+ 1. (\<And>i. to_bl a ! i \<noteq> to_bl b ! i \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>using nth_equalityI word_bl.Rep_eqD word_rotate.lbl_lbl<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+a \<noteq> b
+\<lbrakk>length ?xs = length ?ys; \<And>i. i < length ?xs \<Longrightarrow> ?xs ! i = ?ys ! i\<rbrakk> \<Longrightarrow> ?xs = ?ys
+to_bl ?x = to_bl ?y \<Longrightarrow> ?x = ?y
+length (to_bl ?xa) = length (to_bl ?x)
+
+goal (1 subgoal):
+ 1. (\<And>i. to_bl a ! i \<noteq> to_bl b ! i \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+to_bl a ! i \<noteq> to_bl b ! i
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+to_bl a ! i \<noteq> to_bl b ! i<\STATESEP>have "tk \<noteq> length xs"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+to_bl a ! i \<noteq> to_bl b ! i
+
+goal (1 subgoal):
+ 1. tk \<noteq> length xs<\STATESEP>unfolding tk_def xs_def<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+to_bl a ! i \<noteq> to_bl b ! i
+
+goal (1 subgoal):
+ 1. length (takeWhile (\<lambda>(x, y). x = y) (zip (to_bl a) (to_bl b))) \<noteq> length (zip (to_bl a) (to_bl b))<\STATESEP>by (metis length_takeWhile_less list_eq_iff_zip_eq nat_neq_iff word_rotate.lbl_lbl)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+tk \<noteq> length xs
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>then<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+tk \<noteq> length xs<\STATESEP>have "tk < length xs"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+tk \<noteq> length xs
+
+goal (1 subgoal):
+ 1. tk < length xs<\STATESEP>using length_takeWhile_le order_le_neq_trans tk_def<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+tk \<noteq> length xs
+length (takeWhile ?P ?xs) \<le> length ?xs
+\<lbrakk>?a \<le> ?b; ?a \<noteq> ?b\<rbrakk> \<Longrightarrow> ?a < ?b
+tk \<equiv> length (takeWhile (\<lambda>(x, y). x = y) xs)
+
+goal (1 subgoal):
+ 1. tk < length xs<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+tk < length xs
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>from nth_length_takeWhile[OF this[unfolded tk_def]]<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<not> (case xs ! length (takeWhile (\<lambda>(x, y). x = y) xs) of (x, y) \<Rightarrow> x = y)<\STATESEP>have "fst (xs ! tk) \<noteq> snd (xs ! tk)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<not> (case xs ! length (takeWhile (\<lambda>(x, y). x = y) xs) of (x, y) \<Rightarrow> x = y)
+
+goal (1 subgoal):
+ 1. fst (xs ! tk) \<noteq> snd (xs ! tk)<\STATESEP>by (clarsimp simp: tk_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+fst (xs ! tk) \<noteq> snd (xs ! tk)
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>with `tk < length xs`<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+tk < length xs
+fst (xs ! tk) \<noteq> snd (xs ! tk)<\STATESEP>have "bit a n \<noteq> bit b n"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+tk < length xs
+fst (xs ! tk) \<noteq> snd (xs ! tk)
+
+goal (1 subgoal):
+ 1. bit a n \<noteq> bit b n<\STATESEP>by (clarsimp simp: xs_def n_def tk_def nth_rev simp flip: nth_rev_to_bl)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+bit a n \<noteq> bit b n
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>with less all<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+a < b
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+bit a n \<noteq> bit b n<\STATESEP>have "\<not>bit a n \<and> bit b n"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+a < b
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+bit a n \<noteq> bit b n
+
+goal (1 subgoal):
+ 1. \<not> bit a n \<and> bit b n<\STATESEP>by (metis n_less order.asym word_less_bitI)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<not> bit a n \<and> bit b n
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+n < LENGTH('a)
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+\<not> bit a n \<and> bit b n<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+n < LENGTH('a)
+n < ?i2 \<Longrightarrow> bit a ?i2 = bit b ?i2
+\<not> bit a n \<and> bit b n
+
+goal (1 subgoal):
+ 1. \<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<exists>n. (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma word_less_bit_eq:
+  "(a < b) = (\<exists>n < LENGTH('a). (\<forall>i > n. bit a i = bit b i) \<and> \<not>bit a n \<and> bit b n)" for a::"'a::len word"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a < b) = (\<exists>n<LENGTH('a). (\<forall>i>n. bit a i = bit b i) \<and> \<not> bit a n \<and> bit b n)<\STATESEP>by (meson bit_imp_le_length word_less_bitD word_less_bitI)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

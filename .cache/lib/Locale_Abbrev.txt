@@ -1,0 +1,35 @@
+<\STATESEP>theory Locale_Abbrev
+  imports Main
+  keywords "revert_abbrev" :: thy_decl and "locale_abbrev" :: thy_decl
+begin<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+local
+
+fun revert_abbrev (mode,name) lthy =
+  let
+    val the_const = (fst o dest_Const) oo Proof_Context.read_const {proper = true, strict = false};
+  in
+    Local_Theory.raw_theory (Sign.revert_abbrev (fst mode) (the_const lthy name)) lthy
+  end
+
+fun name_of spec lthy = Local_Defs.abs_def (Syntax.read_term lthy spec) |> #1 |> #1
+
+in
+
+val _ =
+  Outer_Syntax.local_theory @{command_keyword revert_abbrev}
+    "make an abbreviation available for output"
+    (Parse.syntax_mode -- Parse.const >> revert_abbrev)
+
+val _ =
+  Outer_Syntax.local_theory' @{command_keyword locale_abbrev}
+    "constant abbreviation that provides also provides printing in locales"
+    (Parse.syntax_mode -- Scan.option Parse_Spec.constdecl -- Parse.prop -- Parse.for_fixes
+      >> (fn (((mode, decl), spec), params) => fn restricted => fn lthy =>
+           lthy
+           |> Local_Theory.begin_nested |> snd
+           |> Specification.abbreviation_cmd mode decl params spec restricted
+           |> Local_Theory.end_nested (* commit new abbrev. name *)
+           |> revert_abbrev (mode, name_of spec lthy)));
+
+end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

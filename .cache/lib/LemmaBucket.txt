@@ -1,0 +1,693 @@
+<\STATESEP>theory LemmaBucket
+imports
+  HaskellLemmaBucket
+  SpecValid_R
+  SubMonadLib
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_spec_gen_asm:
+  "\<lbrakk> F \<Longrightarrow> s \<turnstile> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> s \<turnstile> \<lbrace>P and K F\<rbrace> f \<lbrace>Q\<rbrace>"
+  "\<lbrakk> F \<Longrightarrow> s \<turnstile> \<lbrace>P\<rbrace> f' \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> s \<turnstile> \<lbrace>P and K F\<rbrace> f' \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((F \<Longrightarrow> s \<turnstile> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> s \<turnstile> \<lbrace>P and K F\<rbrace> f \<lbrace>Q\<rbrace>) &&& ((F \<Longrightarrow> s \<turnstile> \<lbrace>P\<rbrace> f' \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> s \<turnstile> \<lbrace>P and K F\<rbrace> f' \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>)<\STATESEP>unfolding spec_valid_def spec_validE_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((F \<Longrightarrow> \<lbrace>\<lambda>sa. sa = s \<and> P sa\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>sa. sa = s \<and> (P and K F) sa\<rbrace> f \<lbrace>Q\<rbrace>) &&& ((F \<Longrightarrow> \<lbrace>\<lambda>sa. sa = s \<and> P sa\<rbrace> f' \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>sa. sa = s \<and> (P and K F) sa\<rbrace> f' \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>)<\STATESEP>apply (clarsimp simp only: pred_conj_def conj_assoc[symmetric]
+               intro!: hoare_gen_asm[unfolded pred_conj_def])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma spec_validE_fail:
+  "s \<turnstile> \<lbrace>P\<rbrace> fail \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> \<lbrace>P\<rbrace> fail \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by wp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma mresults_fail: "mresults fail = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. mresults fail = {}<\STATESEP>by (simp add: mresults_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_symb_exec_l:
+  "corres_underlying sr nf nf' dc P P' (gets f) (return x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. corres_underlying sr nf nf' dc P P' (gets f) (return x)<\STATESEP>by (simp add: corres_underlying_def return_def simpler_gets_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas mapM_x_wp_inv = mapM_x_wp[where S=UNIV, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma mapM_wp_inv:
+  "(\<And>x. \<lbrace>P\<rbrace> f x \<lbrace>\<lambda>rv. P\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> mapM f xs \<lbrace>\<lambda>rv. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P\<rbrace> f x \<lbrace>\<lambda>rv. P\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> mapM f xs \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (rule  valid_return_unit)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P\<rbrace> f x \<lbrace>\<lambda>rv. P\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> do _ <- mapM f xs;
+return ()
+od \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (fold mapM_x_mapM)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P\<rbrace> f x \<lbrace>\<lambda>rv. P\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv. P\<rbrace><\STATESEP>apply (erule mapM_x_wp_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas mapM_x_wp' = mapM_x_wp [OF _ subset_refl]<\STATESEP>0<\TRANSEP><\STATESEP>lemma corres_underlying_similar:
+  "\<lbrakk> a = a'; b = b'; nf' \<Longrightarrow> no_fail \<top> (f a b) \<rbrakk>
+         \<Longrightarrow> corres_underlying Id nf nf' dc \<top> \<top> (f a b) (f a' b')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a = a'; b = b'; nf' \<Longrightarrow> no_fail (\<lambda>_. True) (f a b)\<rbrakk> \<Longrightarrow> corres_underlying Id nf nf' dc (\<lambda>_. True) (\<lambda>_. True) (f a b) (f a' b')<\STATESEP>by (simp add: corres_underlying_def no_fail_def, blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_underlying_gets_pre_lhs:
+  "(\<And>x. corres_underlying S nf nf' r (P x) P' (g x) g') \<Longrightarrow>
+  corres_underlying S nf nf' r (\<lambda>s. P (f s) s) P' (gets f >>= (\<lambda>x. g x)) g'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. corres_underlying S nf nf' r (P x) P' (g x) g') \<Longrightarrow> corres_underlying S nf nf' r (\<lambda>s. P (f s) s) P' (gets f >>= g) g'<\STATESEP>apply (simp add: simpler_gets_def bind_def split_def corres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<forall>xa\<in>S. P x (fst xa) \<and> P' (snd xa) \<longrightarrow> (nf \<longrightarrow> \<not> snd (g x (fst xa))) \<longrightarrow> (\<forall>xb\<in>fst (g' (snd xa)). \<exists>x\<in>fst (g x (fst xa)). (snd x, snd xb) \<in> S \<and> r (fst x) (fst xb)) \<and> (nf' \<longrightarrow> \<not> snd (g' (snd xa)))) \<Longrightarrow> \<forall>x\<in>S. P (f (fst x)) (fst x) \<and> P' (snd x) \<longrightarrow> (nf \<longrightarrow> \<not> snd (g (f (fst x)) (fst x))) \<longrightarrow> nf' \<longrightarrow> \<not> snd (g' (snd x))<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_inv_wp:
+  assumes x: "\<And>s. I s \<Longrightarrow> Q s"
+  assumes y: "\<And>x. x \<in> set xs \<Longrightarrow> \<lbrace>P\<rbrace> m x \<lbrace>\<lambda>rv. I\<rbrace>"
+  assumes z: "\<And>s. I s \<Longrightarrow> P s"
+  shows      "\<lbrace>I\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>I\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>apply (rule hoare_post_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. ?Q rv s \<Longrightarrow> Q s
+ 2. \<lbrace>I\<rbrace> mapM_x m xs \<lbrace>?Q\<rbrace><\STATESEP>apply (erule x)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>I\<rbrace> mapM_x m xs \<lbrace>\<lambda>rv. I\<rbrace><\STATESEP>apply (rule mapM_x_wp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> ?S4 \<Longrightarrow> \<lbrace>I\<rbrace> m x \<lbrace>\<lambda>rv. I\<rbrace>
+ 2. set xs \<subseteq> ?S4<\STATESEP>apply (rule hoare_pre_imp [OF _ y])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x s. \<lbrakk>x \<in> ?S4; I s\<rbrakk> \<Longrightarrow> P s
+ 2. \<And>x. x \<in> ?S4 \<Longrightarrow> x \<in> set xs
+ 3. set xs \<subseteq> ?S4<\STATESEP>apply (erule z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> ?S4 \<Longrightarrow> x \<in> set xs
+ 2. set xs \<subseteq> ?S4<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set xs \<subseteq> set xs<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma mapM_x_accumulate_checks':
+  assumes P:  "\<And>x. x \<in> set xs' \<Longrightarrow> \<lbrace>\<top>\<rbrace> f x \<lbrace>\<lambda>rv. P x\<rbrace>"
+  assumes P': "\<And>x y. \<lbrakk> x \<in> set xs'; y \<in> set xs' \<rbrakk>
+                   \<Longrightarrow> \<lbrace>P y\<rbrace> f x \<lbrace>\<lambda>rv. P y\<rbrace>"
+  shows       "set xs \<subseteq> set xs' \<Longrightarrow>
+               \<lbrace>\<top>\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x \<in> set xs. P x s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set xs \<subseteq> set xs' \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace><\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. set [] \<subseteq> set xs' \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> mapM_x f [] \<lbrace>\<lambda>rv s. \<forall>x\<in>set []. P x s\<rbrace>
+ 2. \<And>a xs. \<lbrakk>set xs \<subseteq> set xs' \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; set (a # xs) \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> mapM_x f (a # xs) \<lbrace>\<lambda>rv s. \<forall>x\<in>set (a # xs). P x s\<rbrace><\STATESEP>apply (simp add: mapM_x_Nil)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>set xs \<subseteq> set xs' \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; set (a # xs) \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> mapM_x f (a # xs) \<lbrace>\<lambda>rv s. \<forall>x\<in>set (a # xs). P x s\<rbrace><\STATESEP>apply (simp add: mapM_x_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> do y <- f a;
+mapM_x f xs
+od \<lbrace>\<lambda>rv s. P a s \<and> (\<forall>x\<in>set xs. P x s)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> do y <- f a;
+mapM_x f xs
+od \<lbrace>\<lambda>rv s. P a s \<and> (\<forall>x\<in>set xs. P x s)\<rbrace>
+ 2. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply (wp mapM_x_wp'[OF P'])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>a xs y x. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; x \<in> set xs\<rbrakk> \<Longrightarrow> x \<in> set xs'
+ 2. \<And>a xs y x. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; x \<in> set xs\<rbrakk> \<Longrightarrow> a \<in> set xs'
+ 3. \<And>a xs y. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?P'14 a xs y\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>
+ 4. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> f a \<lbrace>\<lambda>y s. P a s \<and> ?P'14 a xs y s\<rbrace>
+ 5. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>a xs y x. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; x \<in> set xs\<rbrakk> \<Longrightarrow> a \<in> set xs'
+ 2. \<And>a xs y. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?P'14 a xs y\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>
+ 3. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> f a \<lbrace>\<lambda>y s. P a s \<and> ?P'14 a xs y s\<rbrace>
+ 4. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>a xs y. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?P'14 a xs y\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>
+ 2. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> f a \<lbrace>\<lambda>y s. P a s \<and> ?P'14 a xs y s\<rbrace>
+ 3. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> f a \<lbrace>\<lambda>y s. P a s \<and> True\<rbrace>
+ 2. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> \<lbrace>?Q9 a xs\<rbrace> f a \<lbrace>\<lambda>y. P a\<rbrace>
+ 2. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> ?Q9 a xs s<\STATESEP>apply (rule P)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a xs. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'\<rbrakk> \<Longrightarrow> a \<in> set xs'
+ 2. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> True<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs s. \<lbrakk>\<lbrace>\<lambda>_. True\<rbrace> mapM_x f xs \<lbrace>\<lambda>rv s. \<forall>x\<in>set xs. P x s\<rbrace>; a \<in> set xs' \<and> set xs \<subseteq> set xs'; True\<rbrakk> \<Longrightarrow> True<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemmas mapM_x_accumulate_checks
+    = mapM_x_accumulate_checks'[OF _ _ subset_refl]<\STATESEP>0<\TRANSEP><\STATESEP>lemma isRight_rel_sum_comb2:
+  "\<lbrakk> (f \<oplus> r) v v'; isRight v' \<rbrakk>
+       \<Longrightarrow> isRight v \<and> r (theRight v) (theRight v')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(f \<oplus> r) v v'; isRight v'\<rbrakk> \<Longrightarrow> isRight v \<and> r (theRight v) (theRight v')<\STATESEP>by (cases v; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma isRight_case_sum: "isRight x \<Longrightarrow> case_sum f g x = g (theRight x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. isRight x \<Longrightarrow> (case x of Inl x \<Rightarrow> f x | Inr x \<Rightarrow> g x) = g (theRight x)<\STATESEP>by (cases x; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma enumerate_append:"enumerate i (xs @ ys) = enumerate i xs @ enumerate (i + length xs) ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. enumerate i (xs @ ys) = enumerate i xs @ enumerate (i + length xs) ys<\STATESEP>apply (induct xs arbitrary:ys i)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ys i. enumerate i ([] @ ys) = enumerate i [] @ enumerate (i + length []) ys
+ 2. \<And>a xs ys i. (\<And>ys i. enumerate i (xs @ ys) = enumerate i xs @ enumerate (i + length xs) ys) \<Longrightarrow> enumerate i ((a # xs) @ ys) = enumerate i (a # xs) @ enumerate (i + length (a # xs)) ys<\STATESEP>apply clarsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma enumerate_bound:"(a, b) \<in> set (enumerate n xs) \<Longrightarrow> a < n + length xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, b) \<in> set (enumerate n xs) \<Longrightarrow> a < n + length xs<\STATESEP>by (metis add.commute in_set_enumerate_eq prod.sel(1))<\STATESEP>1<\TRANSEP><\STATESEP>lemma enumerate_exceed:"(n + length xs, b) \<notin> set (enumerate n xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (n + length xs, b) \<notin> set (enumerate n xs)<\STATESEP>by (metis enumerate_bound less_not_refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_pair_unwrap:"(\<forall>a. P (fst a) (snd a)) = (\<forall>a b. P a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>a. P (fst a) (snd a)) = (\<forall>a b. P a b)<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_fold[simp]:"(if P then Q else if P then R else S) = (if P then Q else S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (if P then Q else if P then R else S) = (if P then Q else S)<\STATESEP>by presburger<\STATESEP>1<\TRANSEP><\STATESEP>lemma disjoint_subset_both:"\<lbrakk>A' \<subseteq> A; B' \<subseteq> B; A \<inter> B = {}\<rbrakk> \<Longrightarrow> A' \<inter> B' = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>A' \<subseteq> A; B' \<subseteq> B; A \<inter> B = {}\<rbrakk> \<Longrightarrow> A' \<inter> B' = {}<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma union_split: "\<lbrakk>A \<inter> C = {}; B \<inter> C = {}\<rbrakk> \<Longrightarrow> (A \<union> B) \<inter> C = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>A \<inter> C = {}; B \<inter> C = {}\<rbrakk> \<Longrightarrow> (A \<union> B) \<inter> C = {}<\STATESEP>by (simp add: inf_sup_distrib2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_expand: "dom (\<lambda>x. if P x then Some y else None) = {x. P x}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom (\<lambda>x. if P x then Some y else None) = {x. P x}<\STATESEP>using if_option_Some<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+((if ?P then None else Some ?x) = Some ?y) = (\<not> ?P \<and> ?x = ?y)
+
+goal (1 subgoal):
+ 1. dom (\<lambda>x. if P x then Some y else None) = {x. P x}<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_translate: "(range f = range g) = ((\<forall>x. \<exists>y. f x = g y) \<and> (\<forall>x. \<exists>y. f y = g x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (range f = range g) = ((\<forall>x. \<exists>y. f x = g y) \<and> (\<forall>x. \<exists>y. f y = g x))<\STATESEP>by (rule iffI,
+       rule conjI,
+        clarsimp,
+        blast,
+       clarsimp,
+       metis f_inv_into_f range_eqI,
+      clarsimp,
+      subst set_eq_subset,
+      rule conjI,
+       clarsimp,
+       rename_tac arg,
+       erule_tac x=arg and P="\<lambda>x. (\<exists>y. f x = g y)" in allE,
+       clarsimp,
+      clarsimp,
+      rename_tac arg,
+      erule_tac x=arg and P="\<lambda>x. (\<exists>y. f y = g x)" in allE,
+      clarsimp,
+      metis range_eqI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ran_expand: "\<exists>x. P x \<Longrightarrow> ran (\<lambda>x. if P x then Some y else None) = {y}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>x. P x \<Longrightarrow> ran (\<lambda>x. if P x then Some y else None) = {y}<\STATESEP>by (rule subset_antisym,
+       (clarsimp simp:ran_def)+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_upd_expand: "f(x \<mapsto> y) = f ++ (\<lambda>z. if z = x then Some y else None)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f(x \<mapsto> y) = f ++ (\<lambda>z. if z = x then Some y else None)<\STATESEP>by (rule ext, rename_tac w,
+      case_tac "w = x",
+       simp,
+      simp add:map_add_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_upd_subI: "\<lbrakk>f \<subseteq>\<^sub>m g; f x = None\<rbrakk> \<Longrightarrow> f \<subseteq>\<^sub>m g(x \<mapsto> y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>f \<subseteq>\<^sub>m g; f x = None\<rbrakk> \<Longrightarrow> f \<subseteq>\<^sub>m g(x \<mapsto> y)<\STATESEP>by (rule_tac f="\<lambda>i. if i = x then Some y else None" in map_add_le_mapE,
+      simp add:map_le_def,
+      rule ballI, rename_tac a,
+      rule conjI,
+       erule_tac x=x in ballE,
+        clarsimp,
+        erule disjE,
+         clarsimp,
+        clarsimp simp:map_add_def,
+       clarsimp,
+       erule disjE,
+        clarsimp,
+       clarsimp simp:map_add_def,
+      clarsimp simp:map_add_def,
+      erule_tac x=a in ballE,
+       erule disjE,
+        (case_tac "g a"; simp_all),
+       clarsimp+)<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_ext: "\<forall>x. f x = g x \<Longrightarrow> f = g"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. f x = g x \<Longrightarrow> f = g<\STATESEP>by presburger<\STATESEP>1<\TRANSEP><\STATESEP>lemma conjI2: "\<lbrakk>B; B \<longrightarrow> A\<rbrakk> \<Longrightarrow> A \<and> B"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>B; B \<longrightarrow> A\<rbrakk> \<Longrightarrow> A \<and> B<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least2: "\<lbrakk>\<not>P 0; \<not>P 1; P (2::nat)\<rbrakk> \<Longrightarrow> Least P = 2"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; P 2\<rbrakk> \<Longrightarrow> Least P = 2<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least3: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; P (3::nat)\<rbrakk> \<Longrightarrow> Least P = 3"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; P 3\<rbrakk> \<Longrightarrow> Least P = 3<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least4: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; P (4::nat)\<rbrakk> \<Longrightarrow> Least P = 4"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; P 4\<rbrakk> \<Longrightarrow> Least P = 4<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least5: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; P (5::nat)\<rbrakk> \<Longrightarrow> Least P = 5"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; P 5\<rbrakk> \<Longrightarrow> Least P = 5<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least6: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; P (6::nat)\<rbrakk> \<Longrightarrow> Least P = 6"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; P 6\<rbrakk> \<Longrightarrow> Least P = 6<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least7: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; P (7::nat)\<rbrakk> \<Longrightarrow> Least P = 7"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; P 7\<rbrakk> \<Longrightarrow> Least P = 7<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least8: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; P (8::nat)\<rbrakk> \<Longrightarrow> Least P = 8"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; P 8\<rbrakk> \<Longrightarrow> Least P = 8<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least9: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; P (9::nat)\<rbrakk> \<Longrightarrow> Least P = 9"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; P 9\<rbrakk> \<Longrightarrow> Least P = 9<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least10: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; P (10::nat)\<rbrakk> \<Longrightarrow> Least P
+                 = 10"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; P 10\<rbrakk> \<Longrightarrow> Least P = 10<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least11: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; P (11::nat)\<rbrakk> \<Longrightarrow>
+                 Least P = 11"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; P 11\<rbrakk> \<Longrightarrow> Least P = 11<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least12: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; P
+                 (12::nat)\<rbrakk> \<Longrightarrow> Least P = 12"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; P 12\<rbrakk> \<Longrightarrow> Least P = 12<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least13: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; P
+                 (13::nat)\<rbrakk> \<Longrightarrow> Least P = 13"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; P 13\<rbrakk> \<Longrightarrow> Least P = 13<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least14: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; P (14::nat)\<rbrakk> \<Longrightarrow> Least P = 14"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; P 14\<rbrakk> \<Longrightarrow> Least P = 14<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least15: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; P (15::nat)\<rbrakk> \<Longrightarrow> Least P = 15"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; P 15\<rbrakk> \<Longrightarrow> Least P = 15<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least16: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; P (16::nat)\<rbrakk> \<Longrightarrow> Least P = 16"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; P 16\<rbrakk> \<Longrightarrow> Least P = 16<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least17: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; P (17::nat)\<rbrakk> \<Longrightarrow> Least P = 17"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; P 17\<rbrakk> \<Longrightarrow> Least P = 17<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least18: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; P (18::nat)\<rbrakk> \<Longrightarrow> Least P = 18"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; P 18\<rbrakk> \<Longrightarrow> Least P = 18<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least19: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; P (19::nat)\<rbrakk> \<Longrightarrow> Least P = 19"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; P 19\<rbrakk> \<Longrightarrow> Least P = 19<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least20: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; P (20::nat)\<rbrakk> \<Longrightarrow> Least P = 20"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; P 20\<rbrakk> \<Longrightarrow> Least P = 20<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least21: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; P (21::nat)\<rbrakk> \<Longrightarrow> Least P = 21"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; P 21\<rbrakk> \<Longrightarrow> Least P = 21<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least22: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; P (22::nat)\<rbrakk> \<Longrightarrow> Least P
+                 = 22"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; P 22\<rbrakk> \<Longrightarrow> Least P = 22<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least23: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; \<not>P 22; P (23::nat)\<rbrakk> \<Longrightarrow>
+                 Least P = 23"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; \<not> P 22; P 23\<rbrakk> \<Longrightarrow> Least P = 23<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least24: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; \<not>P 22; \<not>P 23; P
+                 (24::nat)\<rbrakk> \<Longrightarrow> Least P = 24"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; \<not> P 22; \<not> P 23; P 24\<rbrakk> \<Longrightarrow> Least P = 24<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least25: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; \<not>P 22; \<not>P 23; \<not>P 24; P
+                 (25::nat)\<rbrakk> \<Longrightarrow> Least P = 25"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; \<not> P 22; \<not> P 23; \<not> P 24; P 25\<rbrakk> \<Longrightarrow> Least P = 25<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least26: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; \<not>P 22; \<not>P 23; \<not>P 24; \<not>P
+                 25; P (26::nat)\<rbrakk> \<Longrightarrow> Least P = 26"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; \<not> P 22; \<not> P 23; \<not> P 24; \<not> P 25; P 26\<rbrakk> \<Longrightarrow> Least P = 26<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least27: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; \<not>P 22; \<not>P 23; \<not>P 24; \<not>P
+                 25; \<not>P 26; P (27::nat)\<rbrakk> \<Longrightarrow> Least P = 27"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; \<not> P 22; \<not> P 23; \<not> P 24; \<not> P 25; \<not> P 26; P 27\<rbrakk> \<Longrightarrow> Least P = 27<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma Least28: "\<lbrakk>\<not>P 0; \<not>P 1; \<not>P 2; \<not>P 3; \<not>P 4; \<not>P 5; \<not>P 6; \<not>P 7; \<not>P 8; \<not>P 9; \<not>P 10; \<not>P 11; \<not>P 12; \<not>P
+                 13; \<not>P 14; \<not>P 15; \<not>P 16; \<not>P 17; \<not>P 18; \<not>P 19; \<not>P 20; \<not>P 21; \<not>P 22; \<not>P 23; \<not>P 24; \<not>P
+                 25; \<not>P 26; \<not>P 27; P (28::nat)\<rbrakk> \<Longrightarrow> Least P = 28"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> P 0; \<not> P 1; \<not> P 2; \<not> P 3; \<not> P 4; \<not> P 5; \<not> P 6; \<not> P 7; \<not> P 8; \<not> P 9; \<not> P 10; \<not> P 11; \<not> P 12; \<not> P 13; \<not> P 14; \<not> P 15; \<not> P 16; \<not> P 17; \<not> P 18; \<not> P 19; \<not> P 20; \<not> P 21; \<not> P 22; \<not> P 23; \<not> P 24; \<not> P 25; \<not> P 26; \<not> P 27; P 28\<rbrakk> \<Longrightarrow> Least P = 28<\STATESEP>by (simp add: Least_Suc eval_nat_numeral(2) eval_nat_numeral(3))<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_discard: "\<not> cond x \<Longrightarrow> (f ++ (\<lambda>x. if cond x then (g x) else None)) x = f x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> cond x \<Longrightarrow> (f ++ (\<lambda>x. if cond x then g x else None)) x = f x<\STATESEP>by (simp add: map_add_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_split:"\<lbrakk>\<forall>x \<in> S. \<exists>y. f x = Some y; \<forall>x. x \<notin> S \<longrightarrow> f x = None\<rbrakk> \<Longrightarrow> dom f = S"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>x\<in>S. \<exists>y. f x = Some y; \<forall>x. x \<notin> S \<longrightarrow> f x = None\<rbrakk> \<Longrightarrow> dom f = S<\STATESEP>by (auto simp:dom_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_set_in: "x \<in> f ` S = (\<exists>y\<in>S. f y = x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x \<in> f ` S) = (\<exists>y\<in>S. f y = x)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_length_split:
+  "map (length \<circ> (\<lambda>(a, b). P a b # map (f a b) (Q a b))) xs = map (\<lambda>(a, b). 1 + length (Q a b)) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. map (length \<circ> (\<lambda>(a, b). P a b # map (f a b) (Q a b))) xs = map (\<lambda>(a, b). 1 + length (Q a b)) xs<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sum_suc: "(\<Sum>x \<leftarrow> xs. Suc (f x)) = length xs + (\<Sum>x \<leftarrow> xs. f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<Sum>x\<leftarrow>xs. Suc (f x)) = length xs + sum_list (map f xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (\<Sum>x\<leftarrow>[]. Suc (f x)) = length [] + sum_list (map f [])
+ 2. \<And>a xs. (\<Sum>x\<leftarrow>xs. Suc (f x)) = length xs + sum_list (map f xs) \<Longrightarrow> (\<Sum>x\<leftarrow>a # xs. Suc (f x)) = length (a # xs) + sum_list (map f (a # xs))<\STATESEP>by clarsimp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma sum_suc_pair: "(\<Sum>(a, b) \<leftarrow> xs. Suc (f a b)) = length xs + (\<Sum>(a, b) \<leftarrow> xs. f a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<Sum>(a, b)\<leftarrow>xs. Suc (f a b)) = length xs + (\<Sum>(a, b)\<leftarrow>xs. f a b)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (\<Sum>a\<leftarrow>[]. case a of (a, b) \<Rightarrow> Suc (f a b)) = length [] + (\<Sum>a\<leftarrow>[]. case a of (a, b) \<Rightarrow> f a b)
+ 2. \<And>a xs. (\<Sum>a\<leftarrow>xs. case a of (a, b) \<Rightarrow> Suc (f a b)) = length xs + (\<Sum>a\<leftarrow>xs. case a of (a, b) \<Rightarrow> f a b) \<Longrightarrow> (\<Sum>a\<leftarrow>a # xs. case a of (a, b) \<Rightarrow> Suc (f a b)) = length (a # xs) + (\<Sum>a\<leftarrow>a # xs. case a of (a, b) \<Rightarrow> f a b)<\STATESEP>by clarsimp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma fold_add_sum: "fold (+) ((map (\<lambda>(a, b). f a b) xs)::nat list) 0 = (\<Sum>(a, b) \<leftarrow> xs. f a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fold (+) (map (\<lambda>(a, b). f a b) xs) 0 = (\<Sum>(a, b)\<leftarrow>xs. f a b)<\STATESEP>apply (subst fold_plus_sum_list_rev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sum_list (rev (map (\<lambda>(x, y). f x y) xs)) + 0 = (\<Sum>(x, y)\<leftarrow>xs. f x y)<\STATESEP>apply (subst sum_list_rev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<Sum>(x, y)\<leftarrow>xs. f x y) + 0 = (\<Sum>(x, y)\<leftarrow>xs. f x y)<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_of_enumerate:"card (set (enumerate n xs)) = length xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. card (set (enumerate n xs)) = length xs<\STATESEP>by (metis distinct_card distinct_enumerate length_enumerate)<\STATESEP>1<\TRANSEP><\STATESEP>lemma collapse_fst: "fst ` (\<lambda>x. (f x, g x)) ` s = f ` s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst ` (\<lambda>x. (f x, g x)) ` s = f ` s<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma collapse_fst2: "fst ` (\<lambda>(x, y). (f x, g y)) ` s = (\<lambda>x. f (fst x)) ` s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fst ` (\<lambda>(x, y). (f x, g y)) ` s = (\<lambda>x. f (fst x)) ` s<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma collapse_fst3: "(\<lambda>x. f (fst x)) ` set (enumerate n xs) = f ` set [n..<n + length xs]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>x. f (fst x)) ` set (enumerate n xs) = f ` set [n..<n + length xs]<\STATESEP>by (metis image_image list.set_map map_fst_enumerate)<\STATESEP>1<\TRANSEP><\STATESEP>lemma card_of_dom_bounded:
+  fixes f :: "'a \<Rightarrow> 'b option"
+  assumes "finite (UNIV::'a set)"
+  shows "card (dom f) \<le> CARD('a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. card (dom f) \<le> CARD('a)<\STATESEP>by (simp add: assms card_mono)<\STATESEP>1<\TRANSEP><\STATESEP>lemma third_in: "(a, b, c) \<in> S \<Longrightarrow> c \<in> (snd \<circ> snd) ` S"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, b, c) \<in> S \<Longrightarrow> c \<in> (snd \<circ> snd) ` S<\STATESEP>by (metis (erased, opaque_lifting) map_set_in image_comp snd_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma third_in2: "(a \<in> (snd \<circ> snd) ` (set (enumerate i xs))) = (a \<in> snd ` (set xs))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a \<in> (snd \<circ> snd) ` set (enumerate i xs)) = (a \<in> snd ` set xs)<\STATESEP>by (metis map_map map_snd_enumerate set_map)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_of_enum: "map_of (enumerate n xs) x = Some y \<Longrightarrow> y \<in> set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. map_of (enumerate n xs) x = Some y \<Longrightarrow> y \<in> set xs<\STATESEP>apply (clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x, y) \<in> set (enumerate n xs) \<Longrightarrow> y \<in> set xs<\STATESEP>by (metis enumerate_eq_zip in_set_zipE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_of_append:
+  "(map_of xs ++ map_of ys) x = (case map_of ys x of None \<Rightarrow> map_of xs x | Some x' \<Rightarrow> Some x')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (map_of xs ++ map_of ys) x = (case map_of ys x of None \<Rightarrow> map_of xs x | Some x' \<Rightarrow> Some x')<\STATESEP>by (simp add: map_add_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_of_append2:
+  "(map_of xs ++ map_of ys ++ map_of zs) x =
+     (case map_of zs x of None \<Rightarrow> (case map_of ys x of None \<Rightarrow> map_of xs x
+                                                     | Some x' \<Rightarrow> Some x')
+                        | Some x' \<Rightarrow> Some x')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (map_of xs ++ map_of ys ++ map_of zs) x = (case map_of zs x of None \<Rightarrow> case map_of ys x of None \<Rightarrow> map_of xs x | Some x' \<Rightarrow> Some x' | Some x' \<Rightarrow> Some x')<\STATESEP>by (simp add: map_add_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_of_in_set_map: "map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z \<Longrightarrow> z \<in> snd ` set xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z \<Longrightarrow> z \<in> snd ` set xs<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z \<Longrightarrow> z \<in> snd ` set xs<\STATESEP>assume "map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z
+
+goal (1 subgoal):
+ 1. map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z \<Longrightarrow> z \<in> snd ` set xs<\STATESEP>hence "(x, z) \<in> (\<lambda>(uu, y). (f uu, y)) ` set xs"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z
+
+goal (1 subgoal):
+ 1. (x, z) \<in> (\<lambda>(uu, y). (f uu, y)) ` set xs<\STATESEP>using map_of_SomeD<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z
+map_of ?xs ?k = Some ?y \<Longrightarrow> (?k, ?y) \<in> set ?xs
+
+goal (1 subgoal):
+ 1. (x, z) \<in> (\<lambda>(uu, y). (f uu, y)) ` set xs<\STATESEP>by fastforce<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(x, z) \<in> (\<lambda>(uu, y). (f uu, y)) ` set xs
+
+goal (1 subgoal):
+ 1. map_of (map (\<lambda>(n, y). (f n, y)) xs) x = Some z \<Longrightarrow> z \<in> snd ` set xs<\STATESEP>thus "z \<in> snd ` set xs"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+(x, z) \<in> (\<lambda>(uu, y). (f uu, y)) ` set xs
+
+goal (1 subgoal):
+ 1. z \<in> snd ` set xs<\STATESEP>using map_set_in<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+(x, z) \<in> (\<lambda>(uu, y). (f uu, y)) ` set xs
+(?x \<in> ?f ` ?S) = (\<exists>y\<in>?S. ?f y = ?x)
+
+goal (1 subgoal):
+ 1. z \<in> snd ` set xs<\STATESEP>by fastforce<\STATESEP>3<\TRANSEP>proof (state)
+this:
+z \<in> snd ` set xs
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma pair_in_enum: "(a, b) \<in> set (enumerate x ys) \<Longrightarrow> b \<in> set ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, b) \<in> set (enumerate x ys) \<Longrightarrow> b \<in> set ys<\STATESEP>by (metis enumerate_eq_zip in_set_zip2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_inj:
+  "inj f \<Longrightarrow> distinct xs = distinct (map f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj f \<Longrightarrow> distinct xs = distinct (map f xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. inj f \<Longrightarrow> distinct [] = distinct (map f [])
+ 2. \<And>a xs. \<lbrakk>inj f \<Longrightarrow> distinct xs = distinct (map f xs); inj f\<rbrakk> \<Longrightarrow> distinct (a # xs) = distinct (map f (a # xs))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>inj f \<Longrightarrow> distinct xs = distinct (map f xs); inj f\<rbrakk> \<Longrightarrow> distinct (a # xs) = distinct (map f (a # xs))<\STATESEP>apply (simp add: inj_image_mem_iff)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_map_via_ran: "distinct (map fst xs) \<Longrightarrow> ran (map_of xs) = set (map snd xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct (map fst xs) \<Longrightarrow> ran (map_of xs) = set (map snd xs)<\STATESEP>apply (cut_tac xs="map fst xs" and ys="map snd xs" in ran_map_of_zip[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. distinct (map fst xs) \<Longrightarrow> length (map fst xs) = length (map snd xs)
+ 2. distinct (map fst xs) \<Longrightarrow> distinct (map fst xs)
+ 3. \<lbrakk>distinct (map fst xs); set (map snd xs) = ran (map_of (zip (map fst xs) (map snd xs)))\<rbrakk> \<Longrightarrow> ran (map_of xs) = set (map snd xs)<\STATESEP>apply clarsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct (map fst xs); snd ` set xs = ran (map_of (zip (map fst xs) (map snd xs)))\<rbrakk> \<Longrightarrow> ran (map_of xs) = ran (map_of (zip (map fst xs) (map snd xs)))<\STATESEP>by (simp add: ran_distinct)<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_ran_in_set: "x \<in> ran (map_of xs) \<Longrightarrow> x \<in> set (map snd xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> ran (map_of xs) \<Longrightarrow> x \<in> set (map snd xs)<\STATESEP>by (metis (mono_tags) map_set_in map_of_SomeD ranE set_map snd_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_ran_map_app: "x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>assume a1: "x \<in> ran (xs ++ ys ++ zs)"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+x \<in> ran (xs ++ ys ++ zs)
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>obtain bb :: "'a \<Rightarrow> ('b \<Rightarrow> 'a option) \<Rightarrow> 'b" where
+      "\<forall>x0 x1. (\<exists>v2. x1 v2 = Some x0) = (x1 (bb x0 x1) = Some x0)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>bb. \<forall>x0 x1. (\<exists>v2. x1 v2 = Some x0) = (x1 (bb x0 x1) = Some x0) \<Longrightarrow> thesis) \<Longrightarrow> thesis<\STATESEP>by moura<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>x0 x1. (\<exists>v2. x1 v2 = Some x0) = (x1 (bb x0 x1) = Some x0)
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>hence f2: "\<forall>f a. (\<not> (\<exists>b. f b = Some a) \<or> f (bb a f) = Some a) \<and> ((\<exists>b. f b = Some a) \<or> (\<forall>b. f b \<noteq> Some a))"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>x0 x1. (\<exists>v2. x1 v2 = Some x0) = (x1 (bb x0 x1) = Some x0)
+
+goal (1 subgoal):
+ 1. \<forall>f a. ((\<nexists>b. f b = Some a) \<or> f (bb a f) = Some a) \<and> ((\<exists>b. f b = Some a) \<or> (\<forall>b. f b \<noteq> Some a))<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>f a. ((\<nexists>b. f b = Some a) \<or> f (bb a f) = Some a) \<and> ((\<exists>b. f b = Some a) \<or> (\<forall>b. f b \<noteq> Some a))
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>have "\<exists>b. (xs ++ ys ++ zs) b = Some x"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>b. (xs ++ ys ++ zs) b = Some x<\STATESEP>using a1<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+x \<in> ran (xs ++ ys ++ zs)
+
+goal (1 subgoal):
+ 1. \<exists>b. (xs ++ ys ++ zs) b = Some x<\STATESEP>by (simp add: ran_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<exists>b. (xs ++ ys ++ zs) b = Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>hence f3: "(xs ++ ys ++ zs) (bb x (xs ++ ys ++ zs)) = Some x"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<exists>b. (xs ++ ys ++ zs) b = Some x
+
+goal (1 subgoal):
+ 1. (xs ++ ys ++ zs) (bb x (xs ++ ys ++ zs)) = Some x<\STATESEP>using f2<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+\<exists>b. (xs ++ ys ++ zs) b = Some x
+\<forall>f a. ((\<nexists>b. f b = Some a) \<or> f (bb a f) = Some a) \<and> ((\<exists>b. f b = Some a) \<or> (\<forall>b. f b \<noteq> Some a))
+
+goal (1 subgoal):
+ 1. (xs ++ ys ++ zs) (bb x (xs ++ ys ++ zs)) = Some x<\STATESEP>by meson<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(xs ++ ys ++ zs) (bb x (xs ++ ys ++ zs)) = Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(xs ++ ys ++ zs) (bb x (xs ++ ys ++ zs)) = Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>assume "ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>{<\STATESEP>4<\TRANSEP>proof (state)
+this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>assume "ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x)"<\STATESEP>6<\TRANSEP>proof (state)
+this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x)
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>hence "\<exists>b. zs b = Some x"<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x)
+
+goal (1 subgoal):
+ 1. \<exists>b. zs b = Some x<\STATESEP>using f3<\STATESEP>7<\TRANSEP>proof (prove)
+using this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x)
+(xs ++ ys ++ zs) (bb x (xs ++ ys ++ zs)) = Some x
+
+goal (1 subgoal):
+ 1. \<exists>b. zs b = Some x<\STATESEP>by auto<\STATESEP>7<\TRANSEP>proof (state)
+this:
+\<exists>b. zs b = Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>hence ?thesis<\STATESEP>6<\TRANSEP>proof (prove)
+using this:
+\<exists>b. zs b = Some x
+
+goal (1 subgoal):
+ 1. x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>by (simp add: ran_def)<\STATESEP>7<\TRANSEP>proof (state)
+this:
+x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>}<\STATESEP>6<\TRANSEP>proof (state)
+this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>hence ?thesis<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal (1 subgoal):
+ 1. x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>using ran_def<\STATESEP>5<\TRANSEP>proof (prove)
+using this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<and> (ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+ran ?m = {b. \<exists>a. ?m a = Some b}
+
+goal (1 subgoal):
+ 1. x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>by fastforce<\STATESEP>5<\TRANSEP>proof (state)
+this:
+x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal (1 subgoal):
+ 1. x \<in> ran (xs ++ ys ++ zs) \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>thus ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal (1 subgoal):
+ 1. x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>using ran_def<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+ys (bb x (xs ++ ys ++ zs)) \<noteq> None \<or> xs (bb x (xs ++ ys ++ zs)) \<noteq> Some x \<Longrightarrow> x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+ran ?m = {b. \<exists>a. ?m a = Some b}
+
+goal (1 subgoal):
+ 1. x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs<\STATESEP>by fastforce<\STATESEP>3<\TRANSEP>proof (state)
+this:
+x \<in> ran xs \<or> x \<in> ran ys \<or> x \<in> ran zs
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma none_some_map: "None \<notin> S \<Longrightarrow> Some x \<in> S = (x \<in> the ` S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. None \<notin> S \<Longrightarrow> (Some x \<in> S) = (x \<in> the ` S)<\STATESEP>apply (rule iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>None \<notin> S; Some x \<in> S\<rbrakk> \<Longrightarrow> x \<in> the ` S
+ 2. \<lbrakk>None \<notin> S; x \<in> the ` S\<rbrakk> \<Longrightarrow> Some x \<in> S<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>None \<notin> S; x \<in> the ` S\<rbrakk> \<Longrightarrow> Some x \<in> S<\STATESEP>apply (subst in_these_eq[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>None \<notin> S; x \<in> the ` S\<rbrakk> \<Longrightarrow> x \<in> Option.these S<\STATESEP>apply (clarsimp simp:Option.these_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa. \<lbrakk>None \<notin> S; xa \<in> S; x = the xa\<rbrakk> \<Longrightarrow> the xa \<in> the ` {x \<in> S. \<exists>y. x = Some y}<\STATESEP>apply (case_tac "\<exists>y. xa = Some y")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xa. \<lbrakk>None \<notin> S; xa \<in> S; x = the xa; \<exists>y. xa = Some y\<rbrakk> \<Longrightarrow> the xa \<in> the ` {x \<in> S. \<exists>y. x = Some y}
+ 2. \<And>xa. \<lbrakk>None \<notin> S; xa \<in> S; x = the xa; \<nexists>y. xa = Some y\<rbrakk> \<Longrightarrow> the xa \<in> the ` {x \<in> S. \<exists>y. x = Some y}<\STATESEP>by clarsimp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma none_some_map2: "the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f) = ran f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f) = ran f<\STATESEP>apply (rule subset_antisym)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f) \<subseteq> ran f
+ 2. ran f \<subseteq> the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<not> Option.is_none (f x) \<Longrightarrow> the (f x) \<in> ran f
+ 2. ran f \<subseteq> the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)<\STATESEP>apply (case_tac "f x", simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a. f x = Some a \<Longrightarrow> a \<in> ran f
+ 2. ran f \<subseteq> the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)<\STATESEP>apply (simp add: ranI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran f \<subseteq> the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> ran f \<Longrightarrow> x \<in> the ` Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)<\STATESEP>apply (subst none_some_map[symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> ran f \<Longrightarrow> None \<notin> Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)
+ 2. \<And>x. x \<in> ran f \<Longrightarrow> Some x \<in> Set.filter (\<lambda>s. \<not> Option.is_none s) (range f)<\STATESEP>apply clarsimp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> ran f \<Longrightarrow> Some x \<in> range f<\STATESEP>apply (erule ranE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. f xa = Some x \<Longrightarrow> Some x \<in> range f<\STATESEP>by (metis range_eqI)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prop_map_of_prop:"\<lbrakk>\<forall>z \<in> set xs. P (g z); map_of (map (\<lambda>x. (f x, g x)) xs) y = Some a\<rbrakk> \<Longrightarrow> P a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>z\<in>set xs. P (g z); map_of (map (\<lambda>x. (f x, g x)) xs) y = Some a\<rbrakk> \<Longrightarrow> P a<\STATESEP>using map_of_SomeD<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+map_of ?xs ?k = Some ?y \<Longrightarrow> (?k, ?y) \<in> set ?xs
+
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>z\<in>set xs. P (g z); map_of (map (\<lambda>x. (f x, g x)) xs) y = Some a\<rbrakk> \<Longrightarrow> P a<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma range_subsetI2: "\<forall>y\<in>A. \<exists>x. f x = y \<Longrightarrow> A \<subseteq> range f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>y\<in>A. \<exists>x. f x = y \<Longrightarrow> A \<subseteq> range f<\STATESEP>by fast<\STATESEP>1<\TRANSEP><\STATESEP>lemma insert_strip: "x \<noteq> y \<Longrightarrow> (x \<in> insert y S) = (x \<in> S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<noteq> y \<Longrightarrow> (x \<in> insert y S) = (x \<in> S)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_map_add: "dom ys = A \<Longrightarrow> dom (xs ++ ys) = A \<union> dom xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom ys = A \<Longrightarrow> dom (xs ++ ys) = A \<union> dom xs<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_compre_unwrap: "({x. P x} \<subseteq> S) = (\<forall>x. P x \<longrightarrow> x \<in> S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ({x. P x} \<subseteq> S) = (\<forall>x. P x \<longrightarrow> x \<in> S)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_same: "\<lbrakk>xs = ys; zs = ws\<rbrakk> \<Longrightarrow> xs ++ zs = ys ++ ws"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>xs = ys; zs = ws\<rbrakk> \<Longrightarrow> xs ++ zs = ys ++ ws<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_find_left: "n k = None \<Longrightarrow> (m ++ n) k = m k"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. n k = None \<Longrightarrow> (m ++ n) k = m k<\STATESEP>by (simp add:map_add_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_length_split_triple:
+  "map (length \<circ> (\<lambda>(a, b, c). P a b c # map (f a b c) (Q a b c))) xs =
+     map (\<lambda>(a, b, c). 1 + length (Q a b c)) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. map (length \<circ> (\<lambda>(a, b, c). P a b c # map (f a b c) (Q a b c))) xs = map (\<lambda>(a, b, c). 1 + length (Q a b c)) xs<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma sum_suc_triple: "(\<Sum>(a, b, c)\<leftarrow>xs. Suc (f a b c)) = length xs + (\<Sum>(a, b, c)\<leftarrow>xs. f a b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<Sum>(a, b, c)\<leftarrow>xs. Suc (f a b c)) = length xs + (\<Sum>(a, b, c)\<leftarrow>xs. f a b c)<\STATESEP>by (induct xs; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sum_enumerate: "(\<Sum>(a, b)\<leftarrow>enumerate n xs. P b) = (\<Sum>b\<leftarrow>xs. P b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<Sum>(a, b)\<leftarrow>enumerate n xs. P b) = sum_list (map P xs)<\STATESEP>by (induct xs arbitrary:n; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_map_fold:"dom (fold (++) (map (\<lambda>x. [f x \<mapsto> g x]) xs) ms) = dom ms \<union> set (map f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom (fold (++) (map (\<lambda>x. [f x \<mapsto> g x]) xs) ms) = dom ms \<union> set (map f xs)<\STATESEP>by (induct xs arbitrary:f g ms; clarsimp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_ran_prop:"map_of (map (\<lambda>x. (f x, g x)) xs) i = Some t \<Longrightarrow> \<exists>x \<in> set xs. g x = t"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. map_of (map (\<lambda>x. (f x, g x)) xs) i = Some t \<Longrightarrow> \<exists>x\<in>set xs. g x = t<\STATESEP>by (induct xs arbitrary:f g t i; clarsimp split:if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_set_enumerate_eq2:"(a, b) \<in> set (enumerate n xs) \<Longrightarrow> (b = xs ! (a - n))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (a, b) \<in> set (enumerate n xs) \<Longrightarrow> b = xs ! (a - n)<\STATESEP>by (simp add: in_set_enumerate_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma subset_eq_notI: "\<lbrakk>a\<in> B;a\<notin> C\<rbrakk> \<Longrightarrow> \<not> B \<subseteq> C"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<in> B; a \<notin> C\<rbrakk> \<Longrightarrow> \<not> B \<subseteq> C<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma nat_divide_less_eq:
+  fixes b :: nat
+  shows "0 < c \<Longrightarrow> (b div c < a) = (b < a * c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 0 < c \<Longrightarrow> (b div c < a) = (b < a * c)<\STATESEP>using td_gal_lt<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+0 < ?c \<Longrightarrow> (?a < ?b * ?c) = (?a div ?c < ?b)
+
+goal (1 subgoal):
+ 1. 0 < c \<Longrightarrow> (b div c < a) = (b < a * c)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma strengthen_imp_same_first_conj:
+  "(b \<and> (a \<longrightarrow> c) \<and> (a' \<longrightarrow> c')) \<Longrightarrow> ((a \<longrightarrow> b \<and> c) \<and> (a' \<longrightarrow> b \<and> c'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. b \<and> (a \<longrightarrow> c) \<and> (a' \<longrightarrow> c') \<Longrightarrow> (a \<longrightarrow> b \<and> c) \<and> (a' \<longrightarrow> b \<and> c')<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma conj_impD:
+  "a \<and> b \<Longrightarrow> a \<longrightarrow> b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a \<and> b \<Longrightarrow> a \<longrightarrow> b<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_list_mem_nonempty:
+  "x \<in> set xs \<Longrightarrow> xs \<noteq> []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<in> set xs \<Longrightarrow> xs \<noteq> []<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma strenghten_False_imp:
+  "\<not>P \<Longrightarrow> P \<longrightarrow> Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> P \<Longrightarrow> P \<longrightarrow> Q<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma None_in_range_Some [simp]:
+  "(None \<in> range Some) = False"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (None \<in> range Some) = False<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma foldl_fun_or_alt:
+  "foldl (\<lambda>x y. x \<or> f y) b ls = foldl (\<or>) b (map f ls)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. foldl (\<lambda>x y. x \<or> f y) b ls = foldl (\<or>) b (map f ls)<\STATESEP>apply (induct ls)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. foldl (\<lambda>x y. x \<or> f y) b [] = foldl (\<or>) b (map f [])
+ 2. \<And>a ls. foldl (\<lambda>x y. x \<or> f y) b ls = foldl (\<or>) b (map f ls) \<Longrightarrow> foldl (\<lambda>x y. x \<or> f y) b (a # ls) = foldl (\<or>) b (map f (a # ls))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a ls. foldl (\<lambda>x y. x \<or> f y) b ls = foldl (\<or>) b (map f ls) \<Longrightarrow> foldl (\<lambda>x y. x \<or> f y) b (a # ls) = foldl (\<or>) b (map f (a # ls))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a ls. foldl (\<lambda>x y. x \<or> f y) b ls = foldl (\<or>) b (map f ls) \<Longrightarrow> foldl (\<lambda>x y. x \<or> f y) (b \<or> f a) ls = foldl (\<or>) (b \<or> f a) (map f ls)<\STATESEP>by (simp add: foldl_map)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sorted_imp_sorted_filter:
+  "sorted xs \<Longrightarrow> sorted (filter P xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sorted xs \<Longrightarrow> sorted (filter P xs)<\STATESEP>by (metis filter_sort sorted_sort sorted_sort_id)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sorted_list_of_set_already_sorted:
+  "\<lbrakk> distinct xs; sorted xs \<rbrakk> \<Longrightarrow> sorted_list_of_set (set xs) = xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; sorted xs\<rbrakk> \<Longrightarrow> sorted_list_of_set (set xs) = xs<\STATESEP>by (simp add: sorted_list_of_set_sort_remdups distinct_remdups_id sorted_sort_id)<\STATESEP>1<\TRANSEP><\STATESEP>lemma inj_on_domD: "\<lbrakk>inj_on f (dom f); f x = Some z; f y = Some z\<rbrakk> \<Longrightarrow> x = y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>inj_on f (dom f); f x = Some z; f y = Some z\<rbrakk> \<Longrightarrow> x = y<\STATESEP>by (erule inj_onD) clarsimp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma not_emptyI:
+  "\<And>x A B. \<lbrakk>x\<in>A; x\<in>B\<rbrakk> \<Longrightarrow> A \<inter> B \<noteq> {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x A B. \<lbrakk>x \<in> A; x \<in> B\<rbrakk> \<Longrightarrow> A \<inter> B \<noteq> {}<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma add_mask_lower_bits2:
+  "\<lbrakk>is_aligned (x :: 'a :: len word) n; p && ~~ mask n = 0\<rbrakk> \<Longrightarrow> x + p && ~~ mask n = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; p && ~~ mask n = 0\<rbrakk> \<Longrightarrow> x + p && ~~ mask n = x<\STATESEP>apply (subst word_plus_and_or_coroll)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>is_aligned x n; p && ~~ mask n = 0\<rbrakk> \<Longrightarrow> x && p = 0
+ 2. \<lbrakk>is_aligned x n; p && ~~ mask n = 0\<rbrakk> \<Longrightarrow> (x || p) && ~~ mask n = x<\STATESEP>apply (simp add: aligned_mask_disjoint and_mask_0_iff_le_mask)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_aligned x n; p && ~~ mask n = 0\<rbrakk> \<Longrightarrow> (x || p) && ~~ mask n = x<\STATESEP>apply (clarsimp simp: bit.conj_disj_distrib2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma if3_fold2:
+  "(if P then x else if Q then x else y) = (if P \<or> Q then x else y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (if P then x else if Q then x else y) = (if P \<or> Q then x else y)<\STATESEP>by (rule z3_rule)<\STATESEP>1<\TRANSEP><\STATESEP>lemma inter_UNIV_minus[simp]:
+  "x \<inter> (UNIV - y) = x-y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<inter> (UNIV - y) = x - y<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma imp_and_strg: "Q \<and> C \<longrightarrow> (A \<longrightarrow> Q \<and> C) \<and> C"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. Q \<and> C \<longrightarrow> (A \<longrightarrow> Q \<and> C) \<and> C<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma cases_conj_strg: "A \<and> B \<longrightarrow> (P \<and> A) \<or> (\<not> P \<and> B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<and> B \<longrightarrow> P \<and> A \<or> \<not> P \<and> B<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma and_not_not_or_imp: "(~ A & ~ B | C) = ((A | B) \<longrightarrow> C)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> A \<and> \<not> B \<or> C) = (A \<or> B \<longrightarrow> C)<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma filter_hd_equals_tl:
+  "\<lbrakk>distinct q; q \<noteq> []\<rbrakk> \<Longrightarrow> filter ((\<noteq>) (hd q)) q = tl q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct q; q \<noteq> []\<rbrakk> \<Longrightarrow> filter ((\<noteq>) (hd q)) q = tl q<\STATESEP>apply (induct q rule: length_induct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xs. \<lbrakk>\<forall>ys. length ys < length xs \<longrightarrow> distinct ys \<longrightarrow> ys \<noteq> [] \<longrightarrow> filter ((\<noteq>) (hd ys)) ys = tl ys; distinct xs; xs \<noteq> []\<rbrakk> \<Longrightarrow> filter ((\<noteq>) (hd xs)) xs = tl xs<\STATESEP>apply (rename_tac list)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>list. \<lbrakk>\<forall>ys. length ys < length list \<longrightarrow> distinct ys \<longrightarrow> ys \<noteq> [] \<longrightarrow> filter ((\<noteq>) (hd ys)) ys = tl ys; distinct list; list \<noteq> []\<rbrakk> \<Longrightarrow> filter ((\<noteq>) (hd list)) list = tl list<\STATESEP>apply (case_tac list; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>list a lista. \<lbrakk>\<forall>ys. length ys < Suc (length lista) \<longrightarrow> distinct ys \<longrightarrow> ys \<noteq> [] \<longrightarrow> filter ((\<noteq>) (hd ys)) ys = tl ys; a \<notin> set lista \<and> distinct lista; list = a # lista\<rbrakk> \<Longrightarrow> filter ((\<noteq>) a) lista = lista<\STATESEP>apply (fastforce simp: filter_id_conv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

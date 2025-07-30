@@ -1,0 +1,41 @@
+<\STATESEP>theory Sep_MP
+imports Sep_Tactic_Helpers Sep_Provers Sep_Cancel_Set
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_mp_gen: "((Q \<longrightarrow>* R) \<and>* Q') s \<Longrightarrow> (\<And>s. Q' s \<Longrightarrow> Q s) \<Longrightarrow> R s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>((Q \<longrightarrow>* R) \<and>* Q') s; \<And>s. Q' s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> R s<\STATESEP>by (clarsimp simp: sep_conj_def sep_impl_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_mp_frame_gen: "\<lbrakk>((Q \<longrightarrow>* R) \<and>* Q' \<and>* R') s; (\<And>s. Q' s \<Longrightarrow> Q s)\<rbrakk> \<Longrightarrow> (R \<and>* R') s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>((Q \<longrightarrow>* R) \<and>* Q' \<and>* R') s; \<And>s. Q' s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> (R \<and>* R') s<\STATESEP>by (metis sep_conj_left_commute sep_globalise sep_mp_frame)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_impl_simpl:
+     "(P \<and>* Q \<longrightarrow>* R) s \<Longrightarrow> (P \<longrightarrow>* Q \<longrightarrow>* R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<and>* Q \<longrightarrow>* R) s \<Longrightarrow> (P \<longrightarrow>* Q \<longrightarrow>* R) s<\STATESEP>apply (erule sep_conj_sep_impl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h. ((P \<and>* Q \<longrightarrow>* R) \<and>* P) h \<Longrightarrow> (Q \<longrightarrow>* R) h<\STATESEP>apply (erule sep_conj_sep_impl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>h ha. (((P \<and>* Q \<longrightarrow>* R) \<and>* P) \<and>* Q) ha \<Longrightarrow> R ha<\STATESEP>apply (clarsimp simp: sep_conj_assoc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ha. ((P \<and>* Q \<longrightarrow>* R) \<and>* P \<and>* Q) ha \<Longrightarrow> R ha<\STATESEP>apply (erule sep_mp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_wand_frame_lens: "((P \<longrightarrow>* Q) \<and>* R) s \<Longrightarrow> (\<And>s. T s = R s) ==> ((P \<longrightarrow>* Q) \<and>* T) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>((P \<longrightarrow>* Q) \<and>* R) s; \<And>s. T s = R s\<rbrakk> \<Longrightarrow> ((P \<longrightarrow>* Q) \<and>* T) s<\STATESEP>by (metis sep_conj_commute sep_conj_impl1)<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+  fun sep_wand_frame_drule ctxt =
+     let val lens  = dresolve_tac ctxt [@{thm sep_wand_frame_lens}]
+         val lens' = dresolve_tac ctxt [@{thm sep_asm_eq}]
+         val r = rotator' ctxt
+         val sep_cancel_thms = rev (SepCancel_Rules.get ctxt)
+      in sep_apply_tactic ctxt (dresolve_tac ctxt [@{thm sep_mp_frame_gen}]) sep_cancel_thms |> r lens |> r lens'
+   end;
+
+   fun sep_mp_solver ctxt  =
+    let val sep_mp = sep_apply_tactic ctxt (dresolve0_tac [@{thm sep_mp_gen}]) ((rev o SepCancel_Rules.get) ctxt)
+        val taclist = [sep_drule_comb_tac false [@{thm sep_empty_imp}] ctxt,
+                       sep_drule_tac sep_mp ctxt,
+                       sep_drule_tac (sep_drule_tactic ctxt [@{thm sep_impl_simpl}]) ctxt,
+                       sep_wand_frame_drule ctxt ]
+        val check = DETERM o (sep_drule_tac (sep_select_tactic (dresolve0_tac [@{thm sep_wand_frame_lens}]) [1] ctxt) ctxt)
+
+   in  CHANGED_PROP o (check THEN_ALL_NEW REPEAT_ALL_NEW ( FIRST' taclist) )
+   end;
+
+   val sep_mp_method = SIMPLE_METHOD' o sep_mp_solver
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup sep_mp = \<open>Scan.succeed sep_mp_method\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

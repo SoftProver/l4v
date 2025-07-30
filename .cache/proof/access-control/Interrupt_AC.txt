@@ -1,0 +1,222 @@
+<\STATESEP>theory Interrupt_AC
+imports
+  ArchFinalise_AC
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition authorised_irq_hdl_inv :: "'a PAS \<Rightarrow> Invocations_A.irq_handler_invocation \<Rightarrow> bool" where
+  "authorised_irq_hdl_inv aag hinv \<equiv>
+     case hinv of
+         irq_handler_invocation.SetIRQHandler word cap x \<Rightarrow>
+                   is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word
+       | irq_handler_invocation.ClearIRQHandler word     \<Rightarrow> is_subject_irq aag word
+       | _                                               \<Rightarrow> True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma emptyable_irq_node:
+  "emptyable (interrupt_irq_node s x21, []) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. emptyable (interrupt_irq_node s x21, []) s<\STATESEP>by (simp add:emptyable_def tcb_cnode_index_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pas_refined_is_subject_irqD:
+  "\<lbrakk> is_subject_irq aag irq; pas_refined aag s \<rbrakk> \<Longrightarrow> is_subject aag (interrupt_irq_node s irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_subject_irq aag irq; pas_refined aag s\<rbrakk> \<Longrightarrow> is_subject aag (interrupt_irq_node s irq)<\STATESEP>by (simp add:pas_refined_def irq_map_wellformed_aux_def)<\STATESEP>1<\TRANSEP><\STATESEP>locale Interrupt_AC_1 =
+  fixes arch_authorised_irq_ctl_inv :: "'a PAS \<Rightarrow> arch_irq_control_invocation \<Rightarrow> bool"
+  assumes arch_invoke_irq_control_pas_refined:
+    "\<lbrace>pas_refined (aag :: 'a PAS) and pspace_aligned and valid_vspace_objs and valid_arch_state
+                                  and valid_mdb and arch_irq_control_inv_valid irq_ctl_inv
+                                  and K (arch_authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace>
+     arch_invoke_irq_control irq_ctl_inv
+     \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"
+  and arch_invoke_irq_handler_pas_refined:
+    "\<lbrace>pas_refined aag and invs and (\<lambda>s. interrupt_states s x1 \<noteq> IRQInactive)\<rbrace>
+     arch_invoke_irq_handler (ACKIrq x1)
+     \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"
+  and arch_invoke_irq_control_respects:
+    "\<lbrace>integrity aag X st and pas_refined aag and K (arch_authorised_irq_ctl_inv aag acinv)\<rbrace>
+     arch_invoke_irq_control acinv
+     \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"
+  and arch_invoke_irq_handler_respects:
+    "\<lbrace>integrity aag X st and pas_refined aag and einvs\<rbrace>
+     arch_invoke_irq_handler (ACKIrq x1)
+     \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"
+  and arch_check_irq_inv[wp]:
+    "arch_check_irq irq \<lbrace>\<lambda>s :: det_ext state. P s\<rbrace>"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition authorised_irq_ctl_inv :: "'a PAS \<Rightarrow> Invocations_A.irq_control_invocation \<Rightarrow> bool" where
+  "authorised_irq_ctl_inv aag cinv \<equiv>
+     case cinv of
+       IRQControl irq x1 x2 \<Rightarrow> is_subject aag (fst x1) \<and> is_subject aag (fst x2) \<and>
+                               (pasSubject aag, Control, pasIRQAbs aag irq) \<in> pasPolicy aag
+     | ArchIRQControl acinv \<Rightarrow> arch_authorised_irq_ctl_inv aag acinv"<\STATESEP>0<\TRANSEP><\STATESEP>lemma invoke_irq_control_pas_refined:
+  "\<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state
+                    and valid_mdb and irq_control_inv_valid irq_ctl_inv
+                    and K (authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace>
+   invoke_irq_control irq_ctl_inv
+   \<lbrace>\<lambda>_. pas_refined aag\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and irq_control_inv_valid irq_ctl_inv and K (authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (cases irq_ctl_inv; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x11 x12 x13. irq_ctl_inv = IRQControl x11 x12 x13 \<Longrightarrow> \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and (cte_wp_at ((=) NullCap) x12 and cte_wp_at ((=) IRQControlCap) x13 and ex_cte_cap_wp_to is_cnode_cap x12 and real_cte_at x12 and (\<lambda>y. x11 \<le> maxIRQ)) and (\<lambda>y. authorised_irq_ctl_inv aag (IRQControl x11 x12 x13))\<rbrace> liftE (do y <- set_irq_state IRQSignal x11;
+cap_insert (IRQHandlerCap x11) x13 x12
+od) \<lbrace>\<lambda>_. pas_refined aag\<rbrace>
+ 2. \<And>x2. irq_ctl_inv = ArchIRQControl x2 \<Longrightarrow> \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid x2 and (\<lambda>y. authorised_irq_ctl_inv aag (ArchIRQControl x2))\<rbrace> arch_invoke_irq_control x2 \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wpsimp wp: cap_insert_pas_refined_not_transferable)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x11 a b aa ba s. \<lbrakk>irq_ctl_inv = IRQControl x11 (a, b) (aa, ba); pas_refined aag s; pspace_aligned s; valid_vspace_objs s; valid_arch_state s; valid_mdb s; cte_wp_at ((=) NullCap) (a, b) s; cte_wp_at ((=) IRQControlCap) (aa, ba) s; ex_cte_cap_wp_to is_cnode_cap (a, b) s; cap_table_at (length b) a s; x11 \<le> maxIRQ; authorised_irq_ctl_inv aag (IRQControl x11 (a, b) (aa, ba))\<rbrakk> \<Longrightarrow> \<not> cte_wp_at is_transferable_cap (aa, ba) s \<and> is_subject aag a \<and> is_subject aag aa \<and> pas_cap_cur_auth aag (IRQHandlerCap x11)
+ 2. \<And>x2. irq_ctl_inv = ArchIRQControl x2 \<Longrightarrow> \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid x2 and (\<lambda>y. authorised_irq_ctl_inv aag (ArchIRQControl x2))\<rbrace> arch_invoke_irq_control x2 \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (clarsimp simp: cte_wp_at_caps_of_state clas_no_asid cap_links_irq_def
+                         authorised_irq_ctl_inv_def aag_cap_auth_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. irq_ctl_inv = ArchIRQControl x2 \<Longrightarrow> \<lbrace>pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid x2 and (\<lambda>y. authorised_irq_ctl_inv aag (ArchIRQControl x2))\<rbrace> arch_invoke_irq_control x2 \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wp arch_invoke_irq_control_pas_refined)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2 s. \<lbrakk>irq_ctl_inv = ArchIRQControl x2; (pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid x2 and (\<lambda>y. authorised_irq_ctl_inv aag (ArchIRQControl x2))) s\<rbrakk> \<Longrightarrow> (pas_refined aag and pspace_aligned and valid_vspace_objs and valid_arch_state and valid_mdb and arch_irq_control_inv_valid x2 and K (arch_authorised_irq_ctl_inv aag x2)) s<\STATESEP>apply (clarsimp simp: cte_wp_at_caps_of_state clas_no_asid cap_links_irq_def
+                        authorised_irq_ctl_inv_def aag_cap_auth_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma invoke_irq_handler_pas_refined:
+  "\<lbrace>pas_refined (aag :: 'a PAS) and invs and irq_handler_inv_valid irq_inv
+                                and K (authorised_irq_hdl_inv aag irq_inv)\<rbrace>
+   invoke_irq_handler irq_inv
+   \<lbrace>\<lambda>_ s. pas_refined aag s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and invs and irq_handler_inv_valid irq_inv and K (authorised_irq_hdl_inv aag irq_inv)\<rbrace> invoke_irq_handler irq_inv \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (rule hoare_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. authorised_irq_hdl_inv aag irq_inv \<Longrightarrow> \<lbrace>pas_refined aag and invs and irq_handler_inv_valid irq_inv\<rbrace> invoke_irq_handler irq_inv \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (cases irq_inv, simp_all add: authorised_irq_hdl_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x1. irq_inv = ACKIrq x1 \<Longrightarrow> \<lbrace>pas_refined aag and invs and (\<lambda>s. interrupt_states s x1 \<noteq> IRQInactive)\<rbrace> arch_invoke_irq_handler (ACKIrq x1) \<lbrace>\<lambda>_. pas_refined aag\<rbrace>
+ 2. \<And>x21 x22 x23. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)\<rbrace> do irq_slot <- get_irq_slot x21;
+y <- cap_delete_one irq_slot;
+cap_insert x22 x23 irq_slot
+od \<lbrace>\<lambda>_. pas_refined aag\<rbrace>
+ 3. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wp arch_invoke_irq_handler_pas_refined)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x21 x22 x23. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)\<rbrace> do irq_slot <- get_irq_slot x21;
+y <- cap_delete_one irq_slot;
+cap_insert x22 x23 irq_slot
+od \<lbrace>\<lambda>_. pas_refined aag\<rbrace>
+ 2. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wp cap_insert_pas_refined_not_transferable delete_one_caps_of_state
+          | strengthen invs_mdb | simp add: cte_wp_at_caps_of_state)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x21 x22 x23. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23\<rbrakk> \<Longrightarrow> \<lbrace>?P'46 x21 x22 x23\<rbrace> get_irq_slot x21 \<lbrace>\<lambda>rv s. (x23 = rv \<longrightarrow> is_subject aag (fst rv) \<and> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> invs s \<and> emptyable rv s \<and> (\<forall>cap. caps_of_state s rv = Some cap \<longrightarrow> \<not> can_fast_finalise cap)) \<and> (x23 \<noteq> rv \<longrightarrow> is_subject aag (fst rv) \<and> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> invs s \<and> emptyable rv s \<and> ((\<exists>cap. caps_of_state s rv = Some cap \<and> can_fast_finalise cap) \<longrightarrow> (\<forall>cap. caps_of_state s x23 = Some cap \<longrightarrow> \<not> is_transferable_cap cap) \<and> is_subject aag (fst rv)))\<rbrace>
+ 2. \<And>x21 x22 x23 s. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23; (pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)) s\<rbrakk> \<Longrightarrow> (pas_refined aag and (pspace_aligned and valid_vspace_objs and valid_arch_state)) s \<and> valid_mdb s \<and> ?P'46 x21 x22 x23 s
+ 3. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (rename_tac irq cap slot)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>irq cap slot. \<lbrakk>is_subject aag (fst slot) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag irq; irq_inv = SetIRQHandler irq cap slot\<rbrakk> \<Longrightarrow> \<lbrace>?P'46 irq cap slot\<rbrace> get_irq_slot irq \<lbrace>\<lambda>rv s. (slot = rv \<longrightarrow> is_subject aag (fst rv) \<and> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> invs s \<and> emptyable rv s \<and> (\<forall>cap. caps_of_state s rv = Some cap \<longrightarrow> \<not> can_fast_finalise cap)) \<and> (slot \<noteq> rv \<longrightarrow> is_subject aag (fst rv) \<and> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> invs s \<and> emptyable rv s \<and> ((\<exists>cap. caps_of_state s rv = Some cap \<and> can_fast_finalise cap) \<longrightarrow> (\<forall>cap. caps_of_state s slot = Some cap \<longrightarrow> \<not> is_transferable_cap cap) \<and> is_subject aag (fst rv)))\<rbrace>
+ 2. \<And>x21 x22 x23 s. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23; (pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)) s\<rbrakk> \<Longrightarrow> (pas_refined aag and (pspace_aligned and valid_vspace_objs and valid_arch_state)) s \<and> valid_mdb s \<and> ?P'46 x21 x22 x23 s
+ 3. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (rule_tac Q =
+            "\<lambda> irq_slot. K(irq_slot \<noteq> slot) and invs and emptyable irq_slot
+                     and cte_wp_at can_fast_finalise irq_slot
+                     and not cte_wp_at is_transferable_cap slot
+                     and K(is_subject aag (fst irq_slot))" in hoare_post_imp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>irq cap slot rv s. \<lbrakk>is_subject aag (fst slot) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag irq; irq_inv = SetIRQHandler irq cap slot; (K (rv \<noteq> slot) and invs and emptyable rv and cte_wp_at can_fast_finalise rv and not cte_wp_at is_transferable_cap slot and K (is_subject aag (fst rv))) s\<rbrakk> \<Longrightarrow> (slot = rv \<longrightarrow> is_subject aag (fst rv) \<and> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> invs s \<and> emptyable rv s \<and> (\<forall>cap. caps_of_state s rv = Some cap \<longrightarrow> \<not> can_fast_finalise cap)) \<and> (slot \<noteq> rv \<longrightarrow> is_subject aag (fst rv) \<and> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> invs s \<and> emptyable rv s \<and> ((\<exists>cap. caps_of_state s rv = Some cap \<and> can_fast_finalise cap) \<longrightarrow> (\<forall>cap. caps_of_state s slot = Some cap \<longrightarrow> \<not> is_transferable_cap cap) \<and> is_subject aag (fst rv)))
+ 2. \<And>irq cap slot. \<lbrakk>is_subject aag (fst slot) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag irq; irq_inv = SetIRQHandler irq cap slot\<rbrakk> \<Longrightarrow> \<lbrace>?P'46 irq cap slot\<rbrace> get_irq_slot irq \<lbrace>\<lambda>irq_slot. K (irq_slot \<noteq> slot) and invs and emptyable irq_slot and cte_wp_at can_fast_finalise irq_slot and not cte_wp_at is_transferable_cap slot and K (is_subject aag (fst irq_slot))\<rbrace>
+ 3. \<And>x21 x22 x23 s. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23; (pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)) s\<rbrakk> \<Longrightarrow> (pas_refined aag and (pspace_aligned and valid_vspace_objs and valid_arch_state)) s \<and> valid_mdb s \<and> ?P'46 x21 x22 x23 s
+ 4. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (force simp: cte_wp_at_caps_of_state)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>irq cap slot. \<lbrakk>is_subject aag (fst slot) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag irq; irq_inv = SetIRQHandler irq cap slot\<rbrakk> \<Longrightarrow> \<lbrace>?P'46 irq cap slot\<rbrace> get_irq_slot irq \<lbrace>\<lambda>irq_slot. K (irq_slot \<noteq> slot) and invs and emptyable irq_slot and cte_wp_at can_fast_finalise irq_slot and not cte_wp_at is_transferable_cap slot and K (is_subject aag (fst irq_slot))\<rbrace>
+ 2. \<And>x21 x22 x23 s. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23; (pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)) s\<rbrakk> \<Longrightarrow> (pas_refined aag and (pspace_aligned and valid_vspace_objs and valid_arch_state)) s \<and> valid_mdb s \<and> ?P'46 x21 x22 x23 s
+ 3. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>irq cap slot. \<lbrakk>is_subject aag (fst slot) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag irq; irq_inv = SetIRQHandler irq cap slot\<rbrakk> \<Longrightarrow> \<lbrace>?P'46 irq cap slot\<rbrace> get_irq_slot irq \<lbrace>\<lambda>irq_slot. (\<lambda>y. irq_slot \<noteq> slot) and invs and emptyable irq_slot and cte_wp_at can_fast_finalise irq_slot and not cte_wp_at is_transferable_cap slot and (\<lambda>y. is_subject aag (fst irq_slot))\<rbrace>
+ 2. \<And>x21 x22 x23 s. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23; (pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)) s\<rbrakk> \<Longrightarrow> (pas_refined aag and (pspace_aligned and valid_vspace_objs and valid_arch_state)) s \<and> valid_mdb s \<and> ?P'46 x21 x22 x23 s
+ 3. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wp get_irq_slot_different)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x21 x22 x23 s. \<lbrakk>is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21; irq_inv = SetIRQHandler x21 x22 x23; (pas_refined aag and invs and (\<lambda>s. ex_cte_cap_wp_to is_cnode_cap x23 s \<and> (\<exists>a b. cte_wp_at ((=) (IRQHandlerCap x21)) (a, b) s) \<and> cte_wp_at (interrupt_derived x22) x23 s \<and> s \<turnstile> x22 \<and> is_ntfn_cap x22)) s\<rbrakk> \<Longrightarrow> (pas_refined aag and (pspace_aligned and valid_vspace_objs and valid_arch_state)) s \<and> valid_mdb s \<and> (valid_global_refs s \<and> ex_cte_cap_wp_to is_cnode_cap x23 s) \<and> invs s \<and> invs s \<and> invs s \<and> (not cte_wp_at is_transferable_cap x23) s \<and> (pas_refined aag and K (is_subject_irq aag x21)) s
+ 2. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (clarsimp simp: emptyable_irq_node cte_wp_at_caps_of_state)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x21 x22 a b s aa ba cap. \<lbrakk>irq_inv = SetIRQHandler x21 x22 (a, b); is_subject aag a; pas_refined aag s; pas_cap_cur_auth aag x22; is_subject_irq aag x21; invs s; ex_cte_cap_wp_to is_cnode_cap (a, b) s; caps_of_state s (aa, ba) = Some (IRQHandlerCap x21); s \<turnstile> x22; is_ntfn_cap x22; caps_of_state s (a, b) = Some cap; interrupt_derived x22 cap\<rbrakk> \<Longrightarrow> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> valid_mdb s \<and> valid_global_refs s \<and> \<not> is_transferable_cap cap
+ 2. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (fastforce simp: interrupt_derived_def is_cap_simps cap_master_cap_def split: cap.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x3. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3\<rbrakk> \<Longrightarrow> \<lbrace>pas_refined aag and invs\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. pas_refined aag\<rbrace><\STATESEP>apply (wp delete_one_caps_of_state | simp add: get_irq_slot_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x3 s. \<lbrakk>is_subject_irq aag x3; irq_inv = ClearIRQHandler x3; pas_refined aag s \<and> invs s\<rbrakk> \<Longrightarrow> pspace_aligned s \<and> valid_vspace_objs s \<and> valid_arch_state s \<and> valid_mdb s \<and> is_subject aag (interrupt_irq_node s x3)<\STATESEP>apply (fastforce dest: pas_refined_is_subject_irqD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma invoke_irq_control_respects:
+  "\<lbrace>integrity aag X st and pas_refined aag and K (authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace>
+   invoke_irq_control irq_ctl_inv
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and pas_refined aag and K (authorised_irq_ctl_inv aag irq_ctl_inv)\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (rule hoare_gen_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. authorised_irq_ctl_inv aag irq_ctl_inv \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (cases irq_ctl_inv)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x11 x12 x13. \<lbrakk>authorised_irq_ctl_inv aag irq_ctl_inv; irq_ctl_inv = IRQControl x11 x12 x13\<rbrakk> \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace>
+ 2. \<And>x2. \<lbrakk>authorised_irq_ctl_inv aag irq_ctl_inv; irq_ctl_inv = ArchIRQControl x2\<rbrakk> \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>subgoal \<comment>\<open>generic case\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>authorised_irq_ctl_inv aag irq_ctl_inv; irq_ctl_inv = IRQControl x11_ x12_ x13_\<rbrakk> \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (simp add: authorised_irq_ctl_inv_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_subject aag (fst x12_) \<and> is_subject aag (fst x13_) \<and> (pasSubject aag, Control, pasIRQAbs aag x11_) \<in> pasPolicy aag; irq_ctl_inv = IRQControl x11_ x12_ x13_\<rbrakk> \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> liftE (do y <- set_irq_state IRQSignal x11_;
+cap_insert (IRQHandlerCap x11_) x13_ x12_
+od) \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wp cap_insert_integrity_autarch aag_Control_into_owns_irq | simp | blast)+<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x2. \<lbrakk>authorised_irq_ctl_inv aag irq_ctl_inv; irq_ctl_inv = ArchIRQControl x2\<rbrakk> \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>subgoal for arch_irq_ctl_inv \<comment>\<open>arch case\<close><\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>authorised_irq_ctl_inv aag irq_ctl_inv; irq_ctl_inv = ArchIRQControl arch_irq_ctl_inv\<rbrakk> \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag\<rbrace> invoke_irq_control irq_ctl_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (wpsimp wp: arch_invoke_irq_control_respects simp: authorised_irq_ctl_inv_def)<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>4<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma invoke_irq_handler_respects:
+  "\<lbrace>integrity (aag :: 'a PAS) X st and pas_refined aag and einvs
+                                   and K (authorised_irq_hdl_inv aag irq_inv)\<rbrace>
+   invoke_irq_handler irq_inv
+   \<lbrace>\<lambda>_. integrity aag X st\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>integrity aag X st and pas_refined aag and einvs and K (authorised_irq_hdl_inv aag irq_inv)\<rbrace> invoke_irq_handler irq_inv \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>apply (cases irq_inv, simp_all add: authorised_irq_hdl_inv_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x1. irq_inv = ACKIrq x1 \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs\<rbrace> arch_invoke_irq_handler (ACKIrq x1) \<lbrace>\<lambda>_. integrity aag X st\<rbrace>
+ 2. \<And>x21 x22 x23. irq_inv = SetIRQHandler x21 x22 x23 \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs and (\<lambda>y. is_subject aag (fst x23) \<and> pas_cap_cur_auth aag x22 \<and> is_subject_irq aag x21)\<rbrace> do irq_slot <- get_irq_slot x21;
+y <- cap_delete_one irq_slot;
+cap_insert x22 x23 irq_slot
+od \<lbrace>\<lambda>_. integrity aag X st\<rbrace>
+ 3. \<And>x3. irq_inv = ClearIRQHandler x3 \<Longrightarrow> \<lbrace>integrity aag X st and pas_refined aag and einvs and (\<lambda>y. is_subject_irq aag x3)\<rbrace> get_irq_slot x3 >>= cap_delete_one \<lbrace>\<lambda>_. integrity aag X st\<rbrace><\STATESEP>by (wpsimp wp: arch_invoke_irq_handler_respects cap_insert_integrity_autarch)+<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma decode_irq_handler_invocation_authorised [wp]:
+  "\<lbrace>K (is_subject_irq aag irq \<and> (\<forall>cap_slot \<in> set caps. pas_cap_cur_auth aag (fst cap_slot)
+                              \<and> is_subject aag (fst (snd cap_slot))))\<rbrace>
+   decode_irq_handler_invocation info_label irq caps
+   \<lbrace>\<lambda>x s. authorised_irq_hdl_inv aag x\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (is_subject_irq aag irq \<and> (\<forall>cap_slot\<in>set caps. pas_cap_cur_auth aag (fst cap_slot) \<and> is_subject aag (fst (snd cap_slot))))\<rbrace> decode_irq_handler_invocation info_label irq caps \<lbrace>\<lambda>x s. authorised_irq_hdl_inv aag x\<rbrace>, -<\STATESEP>unfolding decode_irq_handler_invocation_def authorised_irq_hdl_inv_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>K (is_subject_irq aag irq \<and> (\<forall>cap_slot\<in>set caps. pas_cap_cur_auth aag (fst cap_slot) \<and> is_subject aag (fst (snd cap_slot))))\<rbrace> if gen_invocation_type info_label = IRQAckIRQ then returnOk $ ACKIrq irq else if gen_invocation_type info_label = IRQSetIRQHandler then if caps \<noteq> [] then let (cap, slot) = hd caps in if is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap then returnOk $ SetIRQHandler irq cap slot else throwError $ InvalidCapability 0 else throwError TruncatedMessage else if gen_invocation_type info_label = IRQClearIRQHandler then returnOk $ ClearIRQHandler irq else throwError IllegalOperation \<lbrace>\<lambda>x s. case x of ACKIrq worda \<Rightarrow> True | SetIRQHandler word cap x \<Rightarrow> is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word | ClearIRQHandler word \<Rightarrow> is_subject_irq aag word\<rbrace>, -<\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'\<rbrace> if gen_invocation_type info_label = IRQAckIRQ then returnOk $ ACKIrq irq else if gen_invocation_type info_label = IRQSetIRQHandler then if caps \<noteq> [] then let (cap, slot) = hd caps in if is_ntfn_cap cap \<and> AllowSend \<in> cap_rights cap then returnOk $ SetIRQHandler irq cap slot else throwError $ InvalidCapability 0 else throwError TruncatedMessage else if gen_invocation_type info_label = IRQClearIRQHandler then returnOk $ ClearIRQHandler irq else throwError IllegalOperation \<lbrace>\<lambda>x s. case x of ACKIrq worda \<Rightarrow> True | SetIRQHandler word cap x \<Rightarrow> is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word | ClearIRQHandler word \<Rightarrow> is_subject_irq aag word\<rbrace>, -
+ 2. \<And>s. K (is_subject_irq aag irq \<and> (\<forall>cap_slot\<in>set caps. pas_cap_cur_auth aag (fst cap_slot) \<and> is_subject aag (fst (snd cap_slot)))) s \<Longrightarrow> ?P' s<\STATESEP>apply (simp add: Let_def split_def split del: if_split cong: if_cong)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'\<rbrace> if gen_invocation_type info_label = IRQAckIRQ then returnOk (ACKIrq irq) else if gen_invocation_type info_label = IRQSetIRQHandler then if caps \<noteq> [] then if is_ntfn_cap (fst (hd caps)) \<and> AllowSend \<in> cap_rights (fst (hd caps)) then returnOk (SetIRQHandler irq (fst (hd caps)) (snd (hd caps))) else throwError (InvalidCapability 0) else throwError TruncatedMessage else if gen_invocation_type info_label = IRQClearIRQHandler then returnOk (ClearIRQHandler irq) else throwError IllegalOperation \<lbrace>\<lambda>x s. case x of ACKIrq worda \<Rightarrow> True | SetIRQHandler word cap x \<Rightarrow> is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word | ClearIRQHandler word \<Rightarrow> is_subject_irq aag word\<rbrace>, -
+ 2. \<And>s. K (is_subject_irq aag irq \<and> (\<forall>cap_slot\<in>set caps. pas_cap_cur_auth aag (fst cap_slot) \<and> is_subject aag (fst (snd cap_slot)))) s \<Longrightarrow> ?P' s<\STATESEP>apply wp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. K (is_subject_irq aag irq \<and> (\<forall>cap_slot\<in>set caps. pas_cap_cur_auth aag (fst cap_slot) \<and> is_subject aag (fst (snd cap_slot)))) s \<Longrightarrow> (gen_invocation_type info_label = IRQAckIRQ \<longrightarrow> (case ACKIrq irq of ACKIrq worda \<Rightarrow> True | SetIRQHandler word cap x \<Rightarrow> is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word | ClearIRQHandler word \<Rightarrow> is_subject_irq aag word)) \<and> (gen_invocation_type info_label \<noteq> IRQAckIRQ \<longrightarrow> (gen_invocation_type info_label = IRQSetIRQHandler \<longrightarrow> (caps \<noteq> [] \<longrightarrow> (is_ntfn_cap (fst (hd caps)) \<and> AllowSend \<in> cap_rights (fst (hd caps)) \<longrightarrow> (case SetIRQHandler irq (fst (hd caps)) (snd (hd caps)) of ACKIrq worda \<Rightarrow> True | SetIRQHandler word cap x \<Rightarrow> is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word | ClearIRQHandler word \<Rightarrow> is_subject_irq aag word)) \<and> (\<not> (is_ntfn_cap (fst (hd caps)) \<and> AllowSend \<in> cap_rights (fst (hd caps))) \<longrightarrow> True)) \<and> (\<not> caps \<noteq> [] \<longrightarrow> True)) \<and> (gen_invocation_type info_label \<noteq> IRQSetIRQHandler \<longrightarrow> (gen_invocation_type info_label = IRQClearIRQHandler \<longrightarrow> (case ClearIRQHandler irq of ACKIrq worda \<Rightarrow> True | SetIRQHandler word cap x \<Rightarrow> is_subject aag (fst x) \<and> pas_cap_cur_auth aag cap \<and> is_subject_irq aag word | ClearIRQHandler word \<Rightarrow> is_subject_irq aag word)) \<and> (gen_invocation_type info_label \<noteq> IRQClearIRQHandler \<longrightarrow> True)))<\STATESEP>apply (auto dest!: hd_in_set)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>locale Interrupt_AC_2 = Interrupt_AC_1 +
+  assumes arch_decode_irq_control_invocation_authorised:
+    "\<lbrace>pas_refined aag and
+      K (is_subject aag (fst slot) \<and> (\<forall>cap \<in> set caps. pas_cap_cur_auth aag cap) \<and>
+         (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (ucast (args ! 0))) \<in> pasPolicy aag))\<rbrace>
+     arch_decode_irq_control_invocation info_label args slot caps
+     \<lbrace>\<lambda>x s. arch_authorised_irq_ctl_inv aag x\<rbrace>, -"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma decode_irq_control_invocation_authorised [wp]:
+  "\<lbrace>pas_refined aag and
+    K (is_subject aag (fst slot) \<and> (\<forall>cap \<in> set caps. pas_cap_cur_auth aag cap) \<and>
+       (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (ucast (args ! 0))) \<in> pasPolicy aag))\<rbrace>
+   decode_irq_control_invocation info_label args slot caps
+   \<lbrace>\<lambda>x s. authorised_irq_ctl_inv aag x\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and K (is_subject aag (fst slot) \<and> Ball (set caps) (pas_cap_cur_auth aag) \<and> (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag))\<rbrace> decode_irq_control_invocation info_label args slot caps \<lbrace>\<lambda>x s. authorised_irq_ctl_inv aag x\<rbrace>, -<\STATESEP>unfolding decode_irq_control_invocation_def authorised_irq_ctl_inv_def Let_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>pas_refined aag and K (is_subject aag (fst slot) \<and> Ball (set caps) (pas_cap_cur_auth aag) \<and> (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag))\<rbrace> if gen_invocation_type info_label = IRQIssueIRQHandler then if 3 \<le> length args \<and> 1 \<le> length caps then doE arch_check_irq (args ! 0);
+irq_active <- liftE $ is_irq_active (UCAST(32 \<rightarrow> 10) (args ! 0));
+whenE irq_active $ throwError RevokeFirst;
+dest_slot <- lookup_target_slot (caps ! 0) (data_to_cptr (args ! 1)) (unat (args ! 2));
+ensure_empty dest_slot;
+returnOk $ IRQControl (UCAST(32 \<rightarrow> 10) (args ! 0)) dest_slot slot
+odE else throwError TruncatedMessage else liftME ArchIRQControl $ arch_decode_irq_control_invocation info_label args slot caps \<lbrace>\<lambda>x s. case x of IRQControl irq x1 x2 \<Rightarrow> is_subject aag (fst x1) \<and> is_subject aag (fst x2) \<and> (pasSubject aag, Control, pasIRQAbs aag irq) \<in> pasPolicy aag | ArchIRQControl acinv \<Rightarrow> arch_authorised_irq_ctl_inv aag acinv\<rbrace>, -<\STATESEP>apply (rule hoare_gen_asmE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_subject aag (fst slot) \<and> Ball (set caps) (pas_cap_cur_auth aag) \<and> (args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag) \<Longrightarrow> \<lbrace>pas_refined aag\<rbrace> if gen_invocation_type info_label = IRQIssueIRQHandler then if 3 \<le> length args \<and> 1 \<le> length caps then doE arch_check_irq (args ! 0);
+irq_active <- liftE $ is_irq_active (UCAST(32 \<rightarrow> 10) (args ! 0));
+whenE irq_active $ throwError RevokeFirst;
+dest_slot <- lookup_target_slot (caps ! 0) (data_to_cptr (args ! 1)) (unat (args ! 2));
+ensure_empty dest_slot;
+returnOk $ IRQControl (UCAST(32 \<rightarrow> 10) (args ! 0)) dest_slot slot
+odE else throwError TruncatedMessage else liftME ArchIRQControl $ arch_decode_irq_control_invocation info_label args slot caps \<lbrace>\<lambda>x s. case x of IRQControl irq x1 x2 \<Rightarrow> is_subject aag (fst x1) \<and> is_subject aag (fst x2) \<and> (pasSubject aag, Control, pasIRQAbs aag irq) \<in> pasPolicy aag | ArchIRQControl acinv \<Rightarrow> arch_authorised_irq_ctl_inv aag acinv\<rbrace>, -<\STATESEP>apply (wpsimp wp: weak_if_wp arch_decode_irq_control_invocation_authorised simp: o_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>pas_refined aag s; is_subject aag (fst slot); Ball (set caps) (pas_cap_cur_auth aag); args \<noteq> [] \<longrightarrow> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag; gen_invocation_type info_label = IRQIssueIRQHandler; 3 \<le> length args; Suc 0 \<le> length caps\<rbrakk> \<Longrightarrow> (is_cnode_cap (caps ! 0) \<longrightarrow> (\<forall>x\<in>obj_refs_ac (caps ! 0). is_subject aag x)) \<and> (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) (args ! 0))) \<in> pasPolicy aag<\STATESEP>apply (cases args, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a list. \<lbrakk>pas_refined aag s; is_subject aag (fst slot); Ball (set caps) (pas_cap_cur_auth aag); (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) a)) \<in> pasPolicy aag; gen_invocation_type info_label = IRQIssueIRQHandler; 2 \<le> length list; Suc 0 \<le> length caps; args = a # list\<rbrakk> \<Longrightarrow> is_cnode_cap (caps ! 0) \<longrightarrow> (\<forall>x\<in>obj_refs_ac (caps ! 0). is_subject aag x)<\STATESEP>apply (cases caps, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a list aa lista. \<lbrakk>pas_refined aag s; is_subject aag (fst slot); pas_cap_cur_auth aag aa \<and> Ball (set lista) (pas_cap_cur_auth aag); (pasSubject aag, Control, pasIRQAbs aag (UCAST(32 \<rightarrow> 10) a)) \<in> pasPolicy aag; gen_invocation_type info_label = IRQIssueIRQHandler; 2 \<le> length list; args = a # list; caps = aa # lista\<rbrakk> \<Longrightarrow> is_cnode_cap aa \<longrightarrow> (\<forall>x\<in>obj_refs_ac aa. is_subject aag x)<\STATESEP>apply (auto simp: is_cap_simps cap_auth_conferred_def
+                    pas_refined_wellformed
+                    pas_refined_all_auth_is_owns aag_cap_auth_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

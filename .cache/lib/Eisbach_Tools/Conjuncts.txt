@@ -1,0 +1,91 @@
+<\STATESEP>theory Conjuncts
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>ML\<open>
+
+structure Conjuncts =
+struct
+
+local
+
+  structure Data = Generic_Data
+  (
+    type T = thm;
+    val empty: T = Drule.dummy_thm;
+    val merge : T * T -> T = (K Drule.dummy_thm);
+  );
+
+  fun elim_conjuncts thm =
+    case try Conjunction.elim thm of
+    SOME (thm', thm'') => elim_conjuncts thm' @ elim_conjuncts thm''
+    | NONE => if Thm.prop_of thm = Thm.prop_of (Drule.dummy_thm) then [] else [thm]
+
+  in
+
+  val _ = Context.>> (Context.map_theory (
+    (Attrib.setup @{binding "conjuncts"}
+      (Scan.lift (Args.mode "accumulate") >> (fn acc =>
+        if acc then
+        Thm.declaration_attribute (Data.map o (fn x => fn y => Conjunction.intr y x))
+        else
+        Thm.declaration_attribute Data.put))
+      "add meta_conjuncts to \"conjuncts\" named theorem") #>
+    Global_Theory.add_thms_dynamic (@{binding "conjuncts"}, elim_conjuncts o Data.get)))
+
+end
+
+end
+
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix A B C D<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume ABC[conjuncts]: "(A &&& B) &&& (B &&& C)"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(A &&& B) &&& B &&& C<\STATESEP>note ABC' = conjuncts<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A
+B
+B
+C<\STATESEP>have "A"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A<\STATESEP>by (rule ABC')<\STATESEP>3<\TRANSEP>proof (state)
+this:
+A<\STATESEP>have "B"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. B<\STATESEP>by (rule \<open>B\<close>)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+B<\STATESEP>have "C"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. C<\STATESEP>by (rule ABC'(4))<\STATESEP>3<\TRANSEP>proof (state)
+this:
+C<\STATESEP>assume ABCD[conjuncts]: "A &&& B" "C &&& D"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A &&& B
+C &&& D<\STATESEP>note CD = conjuncts<\STATESEP>2<\TRANSEP>proof (state)
+this:
+C
+D<\STATESEP>have "A"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A<\STATESEP>by ((rule CD)?,rule ABC')<\STATESEP>3<\TRANSEP>proof (state)
+this:
+A<\STATESEP>have "C"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. C<\STATESEP>by (rule CD)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+C<\STATESEP>note ABCD(1)[conjuncts]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A &&& B<\STATESEP>note AB = conjuncts<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A
+B<\STATESEP>note ABCD(2)[conjuncts]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+C &&& D<\STATESEP>note CD = conjuncts<\STATESEP>2<\TRANSEP>proof (state)
+this:
+C
+D<\STATESEP>note [[conjuncts]]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+TERM _<\STATESEP>note ABCD[conjuncts (accumulate)]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A &&& B
+C &&& D<\STATESEP>note ABCD' = conjuncts<\STATESEP>2<\TRANSEP>proof (state)
+this:
+A
+B
+C
+D<\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

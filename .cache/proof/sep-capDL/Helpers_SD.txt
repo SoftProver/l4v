@@ -1,0 +1,920 @@
+<\STATESEP>theory Helpers_SD
+imports
+  "Lookups_D"
+  "Lib.SimpStrategy"
+  "Lib.LemmaBucket"
+  "Sep_Algebra.Map_Extra"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>consts tcb_priority :: "cdl_tcb \<Rightarrow> word8 \<times> word8"<\STATESEP>0<\TRANSEP><\STATESEP>consts tcb_ip :: "cdl_tcb \<Rightarrow> word32"<\STATESEP>0<\TRANSEP><\STATESEP>consts tcb_sp :: "cdl_tcb \<Rightarrow> word32"<\STATESEP>0<\TRANSEP><\STATESEP>consts opt_vmattribs :: "cdl_object \<Rightarrow> cdl_raw_vmattrs option"<\STATESEP>0<\TRANSEP><\STATESEP>definition tcb_ipc_buffer_address :: "cdl_tcb \<Rightarrow> word32"
+where "tcb_ipc_buffer_address tcb = 1"<\STATESEP>0<\TRANSEP><\STATESEP>lemma tcb_ipc_buffer_address_non_zero:
+  "tcb_ipc_buffer_address tcb \<noteq> 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. tcb_ipc_buffer_address tcb \<noteq> 0<\STATESEP>by (clarsimp simp: tcb_ipc_buffer_address_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_upd_nonempty' [simp]: "Map.empty \<noteq> t(k\<mapsto>x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>x. None) \<noteq> t(k \<mapsto> x)<\STATESEP>by (rule not_sym, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma insert_unit_set [simp]:
+  "insert () A = UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. insert () A = UNIV<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_not_empty [simp]:
+  "f p = Some v \<Longrightarrow> f |` {p} \<noteq> Map.empty"
+  "f p = Some v \<Longrightarrow> Map.empty \<noteq> f |` {p}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (f p = Some v \<Longrightarrow> f |` {p} \<noteq> (\<lambda>x. None)) &&& (f p = Some v \<Longrightarrow> (\<lambda>x. None) \<noteq> f |` {p})<\STATESEP>by (clarsimp simp: restrict_map_def fun_eq_iff split: if_split_asm)+<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  map_comp' :: "('b \<Rightarrow> 'c) \<Rightarrow> ('a \<rightharpoonup> 'b) \<Rightarrow> 'a \<rightharpoonup> 'c"  (infixl "o'_M" 55) where
+  "f o_M g = (\<lambda>k. case g k of None \<Rightarrow> None | Some v \<Rightarrow> Some (f v))"<\STATESEP>0<\TRANSEP><\STATESEP>notation (xsymbols)
+  map_comp'  (infixl "\<circ>\<^sub>M" 55)<\STATESEP>0<\TRANSEP><\STATESEP>lemma map_comp'_apply [simp]: "(f \<circ>\<^sub>M g) x = case_option None (\<lambda>x. Some (f x)) (g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (f o_M g) x = (case g x of None \<Rightarrow> None | Some x \<Rightarrow> Some (f x))<\STATESEP>by (clarsimp simp: map_comp'_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_comp'_empty [simp]:
+  "m \<circ>\<^sub>M Map.empty = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m o_M (\<lambda>x. None) = (\<lambda>x. None)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_map_comp' [simp]:
+  "dom (f \<circ>\<^sub>M m) = dom m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom (f o_M m) = dom m<\STATESEP>by (clarsimp simp: dom_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_comp' [simp]:
+  "f \<circ>\<^sub>M g |` S = (f \<circ>\<^sub>M g) |` S"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f o_M g |` S = (f o_M g) |` S<\STATESEP>by (rule ext, clarsimp simp: map_comp'_def restrict_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma nat_list_not_UNIV [simp]:
+  "set (xs::nat list) \<noteq> UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set xs \<noteq> UNIV<\STATESEP>by (metis UNIV_I gt_ex leD maximum_ge)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_self:
+  "m ++ m = m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m ++ m = m<\STATESEP>by (auto simp add:map_add_def split:option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_disj':
+  "S \<inter> T = {} \<Longrightarrow> h |` S \<bottom> h' |` T"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. S \<inter> T = {} \<Longrightarrow> h |` S \<bottom> h' |` T<\STATESEP>by (auto simp: map_disj_def restrict_map_def dom_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_restrict_comm:
+  "S \<inter> T = {} \<Longrightarrow> h |` S ++ h' |` T = h' |` T ++ h |` S"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. S \<inter> T = {} \<Longrightarrow> h |` S ++ h' |` T = h' |` T ++ h |` S<\STATESEP>apply (drule restrict_map_disj')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ?h |` S \<bottom> ?h' |` T \<Longrightarrow> h |` S ++ h' |` T = h' |` T ++ h |` S<\STATESEP>apply (erule map_add_com)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_not_self_UNIV [simp]:
+  "h |` (UNIV - dom h) = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. h |` (UNIV - dom h) = (\<lambda>x. None)<\STATESEP>by (rule ext, clarsimp simp: restrict_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_emptyE [elim!]:
+  "\<lbrakk>a ++ b = Map.empty; \<lbrakk>a = Map.empty; b = Map.empty\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a ++ b = (\<lambda>x. None); \<lbrakk>a = (\<lambda>x. None); b = (\<lambda>x. None)\<rbrakk> \<Longrightarrow> R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (metis map_add_None)<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_sub_singleton [simp]:
+  "s \<noteq> t \<Longrightarrow> h `- {t} |` {s} = h |` {s}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<noteq> t \<Longrightarrow> h `- {t} |` {s} = h |` {s}<\STATESEP>by (rule ext)(clarsimp simp: restrict_map_def sub_restrict_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma restrict_map_sub_add': "h `- S ++ h |` S = h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. h `- S ++ h |` S = h<\STATESEP>by (fastforce simp: sub_restrict_map_def map_add_def
+               split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_restrict_singleton:
+  "s \<noteq> t \<Longrightarrow> (m |` {s} ++ m' |` {t}) |` {s} = m |` {s}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<noteq> t \<Longrightarrow> (m |` {s} ++ m' |` {t}) |` {s} = m |` {s}<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. s \<noteq> t \<Longrightarrow> ((m |` {s} ++ m' |` {t}) |` {s}) x = (m |` {s}) x<\STATESEP>apply (clarsimp simp: map_add_def restrict_map_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_add_restrict_singleton':
+  "s \<noteq> t \<Longrightarrow> (m |` {s} ++ m' |` {t}) |` {t} = m' |` {t}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<noteq> t \<Longrightarrow> (m |` {s} ++ m' |` {t}) |` {t} = m' |` {t}<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. s \<noteq> t \<Longrightarrow> ((m |` {s} ++ m' |` {t}) |` {t}) x = (m' |` {t}) x<\STATESEP>apply (clarsimp simp: map_add_def restrict_map_def split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  all_caps :: "cdl_state \<Rightarrow> cdl_cap set"
+where
+"all_caps spec = {cap. \<exists>obj_id slot. opt_cap (obj_id,slot) spec = Some cap \<and> cap \<noteq> NullCap}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma all_capsE [elim!]:
+  "\<lbrakk>opt_cap (obj_id, slot) spec = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> cap \<in> all_caps spec"
+  "\<lbrakk>opt_cap cap_ref spec = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> cap \<in> all_caps spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrakk>opt_cap (obj_id, slot) spec = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> cap \<in> all_caps spec) &&& (\<lbrakk>opt_cap cap_ref spec = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> cap \<in> all_caps spec)<\STATESEP>apply (clarsimp simp: all_caps_def|fast)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>opt_cap cap_ref spec = Some cap; cap \<noteq> NullCap\<rbrakk> \<Longrightarrow> \<exists>obj_id slot. opt_cap (obj_id, slot) spec = Some cap<\STATESEP>by (metis surj_pair)<\STATESEP>1<\TRANSEP><\STATESEP>lemma default_tcb_slots:
+ "[0 ..< tcb_pending_op_slot] = [0,1,2,3,4]"
+ "[0 ..< 5] = [0,1,2,3,4]"
+ "[0 .e. tcb_pending_op_slot] = [0,1,2,3,4,5]"
+ "[0 .e. (5::nat)] = [0,1,2,3,4,5]"
+ "[0..< 6] = [0,1,2,3,4,5]"
+ "[0..< 7] = [0,1,2,3,4,5,6]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ([0..<tcb_pending_op_slot] = [0, 1, 2, 3, 4] &&& [0..<5] = [0, 1, 2, 3, 4] &&& [0 .e. tcb_pending_op_slot] = [0, 1, 2, 3, 4, 5]) &&& [0 .e. 5] = [0, 1, 2, 3, 4, 5] &&& [0..<6] = [0, 1, 2, 3, 4, 5] &&& [0..<7] = [0, 1, 2, 3, 4, 5, 6]<\STATESEP>by (clarsimp simp: tcb_pending_op_slot_def upt_rec)+<\STATESEP>1<\TRANSEP><\STATESEP>definition "update_tcb_fault_endpoint fault_ep = cdl_tcb_fault_endpoint_update (\<lambda>_. fault_ep)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma update_tcb_fault_endpoint_id [simp]:
+  "cdl_tcb_fault_endpoint tcb = fault_ep
+  \<Longrightarrow> update_tcb_fault_endpoint fault_ep tcb = tcb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_tcb_fault_endpoint tcb = fault_ep \<Longrightarrow> update_tcb_fault_endpoint fault_ep tcb = tcb<\STATESEP>by (clarsimp simp: update_tcb_fault_endpoint_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition tcb_has_fault :: "cdl_object \<Rightarrow> bool"
+where
+  "tcb_has_fault obj \<equiv> case obj of Tcb tcb \<Rightarrow> cdl_tcb_has_fault tcb | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition tcb_domain :: "cdl_object \<Rightarrow> word8"
+where
+  "tcb_domain obj \<equiv> case obj of Tcb tcb \<Rightarrow> cdl_tcb_domain tcb | _ \<Rightarrow> 0"<\STATESEP>0<\TRANSEP><\STATESEP>definition update_cap_object :: "cdl_object_id \<Rightarrow> cdl_cap \<Rightarrow> cdl_cap"
+where
+  "update_cap_object obj_id cap \<equiv> case cap of
+    IOPageTableCap _ \<Rightarrow> IOPageTableCap obj_id
+  | IOSpaceCap _ \<Rightarrow> IOSpaceCap obj_id
+  | IOPortsCap _ f2 \<Rightarrow> IOPortsCap obj_id f2
+  | AsidPoolCap _ f2 \<Rightarrow> AsidPoolCap obj_id f2
+  | PageDirectoryCap _ f2 f3 \<Rightarrow> PageDirectoryCap obj_id f2 f3
+  | PageTableCap _ f2 f3 \<Rightarrow> PageTableCap obj_id f2 f3
+  | FrameCap dev _ f2 f3 f4 f5 \<Rightarrow> FrameCap dev obj_id f2 f3 f4 f5
+  | TcbCap _ \<Rightarrow> TcbCap obj_id
+  | CNodeCap _ f2 f3 f4 \<Rightarrow> CNodeCap obj_id f2 f3 f4
+  | MasterReplyCap _ \<Rightarrow> MasterReplyCap obj_id
+  | ReplyCap _ f2 \<Rightarrow> ReplyCap obj_id f2
+  | NotificationCap _ f2 f3 \<Rightarrow> NotificationCap obj_id f2 f3
+  | EndpointCap _ f2 f3 \<Rightarrow> EndpointCap obj_id f2 f3
+  | ZombieCap _ \<Rightarrow> ZombieCap obj_id
+  | PendingSyncSendCap _ f2 f3 f4 f5 f6 \<Rightarrow> PendingSyncSendCap obj_id f2 f3 f4 f5 f6
+  | PendingSyncRecvCap _ f2 f3 \<Rightarrow> PendingSyncRecvCap obj_id f2 f3
+  | PendingNtfnRecvCap _ \<Rightarrow> PendingNtfnRecvCap obj_id
+  | BoundNotificationCap _ \<Rightarrow> BoundNotificationCap obj_id
+  | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition update_cap_objects :: "cdl_object_id set \<Rightarrow> cdl_cap \<Rightarrow> cdl_cap"
+where
+    "update_cap_objects obj_ids cap \<equiv> case cap of
+    UntypedCap d _ a \<Rightarrow> UntypedCap d obj_ids a
+  | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>lemma slots_of_cdl_objects:
+  "slots_of obj_id s slot = Some cap \<Longrightarrow> \<exists>obj. cdl_objects s obj_id = Some obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. slots_of obj_id s slot = Some cap \<Longrightarrow> \<exists>obj. cdl_objects s obj_id = Some obj<\STATESEP>by (clarsimp simp: slots_of_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_cdl_objects:
+  "opt_cap (obj_id, slot) s = Some cap \<Longrightarrow> \<exists>obj. cdl_objects s obj_id = Some obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. opt_cap (obj_id, slot) s = Some cap \<Longrightarrow> \<exists>obj. cdl_objects s obj_id = Some obj<\STATESEP>by (clarsimp simp: opt_cap_def slots_of_cdl_objects)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_slots_of:
+  "\<lbrakk>slots_of obj_id spec slot = Some cap; cdl_objects spec obj_id = Some obj\<rbrakk>
+  \<Longrightarrow> object_slots obj slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>slots_of obj_id spec slot = Some cap; cdl_objects spec obj_id = Some obj\<rbrakk> \<Longrightarrow> object_slots obj slot = Some cap<\STATESEP>by (clarsimp simp: slots_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_opt_cap:
+  "\<lbrakk>opt_cap cap_ref spec = Some cap; cdl_objects spec obj_id = Some obj; cap_ref = (obj_id, slot)\<rbrakk>
+  \<Longrightarrow> object_slots obj slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>opt_cap cap_ref spec = Some cap; cdl_objects spec obj_id = Some obj; cap_ref = (obj_id, slot)\<rbrakk> \<Longrightarrow> object_slots obj slot = Some cap<\STATESEP>by (clarsimp simp: opt_cap_def object_slots_slots_of split: prod.split_asm)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_opt_capI:
+  "\<lbrakk>opt_cap (obj_id, slot) spec = Some cap; cdl_objects spec obj_id = Some obj\<rbrakk>
+  \<Longrightarrow> object_slots obj slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>opt_cap (obj_id, slot) spec = Some cap; cdl_objects spec obj_id = Some obj\<rbrakk> \<Longrightarrow> object_slots obj slot = Some cap<\STATESEP>by (clarsimp simp: opt_cap_def object_slots_slots_of split: prod.split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_opt_capD:
+  "\<lbrakk>opt_cap cap_ref spec = Some cap; cdl_objects spec (fst cap_ref) = Some obj\<rbrakk>
+  \<Longrightarrow> object_slots obj (snd cap_ref) = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>opt_cap cap_ref spec = Some cap; cdl_objects spec (fst cap_ref) = Some obj\<rbrakk> \<Longrightarrow> object_slots obj (snd cap_ref) = Some cap<\STATESEP>by (clarsimp simp: opt_cap_def object_slots_slots_of split: prod.split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_has_slots:
+  "object_slots obj \<noteq> Map.empty \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots obj \<noteq> (\<lambda>x. None) \<Longrightarrow> has_slots obj<\STATESEP>by (clarsimp simp: has_slots_def object_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma slots_of_dom_cdl_objects [elim!]:
+  "slots_of obj_id spec slot = Some cap \<Longrightarrow> obj_id \<in> dom (cdl_objects spec)"
+  "slots_of obj_id spec slot = Some cap \<Longrightarrow> \<exists>slot. cdl_objects spec obj_id = Some slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (slots_of obj_id spec slot = Some cap \<Longrightarrow> obj_id \<in> dom (cdl_objects spec)) &&& (slots_of obj_id spec slot = Some cap \<Longrightarrow> \<exists>slot. cdl_objects spec obj_id = Some slot)<\STATESEP>by (clarsimp simp: slots_of_def split:option.splits)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_dom_cdl_objects [elim]:
+  "opt_cap (obj_id, slot) spec = Some cap \<Longrightarrow> obj_id \<in> dom (cdl_objects spec)"
+  "opt_cap cap_ref spec = Some cap \<Longrightarrow> fst cap_ref \<in> dom (cdl_objects spec)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (opt_cap (obj_id, slot) spec = Some cap \<Longrightarrow> obj_id \<in> dom (cdl_objects spec)) &&& (opt_cap cap_ref spec = Some cap \<Longrightarrow> fst cap_ref \<in> dom (cdl_objects spec))<\STATESEP>by (clarsimp simp: opt_cap_def split: prod.split_asm)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_dom_slots_of [elim]:
+  "opt_cap (obj_id, slot) spec = Some cap \<Longrightarrow> slot \<in> dom (slots_of obj_id spec)"
+  "opt_cap cap_ref spec = Some cap \<Longrightarrow> snd cap_ref \<in> dom (slots_of (fst cap_ref) spec)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (opt_cap (obj_id, slot) spec = Some cap \<Longrightarrow> slot \<in> dom (slots_of obj_id spec)) &&& (opt_cap cap_ref spec = Some cap \<Longrightarrow> snd cap_ref \<in> dom (slots_of (fst cap_ref) spec))<\STATESEP>by (clarsimp simp: opt_cap_def split: prod.split_asm)+<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  well_formed_untyped_cap :: "cdl_cap \<Rightarrow> bool"
+where
+  "well_formed_untyped_cap cap \<equiv> case cap of
+    UntypedCap _ cover_ids available_ids \<Rightarrow> available_ids \<subseteq> cover_ids
+  | _ \<Rightarrow> True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma cap_free_ids_simps:
+  "cap_free_ids (UntypedCap d cover_ids available_ids) = available_ids"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_free_ids (UntypedCap d cover_ids available_ids) = available_ids<\STATESEP>by (clarsimp simp: cap_free_ids_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_objects_remove_free_ids [simp]:
+  "cap_objects (remove_free_ids cap obj_ids) = cap_objects cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_objects (remove_free_ids cap obj_ids) = cap_objects cap<\STATESEP>by (clarsimp simp: cap_objects_def remove_free_ids_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_free_ids_remove_free_ids:
+  "cap_free_ids (remove_free_ids cap obj_ids) = cap_free_ids cap - obj_ids"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_free_ids (remove_free_ids cap obj_ids) = cap_free_ids cap - obj_ids<\STATESEP>by (clarsimp simp: remove_free_ids_def cap_free_ids_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_type_remove_free_ids [simp]:
+  "cap_type (remove_free_ids cap obj_ids) = cap_type cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type (remove_free_ids cap obj_ids) = cap_type cap<\STATESEP>by (clarsimp simp: cap_type_def remove_free_ids_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  is_device_cap :: "cdl_cap \<Rightarrow> bool"
+where  "is_device_cap cap \<equiv> case cap of
+   (UntypedCap dev cover_ids available_ids) \<Rightarrow> dev
+   | (FrameCap dev _ _ _ _ _) \<Rightarrow> dev
+   | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas is_device_cap_simps[simp] = is_device_cap_def[split_simps cdl_cap.split]<\STATESEP>0<\TRANSEP><\STATESEP>lemma remove_free_ids_simps:
+  "\<lbrakk>is_untyped_cap cap; available_ids \<subseteq> cap_free_ids cap\<rbrakk>
+  \<Longrightarrow> remove_free_ids cap (cap_free_ids cap - available_ids)
+    = UntypedCap (is_device_cap cap) (cap_objects cap) available_ids"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_untyped_cap cap; available_ids \<subseteq> cap_free_ids cap\<rbrakk> \<Longrightarrow> remove_free_ids cap (cap_free_ids cap - available_ids) = UntypedCap (is_device_cap cap) (cap_objects cap) available_ids<\STATESEP>by (auto simp: remove_free_ids_def cap_free_ids_def cap_type_def
+          split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  is_full_untyped_cap :: "cdl_cap \<Rightarrow> bool"
+where
+  "is_full_untyped_cap cap \<equiv> case cap of
+     UntypedCap dev cover_ids available_ids \<Rightarrow> cover_ids = available_ids
+   | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_full_untyped_cap_is_untyped_cap:
+  "is_full_untyped_cap cap \<Longrightarrow> is_untyped_cap cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_full_untyped_cap cap \<Longrightarrow> is_untyped_cap cap<\STATESEP>by (clarsimp simp: is_full_untyped_cap_def split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_full_untyped_cap_simps:
+  "is_full_untyped_cap cap \<Longrightarrow> cap_objects cap = cap_free_ids cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_full_untyped_cap cap \<Longrightarrow> cap_objects cap = cap_free_ids cap<\STATESEP>by (auto simp: is_full_untyped_cap_def cap_free_ids_def
+          split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_full_untyped_cap_eq:
+  "is_untyped_cap cap
+  \<Longrightarrow> is_full_untyped_cap cap = (cap_objects cap = cap_free_ids cap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_untyped_cap cap \<Longrightarrow> is_full_untyped_cap cap = (cap_objects cap = cap_free_ids cap)<\STATESEP>by (auto simp: is_full_untyped_cap_def cap_free_ids_def
+                 cap_objects_def cap_type_def
+          split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_untyped_cap_remove_free_ids:
+  "well_formed_untyped_cap cap
+  \<Longrightarrow> well_formed_untyped_cap (remove_free_ids cap obj_ids)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. well_formed_untyped_cap cap \<Longrightarrow> well_formed_untyped_cap (remove_free_ids cap obj_ids)<\STATESEP>by (auto simp: well_formed_untyped_cap_def remove_free_ids_def
+          split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_formed_untyped_cap_simps:
+  "is_untyped_cap cap
+  \<Longrightarrow> well_formed_untyped_cap cap = (cap_free_ids cap \<subseteq> cap_objects cap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_untyped_cap cap \<Longrightarrow> well_formed_untyped_cap cap = (cap_free_ids cap \<subseteq> cap_objects cap)<\STATESEP>by (clarsimp simp: well_formed_untyped_cap_def cap_free_ids_def
+                     cap_objects_def cap_type_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  some_nat :: "nat option \<Rightarrow> nat"
+where
+  "some_nat n \<equiv> case n of Some n \<Rightarrow> n | None \<Rightarrow> 0"<\STATESEP>0<\TRANSEP><\STATESEP>lemma some_nat_Some [simp]:
+  "some_nat (Some n) = n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. some_nat (Some n) = n<\STATESEP>by (simp add: some_nat_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma some_nat_None [simp]:
+  "some_nat None = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. some_nat None = 0<\STATESEP>by (simp add: some_nat_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  is_untyped :: "cdl_object \<Rightarrow> bool" where
+ "is_untyped v \<equiv> case v of Untyped \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_ep :: "cdl_object \<Rightarrow> bool" where
+ "is_ep v \<equiv> case v of Endpoint \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_ntfn :: "cdl_object \<Rightarrow> bool" where
+ "is_ntfn v \<equiv> case v of Notification \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_tcb :: "cdl_object \<Rightarrow> bool" where
+ "is_tcb v \<equiv> case v of Tcb _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_cnode :: "cdl_object \<Rightarrow> bool" where
+ "is_cnode v \<equiv> case v of CNode _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_irq_node :: "cdl_object \<Rightarrow> bool" where
+ "is_irq_node v \<equiv> case v of IRQNode _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_asidpool :: "cdl_object \<Rightarrow> bool" where
+ "is_asidpool v \<equiv> case v of AsidPool _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_pt :: "cdl_object \<Rightarrow> bool" where
+ "is_pt v \<equiv> case v of PageTable _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_pd :: "cdl_object \<Rightarrow> bool" where
+ "is_pd v \<equiv> case v of PageDirectory _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_frame :: "cdl_object \<Rightarrow> bool" where
+ "is_frame v \<equiv> case v of Frame _ \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_domain :: "cdl_object \<Rightarrow> word8"
+where
+  "object_domain obj \<equiv> case obj of
+      Tcb tcb \<Rightarrow> cdl_tcb_domain tcb
+    | _ \<Rightarrow> 0"<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_object_simps [simp]:
+  "is_untyped Untyped"
+  "is_ep Endpoint"
+  "is_ntfn Notification"
+  "is_tcb (Tcb tcb)"
+  "is_cnode (CNode c)"
+  "is_asidpool (AsidPool a)"
+  "is_pd (PageDirectory pd)"
+  "is_pt (PageTable pt)"
+  "is_frame (Frame f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((is_untyped Untyped &&& is_ep Endpoint) &&& is_ntfn Notification &&& is_tcb (Tcb tcb)) &&& (is_cnode (CNode c) &&& is_asidpool (AsidPool a)) &&& is_pd (PageDirectory pd) &&& is_pt (PageTable pt) &&& is_frame (Frame f)<\STATESEP>by (clarsimp simp: is_untyped_def is_ep_def is_ntfn_def is_tcb_def is_cnode_def
+                     is_asidpool_def is_pt_def is_pd_def is_frame_def)+<\STATESEP>1<\TRANSEP><\STATESEP>definition pt_size :: nat
+where
+  "pt_size = 8"<\STATESEP>0<\TRANSEP><\STATESEP>definition pd_size :: nat
+where
+  "pd_size = 12"<\STATESEP>0<\TRANSEP><\STATESEP>definition small_frame_size :: nat
+where
+  "small_frame_size = 12"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  object_size_bits :: "cdl_object \<Rightarrow> cdl_size_bits"
+where
+  "object_size_bits obj \<equiv> case obj of
+      CNode cnode \<Rightarrow> cdl_cnode_size_bits cnode
+    | AsidPool ap \<Rightarrow> asid_low_bits
+    | Frame frame \<Rightarrow> cdl_frame_size_bits frame
+    | PageTable cdl_page_table \<Rightarrow> pt_size
+    | PageDirectory cdl_page_directory \<Rightarrow> pd_size
+    | _ \<Rightarrow> 0"<\STATESEP>0<\TRANSEP><\STATESEP>lemma object_size_bits_default_tcb [simp]:
+  "object_size_bits (Tcb (default_tcb domain)) = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_size_bits (Tcb (default_tcb domain)) = 0<\STATESEP>by (clarsimp simp: object_size_bits_def default_tcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_size_bits_empty_cnode [simp]:
+  "object_size_bits (CNode (empty_cnode sz)) = sz"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_size_bits (CNode (empty_cnode sz)) = sz<\STATESEP>by (clarsimp simp: object_size_bits_def empty_cnode_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_pt_pt_size[simp]: "is_pt obj \<Longrightarrow> object_size_bits obj = pt_size"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_pt obj \<Longrightarrow> object_size_bits obj = pt_size<\STATESEP>by (clarsimp simp: object_size_bits_def pt_size_def is_pt_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_pd_pd_size[simp]: "is_pd obj \<Longrightarrow> object_size_bits obj = pd_size"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_pd obj \<Longrightarrow> object_size_bits obj = pd_size<\STATESEP>by (clarsimp simp: object_size_bits_def pt_size_def is_pd_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  object_at_pointer_size_bits :: "cdl_state \<Rightarrow> cdl_object_id \<Rightarrow> cdl_size_bits"
+where
+  "object_at_pointer_size_bits spec obj_id \<equiv>
+   some_nat (option_map object_size_bits (cdl_objects spec obj_id))"<\STATESEP>0<\TRANSEP><\STATESEP>lemma object_at_pointer_size_bits_simp [simp]:
+  "cdl_objects spec obj_id = Some object
+  \<Longrightarrow> object_at_pointer_size_bits spec obj_id = object_size_bits object"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects spec obj_id = Some object \<Longrightarrow> object_at_pointer_size_bits spec obj_id = object_size_bits object<\STATESEP>by (simp add: object_at_pointer_size_bits_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  object_at :: "(cdl_object \<Rightarrow> bool) \<Rightarrow> cdl_object_id \<Rightarrow> cdl_state \<Rightarrow> bool"
+where
+  "object_at P obj_id s \<equiv> \<exists>object. cdl_objects s obj_id = Some object \<and> P object"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "untyped_at \<equiv> object_at is_untyped"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "ep_at \<equiv> object_at is_ep"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "ntfn_at \<equiv> object_at is_ntfn"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "tcb_at \<equiv> object_at is_tcb"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "cnode_at \<equiv> object_at is_cnode"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "irq_node_at \<equiv> object_at is_irq_node"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "asidpool_at \<equiv> object_at is_asidpool"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "pt_at \<equiv> object_at is_pt"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "pd_at \<equiv> object_at is_pd"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "frame_at \<equiv> object_at is_frame"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  is_waiting_thread :: "cdl_object \<Rightarrow> bool"
+where
+  "is_waiting_thread obj \<equiv> is_tcb obj \<and> object_slots obj tcb_pending_op_slot = Some RestartCap"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "is_waiting_thread_at \<equiv> object_at is_waiting_thread"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  irq_nodes :: "cdl_state \<Rightarrow> cdl_object_id set"
+where
+  "irq_nodes \<equiv> \<lambda>s. {obj_id. irq_node_at obj_id s}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  bound_irqs :: "cdl_state \<Rightarrow> cdl_irq set"
+where
+  "bound_irqs \<equiv> \<lambda>s. {irq. \<exists>cap. slots_of (cdl_irq_node s irq) s 0 = Some cap \<and> cap \<noteq> NullCap}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  bound_irq_list :: "cdl_state \<Rightarrow> cdl_irq list"
+where
+  "bound_irq_list \<equiv>
+     \<lambda>s. [irq \<leftarrow> [0 .e. maxBound].
+            case slots_of (cdl_irq_node s irq) s 0 of
+              None \<Rightarrow> False
+            | Some cap \<Rightarrow> cap \<noteq> NullCap]"<\STATESEP>0<\TRANSEP><\STATESEP>lemma bound_irq_list_set[simp]: "set (bound_irq_list s) = bound_irqs s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set (bound_irq_list s) = bound_irqs s<\STATESEP>apply (clarsimp simp: bound_irqs_def bound_irq_list_def image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. {x. case slots_of (cdl_irq_node s x) s 0 of None \<Rightarrow> False | Some cap \<Rightarrow> cap \<noteq> NullCap} = {irq. \<exists>cap. slots_of (cdl_irq_node s irq) s 0 = Some cap \<and> cap \<noteq> NullCap}<\STATESEP>apply (intro set_eqI iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> {x. case slots_of (cdl_irq_node s x) s 0 of None \<Rightarrow> False | Some cap \<Rightarrow> cap \<noteq> NullCap} \<Longrightarrow> x \<in> {irq. \<exists>cap. slots_of (cdl_irq_node s irq) s 0 = Some cap \<and> cap \<noteq> NullCap}
+ 2. \<And>x. x \<in> {irq. \<exists>cap. slots_of (cdl_irq_node s irq) s 0 = Some cap \<and> cap \<noteq> NullCap} \<Longrightarrow> x \<in> {x. case slots_of (cdl_irq_node s x) s 0 of None \<Rightarrow> False | Some cap \<Rightarrow> cap \<noteq> NullCap}<\STATESEP>apply (fastforce split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> {irq. \<exists>cap. slots_of (cdl_irq_node s irq) s 0 = Some cap \<and> cap \<noteq> NullCap} \<Longrightarrow> x \<in> {x. case slots_of (cdl_irq_node s x) s 0 of None \<Rightarrow> False | Some cap \<Rightarrow> cap \<noteq> NullCap}<\STATESEP>apply (unat_arith, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bound_irq_list_distinct[intro]: "distinct (bound_irq_list s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct (bound_irq_list s)<\STATESEP>by (clarsimp simp: bound_irq_list_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  used_irqs :: "cdl_state \<Rightarrow> cdl_irq set"
+where
+  "used_irqs \<equiv> \<lambda>s. {irq. \<exists>cap. cap \<in> all_caps s \<and> is_irqhandler_cap cap \<and> cap_irq cap = irq}"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  used_irq_list :: "cdl_state \<Rightarrow> cdl_irq list"
+where
+  "used_irq_list \<equiv> \<lambda>s. sorted_list_of_set (used_irqs s)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  used_irq_nodes :: "cdl_state \<Rightarrow> cdl_object_id set"
+where
+  "used_irq_nodes \<equiv> \<lambda>s. cdl_irq_node s ` used_irqs s"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "real_object_at \<equiv> \<lambda> obj_id s. obj_id \<in> dom (cdl_objects s) \<and> obj_id \<notin> irq_nodes s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "table_at \<equiv> \<lambda>obj_id s. pt_at obj_id s \<or> pd_at obj_id s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "capless_at \<equiv> \<lambda>obj_id s. untyped_at obj_id s \<or> ep_at obj_id s \<or> ntfn_at obj_id s \<or> frame_at obj_id s"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "cnode_or_tcb_at \<equiv> \<lambda>obj_id spec. cnode_at obj_id spec \<or> tcb_at obj_id spec"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "memory_object_at \<equiv> \<lambda>obj_id spec. pt_at obj_id spec \<or> pd_at obj_id spec \<or> frame_at obj_id spec"<\STATESEP>0<\TRANSEP><\STATESEP>lemma capless_at_def2:
+  "capless_at p s = object_at (\<lambda>obj. \<not> (has_slots obj)) p s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. capless_at p s = object_at (\<lambda>obj. \<not> has_slots obj) p s<\STATESEP>apply (clarsimp simp: has_slots_def object_at_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<exists>object. cdl_objects s p = Some object \<and> is_untyped object) \<or> (\<exists>object. cdl_objects s p = Some object \<and> is_ep object) \<or> (\<exists>object. cdl_objects s p = Some object \<and> is_ntfn object) \<or> (\<exists>object. cdl_objects s p = Some object \<and> is_frame object)) = (\<exists>object. cdl_objects s p = Some object \<and> \<not> (case object of Endpoint \<Rightarrow> False | Notification \<Rightarrow> False | Frame cdl_frame_ext \<Rightarrow> False | Untyped \<Rightarrow> False | _ \<Rightarrow> True))<\STATESEP>apply (fastforce simp: is_untyped_def is_ep_def is_ntfn_def is_frame_def
+                 split: cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation
+  "ko_at k \<equiv> object_at ((=) k)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma ko_at_tcb_at:
+  "ko_at (Tcb t) p s \<Longrightarrow> tcb_at p s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ko_at (Tcb t) p s \<Longrightarrow> tcb_at p s<\STATESEP>by (simp add: object_at_def is_tcb_def)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation
+  "type_at T \<equiv> object_at (\<lambda>ob. object_type ob = T)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma length_used_irq_list [simp]:
+  "length (used_irq_list spec) = card (used_irqs spec)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. length (used_irq_list spec) = card (used_irqs spec)<\STATESEP>by (clarsimp simp: used_irq_list_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_used_irq_list [simp]:
+  "distinct (used_irq_list spec)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct (used_irq_list spec)<\STATESEP>by (simp add: used_irq_list_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_used_irq_list [simp]:
+  "set (used_irq_list spec) = used_irqs spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. set (used_irq_list spec) = used_irqs spec<\STATESEP>by (simp add: used_irq_list_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_is_object:
+  "is_untyped obj  = (object_type obj = UntypedType)"
+  "is_ep obj       = (object_type obj = EndpointType)"
+  "is_ntfn obj      = (object_type obj = NotificationType)"
+  "is_tcb obj      = (object_type obj = TcbType)"
+  "is_cnode obj    = (object_type obj = CNodeType)"
+  "is_irq_node obj = (object_type obj = IRQNodeType)"
+  "is_asidpool obj = (object_type obj = AsidPoolType)"
+  "is_pt obj       = (object_type obj = PageTableType)"
+  "is_pd obj       = (object_type obj = PageDirectoryType)"
+  "is_frame obj    = (\<exists>n. object_type obj = FrameType n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((is_untyped obj = (object_type obj = UntypedType) &&& is_ep obj = (object_type obj = EndpointType)) &&& is_ntfn obj = (object_type obj = NotificationType) &&& is_tcb obj = (object_type obj = TcbType) &&& is_cnode obj = (object_type obj = CNodeType)) &&& (is_irq_node obj = (object_type obj = IRQNodeType) &&& is_asidpool obj = (object_type obj = AsidPoolType)) &&& is_pt obj = (object_type obj = PageTableType) &&& is_pd obj = (object_type obj = PageDirectoryType) &&& is_frame obj = (\<exists>n. object_type obj = FrameType n)<\STATESEP>by (simp_all add: object_type_def is_untyped_def is_ep_def is_ntfn_def is_tcb_def
+                    is_cnode_def is_irq_node_def is_asidpool_def is_pt_def is_pd_def is_frame_def
+             split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_ptD[dest]: "is_pt obj \<Longrightarrow> \<exists>x. obj = PageTable x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_pt obj \<Longrightarrow> \<exists>x. obj = PageTable x<\STATESEP>by (clarsimp simp: is_pt_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_at_object_type:
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; untyped_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = UntypedType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; ep_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = EndpointType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; ntfn_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = NotificationType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; tcb_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = TcbType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; cnode_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = CNodeType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; irq_node_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = IRQNodeType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; asidpool_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = AsidPoolType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; pt_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = PageTableType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; pd_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = PageDirectoryType"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; frame_at obj_id spec\<rbrakk> \<Longrightarrow> \<exists>n. object_type obj = FrameType n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (((\<lbrakk>cdl_objects spec obj_id = Some obj; untyped_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = UntypedType) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; ep_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = EndpointType)) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; ntfn_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = NotificationType) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; tcb_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = TcbType) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; cnode_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = CNodeType)) &&& ((\<lbrakk>cdl_objects spec obj_id = Some obj; irq_node_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = IRQNodeType) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; asidpool_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = AsidPoolType)) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; pt_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = PageTableType) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; pd_at obj_id spec\<rbrakk> \<Longrightarrow> object_type obj = PageDirectoryType) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; frame_at obj_id spec\<rbrakk> \<Longrightarrow> \<exists>n. object_type obj = FrameType n)<\STATESEP>by (simp_all add: object_at_def object_type_is_object)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_object_at:
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = UntypedType\<rbrakk> \<Longrightarrow> untyped_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = EndpointType\<rbrakk> \<Longrightarrow> ep_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = NotificationType\<rbrakk> \<Longrightarrow> ntfn_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = TcbType\<rbrakk> \<Longrightarrow> tcb_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = CNodeType\<rbrakk> \<Longrightarrow> cnode_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = IRQNodeType\<rbrakk> \<Longrightarrow> irq_node_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = AsidPoolType\<rbrakk> \<Longrightarrow> asidpool_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = PageTableType\<rbrakk> \<Longrightarrow> pt_at obj_id spec"
+  "\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = PageDirectoryType\<rbrakk> \<Longrightarrow> pd_at obj_id spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (((\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = UntypedType\<rbrakk> \<Longrightarrow> untyped_at obj_id spec) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = EndpointType\<rbrakk> \<Longrightarrow> ep_at obj_id spec)) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = NotificationType\<rbrakk> \<Longrightarrow> ntfn_at obj_id spec) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = TcbType\<rbrakk> \<Longrightarrow> tcb_at obj_id spec)) &&& ((\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = CNodeType\<rbrakk> \<Longrightarrow> cnode_at obj_id spec) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = IRQNodeType\<rbrakk> \<Longrightarrow> irq_node_at obj_id spec)) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = AsidPoolType\<rbrakk> \<Longrightarrow> asidpool_at obj_id spec) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = PageTableType\<rbrakk> \<Longrightarrow> pt_at obj_id spec) &&& (\<lbrakk>cdl_objects spec obj_id = Some obj; object_type obj = PageDirectoryType\<rbrakk> \<Longrightarrow> pd_at obj_id spec)<\STATESEP>by (simp_all add: object_at_def object_type_is_object)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_object_type [simp]:
+  "{obj_id \<in> dom (cdl_objects spec). object_at P obj_id spec} = {obj_id. object_at P obj_id spec}"
+  "{obj_id \<in> dom (cdl_objects spec). table_at obj_id spec} = {obj_id. table_at obj_id spec}"
+  "{obj_id \<in> dom (cdl_objects spec). capless_at obj_id spec} = {obj_id. capless_at obj_id spec}"
+  "{obj_id \<in> dom (cdl_objects spec). cnode_or_tcb_at obj_id spec} = {obj_id. cnode_or_tcb_at obj_id spec}"
+  "{obj_id \<in> dom (cdl_objects spec). cnode_at obj_id spec} = {obj_id. cnode_at obj_id spec}"
+  "{obj_id \<in> dom (cdl_objects spec). real_object_at obj_id spec} = {obj_id. real_object_at obj_id spec}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ({obj_id \<in> dom (cdl_objects spec). object_at P obj_id spec} = {obj_id. object_at P obj_id spec} &&& {obj_id \<in> dom (cdl_objects spec). table_at obj_id spec} = {obj_id. table_at obj_id spec} &&& {obj_id \<in> dom (cdl_objects spec). capless_at obj_id spec} = {obj_id. capless_at obj_id spec}) &&& {obj_id \<in> dom (cdl_objects spec). cnode_or_tcb_at obj_id spec} = {obj_id. cnode_or_tcb_at obj_id spec} &&& {obj_id \<in> dom (cdl_objects spec). cnode_at obj_id spec} = {obj_id. cnode_at obj_id spec} &&& {obj_id \<in> dom (cdl_objects spec). real_object_at obj_id spec} = {obj_id. real_object_at obj_id spec}<\STATESEP>by (auto simp: object_at_def real_object_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pt_at_is_real[simp]: "pt_at pt_id spec \<Longrightarrow> pt_id \<in> {obj_id. real_object_at obj_id spec}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pt_at pt_id spec \<Longrightarrow> pt_id \<in> {obj_id. real_object_at obj_id spec}<\STATESEP>apply (clarsimp simp: object_at_def is_pt_def real_object_at_def dom_def
+                        irq_nodes_def is_irq_node_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>object. \<lbrakk>cdl_objects spec pt_id = Some object; case object of PageTable x \<Rightarrow> True | _ \<Rightarrow> False; case object of IRQNode x \<Rightarrow> True | _ \<Rightarrow> False\<rbrakk> \<Longrightarrow> False<\STATESEP>by (clarsimp split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pd_at_is_real[simp]: "pd_at pt_id spec \<Longrightarrow> pt_id \<in> {obj_id. real_object_at obj_id spec}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. pd_at pt_id spec \<Longrightarrow> pt_id \<in> {obj_id. real_object_at obj_id spec}<\STATESEP>apply (clarsimp simp: object_at_def is_pd_def real_object_at_def dom_def
+                        irq_nodes_def is_irq_node_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>object. \<lbrakk>cdl_objects spec pt_id = Some object; case object of PageDirectory x \<Rightarrow> True | _ \<Rightarrow> False; case object of IRQNode x \<Rightarrow> True | _ \<Rightarrow> False\<rbrakk> \<Longrightarrow> False<\STATESEP>by (clarsimp split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  real_objects :: "cdl_state \<Rightarrow> cdl_object_id set"
+where
+  "real_objects \<equiv> \<lambda>s. {obj_id. real_object_at obj_id s}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma cnode_or_tcb_at_simps:
+  "(cnode_or_tcb_at obj_id spec \<and> cnode_at obj_id spec) = cnode_at obj_id spec"
+  "(cnode_or_tcb_at obj_id spec \<and> \<not> cnode_at obj_id spec) = tcb_at obj_id spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (cnode_or_tcb_at obj_id spec \<and> cnode_at obj_id spec) = cnode_at obj_id spec &&& (cnode_or_tcb_at obj_id spec \<and> \<not> cnode_at obj_id spec) = tcb_at obj_id spec<\STATESEP>by (auto simp: object_at_def object_type_is_object)<\STATESEP>1<\TRANSEP><\STATESEP>definition cap_at :: "(cdl_cap \<Rightarrow> bool) \<Rightarrow> cdl_cap_ref \<Rightarrow> cdl_state \<Rightarrow> bool"
+where
+  "cap_at P ref s \<equiv> \<exists>cap. opt_cap ref s = Some cap \<and> P cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition is_fake_pt_cap :: "cdl_cap \<Rightarrow> bool"
+where "is_fake_pt_cap cap \<equiv> case cap of
+    PageTableCap _ Fake _ \<Rightarrow> True
+  | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition is_real_vm_cap :: "cdl_cap \<Rightarrow> bool"
+where
+  "is_real_vm_cap cap \<equiv>
+       (case cap of
+           FrameCap _ _ _ _ Real _     \<Rightarrow> True
+         | PageTableCap _ Real _     \<Rightarrow> True
+         | PageDirectoryCap _ Real _ \<Rightarrow> True
+         | _                         \<Rightarrow> False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition is_fake_vm_cap :: "cdl_cap \<Rightarrow> bool"
+where
+  "is_fake_vm_cap cap \<equiv>
+       (case cap of
+           FrameCap _ _ _ _ Fake _     \<Rightarrow> True
+         | PageTableCap _ Fake _     \<Rightarrow> True
+         | PageDirectoryCap _ Fake _ \<Rightarrow> True
+         | _                         \<Rightarrow> False)"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "fake_frame_cap dev ptr rights n \<equiv> FrameCap dev ptr rights n Fake None"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation
+  "is_fake_frame_cap cap \<equiv> (case cap of FrameCap _ _ _ _ Fake None \<Rightarrow> True | _ \<Rightarrow> False)"<\STATESEP>0<\TRANSEP><\STATESEP>definition dev_of :: "cdl_cap \<Rightarrow> bool option" where
+  "dev_of cap = (case cap of FrameCap dev ptr _ n _ _ \<Rightarrow> Some dev | _ \<Rightarrow> None)"<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_size_bits :: "cdl_cap \<Rightarrow> nat" where
+  "cap_size_bits cap = (case cap of FrameCap _ _ _ n _ _ \<Rightarrow> n | _ \<Rightarrow> 0)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_fake_pt_cap_is_pt_cap [elim!]:
+  "is_fake_pt_cap cap \<Longrightarrow> is_pt_cap cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_fake_pt_cap cap \<Longrightarrow> is_pt_cap cap<\STATESEP>by (clarsimp simp: is_fake_pt_cap_def split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>abbreviation "pd_cap_at \<equiv> cap_at is_pd_cap"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "pt_cap_at \<equiv> cap_at is_pt_cap"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "fake_pt_cap_at \<equiv> cap_at is_fake_pt_cap"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "irqhandler_cap_at \<equiv> cap_at is_irqhandler_cap"<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_cnode_cap_simps:
+  "is_cnode_cap (UntypedCap dev ids ids') = False"
+  "is_cnode_cap (IOPageTableCap x) = False"
+  "is_cnode_cap (IOSpaceCap x) = False"
+  "is_cnode_cap (IOPortsCap x a) = False"
+  "is_cnode_cap (AsidPoolCap x b) = False"
+  "is_cnode_cap (PageDirectoryCap x c d) = False"
+  "is_cnode_cap (PageTableCap x e f) = False"
+  "is_cnode_cap (FrameCap dev x g h i j) = False"
+  "is_cnode_cap (TcbCap x) = False"
+  "is_cnode_cap (MasterReplyCap x) = False"
+  "is_cnode_cap (ReplyCap x q) = False"
+  "is_cnode_cap (NotificationCap x m n) = False"
+  "is_cnode_cap (EndpointCap x p q) = False"
+  "is_cnode_cap (ZombieCap x) = False"
+  "is_cnode_cap (PendingSyncSendCap x s t u v w) = False"
+  "is_cnode_cap (PendingSyncRecvCap x t w) = False"
+  "is_cnode_cap (PendingNtfnRecvCap x) = False"
+
+  "is_cnode_cap (CNodeCap x k l sz) = True"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (((is_cnode_cap (UntypedCap dev ids ids') = False &&& is_cnode_cap (IOPageTableCap x) = False) &&& is_cnode_cap (IOSpaceCap x) = False &&& is_cnode_cap (IOPortsCap x a) = False) &&& (is_cnode_cap (AsidPoolCap x b) = False &&& is_cnode_cap (PageDirectoryCap x c d) = False) &&& is_cnode_cap (PageTableCap x e f) = False &&& is_cnode_cap (FrameCap dev x g h i j) = False &&& is_cnode_cap (TcbCap x) = False) &&& ((is_cnode_cap (MasterReplyCap x) = False &&& is_cnode_cap (ReplyCap x q) = False) &&& is_cnode_cap (NotificationCap x m n) = False &&& is_cnode_cap (EndpointCap x p q) = False) &&& (is_cnode_cap (ZombieCap x) = False &&& is_cnode_cap (PendingSyncSendCap x s t u v w) = False) &&& is_cnode_cap (PendingSyncRecvCap x t w) = False &&& is_cnode_cap (PendingNtfnRecvCap x) = False &&& is_cnode_cap (CNodeCap x k l sz) = True<\STATESEP>by (unfold cap_type_def, simp_all split: cdl_object_type.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition cap_at_has_no_parents_in_cdt :: "cdl_cap_ref \<Rightarrow> cdl_state \<Rightarrow> bool"
+where
+  "cap_at_has_no_parents_in_cdt cap_ref \<equiv> \<lambda>spec. opt_parent cap_ref spec = None"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  original_cap_at :: "cdl_cap_ref \<Rightarrow> cdl_state \<Rightarrow> bool"
+where
+  "original_cap_at cap_ref \<equiv> \<lambda>spec. cap_at_has_no_parents_in_cdt cap_ref spec \<or>
+                                     irqhandler_cap_at cap_ref spec"<\STATESEP>0<\TRANSEP><\STATESEP>definition is_default_cap :: "cdl_cap \<Rightarrow> bool"
+where
+  "is_default_cap cap \<equiv>
+  (\<exists>type dev. cap_type cap = Some type \<and>
+   cap = default_cap type (cap_objects cap) (cnode_cap_size cap) dev) \<or>
+   is_irqhandler_cap cap"<\STATESEP>0<\TRANSEP><\STATESEP>lemma default_cap_eq:
+  "\<lbrakk>is_default_cap cap; is_default_cap cap';
+    cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap';
+    cnode_cap_size cap = cnode_cap_size cap';
+    cap_irq cap = cap_irq cap'; is_device_cap cap = is_device_cap cap'\<rbrakk>
+  \<Longrightarrow> cap = cap'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; cnode_cap_size cap = cnode_cap_size cap'; cap_irq cap = cap_irq cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> cap = cap'<\STATESEP>by (auto simp: is_default_cap_def cap_type_def cap_irq_def default_cap_def
+          split: cdl_cap.splits )<\STATESEP>1<\TRANSEP><\STATESEP>lemma cnode_cap_size_non_cnode [simp]:
+  "\<not> is_cnode_cap cap \<Longrightarrow> cnode_cap_size cap = 0"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type cap \<noteq> Some CNodeType \<Longrightarrow> cnode_cap_size cap = 0<\STATESEP>by (clarsimp simp: cap_type_def cnode_cap_size_def split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma irqhandler_cap_irq_non_irqhandler [simp]:
+  "\<not> is_irqhandler_cap cap \<Longrightarrow> cap_irq cap = undefined"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type cap \<noteq> Some IRQNodeType \<Longrightarrow> cap_irq cap = undefined<\STATESEP>by (clarsimp simp: cap_irq_def split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma default_cap_eq_non_cnode:
+  "\<lbrakk>is_default_cap cap; is_default_cap cap';
+   \<not> is_cnode_cap cap; \<not> is_irqhandler_cap cap;
+    cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap';
+    is_device_cap cap = is_device_cap cap'\<rbrakk>
+  \<Longrightarrow> cap = cap'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> cap = cap'<\STATESEP>apply (rule default_cap_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (7 subgoals):
+ 1. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> is_default_cap cap
+ 2. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> is_default_cap cap'
+ 3. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> cap_type cap = cap_type cap'
+ 4. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> cap_objects cap = cap_objects cap'
+ 5. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> cnode_cap_size cap = cnode_cap_size cap'
+ 6. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> cap_irq cap = cap_irq cap'
+ 7. \<lbrakk>is_default_cap cap; is_default_cap cap'; cap_type cap \<noteq> Some CNodeType; cap_type cap \<noteq> Some IRQNodeType; cap_type cap = cap_type cap'; cap_objects cap = cap_objects cap'; is_device_cap cap = is_device_cap cap'\<rbrakk> \<Longrightarrow> is_device_cap cap = is_device_cap cap'<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_type_default_cap [simp]:
+  "cap_type (default_cap type {obj_id} sz dev) = Some type"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type (default_cap type {obj_id} sz dev) = Some type<\STATESEP>by (clarsimp simp: default_cap_def cap_type_def split: cdl_object_type.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_tcb_update_slots [simp]:
+  "is_tcb (update_slots slots obj) = is_tcb obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_tcb (update_slots slots obj) = is_tcb obj<\STATESEP>by (clarsimp simp: is_tcb_def update_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma tcb_has_slots [elim!]:
+  "is_tcb obj \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_tcb obj \<Longrightarrow> has_slots obj<\STATESEP>by (clarsimp simp: is_tcb_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cnode_has_slots [elim!]:
+  "is_cnode obj \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_cnode obj \<Longrightarrow> has_slots obj<\STATESEP>by (clarsimp simp: is_cnode_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pt_has_slots [elim!]:
+  "is_pt obj \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_pt obj \<Longrightarrow> has_slots obj<\STATESEP>by (clarsimp simp: is_pt_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pd_has_slots [elim!]:
+  "is_pd obj \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_pd obj \<Longrightarrow> has_slots obj<\STATESEP>by (clarsimp simp: is_pd_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma asidpool_has_slots [elim!]:
+  "is_asidpool obj \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_asidpool obj \<Longrightarrow> has_slots obj<\STATESEP>by (clarsimp simp: is_asidpool_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_has_slots [elim!]:
+  "object_type obj = TcbType \<Longrightarrow> has_slots obj"
+  "object_type obj = CNodeType \<Longrightarrow> has_slots obj"
+  "object_type obj = IRQNodeType \<Longrightarrow> has_slots obj"
+  "object_type obj = PageTableType \<Longrightarrow> has_slots obj"
+  "object_type obj = PageDirectoryType \<Longrightarrow> has_slots obj"
+  "object_type obj = AsidPoolType \<Longrightarrow> has_slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((object_type obj = TcbType \<Longrightarrow> has_slots obj) &&& (object_type obj = CNodeType \<Longrightarrow> has_slots obj) &&& (object_type obj = IRQNodeType \<Longrightarrow> has_slots obj)) &&& (object_type obj = PageTableType \<Longrightarrow> has_slots obj) &&& (object_type obj = PageDirectoryType \<Longrightarrow> has_slots obj) &&& (object_type obj = AsidPoolType \<Longrightarrow> has_slots obj)<\STATESEP>by (clarsimp simp: object_type_def has_slots_def split: cdl_object.splits)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_type_update_cap_objects [simp]:
+  "cap_type (update_cap_objects x cap) = cap_type cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type (update_cap_objects x cap) = cap_type cap<\STATESEP>apply (clarsimp simp: cap_type_def update_cap_objects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (case case cap of UntypedCap d xa xb \<Rightarrow> UntypedCap d x xb | _ \<Rightarrow> cap of UntypedCap x xa xb \<Rightarrow> Some UntypedType | EndpointCap x xa xb \<Rightarrow> Some EndpointType | NotificationCap x xa xb \<Rightarrow> Some NotificationType | CNodeCap x xa xb xc \<Rightarrow> Some CNodeType | TcbCap x \<Rightarrow> Some TcbType | IrqHandlerCap x \<Rightarrow> Some IRQNodeType | FrameCap x xa xb f xc xd \<Rightarrow> Some (FrameType f) | PageTableCap x xa xb \<Rightarrow> Some PageTableType | PageDirectoryCap x xa xb \<Rightarrow> Some PageDirectoryType | AsidPoolCap x xa \<Rightarrow> Some AsidPoolType | _ \<Rightarrow> None) = (case cap of UntypedCap x xa xb \<Rightarrow> Some UntypedType | EndpointCap x xa xb \<Rightarrow> Some EndpointType | NotificationCap x xa xb \<Rightarrow> Some NotificationType | CNodeCap x xa xb xc \<Rightarrow> Some CNodeType | TcbCap x \<Rightarrow> Some TcbType | IrqHandlerCap x \<Rightarrow> Some IRQNodeType | FrameCap x xa xb f xc xd \<Rightarrow> Some (FrameType f) | PageTableCap x xa xb \<Rightarrow> Some PageTableType | PageDirectoryCap x xa xb \<Rightarrow> Some PageDirectoryType | AsidPoolCap x xa \<Rightarrow> Some AsidPoolType | _ \<Rightarrow> None)<\STATESEP>apply (cases cap, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_type_update_cap_object [simp]:
+  "cap_type (update_cap_object x cap) = cap_type cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_type (update_cap_object x cap) = cap_type cap<\STATESEP>by (clarsimp simp: update_cap_object_def cap_type_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_has_object_update_cap_objects [simp]:
+  "cap_has_object (update_cap_objects x cap) = cap_has_object cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_has_object (update_cap_objects x cap) = cap_has_object cap<\STATESEP>apply (clarsimp simp: update_cap_object_def
+                        cap_has_object_def update_cap_objects_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (case case cap of UntypedCap d xa xb \<Rightarrow> UntypedCap d x xb | _ \<Rightarrow> cap of NullCap \<Rightarrow> False | DomainCap \<Rightarrow> False | RestartCap \<Rightarrow> False | RunningCap \<Rightarrow> False | IrqControlCap \<Rightarrow> False | IrqHandlerCap x \<Rightarrow> False | AsidControlCap \<Rightarrow> False | IOSpaceMasterCap \<Rightarrow> False | _ \<Rightarrow> True) = (case cap of NullCap \<Rightarrow> False | DomainCap \<Rightarrow> False | RestartCap \<Rightarrow> False | RunningCap \<Rightarrow> False | IrqControlCap \<Rightarrow> False | IrqHandlerCap x \<Rightarrow> False | AsidControlCap \<Rightarrow> False | IOSpaceMasterCap \<Rightarrow> False | _ \<Rightarrow> True)<\STATESEP>apply (cases cap, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_has_object_update_cap_object [simp]:
+  "cap_has_object (update_cap_object x cap) = cap_has_object cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_has_object (update_cap_object x cap) = cap_has_object cap<\STATESEP>by (clarsimp simp: update_cap_object_def cap_has_object_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_object_default_cap' [simp]:
+  "\<lbrakk>\<not>is_untyped obj; \<not>is_irq_node obj\<rbrakk>
+  \<Longrightarrow> cap_object (default_cap (object_type obj) {obj_id} sz dev) = obj_id"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<not> is_untyped obj; \<not> is_irq_node obj\<rbrakk> \<Longrightarrow> cap_object (default_cap (object_type obj) {obj_id} sz dev) = obj_id<\STATESEP>by (clarsimp simp: default_cap_def  object_type_def is_untyped_def is_irq_node_def
+              split: cdl_object_type.splits cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_object_default_cap [simp]:
+  "\<lbrakk>type \<noteq> UntypedType; type \<noteq> IRQNodeType\<rbrakk>
+  \<Longrightarrow> cap_object (default_cap type {obj_id} sz dev) = obj_id"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>type \<noteq> UntypedType; type \<noteq> IRQNodeType\<rbrakk> \<Longrightarrow> cap_object (default_cap type {obj_id} sz dev) = obj_id<\STATESEP>by (clarsimp simp: default_cap_def  object_type_def is_untyped_def
+              split: cdl_object_type.splits cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_object_default_cap_frame:
+  "is_frame_cap cap \<Longrightarrow> cap_object (default_cap (the (cap_type cap)) {obj_id} sz dev) = obj_id"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_frame_cap cap \<Longrightarrow> cap_object (default_cap (the (cap_type cap)) {obj_id} sz dev) = obj_id<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_pd_default_cap[simp]:
+  "is_pd obj \<Longrightarrow>
+   cdl_objects spec ptr = Some obj \<Longrightarrow>
+   default_cap (object_type obj) {ptr'} n b = PageDirectoryCap ptr' Real None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_pd obj; cdl_objects spec ptr = Some obj\<rbrakk> \<Longrightarrow> default_cap (object_type obj) {ptr'} n b = PageDirectoryCap ptr' Real None<\STATESEP>by (clarsimp simp: object_type_is_object default_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pd_at_default_cap[simp]:
+  "pd_at ptr spec \<Longrightarrow>
+   cdl_objects spec ptr = Some obj \<Longrightarrow>
+   default_cap (object_type obj) {ptr'} n b = PageDirectoryCap ptr' Real None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>pd_at ptr spec; cdl_objects spec ptr = Some obj\<rbrakk> \<Longrightarrow> default_cap (object_type obj) {ptr'} n b = PageDirectoryCap ptr' Real None<\STATESEP>by (fastforce simp: object_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pt_at_default_cap[simp]:
+  "pt_at ptr spec \<Longrightarrow>
+   cdl_objects spec ptr = Some obj \<Longrightarrow>
+   default_cap (object_type obj) {ptr'} n b = PageTableCap ptr' Real None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>pt_at ptr spec; cdl_objects spec ptr = Some obj\<rbrakk> \<Longrightarrow> default_cap (object_type obj) {ptr'} n b = PageTableCap ptr' Real None<\STATESEP>by (clarsimp simp: object_type_is_object default_cap_def object_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma default_cap_not_null [elim!]:
+  "default_cap type obj_ids sz dev = NullCap \<Longrightarrow> False"
+  "NullCap = default_cap type obj_ids sz dev\<Longrightarrow> False"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (default_cap type obj_ids sz dev = NullCap \<Longrightarrow> False) &&& (NullCap = default_cap type obj_ids sz dev \<Longrightarrow> False)<\STATESEP>by (simp add: default_cap_def split: cdl_object_type.splits)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_objects_update_cap_object [simp]:
+  "\<lbrakk>cap_has_object cap; \<not>is_untyped_cap cap\<rbrakk>
+  \<Longrightarrow> cap_objects (update_cap_object obj_id cap) = {obj_id}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cap_has_object cap; cap_type cap \<noteq> Some UntypedType\<rbrakk> \<Longrightarrow> cap_objects (update_cap_object obj_id cap) = {obj_id}<\STATESEP>by (clarsimp simp: cap_has_object_def update_cap_object_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_has_object_default_cap [simp]:
+  "type \<noteq> IRQNodeType \<Longrightarrow> cap_has_object (default_cap type ids sz dev)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. type \<noteq> IRQNodeType \<Longrightarrow> cap_has_object (default_cap type ids sz dev)<\STATESEP>by (clarsimp simp: default_cap_def cap_has_object_def split: cdl_object_type.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_cdl_rights_UNIV [simp]:
+  "all_cdl_rights = UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. all_cdl_rights = UNIV<\STATESEP>by (fastforce intro: rights.exhaust simp: all_cdl_rights_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_rights_default_cap_cnode [simp]:
+  "cap_rights (default_cap CNodeType ids sz dev) = UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_rights (default_cap CNodeType ids sz dev) = UNIV<\STATESEP>by (clarsimp simp: cap_rights_def default_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_rights_cnode_cap [simp]:
+  "is_cnode_cap cap \<Longrightarrow> cap_rights cap = UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_cnode_cap cap \<Longrightarrow> cap_rights cap = UNIV<\STATESEP>by (clarsimp simp: cap_type_def cap_rights_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_has_object_simps [simp]:
+  "cap_has_object (IOPageTableCap x)"
+  "cap_has_object (IOSpaceCap x)"
+  "cap_has_object (IOPortsCap x a)"
+  "cap_has_object (AsidPoolCap x b)"
+  "cap_has_object (PageDirectoryCap x c d)"
+  "cap_has_object (PageTableCap x e f)"
+  "cap_has_object (FrameCap dev x g h i j)"
+  "cap_has_object (TcbCap x)"
+  "cap_has_object (CNodeCap x k l sz)"
+  "cap_has_object (MasterReplyCap x)"
+  "cap_has_object (ReplyCap x q)"
+  "cap_has_object (NotificationCap x m n)"
+  "cap_has_object (EndpointCap x p q)"
+  "cap_has_object (ZombieCap x)"
+  "cap_has_object (PendingSyncSendCap x s t u v w)"
+  "cap_has_object (PendingSyncRecvCap x t w)"
+  "cap_has_object (PendingNtfnRecvCap x)"
+  "cap_has_object (UntypedCap dev ids ids') = True"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (((cap_has_object (IOPageTableCap x) &&& cap_has_object (IOSpaceCap x)) &&& cap_has_object (IOPortsCap x a) &&& cap_has_object (AsidPoolCap x b)) &&& (cap_has_object (PageDirectoryCap x c d) &&& cap_has_object (PageTableCap x e f)) &&& cap_has_object (FrameCap dev x g h i j) &&& cap_has_object (TcbCap x) &&& cap_has_object (CNodeCap x k l sz)) &&& ((cap_has_object (MasterReplyCap x) &&& cap_has_object (ReplyCap x q)) &&& cap_has_object (NotificationCap x m n) &&& cap_has_object (EndpointCap x p q)) &&& (cap_has_object (ZombieCap x) &&& cap_has_object (PendingSyncSendCap x s t u v w)) &&& cap_has_object (PendingSyncRecvCap x t w) &&& cap_has_object (PendingNtfnRecvCap x) &&& cap_has_object (UntypedCap dev ids ids') = True<\STATESEP>by (simp_all add:cap_has_object_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_cap_NullCap [simp]:
+  "\<not> is_untyped_cap NullCap"
+  "\<not> is_ep_cap NullCap"
+  "\<not> is_ntfn_cap NullCap"
+  "\<not> is_cnode_cap NullCap"
+  "\<not> is_tcb_cap NullCap"
+  "\<not> is_asidpool_cap NullCap"
+  "\<not> is_pt_cap NullCap"
+  "\<not> is_pd_cap NullCap"
+  "\<not> is_frame_cap NullCap"
+  "\<not> is_fake_pt_cap NullCap"
+  "\<not> is_irqhandler_cap NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((cap_type NullCap \<noteq> Some UntypedType &&& cap_type NullCap \<noteq> Some EndpointType) &&& cap_type NullCap \<noteq> Some NotificationType &&& cap_type NullCap \<noteq> Some CNodeType &&& cap_type NullCap \<noteq> Some TcbType) &&& (cap_type NullCap \<noteq> Some AsidPoolType &&& cap_type NullCap \<noteq> Some PageTableType &&& cap_type NullCap \<noteq> Some PageDirectoryType) &&& \<not> is_frame_cap NullCap &&& \<not> is_fake_pt_cap NullCap &&& cap_type NullCap \<noteq> Some IRQNodeType<\STATESEP>by (clarsimp simp: cap_type_def is_fake_pt_cap_def)+<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  object_slots_list :: "cdl_object \<Rightarrow> cdl_cnode_index list"
+where
+  "object_slots_list obj \<equiv> case obj of
+    PageDirectory _ \<Rightarrow> [0..<2^pd_size]
+  | PageTable _ \<Rightarrow> [0..<2^pt_size]
+  | AsidPool _ \<Rightarrow> [0..<2^asid_low_bits]
+  | CNode cnode \<Rightarrow> [0..<2^(cdl_cnode_size_bits cnode)]
+  | Tcb _ \<Rightarrow> tcb_slots_list
+  | IRQNode _ \<Rightarrow> [0]
+  | _ \<Rightarrow> []"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  slots_of_list :: "cdl_state \<Rightarrow> cdl_object_id \<Rightarrow> cdl_cnode_index list"
+where
+  "slots_of_list spec obj_id \<equiv>
+     case cdl_objects spec obj_id of
+       Some obj \<Rightarrow> object_slots_list obj
+     | None \<Rightarrow> []"<\STATESEP>0<\TRANSEP><\STATESEP>definition guard_as_rawdata :: "cdl_cap \<Rightarrow> cdl_raw_capdata"
+where
+  "guard_as_rawdata cap \<equiv>
+  let
+    reserved_bits = 3;
+    guard_size_bits = 5
+  in
+    (cap_guard cap << (reserved_bits + guard_size_bits))
+    + (of_nat (cap_guard_size cap) << reserved_bits)"<\STATESEP>0<\TRANSEP><\STATESEP>definition cap_data :: "cdl_cap \<Rightarrow> cdl_raw_capdata"
+where
+  "cap_data cap \<equiv>
+  if (is_ep_cap cap) then
+    cap_badge cap
+  else if (is_ntfn_cap cap) then
+    cap_badge cap
+  else
+    guard_as_rawdata cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition guard_update :: "cdl_cap \<Rightarrow> word32 \<Rightarrow> cdl_cap"
+where "guard_update cap data  \<equiv>
+  case cap of cdl_cap.CNodeCap oid _ _ sz \<Rightarrow>
+    (let reserved_bits = 3; guard_bits = 18; guard_size_bits = 5; new_guard_size = unat ((data >> reserved_bits) && mask guard_size_bits);
+        new_guard =
+          (data >> reserved_bits + guard_size_bits) && mask (min (unat ((data >> reserved_bits) && mask guard_size_bits)) guard_bits)
+    in CNodeCap oid new_guard new_guard_size sz)
+  | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  update_cap_data_det :: "cdl_raw_capdata \<Rightarrow> cdl_cap \<Rightarrow> cdl_cap"
+where
+  "update_cap_data_det raw_data cap \<equiv>
+   case cap of
+        EndpointCap _ b _      \<Rightarrow> badge_update raw_data cap
+      | NotificationCap _ b _ \<Rightarrow> badge_update raw_data cap
+      | CNodeCap object g gs _  \<Rightarrow> guard_update cap raw_data
+      | _ \<Rightarrow> cap"<\STATESEP>0<\TRANSEP><\STATESEP>definition "valid_src_cap cap data \<equiv>
+   is_cnode_cap cap \<longrightarrow> (
+         unat ((data >> 3) && mask 5) + cnode_cap_size cap \<le> word_bits)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  opt_thread :: "cdl_object_id \<Rightarrow> cdl_state \<Rightarrow> cdl_tcb option"
+where
+  "opt_thread p s \<equiv>
+      case cdl_objects s p of
+          Some (Tcb tcb) \<Rightarrow> (Some tcb)
+        | _ \<Rightarrow> None"<\STATESEP>0<\TRANSEP><\STATESEP>definition derived_cap :: "cdl_cap \<Rightarrow> cdl_cap"
+where "derived_cap cap \<equiv> case cap of
+          ReplyCap _ _ \<Rightarrow> NullCap
+        | MasterReplyCap _ \<Rightarrow> NullCap
+        | IrqControlCap \<Rightarrow> NullCap
+        | FrameCap d p r sz b x \<Rightarrow> FrameCap d p r sz b None
+        | ZombieCap _ \<Rightarrow> NullCap
+        | _ \<Rightarrow> cap "<\STATESEP>0<\TRANSEP><\STATESEP>lemma derive_cap_wp:
+  "\<lbrace> P (derived_cap cap) \<rbrace> derive_cap slot cap \<lbrace>P\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P (derived_cap cap)\<rbrace> derive_cap slot cap \<lbrace>P\<rbrace>, -<\STATESEP>apply (clarsimp simp: derive_cap_def derived_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P (case cap of ReplyCap x xa \<Rightarrow> NullCap | MasterReplyCap x \<Rightarrow> NullCap | IrqControlCap \<Rightarrow> NullCap | FrameCap d p r sz b x \<Rightarrow> FrameCap d p r sz b None | ZombieCap x \<Rightarrow> NullCap | _ \<Rightarrow> cap)\<rbrace> case cap of UntypedCap x xa xb \<Rightarrow> doE ensure_no_children slot;
+returnOk cap
+odE | ReplyCap x xa \<Rightarrow> returnOk NullCap | MasterReplyCap oref \<Rightarrow> returnOk NullCap | IrqControlCap \<Rightarrow> returnOk NullCap | FrameCap dev p r sz b x \<Rightarrow> returnOk (FrameCap dev p r sz b None) | PageTableCap x xa xb \<Rightarrow> throw \<sqinter> returnOk cap | PageDirectoryCap x xa xb \<Rightarrow> throw \<sqinter> returnOk cap | ZombieCap x \<Rightarrow> returnOk NullCap | _ \<Rightarrow> returnOk cap \<lbrace>P\<rbrace>, -<\STATESEP>apply (clarsimp simp: validE_R_def derive_cap_def split:cdl_cap.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (cap = NullCap \<longrightarrow> \<lbrace>P NullCap\<rbrace> returnOk NullCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x21 x22 x23. cap = UntypedCap x21 x22 x23 \<longrightarrow> \<lbrace>P (UntypedCap x21 x22 x23)\<rbrace> doE y <- ensure_no_children slot;
+returnOk (UntypedCap x21 x22 x23)
+odE \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x31 x32 x33. cap = EndpointCap x31 x32 x33 \<longrightarrow> \<lbrace>P (EndpointCap x31 x32 x33)\<rbrace> returnOk (EndpointCap x31 x32 x33) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x41 x42 x43. cap = NotificationCap x41 x42 x43 \<longrightarrow> \<lbrace>P (NotificationCap x41 x42 x43)\<rbrace> returnOk (NotificationCap x41 x42 x43) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> ((\<exists>x51 x52. cap = ReplyCap x51 x52) \<longrightarrow> \<lbrace>P NullCap\<rbrace> returnOk NullCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> ((\<exists>x6. cap = MasterReplyCap x6) \<longrightarrow> \<lbrace>P NullCap\<rbrace> returnOk NullCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x71 x72 x73 x74. cap = CNodeCap x71 x72 x73 x74 \<longrightarrow> \<lbrace>P (CNodeCap x71 x72 x73 x74)\<rbrace> returnOk (CNodeCap x71 x72 x73 x74) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x8. cap = TcbCap x8 \<longrightarrow> \<lbrace>P (TcbCap x8)\<rbrace> returnOk (TcbCap x8) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (cap = DomainCap \<longrightarrow> \<lbrace>P DomainCap\<rbrace> returnOk DomainCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x101 x102 x103 x104 x105 x106. cap = PendingSyncSendCap x101 x102 x103 x104 x105 x106 \<longrightarrow> \<lbrace>P (PendingSyncSendCap x101 x102 x103 x104 x105 x106)\<rbrace> returnOk (PendingSyncSendCap x101 x102 x103 x104 x105 x106) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x111 x112 x113. cap = PendingSyncRecvCap x111 x112 x113 \<longrightarrow> \<lbrace>P (PendingSyncRecvCap x111 x112 x113)\<rbrace> returnOk (PendingSyncRecvCap x111 x112 x113) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x12. cap = PendingNtfnRecvCap x12 \<longrightarrow> \<lbrace>P (PendingNtfnRecvCap x12)\<rbrace> returnOk (PendingNtfnRecvCap x12) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (cap = RestartCap \<longrightarrow> \<lbrace>P RestartCap\<rbrace> returnOk RestartCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (cap = RunningCap \<longrightarrow> \<lbrace>P RunningCap\<rbrace> returnOk RunningCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (cap = IrqControlCap \<longrightarrow> \<lbrace>P NullCap\<rbrace> returnOk NullCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x16. cap = IrqHandlerCap x16 \<longrightarrow> \<lbrace>P (IrqHandlerCap x16)\<rbrace> returnOk (IrqHandlerCap x16) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x171 x172 x173 x174 x175. (\<exists>x176. cap = FrameCap x171 x172 x173 x174 x175 x176) \<longrightarrow> \<lbrace>P (FrameCap x171 x172 x173 x174 x175 None)\<rbrace> returnOk (FrameCap x171 x172 x173 x174 x175 None) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x181 x182 x183. cap = PageTableCap x181 x182 x183 \<longrightarrow> \<lbrace>P (PageTableCap x181 x182 x183)\<rbrace> throw \<sqinter> returnOk (PageTableCap x181 x182 x183) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x191 x192 x193. cap = PageDirectoryCap x191 x192 x193 \<longrightarrow> \<lbrace>P (PageDirectoryCap x191 x192 x193)\<rbrace> throw \<sqinter> returnOk (PageDirectoryCap x191 x192 x193) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (cap = AsidControlCap \<longrightarrow> \<lbrace>P AsidControlCap\<rbrace> returnOk AsidControlCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x211 x212. cap = AsidPoolCap x211 x212 \<longrightarrow> \<lbrace>P (AsidPoolCap x211 x212)\<rbrace> returnOk (AsidPoolCap x211 x212) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x221 x222. cap = IOPortsCap x221 x222 \<longrightarrow> \<lbrace>P (IOPortsCap x221 x222)\<rbrace> returnOk (IOPortsCap x221 x222) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (cap = IOSpaceMasterCap \<longrightarrow> \<lbrace>P IOSpaceMasterCap\<rbrace> returnOk IOSpaceMasterCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x24. cap = IOSpaceCap x24 \<longrightarrow> \<lbrace>P (IOSpaceCap x24)\<rbrace> returnOk (IOSpaceCap x24) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x25. cap = IOPageTableCap x25 \<longrightarrow> \<lbrace>P (IOPageTableCap x25)\<rbrace> returnOk (IOPageTableCap x25) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> ((\<exists>x26. cap = ZombieCap x26) \<longrightarrow> \<lbrace>P NullCap\<rbrace> returnOk NullCap \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>) \<and> (\<forall>x27. cap = BoundNotificationCap x27 \<longrightarrow> \<lbrace>P (BoundNotificationCap x27)\<rbrace> returnOk (BoundNotificationCap x27) \<lbrace>P\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>)<\STATESEP>apply (safe, (wp whenE_wp |
+                clarsimp simp: ensure_no_children_def)+ )<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition safe_for_derive :: "cdl_cap \<Rightarrow> bool"
+where "safe_for_derive cap \<equiv> case cap of
+    NullCap \<Rightarrow> False
+  | UntypedCap _ _ _ \<Rightarrow> False
+  | PageTableCap _ _ _ \<Rightarrow> False
+  | PageDirectoryCap _ _ _ \<Rightarrow> False
+  | ReplyCap _ _ \<Rightarrow> False
+  | MasterReplyCap _ \<Rightarrow> False
+  | IrqControlCap \<Rightarrow> False
+  | ZombieCap _ \<Rightarrow> False
+  | _ \<Rightarrow> True"<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_exclusive_cap_update_cap_rights [simp]:
+  "safe_for_derive (update_cap_rights rights cap) = safe_for_derive cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. safe_for_derive (update_cap_rights rights cap) = safe_for_derive cap<\STATESEP>by (clarsimp simp: update_cap_rights_def safe_for_derive_def
+              split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma derive_cap_non_exclusive:
+  "\<lbrace> P (derived_cap cap) and K (safe_for_derive cap) \<rbrace> derive_cap slot cap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P (derived_cap cap) and K (safe_for_derive cap)\<rbrace> derive_cap slot cap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace><\STATESEP>apply (clarsimp simp: derive_cap_def derived_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P (case cap of ReplyCap x xa \<Rightarrow> NullCap | MasterReplyCap x \<Rightarrow> NullCap | IrqControlCap \<Rightarrow> NullCap | FrameCap d p r sz b x \<Rightarrow> FrameCap d p r sz b None | ZombieCap x \<Rightarrow> NullCap | _ \<Rightarrow> cap) and (\<lambda>y. safe_for_derive cap)\<rbrace> case cap of UntypedCap x xa xb \<Rightarrow> doE ensure_no_children slot;
+returnOk cap
+odE | ReplyCap x xa \<Rightarrow> returnOk NullCap | MasterReplyCap oref \<Rightarrow> returnOk NullCap | IrqControlCap \<Rightarrow> returnOk NullCap | FrameCap dev p r sz b x \<Rightarrow> returnOk (FrameCap dev p r sz b None) | PageTableCap x xa xb \<Rightarrow> throw \<sqinter> returnOk cap | PageDirectoryCap x xa xb \<Rightarrow> throw \<sqinter> returnOk cap | ZombieCap x \<Rightarrow> returnOk NullCap | _ \<Rightarrow> returnOk cap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace><\STATESEP>apply (clarsimp simp: validE_R_def derive_cap_def
+    safe_for_derive_def
+    split:cdl_cap.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>x31 x32 x33. cap = EndpointCap x31 x32 x33 \<longrightarrow> \<lbrace>P (EndpointCap x31 x32 x33)\<rbrace> returnOk (EndpointCap x31 x32 x33) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x41 x42 x43. cap = NotificationCap x41 x42 x43 \<longrightarrow> \<lbrace>P (NotificationCap x41 x42 x43)\<rbrace> returnOk (NotificationCap x41 x42 x43) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x71 x72 x73 x74. cap = CNodeCap x71 x72 x73 x74 \<longrightarrow> \<lbrace>P (CNodeCap x71 x72 x73 x74)\<rbrace> returnOk (CNodeCap x71 x72 x73 x74) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x8. cap = TcbCap x8 \<longrightarrow> \<lbrace>P (TcbCap x8)\<rbrace> returnOk (TcbCap x8) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (cap = DomainCap \<longrightarrow> \<lbrace>P DomainCap\<rbrace> returnOk DomainCap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x101 x102 x103 x104 x105 x106. cap = PendingSyncSendCap x101 x102 x103 x104 x105 x106 \<longrightarrow> \<lbrace>P (PendingSyncSendCap x101 x102 x103 x104 x105 x106)\<rbrace> returnOk (PendingSyncSendCap x101 x102 x103 x104 x105 x106) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x111 x112 x113. cap = PendingSyncRecvCap x111 x112 x113 \<longrightarrow> \<lbrace>P (PendingSyncRecvCap x111 x112 x113)\<rbrace> returnOk (PendingSyncRecvCap x111 x112 x113) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x12. cap = PendingNtfnRecvCap x12 \<longrightarrow> \<lbrace>P (PendingNtfnRecvCap x12)\<rbrace> returnOk (PendingNtfnRecvCap x12) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (cap = RestartCap \<longrightarrow> \<lbrace>P RestartCap\<rbrace> returnOk RestartCap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (cap = RunningCap \<longrightarrow> \<lbrace>P RunningCap\<rbrace> returnOk RunningCap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x16. cap = IrqHandlerCap x16 \<longrightarrow> \<lbrace>P (IrqHandlerCap x16)\<rbrace> returnOk (IrqHandlerCap x16) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x171 x172 x173 x174 x175. (\<exists>x176. cap = FrameCap x171 x172 x173 x174 x175 x176) \<longrightarrow> \<lbrace>P (FrameCap x171 x172 x173 x174 x175 None)\<rbrace> returnOk (FrameCap x171 x172 x173 x174 x175 None) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (cap = AsidControlCap \<longrightarrow> \<lbrace>P AsidControlCap\<rbrace> returnOk AsidControlCap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x211 x212. cap = AsidPoolCap x211 x212 \<longrightarrow> \<lbrace>P (AsidPoolCap x211 x212)\<rbrace> returnOk (AsidPoolCap x211 x212) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x221 x222. cap = IOPortsCap x221 x222 \<longrightarrow> \<lbrace>P (IOPortsCap x221 x222)\<rbrace> returnOk (IOPortsCap x221 x222) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (cap = IOSpaceMasterCap \<longrightarrow> \<lbrace>P IOSpaceMasterCap\<rbrace> returnOk IOSpaceMasterCap \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x24. cap = IOSpaceCap x24 \<longrightarrow> \<lbrace>P (IOSpaceCap x24)\<rbrace> returnOk (IOSpaceCap x24) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x25. cap = IOPageTableCap x25 \<longrightarrow> \<lbrace>P (IOPageTableCap x25)\<rbrace> returnOk (IOPageTableCap x25) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>) \<and> (\<forall>x27. cap = BoundNotificationCap x27 \<longrightarrow> \<lbrace>P (BoundNotificationCap x27)\<rbrace> returnOk (BoundNotificationCap x27) \<lbrace>P\<rbrace>, \<lbrace>Q\<rbrace>)<\STATESEP>apply (intro conjI allI impI, wp+)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma derived_cap_safe_for_derive[simp]:
+  "safe_for_derive (derived_cap cap) = safe_for_derive cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. safe_for_derive (derived_cap cap) = safe_for_derive cap<\STATESEP>apply (case_tac cap)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (27 subgoals):
+ 1. cap = NullCap \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 2. \<And>x21 x22 x23. cap = UntypedCap x21 x22 x23 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 3. \<And>x31 x32 x33. cap = EndpointCap x31 x32 x33 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 4. \<And>x41 x42 x43. cap = NotificationCap x41 x42 x43 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 5. \<And>x51 x52. cap = ReplyCap x51 x52 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 6. \<And>x6. cap = MasterReplyCap x6 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 7. \<And>x71 x72 x73 x74. cap = CNodeCap x71 x72 x73 x74 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 8. \<And>x8. cap = TcbCap x8 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 9. cap = DomainCap \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+ 10. \<And>x101 x102 x103 x104 x105 x106. cap = PendingSyncSendCap x101 x102 x103 x104 x105 x106 \<Longrightarrow> safe_for_derive (derived_cap cap) = safe_for_derive cap
+A total of 27 subgoals...<\STATESEP>apply (simp_all add:derived_cap_def safe_for_derive_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma safe_for_derive_not_non:
+  "safe_for_derive cap \<Longrightarrow> cap \<noteq> NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. safe_for_derive cap \<Longrightarrow> cap \<noteq> NullCap<\STATESEP>by (simp add:safe_for_derive_def split:cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  object_default_state :: "cdl_object \<Rightarrow> cdl_object"
+where
+  "object_default_state object \<equiv>
+  the $ default_object (object_type object)
+                       (object_size_bits object)
+                       (object_domain object)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma object_default_state_def2:
+  "object_default_state obj = (
+    case obj of
+        Untyped \<Rightarrow> Untyped
+      | Endpoint \<Rightarrow> Endpoint
+      | Notification \<Rightarrow> Notification
+      | Tcb tcb \<Rightarrow> Tcb (default_tcb (cdl_tcb_domain tcb))
+      | CNode cnode \<Rightarrow> CNode (empty_cnode (cdl_cnode_size_bits cnode))
+      | IRQNode cnode \<Rightarrow> IRQNode empty_irq_node
+      | AsidPool ap \<Rightarrow> AsidPool \<lparr>cdl_asid_pool_caps = empty_cap_map asid_low_bits\<rparr>
+      | PageTable pt \<Rightarrow> PageTable \<lparr> cdl_page_table_caps = empty_cap_map 8 \<rparr>
+      | PageDirectory pd \<Rightarrow> PageDirectory \<lparr> cdl_page_directory_caps = empty_cap_map 12 \<rparr>
+      | Frame frame \<Rightarrow> Frame \<lparr> cdl_frame_size_bits = (cdl_frame_size_bits frame) \<rparr>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_default_state obj = (case obj of Endpoint \<Rightarrow> Endpoint | Notification \<Rightarrow> Notification | Tcb tcb \<Rightarrow> Tcb (default_tcb (cdl_tcb_domain tcb)) | CNode cnode \<Rightarrow> CNode (empty_cnode (cdl_cnode_size_bits cnode)) | AsidPool ap \<Rightarrow> AsidPool \<lparr>cdl_asid_pool_caps = empty_cap_map asid_low_bits\<rparr> | PageTable pt \<Rightarrow> PageTable \<lparr>cdl_page_table_caps = empty_cap_map 8\<rparr> | PageDirectory pd \<Rightarrow> PageDirectory \<lparr>cdl_page_directory_caps = empty_cap_map 12\<rparr> | Frame frame \<Rightarrow> Frame \<lparr>cdl_frame_size_bits = cdl_frame_size_bits frame\<rparr> | Untyped \<Rightarrow> Untyped | IRQNode cnode \<Rightarrow> IRQNode empty_irq_node)<\STATESEP>by (clarsimp simp: object_default_state_def object_type_def default_object_def
+                     object_size_bits_def object_domain_def
+              split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_update_slots [simp]:
+  "object_type (update_slots slots x) = object_type x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type (update_slots slots x) = object_type x<\STATESEP>by (clarsimp simp: object_type_def update_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_empty [simp]:
+  "\<not> has_slots obj \<Longrightarrow> object_slots obj = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> has_slots obj \<Longrightarrow> object_slots obj = (\<lambda>x. None)<\STATESEP>by (clarsimp simp: object_slots_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_update_slots [simp]:
+  "has_slots obj \<Longrightarrow> object_slots (update_slots slots obj) = slots"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. has_slots obj \<Longrightarrow> object_slots (update_slots slots obj) = slots<\STATESEP>by (clarsimp simp: object_slots_def update_slots_def has_slots_def
+              split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_slots_update_slots_empty [simp]:
+  "\<not>has_slots obj \<Longrightarrow> object_slots (update_slots slots obj) = Map.empty"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> has_slots obj \<Longrightarrow> object_slots (update_slots slots obj) = (\<lambda>x. None)<\STATESEP>by (clarsimp simp: object_slots_def update_slots_def has_slots_def
+                 split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_no_slots [simp]:
+  "\<not>has_slots obj \<Longrightarrow> update_slots slots obj = obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> has_slots obj \<Longrightarrow> update_slots slots obj = obj<\STATESEP>by (clarsimp simp: update_slots_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_update_slots [simp]:
+  "update_slots slots (update_slots slots' obj) = update_slots slots obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. update_slots slots (update_slots slots' obj) = update_slots slots obj<\STATESEP>by (clarsimp simp: update_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_same_object:
+  "a = b \<Longrightarrow> update_slots a obj = update_slots b obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a = b \<Longrightarrow> update_slots a obj = update_slots b obj<\STATESEP>by (erule arg_cong)<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_eq_slots:
+  "\<lbrakk>has_slots obj; update_slots slots obj = update_slots slots' obj'\<rbrakk> \<Longrightarrow> slots = slots'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>has_slots obj; update_slots slots obj = update_slots slots' obj'\<rbrakk> \<Longrightarrow> slots = slots'<\STATESEP>by (clarsimp simp: update_slots_def has_slots_def cdl_tcb.splits cdl_cnode.splits
+                     cdl_asid_pool.splits cdl_irq_node.splits
+                     cdl_page_table.splits cdl_page_directory.splits
+              split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma has_slots_object_type_has_slots:
+  "\<lbrakk>has_slots x; object_type x = object_type y\<rbrakk> \<Longrightarrow> has_slots y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>has_slots x; object_type x = object_type y\<rbrakk> \<Longrightarrow> has_slots y<\STATESEP>by (clarsimp simp: object_type_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_has_slots_eq:
+  "object_type y = object_type x \<Longrightarrow> has_slots x = has_slots y"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type y = object_type x \<Longrightarrow> has_slots x = has_slots y<\STATESEP>by (clarsimp simp: object_type_def has_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_type_object_default_state [simp]:
+  "object_type (object_default_state obj) = object_type obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_type (object_default_state obj) = object_type obj<\STATESEP>by (clarsimp simp: object_default_state_def2 object_type_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_cnode_object_default_state [simp]:
+  "is_cnode (object_default_state obj) = is_cnode obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_cnode (object_default_state obj) = is_cnode obj<\STATESEP>by (clarsimp simp: object_default_state_def2 is_cnode_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_same [simp]:
+  "object_slots obj = cap_map \<Longrightarrow> update_slots cap_map obj = obj"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_slots obj = cap_map \<Longrightarrow> update_slots cap_map obj = obj<\STATESEP>by (clarsimp simp: update_slots_def object_slots_def split: cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma dom_sub_restrict [simp]:
+  "dom (m `- A) = dom m \<inter> -A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom (m `- A) = dom m \<inter> - A<\STATESEP>by (auto simp: sub_restrict_map_def dom_def split: if_split_asm)<\STATESEP>1<\TRANSEP><\STATESEP>lemma inter_empty_not_both:
+"\<lbrakk>x \<in> A; A \<inter> B = {}\<rbrakk> \<Longrightarrow> x \<notin> B"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> A; A \<inter> B = {}\<rbrakk> \<Longrightarrow> x \<notin> B<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_at_predicate_lift:
+  "object_at P obj_id spec \<Longrightarrow> P (the (cdl_objects spec obj_id))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_at P obj_id spec \<Longrightarrow> P (the (cdl_objects spec obj_id))<\STATESEP>by (fastforce simp: object_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_at_cdl_objects_elim[elim]:
+  "object_at P obj_id spec \<Longrightarrow> cdl_objects spec obj_id = Some (the (cdl_objects spec obj_id))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. object_at P obj_id spec \<Longrightarrow> cdl_objects spec obj_id = Some (the (cdl_objects spec obj_id))<\STATESEP>by (fastforce simp: object_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_object_slot:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   P (object_slots obj slot) \<Longrightarrow>
+   P (opt_cap (obj_id, slot) spec)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects spec obj_id = Some obj; P (object_slots obj slot)\<rbrakk> \<Longrightarrow> P (opt_cap (obj_id, slot) spec)<\STATESEP>by (fastforce simp: object_at_def opt_cap_def slots_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_object_slotE:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   object_slots obj slot = Some cap \<Longrightarrow>
+   opt_cap (obj_id, slot) spec = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects spec obj_id = Some obj; object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> opt_cap (obj_id, slot) spec = Some cap<\STATESEP>by (rule opt_cap_object_slot)<\STATESEP>1<\TRANSEP><\STATESEP>lemma slots_of_object_slot:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   P (object_slots obj slot) \<Longrightarrow>
+   P (slots_of obj_id spec slot)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects spec obj_id = Some obj; P (object_slots obj slot)\<rbrakk> \<Longrightarrow> P (slots_of obj_id spec slot)<\STATESEP>by (fastforce simp: object_at_def opt_cap_def slots_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma slots_of_object_slotE:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   object_slots obj slot = Some cap \<Longrightarrow>
+   slots_of obj_id spec slot = Some cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects spec obj_id = Some obj; object_slots obj slot = Some cap\<rbrakk> \<Longrightarrow> slots_of obj_id spec slot = Some cap<\STATESEP>by (fastforce simp: object_at_def opt_cap_def slots_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma object_at_cdl_objects:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   P obj \<Longrightarrow>
+   object_at P obj_id spec"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl_objects spec obj_id = Some obj; P obj\<rbrakk> \<Longrightarrow> object_at P obj_id spec<\STATESEP>by (fastforce simp: object_at_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma opt_cap_object_slot_simp:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   opt_cap (obj_id, slot) spec = object_slots obj slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects spec obj_id = Some obj \<Longrightarrow> opt_cap (obj_id, slot) spec = object_slots obj slot<\STATESEP>by (fastforce simp: object_at_def opt_cap_def slots_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma slots_of_object_slot_simp:
+  "cdl_objects spec obj_id = Some obj \<Longrightarrow>
+   slots_of obj_id spec slot = object_slots obj slot"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl_objects spec obj_id = Some obj \<Longrightarrow> slots_of obj_id spec slot = object_slots obj slot<\STATESEP>by (fastforce simp: object_at_def opt_cap_def slots_of_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_fake_pt_cap_cap_has_object:
+  "is_fake_pt_cap cap \<Longrightarrow> cap_has_object cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_fake_pt_cap cap \<Longrightarrow> cap_has_object cap<\STATESEP>by (clarsimp simp: cap_has_object_def is_fake_pt_cap_def split: cdl_cap.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_fake_pt_cap_pt_cap:
+  "is_fake_pt_cap (PageTableCap x R z) \<longleftrightarrow> R = Fake"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_fake_pt_cap (PageTableCap x R z) = (R = Fake)<\STATESEP>by (clarsimp simp: is_fake_pt_cap_def split: cdl_frame_cap_type.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fake_vm_cap_simp:
+  "is_fake_vm_cap (FrameCap x y z a R b) \<longleftrightarrow> R = Fake"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_fake_vm_cap (FrameCap x y z a R b) = (R = Fake)<\STATESEP>by (clarsimp simp: is_fake_vm_cap_def split: cdl_frame_cap_type.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma frame_not_pt[intro!]: "\<not> (is_frame x \<and> is_pt x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> (is_frame x \<and> is_pt x)<\STATESEP>by (cases x; clarsimp simp: is_frame_def is_pt_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma not_frame_and_pt: "is_frame x \<Longrightarrow> is_pt x \<Longrightarrow> False"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>is_frame x; is_pt x\<rbrakk> \<Longrightarrow> False<\STATESEP>by (fastforce simp: frame_not_pt[simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemma not_cap_at_cap_not_at:
+  "(slot \<in> dom (slots_of obj_id spec) \<and> \<not> cap_at P (obj_id, slot) spec) \<longleftrightarrow>
+   (slot \<in> dom (slots_of obj_id spec) \<and> cap_at (\<lambda>x. \<not> P x) (obj_id, slot) spec)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (slot \<in> dom (slots_of obj_id spec) \<and> \<not> cap_at P (obj_id, slot) spec) = (slot \<in> dom (slots_of obj_id spec) \<and> cap_at (\<lambda>x. \<not> P x) (obj_id, slot) spec)<\STATESEP>by (intro iffI; clarsimp simp: cap_at_def opt_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,338 @@
+<\STATESEP>chapter \<open>\label{sec:examples}Example Systems\<close><\STATESEP>0<\TRANSEP><\STATESEP>theory Examples_CAMKES
+imports
+  Types_CAMKES
+  Library_CAMKES
+  Wellformed_CAMKES
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:echo}Echo\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  simple :: procedure (* Sourced from Simple.idl4 *)
+where
+  "simple \<equiv> [
+    \<lparr> m_return_type = Some (Primitive (Textual String)), m_name = ''echo_string'',
+      m_parameters = [
+        \<lparr> p_type = Primitive (Textual String),
+          p_direction = InParameter,
+          p_name = ''s'' \<rparr>
+      ] \<rparr>,
+    \<lparr> m_return_type = Some (Primitive (Numerical Integer)), m_name = ''echo_int'',
+      m_parameters = [
+        \<lparr> p_type = Primitive (Numerical Integer),
+          p_direction = InParameter,
+          p_name = ''i'' \<rparr>
+      ] \<rparr>,
+    \<lparr> m_return_type = None, m_name = ''echo_parameter'', m_parameters = [
+        \<lparr> p_type = Primitive (Numerical Integer),
+          p_direction = InParameter,
+          p_name = ''pin'' \<rparr>,
+        \<lparr> p_type = Primitive (Numerical Integer),
+          p_direction = InParameter,
+          p_name = ''pout'' \<rparr>
+      ] \<rparr>
+  ]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  client :: component (* Sourced from Client.camkes *)
+where
+  "client \<equiv> \<lparr>
+    control = True,
+    hardware = False,
+    requires = [(''s'', (InterfaceRequired, simple))],
+    provides = [],
+    dataports = [],
+    emits = [],
+    consumes = [],
+    attributes = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  echo :: component (* Sourced from Echo.camkes *)
+where
+  "echo \<equiv> \<lparr>
+    control = False,
+    hardware = False,
+    requires = [],
+    provides = [(''s'', simple)],
+    dataports = [],
+    emits = [],
+    consumes = [],
+    attributes = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  system :: assembly (* Sourced from simple.camkes *)
+where
+  "system \<equiv> \<lparr>
+    composition = \<lparr>
+      components = [(''echo'', echo),(''client'', client)],
+      connections = [(''simple'', \<lparr>
+        conn_type = seL4RPC,
+        conn_from = [(''client'', ''s'')],
+        conn_to = [(''echo'', ''s'')]
+      \<rparr>)],
+      group_labels = []
+    \<rparr>,
+    configuration = None,
+    policy_extra = {}
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "wellformed_assembly system"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wellformed_assembly system<\STATESEP>by (simp add: wellformed_CAMKES_simps system_def echo_def client_def simple_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:events}Events\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  signal :: event
+where
+  "signal \<equiv> 1"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  emitter :: component
+where
+  "emitter \<equiv> \<lparr>
+    control = True,
+    hardware = False,
+    requires = [],
+    provides = [],
+    dataports = [],
+    emits = [(''event'', signal)],
+    consumes = [],
+    attributes = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  consumer :: component
+where
+  "consumer \<equiv> \<lparr>
+    control = True,
+    hardware = False,
+    requires = [],
+    provides = [],
+    dataports = [],
+    emits = [],
+    consumes = [(''event'', (InterfaceRequired, signal))],
+    attributes = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  event_system :: assembly
+where
+  "event_system \<equiv> \<lparr>
+    composition = \<lparr>
+      components = [(''source'', emitter), (''sink'', consumer)],
+      connections = [(''simpleEvent1'', \<lparr>
+        conn_type = seL4Notification,
+        conn_from = [(''source'', ''event'')],
+        conn_to = [(''sink'', ''event'')]
+      \<rparr>)],
+      group_labels = []
+    \<rparr>,
+    configuration = None,
+    policy_extra = {}
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "wellformed_assembly event_system"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wellformed_assembly event_system<\STATESEP>by (simp add: wellformed_CAMKES_simps event_system_def emitter_def consumer_def signal_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:dataport}Dataport Usage\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  data_client :: component
+where
+  "data_client \<equiv> \<lparr>
+    control = True,
+    hardware = False,
+    requires = [],
+    provides = [],
+    dataports = [(''d1'', None), (''d2'', None)],
+    emits = [],
+    consumes = [],
+    attributes = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  data_system :: assembly
+where
+  "data_system \<equiv> \<lparr>
+    composition = \<lparr>
+      components = [(''comp1'', data_client), (''comp2'', data_client)],
+      connections = [(''simple1'', \<lparr>
+        conn_type = seL4SharedData,
+        conn_from = [(''comp1'', ''d1'')],
+        conn_to = [(''comp2'', ''d2'')]
+      \<rparr>), (''simple2'', \<lparr>
+        conn_type = seL4SharedData,
+        conn_from = [(''comp2'', ''d1'')],
+        conn_to = [(''comp1'', ''d2'')]
+      \<rparr>)],
+      group_labels = []
+    \<rparr>,
+    configuration = None,
+    policy_extra = {}
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "wellformed_assembly data_system"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wellformed_assembly data_system<\STATESEP>apply (simp add: data_system_def data_client_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wellformed_assembly \<lparr>composition = \<lparr>components = [(''comp1'', \<lparr>control = True, hardware = False, requires = [], provides = [], dataports = [(''d1'', None), (''d2'', None)], emits = [], consumes = [], attributes = []\<rparr>), (''comp2'', \<lparr>control = True, hardware = False, requires = [], provides = [], dataports = [(''d1'', None), (''d2'', None)], emits = [], consumes = [], attributes = []\<rparr>)], connections = [(''simple1'', \<lparr>conn_type = seL4SharedData, conn_from = [(''comp1'', ''d1'')], conn_to = [(''comp2'', ''d2'')]\<rparr>), (''simple2'', \<lparr>conn_type = seL4SharedData, conn_from = [(''comp2'', ''d1'')], conn_to = [(''comp1'', ''d2'')]\<rparr>)], group_labels = []\<rparr>, configuration = None, policy_extra = {}\<rparr><\STATESEP>apply (simp add: wellformed_CAMKES_simps
+                   refs_valid_connection_def (* HACK because the wellformed_CAMKES_simps version backtracks excessively *))<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>\label{subsec:terminal}Secure Terminal\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  display :: procedure
+where
+  "display \<equiv> [
+    \<lparr> m_return_type = Some (CType ''uint32_t''), m_name = ''put_char'',
+      m_parameters = [
+        \<lparr> p_type = CType ''uint32_t'',
+          p_direction = InParameter,
+          p_name = ''x'' \<rparr>,
+        \<lparr> p_type = CType ''uint32_t'',
+          p_direction = InParameter,
+          p_name = ''y'' \<rparr>,
+        \<lparr> p_type = CType ''uint32_t'',
+          p_direction = InParameter,
+          p_name = ''data'' \<rparr>
+      ] \<rparr> ]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  manager :: component
+where
+  "manager \<equiv> \<lparr>
+    control = False,
+    hardware = False,
+    requires = [],
+    provides = [(''domain1'', display), (''domain2'', display)],
+    dataports = [],
+    emits = [],
+    consumes = [],
+    attributes = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  terminal_client :: component
+where
+  "terminal_client \<equiv> \<lparr>
+    control = True,
+    hardware = False,
+    requires = [(''d'', (InterfaceRequired, display))],
+    provides = [],
+    dataports = [],
+    emits = [],
+    consumes = [],
+    attributes = [(''ID'', Primitive (Numerical Integer))]
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  channel1 :: connection
+where
+  "channel1 \<equiv> \<lparr>
+    conn_type = seL4RPC,
+    conn_from = [(''client1'', ''d'')],
+    conn_to = [(''manager'', ''domain1'')]
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  channel2 :: connection
+where
+  "channel2 \<equiv> \<lparr>
+    conn_type = seL4RPC,
+    conn_from = [(''client2'', ''d'')],
+    conn_to = [(''manager'', ''domain2'')]
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  comp :: composition
+where
+  "comp \<equiv> \<lparr>
+    components = [(''manager'', manager),
+                  (''client1'', terminal_client),
+                  (''client2'', terminal_client)],
+    connections = [(''channel1'', channel1),
+                   (''channel2'', channel2)],
+    group_labels = []
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  conf :: configuration
+where
+  "conf \<equiv> [(''client1'', ''ID'', ''1''),
+           (''client2'', ''ID'', ''2'')]"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  terminal :: assembly
+where
+  "terminal \<equiv> \<lparr>
+    composition = comp,
+    configuration = Some conf,
+    policy_extra = {}
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "wellformed_assembly terminal"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. wellformed_assembly terminal<\STATESEP>by (simp add: wellformed_CAMKES_simps refs_valid_connection_def
+                terminal_def comp_def manager_def terminal_client_def display_def
+                channel1_def channel2_def conf_def)<\STATESEP>1<\TRANSEP><\STATESEP>locale FAIL_MissingRequires begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  x :: component
+where
+  "x \<equiv> \<lparr>
+    control = undefined,
+    hardware = undefined,
+    requires = [(undefined, (InterfaceRequired, [undefined]))], \<comment> \<open>1 required interface...\<close>
+    provides = undefined,
+    dataports = undefined,
+    emits = undefined,
+    consumes = undefined,
+    attributes = undefined
+  \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  broken_assembly :: assembly
+where
+  "broken_assembly \<equiv> \<lparr>composition = \<lparr>
+    components = [(undefined, x)],
+    connections = [], \<comment> \<open>... that is unsatisfied.\<close>
+    group_labels = undefined
+  \<rparr>, configuration = undefined,
+     policy_extra = undefined\<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<not> wellformed_assembly broken_assembly"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_assembly broken_assembly<\STATESEP>apply (unfold wellformed_assembly_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> (wellformed_composition (composition broken_assembly) \<and> (case configuration broken_assembly of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))<\STATESEP>apply (subst de_Morgan_conj)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_composition (composition broken_assembly) \<or> \<not> (case configuration broken_assembly of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x)<\STATESEP>apply (rule disjI1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_composition (composition broken_assembly)<\STATESEP>apply (unfold wellformed_composition_def broken_assembly_def, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. refs_valid_composition \<lparr>components = [(undefined, x)], connections = [], group_labels = undefined\<rparr> \<longrightarrow> control x \<longrightarrow> (\<exists>x\<in>set undefined. \<not> (case x of (comp, group) \<Rightarrow> comp = undefined)) \<or> \<not> wellformed_component x<\STATESEP>apply (unfold refs_valid_composition_def
+                refs_valid_components_def
+                refs_valid_procedures_def
+                x_def ex_one_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>x\<in>set (components \<lparr>components = [(undefined, \<lparr>control = undefined, hardware = undefined, requires = [(undefined, InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr>)], connections = [], group_labels = undefined\<rparr>). \<forall>(name, req, proc)\<in>set (requires (snd x)). req = InterfaceRequired \<longrightarrow> proc \<noteq> [] \<longrightarrow> length (filter (\<lambda>z. z = (fst x, name)) (concat (map (\<lambda>y. conn_from (snd y)) (connections \<lparr>components = [(undefined, \<lparr>control = undefined, hardware = undefined, requires = [(undefined, InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr>)], connections = [], group_labels = undefined\<rparr>)))) = 1) \<and> refs_valid_connections (connections \<lparr>components = [(undefined, \<lparr>control = undefined, hardware = undefined, requires = [(undefined, InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr>)], connections = [], group_labels = undefined\<rparr>) (components \<lparr>components = [(undefined, \<lparr>control = undefined, hardware = undefined, requires = [(undefined, InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr>)], connections = [], group_labels = undefined\<rparr>) \<longrightarrow> control \<lparr>control = undefined, hardware = undefined, requires = [(undefined, InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr> \<longrightarrow> (\<exists>x\<in>set undefined. \<not> (case x of (comp, group) \<Rightarrow> comp = undefined)) \<or> \<not> wellformed_component \<lparr>control = undefined, hardware = undefined, requires = [(undefined, InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr><\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>locale FAIL_Empty begin<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  broken_assembly :: assembly
+where
+  "broken_assembly \<equiv> \<lparr> composition = \<lparr>
+    components = [],
+    connections = undefined,
+    group_labels = undefined
+  \<rparr>, configuration = undefined,
+     policy_extra = {} \<rparr>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<not>wellformed_assembly broken_assembly"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_assembly broken_assembly<\STATESEP>apply (unfold wellformed_assembly_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> (wellformed_composition (composition broken_assembly) \<and> (case configuration broken_assembly of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))<\STATESEP>apply (case_tac "wellformed_composition (composition broken_assembly)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. wellformed_composition (composition broken_assembly) \<Longrightarrow> \<not> (wellformed_composition (composition broken_assembly) \<and> (case configuration broken_assembly of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))
+ 2. \<not> wellformed_composition (composition broken_assembly) \<Longrightarrow> \<not> (wellformed_composition (composition broken_assembly) \<and> (case configuration broken_assembly of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))<\STATESEP>apply (unfold broken_assembly_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<Longrightarrow> \<not> (wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<and> (case configuration \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr> of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))
+ 2. \<not> wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<Longrightarrow> \<not> (wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<and> (case configuration \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr> of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))<\STATESEP>apply (frule wellformed_composition_is_nonempty)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>); components (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<noteq> []\<rbrakk> \<Longrightarrow> \<not> (wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<and> (case configuration \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr> of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))
+ 2. \<not> wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<Longrightarrow> \<not> (wellformed_composition (composition \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr>) \<and> (case configuration \<lparr>composition = \<lparr>components = [], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr> of None \<Rightarrow> True | Some x \<Rightarrow> wellformed_configuration x))<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemma "\<not>wellformed_assembly \<lparr> composition = \<lparr>
+    components = [(''foo'', undefined), (''foo'', undefined)],
+    connections = undefined,
+    group_labels = undefined
+  \<rparr>, configuration = undefined,
+     policy_extra = {} \<rparr>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_assembly \<lparr>composition = \<lparr>components = [(''foo'', undefined), (''foo'', undefined)], connections = undefined, group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr><\STATESEP>by (simp add:wellformed_assembly_def wellformed_composition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<not>wellformed_assembly \<lparr> composition = \<lparr>
+    components = undefined,
+    connections = [(''foo'', undefined), (''foo'', undefined)],
+    group_labels = undefined
+  \<rparr>, configuration = undefined,
+     policy_extra = {} \<rparr>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_assembly \<lparr>composition = \<lparr>components = undefined, connections = [(''foo'', undefined), (''foo'', undefined)], group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr><\STATESEP>by (simp add:wellformed_assembly_def wellformed_composition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<not>wellformed_assembly \<lparr> composition = \<lparr>
+    components = [(''foo'', undefined)],
+    connections = [(''foo'', undefined)],
+    group_labels = undefined
+  \<rparr>, configuration = undefined,
+     policy_extra = {} \<rparr>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_assembly \<lparr>composition = \<lparr>components = [(''foo'', undefined)], connections = [(''foo'', undefined)], group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr><\STATESEP>by (simp add:wellformed_assembly_def wellformed_composition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "\<not>wellformed_assembly \<lparr> composition = \<lparr>
+    components = [(''foo'', \<lparr>
+      control = undefined,
+      hardware = undefined,
+      requires = [(''bar'', (InterfaceRequired, [undefined]))],
+      provides = undefined,
+      dataports = undefined,
+      emits = undefined,
+      consumes = undefined,
+      attributes = undefined \<rparr>)],
+    connections = [
+      (''dup1'', \<lparr>
+        conn_type = undefined,
+        conn_from = [(''foo'', ''bar'')],
+        conn_to = undefined \<rparr>),
+      (''dup2'', \<lparr>
+        conn_type = undefined,
+        conn_from = [(''foo'', ''bar'')],
+        conn_to = undefined \<rparr>)],
+    group_labels = undefined
+  \<rparr>, configuration = undefined,
+     policy_extra = {} \<rparr>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<not> wellformed_assembly \<lparr>composition = \<lparr>components = [(''foo'', \<lparr>control = undefined, hardware = undefined, requires = [(''bar'', InterfaceRequired, [undefined])], provides = undefined, dataports = undefined, emits = undefined, consumes = undefined, attributes = undefined\<rparr>)], connections = [(''dup1'', \<lparr>conn_type = undefined, conn_from = [(''foo'', ''bar'')], conn_to = undefined\<rparr>), (''dup2'', \<lparr>conn_type = undefined, conn_from = [(''foo'', ''bar'')], conn_to = undefined\<rparr>)], group_labels = undefined\<rparr>, configuration = undefined, policy_extra = {}\<rparr><\STATESEP>by (simp add: wellformed_assembly_def wellformed_composition_def refs_valid_components_def
+                refs_valid_composition_def refs_valid_procedures_def
+                ex_one_def
+           split: prod.splits)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

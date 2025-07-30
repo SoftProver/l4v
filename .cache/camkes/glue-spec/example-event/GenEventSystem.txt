@@ -1,0 +1,38 @@
+<\STATESEP>theory GenEventSystem
+imports UserEvent
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>\label{ssec:eventsys}Generated System Theory\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:eventsystypes}Types\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym component = "(channel, component_state) comp"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym lstate = "component_state local_state"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym gstate = "(inst, channel, component_state) global_state"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:eventsysuntrusted}Untrusted Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Collector_untrusted :: "(Collector_channel \<Rightarrow> channel) \<Rightarrow> component"
+where
+  "Collector_untrusted ch \<equiv>
+    LOOP (
+      UserStep
+    \<squnion> ArbitraryRequest (ch Collector_ev)
+    \<squnion> ArbitraryResponse (ch Collector_ev))"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  Emitter_untrusted :: "(Emitter_channel \<Rightarrow> channel) \<Rightarrow> component"
+where
+  "Emitter_untrusted ch \<equiv>
+    LOOP (
+      UserStep
+    \<squnion> ArbitraryRequest (ch Emitter_ev)
+    \<squnion> ArbitraryResponse (ch Emitter_ev))"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:eventsysev}Event Components\<close><\STATESEP>0<\TRANSEP><\STATESEP>type_synonym SomethingHappenedEvent_channel = unit<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  SomethingHappenedEvent :: "(SomethingHappenedEvent_channel \<Rightarrow> channel) \<Rightarrow>
+    component"
+where
+  "SomethingHappenedEvent ch \<equiv> event (ch ())"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:eventsysinst}Component Instances\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  sink_untrusted :: component
+where
+  "sink_untrusted \<equiv>
+    Collector_untrusted (\<lambda>c. case c of Collector_ev \<Rightarrow> simpleEvent1)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  source_untrusted :: component
+where
+  "source_untrusted \<equiv>
+    Emitter_untrusted (\<lambda>c. case c of Emitter_ev \<Rightarrow> simpleEvent1)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  simpleEvent1\<^sub>e_instance :: component
+where
+  "simpleEvent1\<^sub>e_instance \<equiv> SomethingHappenedEvent (\<lambda>_. simpleEvent1)"<\STATESEP>0<\TRANSEP><\STATESEP>subsubsection \<open>\label{sssec:eventsysgs}Initial State\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition
+  gs\<^sub>0 :: gstate
+where
+  "gs\<^sub>0 p \<equiv> case trusted p of Some s \<Rightarrow> Some s | _ \<Rightarrow>
+  (case p of sink \<Rightarrow> Some (sink_untrusted, Component init_component_state)
+           | source \<Rightarrow> Some (source_untrusted, Component init_component_state)
+           | simpleEvent1\<^sub>e \<Rightarrow> Some (simpleEvent1\<^sub>e_instance, init_event_state))"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

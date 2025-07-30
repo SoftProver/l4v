@@ -1,0 +1,328 @@
+<\STATESEP>theory Trace_Prefix_Closed
+  imports
+    Trace_No_Trace
+    Trace_Monad_Equations
+    Eisbach_Tools.Rule_By_Method
+begin<\STATESEP>0<\TRANSEP><\STATESEP>subsection "Prefix Closed"<\STATESEP>0<\TRANSEP><\STATESEP>definition prefix_closed :: "('s, 'a) tmonad \<Rightarrow> bool" where
+  "prefix_closed f = (\<forall>s. \<forall>x xs. (x # xs) \<in> fst ` f s \<longrightarrow> (xs, Incomplete) \<in> f s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas prefix_closedD1 = prefix_closed_def[THEN iffD1, rule_format]<\STATESEP>0<\TRANSEP><\STATESEP>lemma in_fst_snd_image_eq:
+  "x \<in> fst ` S = (\<exists>y. (x, y) \<in> S)"
+  "y \<in> snd ` S = (\<exists>x. (x, y) \<in> S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (x \<in> fst ` S) = (\<exists>y. (x, y) \<in> S) &&& (y \<in> snd ` S) = (\<exists>x. (x, y) \<in> S)<\STATESEP>by (auto elim: image_eqI[rotated])<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_fst_snd_image:
+  "(x, y) \<in> S \<Longrightarrow> x \<in> fst ` S"
+  "(x, y) \<in> S \<Longrightarrow> y \<in> snd ` S"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((x, y) \<in> S \<Longrightarrow> x \<in> fst ` S) &&& ((x, y) \<in> S \<Longrightarrow> y \<in> snd ` S)<\STATESEP>by (auto simp: in_fst_snd_image_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas prefix_closedD = prefix_closedD1[OF _ in_fst_snd_image(1)]<\STATESEP>0<\TRANSEP><\STATESEP>lemma no_trace_prefix_closed:
+  "no_trace f \<Longrightarrow> prefix_closed f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_trace f \<Longrightarrow> prefix_closed f<\STATESEP>by (auto simp add: prefix_closed_def dest: no_trace_emp)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Set up for @{method wp}\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma prefix_closed_is_triple[wp_trip]:
+  "prefix_closed f = triple_judgement \<top> f (\<lambda>() f. id prefix_closed f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed f = triple_judgement (\<lambda>_. True) f (\<lambda>(). id prefix_closed)<\STATESEP>by (simp add: triple_judgement_def split: unit.split)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>named_theorems prefix_closed_terminal<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems prefix_closed_cond<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [prefix_closed_terminal] = no_trace_terminal[THEN no_trace_prefix_closed]<\STATESEP>0<\TRANSEP><\STATESEP>lemma prefix_closed_bind[wp_split]:
+  "\<lbrakk>prefix_closed f; \<And>x. prefix_closed (g x)\<rbrakk> \<Longrightarrow> prefix_closed (f >>= g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>x. prefix_closed (g x)\<rbrakk> \<Longrightarrow> prefix_closed (f >>= g)<\STATESEP>apply (subst prefix_closed_def, clarsimp simp: bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b xs ba ab bb. \<lbrakk>prefix_closed f; \<And>x. prefix_closed (g x); (ab, bb) \<in> f s; ((a, b) # xs, ba) \<in> (case bb of Failed \<Rightarrow> {(ab, Failed)} | Incomplete \<Rightarrow> {(ab, Incomplete)} | Result (rv, s) \<Rightarrow> (\<lambda>(a, y). (a @ ab, y)) ` g rv s)\<rbrakk> \<Longrightarrow> \<exists>x\<in>f s. (xs, Incomplete) \<in> (case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` g rv s)<\STATESEP>apply (auto 4 4 simp: Cons_eq_append_conv split: tmres.split_asm
+                 dest!: prefix_closedD[rotated] elim: rev_bexI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_case_option[prefix_closed_cond]:
+  assumes f: "prefix_closed f"
+  assumes g: "\<And>x. prefix_closed (g x)"
+  shows "prefix_closed (case_option f g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (case x of None \<Rightarrow> f | Some x \<Rightarrow> g x)<\STATESEP>by (clarsimp simp: f g split: option.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_alt[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed f; prefix_closed g \<rbrakk> \<Longrightarrow> prefix_closed (f \<sqinter> g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; prefix_closed g\<rbrakk> \<Longrightarrow> prefix_closed (f \<sqinter> g)<\STATESEP>apply (subst prefix_closed_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; prefix_closed g\<rbrakk> \<Longrightarrow> \<forall>s x xs. x # xs \<in> fst ` (f \<sqinter> g) s \<longrightarrow> (xs, Incomplete) \<in> (f \<sqinter> g) s<\STATESEP>apply (clarsimp simp add: alternative_def;
+         fastforce dest: prefix_closedD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_when[prefix_closed_cond]:
+  "\<lbrakk>P \<Longrightarrow> prefix_closed f\<rbrakk> \<Longrightarrow> prefix_closed (when P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> prefix_closed f) \<Longrightarrow> prefix_closed (when P f)<\STATESEP>by (simp add: when_def prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_unless[prefix_closed_cond]:
+  "\<lbrakk>\<not>P \<Longrightarrow> prefix_closed f\<rbrakk> \<Longrightarrow> prefix_closed (unless P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> prefix_closed f) \<Longrightarrow> prefix_closed (unless P f)<\STATESEP>by (simp add: unless_def when_def prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_if[prefix_closed_cond]:
+  "\<lbrakk> P \<Longrightarrow> prefix_closed f; \<not>P \<Longrightarrow> prefix_closed g \<rbrakk> \<Longrightarrow> prefix_closed (if P then f else g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> prefix_closed f; \<not> P \<Longrightarrow> prefix_closed g\<rbrakk> \<Longrightarrow> prefix_closed (if P then f else g)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_apply[prefix_closed_cond]:
+  "prefix_closed (f (g x)) \<Longrightarrow> prefix_closed (f $ g x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (f (g x)) \<Longrightarrow> prefix_closed (f $ g x)<\STATESEP>by simp
+
+\<comment> \<open>FIXME: make proof nicer\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_liftM_eq[simp]:
+  "prefix_closed (liftM f m) = prefix_closed m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (liftM f m) = prefix_closed m<\STATESEP>apply (clarsimp simp: prefix_closed_def bind_def' liftM_def return_def image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<forall>s a b xs. (\<exists>x\<in>{y. \<exists>x. (x, Failed) \<in> m s \<and> y = (x, Failed)} \<union> {y. \<exists>x. (x, Incomplete) \<in> m s \<and> y = (x, Incomplete)} \<union> \<Union> {y. \<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> y = {(a, Result (f aa, b))}}. (a, b) # xs = fst x) \<longrightarrow> (xs, Incomplete) \<in> m s \<or> (\<exists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x)) = (\<forall>s a b xs. (\<exists>x\<in>m s. (a, b) # xs = fst x) \<longrightarrow> (xs, Incomplete) \<in> m s)<\STATESEP>apply (rule iff_allI)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b xs. ((\<exists>x\<in>{y. \<exists>x. (x, Failed) \<in> m s \<and> y = (x, Failed)} \<union> {y. \<exists>x. (x, Incomplete) \<in> m s \<and> y = (x, Incomplete)} \<union> \<Union> {y. \<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> y = {(a, Result (f aa, b))}}. (a, b) # xs = fst x) \<longrightarrow> (xs, Incomplete) \<in> m s \<or> (\<exists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x)) = ((\<exists>x\<in>m s. (a, b) # xs = fst x) \<longrightarrow> (xs, Incomplete) \<in> m s)<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s a b xs aa ba. \<lbrakk>(aa, ba) \<in> m s; (a, b) # xs = fst (aa, ba); \<not> (\<exists>x\<in>{y. \<exists>x. (x, Failed) \<in> m s \<and> y = (x, Failed)} \<union> {y. \<exists>x. (x, Incomplete) \<in> m s \<and> y = (x, Incomplete)} \<union> \<Union> {y. \<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> y = {(a, Result (f aa, b))}}. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 2. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Failed); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Failed) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 3. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Incomplete); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Incomplete) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 4. \<And>s a b xs aa ba X ab ac bb. \<lbrakk>(a, b) # xs = fst (ab, Result (f ac, bb)); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (ab, Result (ac, bb)) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s a b xs ba. \<lbrakk>((a, b) # xs, ba) \<in> m s; \<forall>x\<in>{y. \<exists>x. (x, Failed) \<in> m s \<and> y = (x, Failed)} \<union> {y. \<exists>x. (x, Incomplete) \<in> m s \<and> y = (x, Incomplete)} \<union> \<Union> {y. \<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> y = {(a, Result (f aa, b))}}. (a, b) # xs \<noteq> fst x\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 2. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Failed); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Failed) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 3. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Incomplete); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Incomplete) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 4. \<And>s a b xs aa ba X ab ac bb. \<lbrakk>(a, b) # xs = fst (ab, Result (f ac, bb)); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (ab, Result (ac, bb)) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s<\STATESEP>apply (drule_tac x="((a, b) # xs, map_tmres id f ba)" in bspec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s a b xs ba. ((a, b) # xs, ba) \<in> m s \<Longrightarrow> ((a, b) # xs, map_tmres_rv f ba) \<in> {y. \<exists>x. (x, Failed) \<in> m s \<and> y = (x, Failed)} \<union> {y. \<exists>x. (x, Incomplete) \<in> m s \<and> y = (x, Incomplete)} \<union> \<Union> {y. \<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> y = {(a, Result (f aa, b))}}
+ 2. \<And>s a b xs ba. \<lbrakk>((a, b) # xs, ba) \<in> m s; (a, b) # xs \<noteq> fst ((a, b) # xs, map_tmres_rv f ba)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 3. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Failed); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Failed) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 4. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Incomplete); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Incomplete) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 5. \<And>s a b xs aa ba X ab ac bb. \<lbrakk>(a, b) # xs = fst (ab, Result (f ac, bb)); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (ab, Result (ac, bb)) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s a b xs ba. \<lbrakk>((a, b) # xs, ba) \<in> m s; ((a, b) # xs, Failed) \<in> m s \<longrightarrow> map_tmres_rv f ba \<noteq> Failed; \<forall>x. (\<forall>a aa b. (a, Result (aa, b)) \<in> m s \<longrightarrow> x \<noteq> {(a, Result (f aa, b))}) \<or> ((a, b) # xs, map_tmres_rv f ba) \<notin> x\<rbrakk> \<Longrightarrow> ((a, b) # xs, Incomplete) \<in> m s \<and> map_tmres_rv f ba = Incomplete
+ 2. \<And>s a b xs ba. \<lbrakk>((a, b) # xs, ba) \<in> m s; (a, b) # xs \<noteq> fst ((a, b) # xs, map_tmres_rv f ba)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 3. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Failed); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Failed) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 4. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Incomplete); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Incomplete) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 5. \<And>s a b xs aa ba X ab ac bb. \<lbrakk>(a, b) # xs = fst (ab, Result (f ac, bb)); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (ab, Result (ac, bb)) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s<\STATESEP>apply (case_tac ba; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s a b xs aa bb. \<lbrakk>((a, b) # xs, Result (aa, bb)) \<in> m s; \<forall>x. (\<forall>a aa b. (a, Result (aa, b)) \<in> m s \<longrightarrow> x \<noteq> {(a, Result (f aa, b))}) \<or> ((a, b) # xs, Result (f aa, bb)) \<notin> x\<rbrakk> \<Longrightarrow> False
+ 2. \<And>s a b xs ba. \<lbrakk>((a, b) # xs, ba) \<in> m s; (a, b) # xs \<noteq> fst ((a, b) # xs, map_tmres_rv f ba)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 3. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Failed); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Failed) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 4. \<And>s a b xs aa ba x. \<lbrakk>(a, b) # xs = fst (x, Incomplete); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (x, Incomplete) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s
+ 5. \<And>s a b xs aa ba X ab ac bb. \<lbrakk>(a, b) # xs = fst (ab, Result (f ac, bb)); \<nexists>x. (\<exists>a aa b. (a, Result (aa, b)) \<in> m s \<and> x = {(a, Result (f aa, b))}) \<and> (xs, Incomplete) \<in> x; (ab, Result (ac, bb)) \<in> m s; \<not> (\<exists>x\<in>m s. (a, b) # xs = fst x)\<rbrakk> \<Longrightarrow> (xs, Incomplete) \<in> m s<\STATESEP>apply (auto split: tmres.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_liftM[prefix_closed_cond]:
+  "prefix_closed m \<Longrightarrow> prefix_closed (liftM f m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed m \<Longrightarrow> prefix_closed (liftM f m)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_whenE[prefix_closed_cond]:
+  "\<lbrakk> G \<Longrightarrow> prefix_closed f \<rbrakk> \<Longrightarrow> prefix_closed (whenE G f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (G \<Longrightarrow> prefix_closed f) \<Longrightarrow> prefix_closed (whenE G f)<\STATESEP>by (simp add: whenE_def prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_unlessE[prefix_closed_cond]:
+  "\<lbrakk> \<not> G \<Longrightarrow> prefix_closed f \<rbrakk> \<Longrightarrow> prefix_closed (unlessE G f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> G \<Longrightarrow> prefix_closed f) \<Longrightarrow> prefix_closed (unlessE G f)<\STATESEP>by (simp add: unlessE_def prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_liftE[prefix_closed_cond]:
+  "prefix_closed f \<Longrightarrow> prefix_closed (liftE f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed f \<Longrightarrow> prefix_closed (liftE f)<\STATESEP>unfolding liftE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed f \<Longrightarrow> prefix_closed (do r <- f;
+return (Inr r)
+od)<\STATESEP>by (wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_lift[prefix_closed_cond]:
+  "\<lbrakk>\<And>y. x = Inr y \<Longrightarrow> prefix_closed (f y)\<rbrakk> \<Longrightarrow> prefix_closed (lift f x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>y. x = Inr y \<Longrightarrow> prefix_closed (f y)) \<Longrightarrow> prefix_closed (lift f x)<\STATESEP>unfolding lift_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>y. x = Inr y \<Longrightarrow> prefix_closed (f y)) \<Longrightarrow> prefix_closed (case x of Inl e \<Rightarrow> throwError e | Inr v' \<Rightarrow> f v')<\STATESEP>by (wpsimp wp: prefix_closed_terminal split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_bindE[wp_split]:
+  "\<lbrakk> prefix_closed f; \<And>rv. prefix_closed (g rv)\<rbrakk> \<Longrightarrow> prefix_closed (f >>=E g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>rv. prefix_closed (g rv)\<rbrakk> \<Longrightarrow> prefix_closed (f >>=E g)<\STATESEP>unfolding bindE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>rv. prefix_closed (g rv)\<rbrakk> \<Longrightarrow> prefix_closed (f >>= lift g)<\STATESEP>by (wpsimp wp: prefix_closed_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_condition[prefix_closed_cond]:
+  "\<lbrakk>prefix_closed A; prefix_closed B\<rbrakk> \<Longrightarrow> prefix_closed (condition C A B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed A; prefix_closed B\<rbrakk> \<Longrightarrow> prefix_closed condition C
+  A
+  B<\STATESEP>unfolding condition_def prefix_closed_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s x xs. x # xs \<in> fst ` A s \<longrightarrow> (xs, Incomplete) \<in> A s; \<forall>s x xs. x # xs \<in> fst ` B s \<longrightarrow> (xs, Incomplete) \<in> B s\<rbrakk> \<Longrightarrow> \<forall>s x xs. x # xs \<in> fst ` (if C s then A s else B s) \<longrightarrow> (xs, Incomplete) \<in> (if C s then A s else B s)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_mapM[prefix_closed_cond]:
+  "\<lbrakk>\<And>x. x \<in> set xs \<Longrightarrow> prefix_closed (f x)\<rbrakk> \<Longrightarrow> prefix_closed (mapM f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> set xs \<Longrightarrow> prefix_closed (f x)) \<Longrightarrow> prefix_closed (mapM f xs)<\STATESEP>apply (induct xs)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. (\<And>x. x \<in> set [] \<Longrightarrow> prefix_closed (f x)) \<Longrightarrow> prefix_closed (mapM f [])
+ 2. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> prefix_closed (f x)) \<Longrightarrow> prefix_closed (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> prefix_closed (f x)\<rbrakk> \<Longrightarrow> prefix_closed (mapM f (a # xs))<\STATESEP>apply (simp add: mapM_def sequence_def prefix_closed_terminal)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>(\<And>x. x \<in> set xs \<Longrightarrow> prefix_closed (f x)) \<Longrightarrow> prefix_closed (mapM f xs); \<And>x. x \<in> set (a # xs) \<Longrightarrow> prefix_closed (f x)\<rbrakk> \<Longrightarrow> prefix_closed (mapM f (a # xs))<\STATESEP>apply (clarsimp simp: mapM_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs. \<lbrakk>prefix_closed (mapM f xs); \<And>x. x = a \<or> x \<in> set xs \<Longrightarrow> prefix_closed (f x)\<rbrakk> \<Longrightarrow> prefix_closed (do y <- f a;
+ys <- mapM f xs;
+return (y # ys)
+od)<\STATESEP>apply (wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_catch[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed f; \<And>x. prefix_closed (g x) \<rbrakk> \<Longrightarrow> prefix_closed (catch f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>x. prefix_closed (g x)\<rbrakk> \<Longrightarrow> prefix_closed (f <catch> g)<\STATESEP>unfolding catch_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>x. prefix_closed (g x)\<rbrakk> \<Longrightarrow> prefix_closed (do x <- f;
+case x of Inl e \<Rightarrow> g e | Inr b \<Rightarrow> return b
+od)<\STATESEP>by (wpsimp wp: prefix_closed_terminal split: sum.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_liftME[prefix_closed_cond]:
+  "prefix_closed m \<Longrightarrow> prefix_closed (liftME f m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed m \<Longrightarrow> prefix_closed (liftME f m)<\STATESEP>unfolding liftME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed m \<Longrightarrow> prefix_closed (doE x <- m;
+returnOk (f x)
+odE)<\STATESEP>by (wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_handle'[prefix_closed_cond]:
+  "\<lbrakk>prefix_closed f; \<And>e. prefix_closed (handler e)\<rbrakk> \<Longrightarrow> prefix_closed (f <handle2> handler)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>e. prefix_closed (handler e)\<rbrakk> \<Longrightarrow> prefix_closed (f <handle2> handler)<\STATESEP>unfolding handleE'_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>e. prefix_closed (handler e)\<rbrakk> \<Longrightarrow> prefix_closed (do v <- f;
+case v of Inl e \<Rightarrow> handler e | Inr v' \<Rightarrow> return (Inr v')
+od)<\STATESEP>by (wpsimp wp: prefix_closed_terminal split: sum.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_handleE[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed L; \<And>r. prefix_closed (R r) \<rbrakk> \<Longrightarrow> prefix_closed (L <handle> R)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed L; \<And>r. prefix_closed (R r)\<rbrakk> \<Longrightarrow> prefix_closed (L <handle> R)<\STATESEP>unfolding handleE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed L; \<And>r. prefix_closed (R r)\<rbrakk> \<Longrightarrow> prefix_closed (L <handle2> R)<\STATESEP>by (simp add: prefix_closed_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_handle_elseE[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed f; \<And>r. prefix_closed (g r); \<And>r. prefix_closed (h r) \<rbrakk> \<Longrightarrow> prefix_closed (f <handle> g <else> h)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>r. prefix_closed (g r); \<And>r. prefix_closed (h r)\<rbrakk> \<Longrightarrow> prefix_closed (f <handle> g <else> h)<\STATESEP>unfolding handle_elseE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; \<And>r. prefix_closed (g r); \<And>r. prefix_closed (h r)\<rbrakk> \<Longrightarrow> prefix_closed (do v <- f;
+case v of Inl e \<Rightarrow> g e | Inr v' \<Rightarrow> h v'
+od)<\STATESEP>by (wpsimp wp: prefix_closed_terminal split: sum.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_sequence[prefix_closed_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequence ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequence ms)<\STATESEP>unfolding sequence_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (let mcons = \<lambda>p q. do x <- p;
+y <- q;
+return (x # y)
+od in foldr mcons ms (return []))<\STATESEP>by (induct ms; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_sequence_x[prefix_closed_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequence_x ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequence_x ms)<\STATESEP>unfolding sequence_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (foldr (\<lambda>x y. do _ <- x;
+y
+od) ms (return ()))<\STATESEP>by (induct ms; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_sequenceE[prefix_closed_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequenceE ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequenceE ms)<\STATESEP>unfolding sequenceE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (let mcons = \<lambda>p q. doE x <- p;
+y <- q;
+returnOk (x # y)
+odE in foldr mcons ms (returnOk []))<\STATESEP>by (induct ms; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_sequenceE_x[prefix_closed_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequenceE_x ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequenceE_x ms)<\STATESEP>unfolding sequenceE_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (foldr (\<lambda>x y. doE _ <- x;
+y
+odE) ms (returnOk ()))<\STATESEP>by (induct ms; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_mapM_x[prefix_closed_cond]:
+  "(\<And>m. m \<in> f ` set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (mapM_x f ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (mapM_x f ms)<\STATESEP>unfolding mapM_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set ms \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequence_x (map f ms))<\STATESEP>by (fastforce intro: prefix_closed_sequence_x)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_mapME[prefix_closed_cond]:
+  "(\<And>m. m \<in> f ` set xs \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (mapME f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set xs \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (mapME f xs)<\STATESEP>unfolding mapME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> f ` set xs \<Longrightarrow> prefix_closed m) \<Longrightarrow> prefix_closed (sequenceE (map f xs))<\STATESEP>by (fastforce intro: prefix_closed_sequenceE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_mapME_x[prefix_closed_cond]:
+  "(\<And>m'. m' \<in> f ` set xs \<Longrightarrow> prefix_closed m') \<Longrightarrow> prefix_closed (mapME_x f xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m'. m' \<in> f ` set xs \<Longrightarrow> prefix_closed m') \<Longrightarrow> prefix_closed (mapME_x f xs)<\STATESEP>unfolding mapME_x_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m'. m' \<in> f ` set xs \<Longrightarrow> prefix_closed m') \<Longrightarrow> prefix_closed (sequenceE_x (map f xs))<\STATESEP>by (fastforce intro: prefix_closed_sequenceE_x)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_filterM[prefix_closed_cond]:
+  "(\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed (P m)) \<Longrightarrow> prefix_closed (filterM P ms)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>m. m \<in> set ms \<Longrightarrow> prefix_closed (P m)) \<Longrightarrow> prefix_closed (filterM P ms)<\STATESEP>by (induct ms; wpsimp wp: prefix_closed_terminal split_del: if_split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_zipWithM_x[prefix_closed_cond]:
+  "(\<And>x y. prefix_closed (f x y)) \<Longrightarrow> prefix_closed (zipWithM_x f xs ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (f x y)) \<Longrightarrow> prefix_closed (zipWithM_x f xs ys)<\STATESEP>unfolding zipWithM_x_def zipWith_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (f x y)) \<Longrightarrow> prefix_closed (sequence_x (map2 f xs ys))<\STATESEP>by (fastforce intro: prefix_closed_sequence_x)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_zipWithM[prefix_closed_cond]:
+  "(\<And>x y. prefix_closed (f x y)) \<Longrightarrow> prefix_closed (zipWithM f xs ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (f x y)) \<Longrightarrow> prefix_closed (zipWithM f xs ys)<\STATESEP>unfolding zipWithM_def zipWith_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (f x y)) \<Longrightarrow> prefix_closed (sequence (map2 f xs ys))<\STATESEP>by (fastforce intro: prefix_closed_sequence)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_foldM[prefix_closed_cond]:
+  "(\<And>x y. prefix_closed (m x y)) \<Longrightarrow> prefix_closed (foldM m xs a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (m x y)) \<Longrightarrow> prefix_closed (foldM m xs a)<\STATESEP>unfolding foldM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (m x y)) \<Longrightarrow> prefix_closed (foldr (\<lambda>p q. q >>= m p) xs (return a))<\STATESEP>by (induct xs; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_foldME[prefix_closed_cond]:
+  "(\<And>x y. prefix_closed (m x y)) \<Longrightarrow> prefix_closed (foldME m a xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (m x y)) \<Longrightarrow> prefix_closed (foldME m a xs)<\STATESEP>unfolding foldME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x y. prefix_closed (m x y)) \<Longrightarrow> prefix_closed (foldr (\<lambda>p q. q >>=E swp m p) xs (returnOk a))<\STATESEP>by (induct xs; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_maybeM[prefix_closed_cond]:
+  "\<forall>x. prefix_closed (f x) \<Longrightarrow> prefix_closed (maybeM f t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. prefix_closed (f x) \<Longrightarrow> prefix_closed (maybeM f t)<\STATESEP>unfolding maybeM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. prefix_closed (f x) \<Longrightarrow> prefix_closed (case t of None \<Rightarrow> return () | Some x \<Rightarrow> f x)<\STATESEP>by (fastforce intro: prefix_closed_terminal split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_notM[prefix_closed_cond]:
+  "prefix_closed A \<Longrightarrow> prefix_closed (notM A)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed A \<Longrightarrow> prefix_closed (notM A)<\STATESEP>unfolding notM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed A \<Longrightarrow> prefix_closed (do c <- A;
+return (\<not> c)
+od)<\STATESEP>by (wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_ifM[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed P; prefix_closed a; prefix_closed b \<rbrakk> \<Longrightarrow> prefix_closed (ifM P a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed P; prefix_closed a; prefix_closed b\<rbrakk> \<Longrightarrow> prefix_closed (ifM P a b)<\STATESEP>unfolding ifM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed P; prefix_closed a; prefix_closed b\<rbrakk> \<Longrightarrow> prefix_closed (do c <- P;
+if c then a else b
+od)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_ifME[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed P; prefix_closed a; prefix_closed b \<rbrakk> \<Longrightarrow> prefix_closed (ifME P a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed P; prefix_closed a; prefix_closed b\<rbrakk> \<Longrightarrow> prefix_closed (ifME P a b)<\STATESEP>unfolding ifME_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed P; prefix_closed a; prefix_closed b\<rbrakk> \<Longrightarrow> prefix_closed (doE c <- P;
+if c then a else b
+odE)<\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_whenM[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed P; prefix_closed f \<rbrakk> \<Longrightarrow> prefix_closed (whenM P f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed P; prefix_closed f\<rbrakk> \<Longrightarrow> prefix_closed (whenM P f)<\STATESEP>unfolding whenM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed P; prefix_closed f\<rbrakk> \<Longrightarrow> prefix_closed (ifM P f (return ()))<\STATESEP>by (wpsimp wp: prefix_closed_terminal prefix_closed_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_orM[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed A; prefix_closed B \<rbrakk> \<Longrightarrow> prefix_closed (orM A B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed A; prefix_closed B\<rbrakk> \<Longrightarrow> prefix_closed (orM A B)<\STATESEP>unfolding orM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed A; prefix_closed B\<rbrakk> \<Longrightarrow> prefix_closed (ifM A (return True) B)<\STATESEP>by (wpsimp wp: prefix_closed_terminal prefix_closed_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_andM[prefix_closed_cond]:
+  "\<lbrakk> prefix_closed A; prefix_closed B \<rbrakk> \<Longrightarrow> prefix_closed (andM A B)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed A; prefix_closed B\<rbrakk> \<Longrightarrow> prefix_closed (andM A B)<\STATESEP>unfolding andM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed A; prefix_closed B\<rbrakk> \<Longrightarrow> prefix_closed (ifM A B (return False))<\STATESEP>by (wpsimp wp: prefix_closed_terminal prefix_closed_cond)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_put_trace_elem[prefix_closed_terminal]:
+  "prefix_closed (put_trace_elem x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (put_trace_elem x)<\STATESEP>by (clarsimp simp: prefix_closed_def put_trace_elem_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_put_trace[prefix_closed_terminal]:
+  "prefix_closed (put_trace tr)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (put_trace tr)<\STATESEP>by (induct tr; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_env_steps[prefix_closed_terminal]:
+  "prefix_closed env_steps"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed env_steps<\STATESEP>by (wpsimp simp: env_steps_def wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_interference[prefix_closed_terminal]:
+  "prefix_closed interference"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed interference<\STATESEP>by (wpsimp simp: interference_def commit_step_def wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_await[prefix_closed_terminal]:
+  "prefix_closed (Await c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed (Await c)<\STATESEP>by (wpsimp simp: Await_def wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_repeat_n[prefix_closed_cond]:
+  "prefix_closed f \<Longrightarrow> prefix_closed (repeat_n n f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed f \<Longrightarrow> prefix_closed (repeat_n n f)<\STATESEP>by (induct n; wpsimp wp: prefix_closed_terminal)<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_repeat[prefix_closed_cond]:
+  "prefix_closed f \<Longrightarrow> prefix_closed (repeat f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed f \<Longrightarrow> prefix_closed (repeat f)<\STATESEP>apply (simp add: repeat_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. prefix_closed f \<Longrightarrow> prefix_closed (do n <- select UNIV;
+repeat_n n f
+od)<\STATESEP>apply (wpsimp wp: prefix_closed_terminal prefix_closed_cond)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma prefix_closed_parallel[wp_split]:
+  "\<lbrakk>prefix_closed f; prefix_closed g\<rbrakk>
+   \<Longrightarrow> prefix_closed (parallel f g)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>prefix_closed f; prefix_closed g\<rbrakk> \<Longrightarrow> prefix_closed (parallel f g)<\STATESEP>apply (subst prefix_closed_def, clarsimp simp: parallel_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b xs ba f_steps. \<lbrakk>prefix_closed f; prefix_closed g; length f_steps = Suc (length xs); (map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) f_steps ((a, b) # xs), ba) \<in> f s; (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) f_steps ((a, b) # xs), ba) \<in> g s\<rbrakk> \<Longrightarrow> \<exists>f_steps. length f_steps = length xs \<and> (map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) f_steps xs, Incomplete) \<in> f s \<and> (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) f_steps xs, Incomplete) \<in> g s<\STATESEP>apply (subst (asm) zip.zip_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b xs ba f_steps. \<lbrakk>prefix_closed f; prefix_closed g; length f_steps = Suc (length xs); (map (\<lambda>(f_step, id, y). (if f_step then id else Env, y)) (case f_steps of [] \<Rightarrow> [] | z # zs \<Rightarrow> (z, a, b) # zip zs xs), ba) \<in> f s; (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) f_steps ((a, b) # xs), ba) \<in> g s\<rbrakk> \<Longrightarrow> \<exists>f_steps. length f_steps = length xs \<and> (map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) f_steps xs, Incomplete) \<in> f s \<and> (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) f_steps xs, Incomplete) \<in> g s<\STATESEP>apply (clarsimp split: list.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b xs ba x21 x22. \<lbrakk>((if x21 then Env else a, b) # map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) x22 xs, ba) \<in> g s; prefix_closed f; prefix_closed g; length x22 = length xs; ((if x21 then a else Env, b) # map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) x22 xs, ba) \<in> f s\<rbrakk> \<Longrightarrow> \<exists>f_steps. length f_steps = length xs \<and> (map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) f_steps xs, Incomplete) \<in> f s \<and> (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) f_steps xs, Incomplete) \<in> g s<\STATESEP>apply (drule(1) prefix_closedD)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b xs ba x21 x22. \<lbrakk>((if x21 then Env else a, b) # map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) x22 xs, ba) \<in> g s; length x22 = length xs; ((if x21 then a else Env, b) # map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) x22 xs, ba) \<in> f s; (map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) x22 xs, Incomplete) \<in> f s; (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) x22 xs, Incomplete) \<in> g s\<rbrakk> \<Longrightarrow> \<exists>f_steps. length f_steps = length xs \<and> (map2 (\<lambda>f_step (id, y). (if f_step then id else Env, y)) f_steps xs, Incomplete) \<in> f s \<and> (map2 (\<lambda>f_step (id, y). (if f_step then Env else id, y)) f_steps xs, Incomplete) \<in> g s<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>(* We want to enforce that prefix_closed_terminal only contains lemmas that have no
+   assumptions. The following thm statement should fail if this is not true. *)
+private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas check_no_assumptions_internal = iffD1[OF refl, where P="prefix_closed f" for f]<\STATESEP>0<\TRANSEP><\STATESEP>thm prefix_closed_terminal[atomized, THEN check_no_assumptions_internal]<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>lemmas prefix_closed[wp, intro!] = prefix_closed_terminal prefix_closed_cond<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [simp] = prefix_closed_terminal<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,1146 @@
+<\STATESEP>theory Nondet_VCG
+  imports
+    Nondet_Lemmas
+    WPSimp
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Hoare Logic\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Validity\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition valid ::
+  "('s \<Rightarrow> bool) \<Rightarrow> ('s,'a) nondet_monad \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+  ("\<lbrace>_\<rbrace>/ _ /\<lbrace>_\<rbrace>") where
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<equiv> \<forall>s. P s \<longrightarrow> (\<forall>(r,s') \<in> fst (f s). Q r s')"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation (input) invariant ::
+  "('s,'a) nondet_monad \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> bool"
+  ("_ \<lbrace>_\<rbrace>" [59,0] 60) where
+  "invariant f P \<equiv> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>definition validE ::
+  "('s \<Rightarrow> bool) \<Rightarrow> ('s, 'a + 'b) nondet_monad \<Rightarrow> ('b \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+  ("\<lbrace>_\<rbrace>/ _ /(\<lbrace>_\<rbrace>,/ \<lbrace>_\<rbrace>)") where
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<equiv> \<lbrace>P\<rbrace> f \<lbrace> \<lambda>v s. case v of Inr r \<Rightarrow> Q r s | Inl e \<Rightarrow> E e s \<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma validE_def2:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<equiv> \<forall>s. P s \<longrightarrow> (\<forall>(r,s') \<in> fst (f s). case r of Inr b \<Rightarrow> Q b s' | Inl a \<Rightarrow> E a s')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<equiv> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl a \<Rightarrow> E a s' | Inr b \<Rightarrow> Q b s')<\STATESEP>by (unfold valid_def validE_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition validE_R :: (* FIXME lib: this should be an abbreviation *)
+  "('s \<Rightarrow> bool) \<Rightarrow> ('s, 'e + 'a) nondet_monad \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool" ("\<lbrace>_\<rbrace>/ _ /\<lbrace>_\<rbrace>, -")
+  where
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,- \<equiv> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>\<lambda>_. \<top>\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>definition validE_E :: (* FIXME lib: this should be an abbreviation *)
+  "('s \<Rightarrow> bool) \<Rightarrow>  ('s, 'e + 'a) nondet_monad \<Rightarrow> ('e \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool" ("\<lbrace>_\<rbrace>/ _ /-, \<lbrace>_\<rbrace>")
+  where
+  "\<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace> \<equiv> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. \<top>\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_make_schematic_post:
+  "(\<forall>s0. \<lbrace> \<lambda>s. P s0 s \<rbrace> f \<lbrace> \<lambda>rv s. Q s0 rv s \<rbrace>) \<Longrightarrow>
+   \<lbrace> \<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s') \<rbrace> f \<lbrace> Q' \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s0. \<lbrace>P s0\<rbrace> f \<lbrace>Q s0\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s')\<rbrace> f \<lbrace>Q'\<rbrace><\STATESEP>by (auto simp add: valid_def split: prod.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_make_schematic_post:
+  "(\<forall>s0. \<lbrace> \<lambda>s. P s0 s \<rbrace> f \<lbrace> \<lambda>rv s. Q s0 rv s \<rbrace>, \<lbrace> \<lambda>rv s. E s0 rv s \<rbrace>) \<Longrightarrow>
+   \<lbrace> \<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s')
+        \<and> (\<forall>rv s'. E s0 rv s' \<longrightarrow> E' rv s') \<rbrace> f \<lbrace> Q' \<rbrace>, \<lbrace> E' \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s0. \<lbrace>P s0\<rbrace> f \<lbrace>Q s0\<rbrace>, \<lbrace>E s0\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>s0. P s0 s \<and> (\<forall>rv s'. Q s0 rv s' \<longrightarrow> Q' rv s') \<and> (\<forall>rv s'. E s0 rv s' \<longrightarrow> E' rv s')\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E'\<rbrace><\STATESEP>by (auto simp add: validE_def valid_def split: prod.splits sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Pre Lemmas\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_pre_imp:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> Q s; \<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. P s \<Longrightarrow> Q s; \<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace><\STATESEP>by (fastforce simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_weaken_pre = hoare_pre_imp[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_weaken_preE:
+  "\<lbrakk> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace>; \<And>s. P s \<Longrightarrow> Q s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>; \<And>s. P s \<Longrightarrow> Q s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_weaken_preE_R:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>,-; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, -; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>unfolding validE_R_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (rule hoare_weaken_preE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_weaken_preE_E:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f -,\<lbrace>Q\<rbrace>; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f -,\<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f -, \<lbrace>Q\<rbrace>; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp: validE_E_def validE_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_pre [wp_pre] =
+  hoare_weaken_pre
+  hoare_weaken_preE
+  hoare_weaken_preE_R
+  hoare_weaken_preE_E<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Setting up the precondition case splitter.\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma wpc_helper_valid:
+  "\<lbrace>Q\<rbrace> g \<lbrace>S\<rbrace> \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> g \<lbrace>S\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> g \<lbrace>S\<rbrace> \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> g \<lbrace>S\<rbrace><\STATESEP>by (clarsimp simp: wpc_helper_def elim!: hoare_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpc_helper_validE:
+  "\<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (clarsimp simp: wpc_helper_def elim!: hoare_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpc_helper_validE_R:
+  "\<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>,- \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, - \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, -<\STATESEP>by (clarsimp simp: wpc_helper_def elim!: hoare_pre)<\STATESEP>1<\TRANSEP><\STATESEP>lemma wpc_helper_validR_R:
+  "\<lbrace>Q\<rbrace> f -,\<lbrace>E\<rbrace> \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> f -, \<lbrace>E\<rbrace> \<Longrightarrow> wpc_helper (P, P', P'') (Q, Q', Q'') \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace><\STATESEP>by (clarsimp simp: wpc_helper_def elim!: hoare_pre)<\STATESEP>1<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>" wpc_helper_valid<\STATESEP>0<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>" wpc_helper_validE<\STATESEP>0<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>,-" wpc_helper_validE_R<\STATESEP>0<\TRANSEP><\STATESEP>wpc_setup "\<lambda>m. \<lbrace>P\<rbrace> m -,\<lbrace>E\<rbrace>" wpc_helper_validR_R<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Hoare Logic Rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma bind_wp[wp_split]:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= (\<lambda>rv. g rv) \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp: valid_def bind_def' intro: image_eqI[rotated])<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_wp[wp_split]:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>,\<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E (\<lambda>rv. g rv) \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E g \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def2 bindE_def bind_def throwError_def return_def lift_def
+               split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_R_wp:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>,-; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>,-\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E (\<lambda>rv. g rv) \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>, -; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E g \<lbrace>Q\<rbrace>, -<\STATESEP>apply (clarsimp simp: validE_R_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E g \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (wp | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_E_wp:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv -,\<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>,\<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E (\<lambda>rv. g rv) -,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv -, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E g -, \<lbrace>E\<rbrace><\STATESEP>apply (clarsimp simp: validE_E_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>=E g \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (wp | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bind_wp_fwd = bind_wp[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bindE_wp_fwd = bindE_wp[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemma bind_wpE_R:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>,-; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= (\<lambda>rv. g rv) \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>, -; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g \<lbrace>Q\<rbrace>, -<\STATESEP>apply (clarsimp simp: validE_R_def validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s\<rbrace><\STATESEP>by (wp | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_wpE_E:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv -,\<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= (\<lambda>rv. g rv) -,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv -, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g -, \<lbrace>E\<rbrace><\STATESEP>apply (clarsimp simp: validE_E_def validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> True\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> True\<rbrace><\STATESEP>by (wp | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_wpE:
+  "\<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= (\<lambda>rv. g rv) \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>apply (clarsimp simp: validE_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv. \<lbrace>Q' rv\<rbrace> g rv \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= g \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace><\STATESEP>by (wp | assumption)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_TrueI:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. \<top>\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (simp add: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoareE_TrueI:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. \<top>\<rbrace>, \<lbrace>\<lambda>_. \<top>\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (simp add: validE_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoareE_R_TrueI:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. \<top>\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, -<\STATESEP>by (auto simp: validE_R_def validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoareE_E_TrueI:
+  "\<lbrace>P\<rbrace> f -,\<lbrace>\<lambda>_. \<top>\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f -, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (auto simp: validE_E_def validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas wp_post_taut = hoare_TrueI[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas wp_post_tautE = hoareE_TrueI[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas wp_post_tautE_R = hoareE_R_TrueI[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas wp_post_tautE_E = hoareE_E_TrueI[where P=\<top>]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas wp_post_tauts[intro] = wp_post_taut wp_post_tautE wp_post_tautE_R wp_post_tautE_E<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_post_conj[intro]:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q and R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q and R\<rbrace><\STATESEP>by (fastforce simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_pre_disj[intro]:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>; \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P or Q\<rbrace> f \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>; \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P or Q\<rbrace> f \<lbrace>R\<rbrace><\STATESEP>by (simp add:valid_def pred_disj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_conj:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>Q and Q'\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>Q and Q'\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s'); \<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q' r s')\<rbrakk> \<Longrightarrow> \<forall>s. (P and P') s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). (Q and Q') r s')<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_pre_cont[simp]:
+  "\<lbrace>\<bottom>\<rbrace> f \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. False\<rbrace> f \<lbrace>P\<rbrace><\STATESEP>by (simp add:valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_FalseE[simp]:
+  "\<lbrace>\<bottom>\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. False\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: valid_def validE_def)
+
+\<comment> \<open>FIXME: remove?\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_return_drop_var[iff]:
+  "\<lbrace>Q\<rbrace> return x \<lbrace>\<lambda>r. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> return x \<lbrace>\<lambda>r. Q\<rbrace><\STATESEP>by (simp add: valid_def return_def)
+
+\<comment> \<open>FIXME: remove?\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_gets[intro]:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> Q (f s) s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> gets f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> Q (f s) s) \<Longrightarrow> \<lbrace>P\<rbrace> gets f \<lbrace>Q\<rbrace><\STATESEP>by (simp add:valid_def gets_def get_def bind_def return_def)
+
+\<comment> \<open>FIXME: remove?\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_modifyE_var:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> Q (f s) \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> modify f \<lbrace>\<lambda>_ s. Q s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> Q (f s)) \<Longrightarrow> \<lbrace>P\<rbrace> modify f \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by(simp add: valid_def modify_def put_def get_def bind_def)
+
+\<comment> \<open>FIXME: remove?\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_if:
+  "\<lbrakk> P \<Longrightarrow> \<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>; \<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> b \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>Q\<rbrace> if P then a else b \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> \<lbrace>Q\<rbrace> a \<lbrace>R\<rbrace>; \<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> b \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>Q\<rbrace> if P then a else b \<lbrace>R\<rbrace><\STATESEP>by (simp add: valid_def)
+
+\<comment> \<open>FIXME: remove?\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_pre_subst:
+  "\<lbrakk> A = B; \<lbrace>A\<rbrace> a \<lbrace>C\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>B\<rbrace> a \<lbrace>C\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>A = B; \<lbrace>A\<rbrace> a \<lbrace>C\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>B\<rbrace> a \<lbrace>C\<rbrace><\STATESEP>by (erule subst)
+
+\<comment> \<open>FIXME: remove?\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_subst:
+  "\<lbrakk> B = C; \<lbrace>A\<rbrace> a \<lbrace>B\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> a \<lbrace>C\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>B = C; \<lbrace>A\<rbrace> a \<lbrace>B\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>A\<rbrace> a \<lbrace>C\<rbrace><\STATESEP>by (erule subst)
+
+\<comment> \<open>FIXME: change R to Q and Q to Q'\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_imp:
+  "\<lbrakk> \<And>rv s. Q rv s \<Longrightarrow> R rv s; \<lbrace>P\<rbrace> a \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv s. Q rv s \<Longrightarrow> R rv s; \<lbrace>P\<rbrace> a \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace><\STATESEP>by(fastforce simp:valid_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_impE:
+  "\<lbrakk> \<And>rv s. Q rv s \<Longrightarrow> R rv s; \<And>e s. E e s \<Longrightarrow> F e s; \<lbrace>P\<rbrace> a \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>,\<lbrace>F\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv s. Q rv s \<Longrightarrow> R rv s; \<And>e s. E e s \<Longrightarrow> F e s; \<lbrace>P\<rbrace> a \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>R\<rbrace>, \<lbrace>F\<rbrace><\STATESEP>by(fastforce simp: validE_def2 split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_strengthen_post = hoare_post_imp[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_strengthen_postE = hoare_post_impE[rotated 2]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_strengthen_postE_R:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>,-; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, -; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>unfolding validE_R_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (erule hoare_post_impE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_strengthen_postE_E:
+  "\<lbrakk> \<lbrace>P\<rbrace> f -,\<lbrace>Q'\<rbrace>; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f -,\<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f -, \<lbrace>Q'\<rbrace>; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>Q\<rbrace><\STATESEP>unfolding validE_E_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>Q'\<rbrace>; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>Q\<rbrace><\STATESEP>by (rule hoare_post_impE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_validE_cases:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_imp_dc:
+  "\<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. Q\<rbrace>; \<And>s. Q s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace>, \<lbrace>\<lambda>_. R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. Q\<rbrace>; \<And>s. Q s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace>, \<lbrace>\<lambda>_. R\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_imp_dc2:
+  "\<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. Q\<rbrace>; \<And>s. Q s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace>, \<lbrace>\<lambda>_. \<top>\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. Q\<rbrace>; \<And>s. Q s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_imp_dc2E:
+  "\<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. Q\<rbrace>; \<And>s. Q s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. \<top>\<rbrace>, \<lbrace>\<lambda>_. R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. Q\<rbrace>; \<And>s. Q s \<Longrightarrow> R s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_. R\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_imp_dc2_actual:
+  "\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace>, \<lbrace>\<lambda>_. \<top>\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (rule hoare_post_imp_dc2)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_imp_dc2E_actual:
+  "\<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. \<top>\<rbrace>, \<lbrace>\<lambda>_. R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. R\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>\<lambda>_. R\<rbrace><\STATESEP>by (rule hoare_post_imp_dc2E)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_conjD1:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and R rv\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and R rv\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). (Q r and R r) s') \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s')<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_conjD2:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and R rv\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. R rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and R rv\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). (Q r and R r) s') \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). R r s')<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_disjI1:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv or R rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv or R rv\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s') \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). (Q r or R r) s')<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_disjI2:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. R rv\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv or R rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv or R rv\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). R r s') \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). (Q r or R r) s')<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_valid:
+  "\<lbrakk>(r, s') \<in> fst (f s); \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; P s \<rbrakk> \<Longrightarrow> Q r s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(r, s') \<in> fst (f s); \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; P s\<rbrakk> \<Longrightarrow> Q r s'<\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(r, s') \<in> fst (f s); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s'); P s\<rbrakk> \<Longrightarrow> Q r s'<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemmas post_by_hoare = use_valid[rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemma use_valid_inv:
+  assumes step: "(r, s') \<in> fst (f s)"
+  assumes pres: "\<And>N. \<lbrace>\<lambda>s. N (P s) \<and> E s\<rbrace> f \<lbrace>\<lambda>rv s. N (P s)\<rbrace>"
+  shows "E s \<Longrightarrow> P s = P s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. E s \<Longrightarrow> P s = P s'<\STATESEP>using use_valid[where f=f, OF step pres[where N="\<lambda>p. p = P s"]]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+P s = P s \<and> E s \<Longrightarrow> P s' = P s
+
+goal (1 subgoal):
+ 1. E s \<Longrightarrow> P s = P s'<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_validE_norm:
+  "\<lbrakk> (Inr r', s') \<in> fst (B s); \<lbrace> P \<rbrace> B \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>; P s \<rbrakk> \<Longrightarrow> Q r' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(Inr r', s') \<in> fst (B s); \<lbrace>P\<rbrace> B \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; P s\<rbrakk> \<Longrightarrow> Q r' s'<\STATESEP>unfolding validE_def valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(Inr r', s') \<in> fst (B s); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (B s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s'); P s\<rbrakk> \<Longrightarrow> Q r' s'<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma use_validE_except:
+  "\<lbrakk> (Inl r', s') \<in> fst (B s); \<lbrace> P \<rbrace> B \<lbrace> Q \<rbrace>,\<lbrace> E \<rbrace>; P s \<rbrakk> \<Longrightarrow> E r' s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(Inl r', s') \<in> fst (B s); \<lbrace>P\<rbrace> B \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; P s\<rbrakk> \<Longrightarrow> E r' s'<\STATESEP>unfolding validE_def valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(Inl r', s') \<in> fst (B s); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (B s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s'); P s\<rbrakk> \<Longrightarrow> E r' s'<\STATESEP>by force<\STATESEP>1<\TRANSEP><\STATESEP>lemma in_inv_by_hoareD:
+  "\<lbrakk> \<And>P. f \<lbrace>P\<rbrace>; (x,s') \<in> fst (f s) \<rbrakk> \<Longrightarrow> s' = s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>P. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. P\<rbrace>; (x, s') \<in> fst (f s)\<rbrakk> \<Longrightarrow> s' = s<\STATESEP>by (auto simp add: valid_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Misc\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_gen_asm:
+  "(P \<Longrightarrow> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P' and K P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P' and K P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp add: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_gen_asm_single = hoare_gen_asm[where P'="\<top>", simplified pred_conj_def simp_thms]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_gen_asm_lk:
+  "(P \<Longrightarrow> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>K P and P'\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>K P and P'\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp add: valid_def)
+
+\<comment> \<open>Useful for forward reasoning, when P is known.
+    The first version allows weakening the precondition.\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_gen_asm_spec':
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> S \<and> R s; S \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. P s \<Longrightarrow> S \<and> R s; S \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (fastforce simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_gen_asm_spec:
+  "\<lbrakk> \<And>s. P s \<Longrightarrow> S; S \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. P s \<Longrightarrow> S; S \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (rule hoare_gen_asm_spec'[where S=S and R=P]) simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_conjI:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q r s \<and> R r s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q r s \<and> R r s\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s'); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). R r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s' \<and> R r s')<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_disjI1:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> R rv s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> R rv s\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s') \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s' \<or> R r s')<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_disjI2:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> R rv s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> R rv s\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). R r s') \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s' \<or> R r s')<\STATESEP>by blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_assume_pre:
+  "(\<And>s. P s \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (auto simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_assume_preE:
+  "(\<And>s. P s \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s. P s \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace><\STATESEP>by (auto simp: valid_def validE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_allI:
+  "(\<And>x. \<lbrace>P\<rbrace>f\<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace>f\<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P\<rbrace> f \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace><\STATESEP>by (simp add: valid_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_allI:
+  "(\<And>x. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q x r s\<rbrace>,\<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P\<rbrace> f \<lbrace>Q x\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: valid_def validE_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_exI:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q x\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. \<exists>x. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q x\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. \<exists>x. Q x rv s\<rbrace><\STATESEP>by (simp add: valid_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_impI:
+  "(R \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (R \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (simp add: valid_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_impI:
+  "\<lbrakk>\<And>E. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>,\<lbrace>E\<rbrace>; (P' \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>)\<rbrakk> \<Longrightarrow>
+   \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. P' \<longrightarrow> Q rv s\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>E. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>E\<rbrace>; P' \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. P' \<longrightarrow> Q rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_case_option_wp:
+  "\<lbrakk> \<lbrace>P\<rbrace> f None \<lbrace>Q\<rbrace>; \<And>x.  \<lbrace>P' x\<rbrace> f (Some x) \<lbrace>Q' x\<rbrace> \<rbrakk>
+  \<Longrightarrow> \<lbrace>case_option P P' v\<rbrace> f v \<lbrace>\<lambda>rv. case v of None \<Rightarrow> Q rv | Some x \<Rightarrow> Q' x rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f None \<lbrace>Q\<rbrace>; \<And>x. \<lbrace>P' x\<rbrace> f (Some x) \<lbrace>Q' x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>case v of None \<Rightarrow> P | Some x \<Rightarrow> P' x\<rbrace> f v \<lbrace>\<lambda>rv. case v of None \<Rightarrow> Q rv | Some x \<Rightarrow> Q' x rv\<rbrace><\STATESEP>by (cases v) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_case_option_wp2:
+  "\<lbrakk> \<lbrace>P\<rbrace> f None \<lbrace>Q\<rbrace>; \<And>x.  \<lbrace>P' x\<rbrace> f (Some x) \<lbrace>Q' x\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>case_option P P' v\<rbrace> f v \<lbrace>\<lambda>rv s. case v of None \<Rightarrow> Q rv s | Some x \<Rightarrow> Q' x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f None \<lbrace>Q\<rbrace>; \<And>x. \<lbrace>P' x\<rbrace> f (Some x) \<lbrace>Q' x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>case v of None \<Rightarrow> P | Some x \<Rightarrow> P' x\<rbrace> f v \<lbrace>\<lambda>rv s. case v of None \<Rightarrow> Q rv s | Some x \<Rightarrow> Q' x rv s\<rbrace><\STATESEP>by (cases v) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_when_cases:
+  "\<lbrakk>\<And>s. \<lbrakk>\<not>B; P s\<rbrakk> \<Longrightarrow> Q s; B \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> when B f \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. \<lbrakk>\<not> B; P s\<rbrakk> \<Longrightarrow> Q s; B \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> when B f \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by (cases B; simp add: valid_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_prop:
+  "\<lbrace>\<lambda>s. P\<rbrace> f \<lbrace>\<lambda>rv s. P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P\<rbrace> f \<lbrace>\<lambda>rv s. P\<rbrace><\STATESEP>by (simp add: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>@{const valid} and @{const validE}, @{const validE_R}, @{const validE_E}\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_validE:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by (rule hoare_post_imp_dc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_validE2:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q'\<rbrace>; \<And>s. Q' s \<Longrightarrow> Q s; \<And>s. Q' s \<Longrightarrow> E s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, \<lbrace>\<lambda>_. E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q'\<rbrace>; \<And>s. Q' s \<Longrightarrow> Q s; \<And>s. Q' s \<Longrightarrow> E s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, \<lbrace>\<lambda>_. E\<rbrace><\STATESEP>unfolding valid_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q' s'); \<And>s. Q' s \<Longrightarrow> Q s; \<And>s. Q' s \<Longrightarrow> E s\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E s' | Inr r \<Rightarrow> Q s')<\STATESEP>by (clarsimp split: sum.splits) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_valid:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>unfolding validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> Q s | _ \<Rightarrow> Q s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_validE_R:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace>, -<\STATESEP>by (simp add: validE_R_def hoare_strengthen_postE[OF valid_validE])<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_validE_E:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -,\<lbrace>\<lambda>_. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>\<lambda>_. Q\<rbrace><\STATESEP>by (simp add: validE_E_def hoare_strengthen_postE[OF valid_validE])<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_validE_R:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>\<top>\<top>\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>by (simp add: validE_R_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_R_validE:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,- \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>\<top>\<top>\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, - \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (simp add: validE_R_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_validE_E:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<top>\<top>\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace><\STATESEP>by (simp add: validE_E_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_E_validE:
+  "\<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<top>\<top>\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: validE_E_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_eq_valid:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q\<rbrace>,\<lbrace>\<lambda>rv. Q\<rbrace> = \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q\<rbrace>, \<lbrace>\<lambda>rv. Q\<rbrace> = \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q\<rbrace><\STATESEP>by (simp add: validE_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>@{const liftM}\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_liftM_subst:
+  "\<lbrace>P\<rbrace> liftM f m \<lbrace>Q\<rbrace> = \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> liftM f m \<lbrace>Q\<rbrace> = \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace><\STATESEP>unfolding liftM_def bind_def return_def split_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> \<lambda>s. (\<Union> (fst ` (\<lambda>p. ({(f (fst p), snd p)}, False)) ` fst (m s)), True \<in> snd ` (\<lambda>p. ({(f (fst p), snd p)}, False)) ` fst (m s) \<or> snd (m s)) \<lbrace>Q\<rbrace> = \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace><\STATESEP>by (fastforce simp: valid_def Ball_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_liftME_subst:
+  "\<lbrace>P\<rbrace> liftME f m \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> = \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> liftME f m \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> = \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding validE_def liftME_liftM hoare_liftM_subst o_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>x s. case case x of Inl x \<Rightarrow> Inl x | Inr x \<Rightarrow> Inr (f x) of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace> = \<lbrace>P\<rbrace> m \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q (f r) s\<rbrace><\STATESEP>by (fastforce intro!: arg_cong[where f="valid P m"] split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_validE[simp]:
+  "\<lbrace>P\<rbrace> liftE f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> = \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> liftE f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> = \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (simp add: liftE_liftM validE_def hoare_liftM_subst o_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Operator lifting/splitting\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_vcg_if_split:
+  "\<lbrakk> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>; \<not>P \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>S\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not>P \<longrightarrow> R s)\<rbrace> if P then f else g \<lbrace>S\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>; \<not> P \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>S\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)\<rbrace> if P then f else g \<lbrace>S\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_if_splitE:
+  "\<lbrakk> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>,\<lbrace>E\<rbrace>; \<not>P \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>S\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not>P \<longrightarrow> R s)\<rbrace> if P then f else g \<lbrace>S\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>, \<lbrace>E\<rbrace>; \<not> P \<Longrightarrow> \<lbrace>R\<rbrace> g \<lbrace>S\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (P \<longrightarrow> Q s) \<and> (\<not> P \<longrightarrow> R s)\<rbrace> if P then f else g \<lbrace>S\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_split_case_option:
+  "\<lbrakk> \<And>x. x = None \<Longrightarrow> \<lbrace>P x\<rbrace> f x \<lbrace>R x\<rbrace>; \<And>x y. x = Some y \<Longrightarrow> \<lbrace>Q x y\<rbrace> g x y \<lbrace>R x\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>\<lambda>s. (x = None \<longrightarrow> P x s) \<and> (\<forall>y. x = Some y \<longrightarrow> Q x y s)\<rbrace>
+       case x of None \<Rightarrow> f x | Some y \<Rightarrow> g x y
+       \<lbrace>R x\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. x = None \<Longrightarrow> \<lbrace>P x\<rbrace> f x \<lbrace>R x\<rbrace>; \<And>x y. x = Some y \<Longrightarrow> \<lbrace>Q x y\<rbrace> g x y \<lbrace>R x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (x = None \<longrightarrow> P x s) \<and> (\<forall>y. x = Some y \<longrightarrow> Q x y s)\<rbrace> case x of None \<Rightarrow> f x | Some y \<Rightarrow> g x y \<lbrace>R x\<rbrace><\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_split_case_optionE:
+  "\<lbrakk> \<And>x. x = None \<Longrightarrow> \<lbrace>P x\<rbrace> f x \<lbrace>R x\<rbrace>,\<lbrace>E x\<rbrace>; \<And>x y. x = Some y \<Longrightarrow> \<lbrace>Q x y\<rbrace> g x y \<lbrace>R x\<rbrace>,\<lbrace>E x\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>\<lambda>s. (x = None \<longrightarrow> P x s) \<and> (\<forall>y. x = Some y \<longrightarrow> Q x y s)\<rbrace>
+       case x of None \<Rightarrow> f x | Some y \<Rightarrow> g x y
+       \<lbrace>R x\<rbrace>, \<lbrace>E x\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. x = None \<Longrightarrow> \<lbrace>P x\<rbrace> f x \<lbrace>R x\<rbrace>, \<lbrace>E x\<rbrace>; \<And>x y. x = Some y \<Longrightarrow> \<lbrace>Q x y\<rbrace> g x y \<lbrace>R x\<rbrace>, \<lbrace>E x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (x = None \<longrightarrow> P x s) \<and> (\<forall>y. x = Some y \<longrightarrow> Q x y s)\<rbrace> case x of None \<Rightarrow> f x | Some y \<Rightarrow> g x y \<lbrace>R x\<rbrace>, \<lbrace>E x\<rbrace><\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_split_case_sum:
+  "\<lbrakk> \<And>x a. x = Inl a \<Longrightarrow> \<lbrace>P x a\<rbrace> f x a \<lbrace>R x\<rbrace>; \<And>x b. x = Inr b \<Longrightarrow> \<lbrace>Q x b\<rbrace> g x b \<lbrace>R x\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>a. x = Inl a \<longrightarrow> P x a s) \<and> (\<forall>b. x = Inr b \<longrightarrow> Q x b s)\<rbrace>
+       case x of Inl a \<Rightarrow> f x a | Inr b \<Rightarrow> g x b
+       \<lbrace>R x\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x a. x = Inl a \<Longrightarrow> \<lbrace>P x a\<rbrace> f x a \<lbrace>R x\<rbrace>; \<And>x b. x = Inr b \<Longrightarrow> \<lbrace>Q x b\<rbrace> g x b \<lbrace>R x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>a. x = Inl a \<longrightarrow> P x a s) \<and> (\<forall>b. x = Inr b \<longrightarrow> Q x b s)\<rbrace> case x of Inl a \<Rightarrow> f x a | Inr b \<Rightarrow> g x b \<lbrace>R x\<rbrace><\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_wp_nobind:
+  "\<lbrakk> \<lbrace>Q'\<rbrace> g \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> do f; g od \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q'\<rbrace> g \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> do f;
+g
+od \<lbrace>Q\<rbrace><\STATESEP>by (erule bind_wp_fwd) (clarsimp simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bindE_wp_nobind:
+  "\<lbrakk> \<lbrace>Q'\<rbrace> g \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q'\<rbrace>, \<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> doE f; g odE \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q'\<rbrace> g \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_. Q'\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> doE f;
+g
+odE \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (erule bindE_wp_fwd) (clarsimp simp: validE_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas bind_wp_skip = bind_wp[where Q=Q and Q'=Q for Q]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_chain:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<And>s. R s \<Longrightarrow> P s; \<And>rv s. Q rv s \<Longrightarrow> S rv s \<rbrakk> \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>S\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<And>s. R s \<Longrightarrow> P s; \<And>rv s. Q rv s \<Longrightarrow> S rv s\<rbrakk> \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>S\<rbrace><\STATESEP>by (wp_pre, rule hoare_post_imp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_chainE:
+  "\<lbrakk> \<lbrace>P'\<rbrace> A \<lbrace>Q'\<rbrace>,\<lbrace>E'\<rbrace>; \<And>s. P s \<Longrightarrow> P' s; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s; \<And>rv s. E' rv s \<Longrightarrow> E rv s \<rbrakk>
+   \<Longrightarrow> \<lbrace>P\<rbrace> A \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> A \<lbrace>Q'\<rbrace>, \<lbrace>E'\<rbrace>; \<And>s. P s \<Longrightarrow> P' s; \<And>rv s. Q' rv s \<Longrightarrow> Q rv s; \<And>rv s. E' rv s \<Longrightarrow> E rv s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> A \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by wp_pre (rule hoare_post_impE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_conj_lift:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s'); \<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q' r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<and> P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s' \<and> Q' r s')<\STATESEP>by fastforce
+
+\<comment> \<open>A variant which works nicely with subgoals that do not contain schematics\<close><\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_vcg_conj_lift_pre_fix = hoare_vcg_conj_lift[where P=R and P'=R for R, simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_vcg_conj_liftE1:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding valid_def validE_R_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s'); \<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q' r s')\<rbrakk> \<Longrightarrow> \<forall>s. (P and P') s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s' \<and> Q' r s')<\STATESEP>by (fastforce simp: split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_conj_liftE2:
+  "\<lbrakk> \<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>\<lambda>rv s. E rv s \<and> E' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv s. E rv s \<and> E' rv s\<rbrace><\STATESEP>unfolding valid_def validE_E_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> True); \<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E' e s' | Inr r \<Rightarrow> Q r s')\<rbrakk> \<Longrightarrow> \<forall>s. (P and P') s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' \<and> E' e s' | Inr r \<Rightarrow> Q r s')<\STATESEP>by (fastforce simp: split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_conj_liftE_weaker:
+  assumes "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>"
+  assumes "\<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>"
+  shows "\<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace>
+ 2. \<And>s. P s \<and> P' s \<Longrightarrow> ?Q s<\STATESEP>apply (fastforce intro: assms hoare_vcg_conj_liftE1 validE_validE_R hoare_post_impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. P s \<and> P' s \<Longrightarrow> (P and P') s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_disj_lift:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s'); \<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q' r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<or> P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s' \<or> Q' r s')<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_disj_lift_R:
+  assumes x: "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-"
+  assumes y: "\<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>,-"
+  shows      "\<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace>, -<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -
+\<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, -
+
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s \<or> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<or> Q' rv s\<rbrace>, -<\STATESEP>by (fastforce simp: validE_R_def validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_Ball_lift:
+  "\<lbrakk> \<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x\<in>S. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x\<in>S. Q x rv s\<rbrace><\STATESEP>by (fastforce simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_Ball_liftE:
+  "\<lbrakk> \<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>,\<lbrace>E\<rbrace>; \<lbrace>\<lambda>s. True\<rbrace> f \<lbrace>\<lambda>r s. True\<rbrace>, \<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x\<in>S. Q x rv s\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>\<lambda>s. True\<rbrace> f \<lbrace>\<lambda>r s. True\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x\<in>S. Q x rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_Ball_lift_R:
+ "\<lbrakk> \<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>,- \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x \<in> S. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x \<in> S. Q x rv s\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>, -) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x\<in>S. Q x rv s\<rbrace>, -<\STATESEP>unfolding validE_R_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q x r s\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> \<forall>x\<in>S. Q x r s\<rbrace><\STATESEP>by (rule hoare_strengthen_post)
+     (fastforce intro!: hoare_vcg_const_Ball_lift split: sum.splits)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_Ball_lift_E_E:
+ "(\<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f -,\<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x \<in> S. P x s\<rbrace> f -,\<lbrace>\<lambda>rv s. \<forall>x \<in> S. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> S \<Longrightarrow> \<lbrace>P x\<rbrace> f -, \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x\<in>S. P x s\<rbrace> f -, \<lbrace>\<lambda>rv s. \<forall>x\<in>S. Q x rv s\<rbrace><\STATESEP>unfolding validE_E_def validE_def valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. x \<in> S \<Longrightarrow> \<forall>s. P x s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> Q x e s' | Inr r \<Rightarrow> True)) \<Longrightarrow> \<forall>s. (\<forall>x\<in>S. P x s) \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> \<forall>x\<in>S. Q x e s' | Inr r \<Rightarrow> True)<\STATESEP>by (fastforce split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_all_lift:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace><\STATESEP>by (fastforce simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_all_liftE:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_all_liftE_R:
+  "(\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>, -) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>, -) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>, -<\STATESEP>by (rule hoare_vcg_const_Ball_lift_R[where S=UNIV, simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_all_liftE_E:
+  "(\<And>x. \<lbrace>P x\<rbrace> f -, \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f -,\<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f -, \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s\<rbrace> f -, \<lbrace>\<lambda>rv s. \<forall>x. Q x rv s\<rbrace><\STATESEP>by (rule hoare_vcg_const_Ball_lift_E_E[where S=UNIV, simplified])<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_lift:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (simp only: imp_conv_disj) (rule hoare_vcg_disj_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_lift':
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (wpsimp wp: hoare_vcg_imp_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_liftE:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_liftE':
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<rbrakk>
+   \<Longrightarrow> \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_lift_R:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, -; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, - \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, -; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, -<\STATESEP>by (auto simp add: valid_def validE_R_def validE_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_lift_R':
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, -; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, - \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<not>P' s \<longrightarrow> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>, -; \<lbrace>Q'\<rbrace> f \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>, -<\STATESEP>by (auto simp add: valid_def validE_R_def validE_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_liftE_E:
+  "\<lbrakk>\<lbrace>P'\<rbrace> f -, \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f -, \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f -, \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P' s \<or> Q' s\<rbrace> f -, \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (auto simp add: valid_def validE_E_def validE_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_liftE_E':
+  "\<lbrakk>\<lbrace>P'\<rbrace> f -, \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f -, \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f -, \<lbrace>\<lambda>rv s. \<not> P rv s\<rbrace>; \<lbrace>Q'\<rbrace> f -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<not> P' s \<longrightarrow> Q' s\<rbrace> f -, \<lbrace>\<lambda>rv s. P rv s \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (auto simp add: valid_def validE_E_def validE_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_imp_conj_lift[wp_comb]:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<longrightarrow> Q' rv s\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q'' rv s) \<and> Q''' rv s\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>P and P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q' rv s \<and> Q'' rv s) \<and> Q''' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<longrightarrow> Q' rv s\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q'' rv s) \<and> Q''' rv s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q' rv s \<and> Q'' rv s) \<and> Q''' rv s\<rbrace><\STATESEP>by (auto simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_vcg_imp_conj_lift'[wp_unsafe] = hoare_vcg_imp_conj_lift[where Q'''="\<top>\<top>", simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_absorb_imp:
+  "\<lbrace> P \<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> R rv s\<rbrace> \<Longrightarrow> \<lbrace> P \<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<longrightarrow> R rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> R rv s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<longrightarrow> R rv s\<rbrace><\STATESEP>by (erule hoare_post_imp[rotated], blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_weaken_imp:
+  "\<lbrakk> \<And>rv s. Q rv s \<Longrightarrow> Q' rv s ;  \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q' rv s \<longrightarrow> R rv s\<rbrace> \<rbrakk>
+    \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<longrightarrow> R rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>rv s. Q rv s \<Longrightarrow> Q' rv s; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q' rv s \<longrightarrow> R rv s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<longrightarrow> R rv s\<rbrace><\STATESEP>by (clarsimp simp: valid_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_imp_lift:
+  "\<lbrakk> P \<Longrightarrow> \<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace><\STATESEP>by (cases P, simp_all add: hoare_vcg_prop)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_imp_lift_E:
+  "(P \<Longrightarrow> \<lbrace>Q\<rbrace> f -, \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> f -, \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> f -, \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> f -, \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace><\STATESEP>by (fastforce simp: validE_E_def validE_def valid_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_const_imp_lift_R:
+  "(P \<Longrightarrow> \<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>,-) \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>, -) \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>, -<\STATESEP>by (fastforce simp: validE_R_def validE_def valid_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_weak_lift_imp:
+  "\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> P' s\<rbrace> f \<lbrace>\<lambda>rv s. P \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> P' s\<rbrace> f \<lbrace>\<lambda>rv s. P \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (auto simp add: valid_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_weak_lift_impE:
+  "\<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>,\<lbrace>\<lambda>rv s. P \<longrightarrow> E rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>, \<lbrace>\<lambda>rv s. P \<longrightarrow> E rv s\<rbrace><\STATESEP>by (cases P; simp add: validE_def hoare_vcg_prop)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_weak_lift_imp_R:
+  "\<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>,- \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q\<rbrace> m \<lbrace>R\<rbrace>, - \<Longrightarrow> \<lbrace>\<lambda>s. P \<longrightarrow> Q s\<rbrace> m \<lbrace>\<lambda>rv s. P \<longrightarrow> R rv s\<rbrace>, -<\STATESEP>by (cases P; wpsimp wp: wp_post_tautE_R)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_ex_lift:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<exists>x. Q x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<exists>x. Q x rv s\<rbrace><\STATESEP>by (clarsimp simp: valid_def, blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_ex_liftE:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<exists>x. Q x rv s\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q x\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f \<lbrace>\<lambda>rv s. \<exists>x. Q x rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (fastforce simp: validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_ex_liftE_E:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> f -,\<lbrace>E x\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f -,\<lbrace>\<lambda>rv s. \<exists>x. E x rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f -, \<lbrace>E x\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f -, \<lbrace>\<lambda>rv s. \<exists>x. E x rv s\<rbrace><\STATESEP>by (fastforce simp: validE_E_def validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_ex_lift_R1:
+  "(\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q\<rbrace>, -) \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f \<lbrace>Q\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. \<lbrace>P x\<rbrace> f \<lbrace>Q\<rbrace>, -) \<Longrightarrow> \<lbrace>\<lambda>s. \<exists>x. P x s\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>by (fastforce simp: valid_def validE_R_def validE_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_liftP_ext:
+  assumes "\<And>P x. m \<lbrace>\<lambda>s. P (f s x)\<rbrace>"
+  shows "m \<lbrace>\<lambda>s. P (f s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (f s)\<rbrace> m \<lbrace>\<lambda>_ s. P (f s)\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P (f s) \<longrightarrow> (\<forall>(r, s')\<in>fst (m s). P (f s'))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P (f s); (a, b) \<in> fst (m s)\<rbrakk> \<Longrightarrow> P (f b)<\STATESEP>apply (erule subst[rotated, where P=P])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. (a, b) \<in> fst (m s) \<Longrightarrow> f s = f b<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b x. (a, b) \<in> fst (m s) \<Longrightarrow> f s x = f b x<\STATESEP>apply (drule use_valid, rule assms, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b x. ?t21 s a b x (f b (?x17 s a b x)) = ?t20 s a b x (f b (?x17 s a b x)) \<Longrightarrow> f s x = f b x
+flex-flex pairs:
+\<lambda>s a b x. ?t21 s a b x (f s (?x17 s a b x)) \<equiv>\<^sup>? \<lambda>s a b x. ?t20 s a b x (f s (?x17 s a b x))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_triv:    "\<lbrace>P\<rbrace>f\<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace>f\<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_trivE:   "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_trivE_R: "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,- \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, - \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_trivR_R: "\<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace><\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_E_conj:
+  "\<lbrakk> \<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>,\<lbrace>E'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>rv s. E rv s \<and> E' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>\<lambda>rv s. E rv s \<and> E' rv s\<rbrace><\STATESEP>unfolding validE_def validE_E_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> True\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E' e s | Inr r \<Rightarrow> Q' r s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s \<and> E' e s | Inr r \<Rightarrow> Q' r s\<rbrace><\STATESEP>by (rule hoare_post_imp[OF _ hoare_vcg_conj_lift]; simp split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_E_elim:
+  "\<lbrakk> \<lbrace>P\<rbrace> f -,\<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>,- \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (rule hoare_strengthen_postE[OF hoare_vcg_E_conj]) (simp add: validE_R_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_R_conj:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>,- \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -; \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, -<\STATESEP>unfolding validE_R_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q' r s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> True | Inr r \<Rightarrow> Q r s \<and> Q' r s\<rbrace><\STATESEP>by (rule hoare_post_imp[OF _ hoare_vcg_conj_lift]; simp split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_lift_Pf_E_R:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> m \<lbrace>\<lambda>_. P x\<rbrace>, -; \<And>P. \<lbrace>\<lambda>s. P (f s)\<rbrace> m \<lbrace>\<lambda>_ s. P (f s)\<rbrace>, - \<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. P (f s) s\<rbrace> m \<lbrace>\<lambda>_ s. P (f s) s\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>P x\<rbrace> m \<lbrace>\<lambda>_. P x\<rbrace>, -; \<And>P. \<lbrace>\<lambda>s. P (f s)\<rbrace> m \<lbrace>\<lambda>_ s. P (f s)\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (f s) s\<rbrace> m \<lbrace>\<lambda>_ s. P (f s) s\<rbrace>, -<\STATESEP>by (fastforce simp: validE_R_def validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_lift_Pf_E_E:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> m -, \<lbrace>\<lambda>_. P x\<rbrace>; \<And>P. \<lbrace>\<lambda>s. P (f s)\<rbrace> m -, \<lbrace>\<lambda>_ s. P (f s)\<rbrace> \<rbrakk> \<Longrightarrow>
+  \<lbrace>\<lambda>s. P (f s) s\<rbrace> m -, \<lbrace>\<lambda>_ s. P (f s) s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>P x\<rbrace> m -, \<lbrace>\<lambda>_. P x\<rbrace>; \<And>P. \<lbrace>\<lambda>s. P (f s)\<rbrace> m -, \<lbrace>\<lambda>_ s. P (f s)\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P (f s) s\<rbrace> m -, \<lbrace>\<lambda>_ s. P (f s) s\<rbrace><\STATESEP>by (fastforce simp: validE_E_def validE_def valid_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_comb_imp_conj:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>; \<And>s. P s \<Longrightarrow> P' s \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace><\STATESEP>by (wpsimp wp: hoare_vcg_conj_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_if_lift:
+  "\<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (P \<longrightarrow> X rv s) \<and> (\<not>P \<longrightarrow> Y rv s)\<rbrace> \<Longrightarrow>
+   \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. if P then X rv s else Y rv s\<rbrace>"
+
+  "\<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (P \<longrightarrow> X rv s) \<and> (\<not>P \<longrightarrow> Y rv s)\<rbrace> \<Longrightarrow>
+   \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv. if P then X rv else Y rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (P \<longrightarrow> X rv s) \<and> (\<not> P \<longrightarrow> Y rv s)\<rbrace> \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. if P then X rv s else Y rv s\<rbrace>) &&& (\<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv s. (P \<longrightarrow> X rv s) \<and> (\<not> P \<longrightarrow> Y rv s)\<rbrace> \<Longrightarrow> \<lbrace>R\<rbrace> f \<lbrace>\<lambda>rv. if P then X rv else Y rv\<rbrace>)<\STATESEP>by (auto simp: valid_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_split_lift[wp]:
+  "\<lbrace>P\<rbrace> f x y \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> case (x, y) of (a, b) \<Rightarrow> f a b \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f x y \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> case (x, y) of (a, b) \<Rightarrow> f a b \<lbrace>Q\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>named_theorems hoare_vcg_op_lift<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [hoare_vcg_op_lift] =
+  hoare_vcg_const_imp_lift
+  hoare_vcg_const_imp_lift_E
+  hoare_vcg_const_imp_lift_R
+  (* leaving out hoare_vcg_conj_lift*, because that is built into wp *)
+  hoare_vcg_disj_lift
+  hoare_vcg_disj_lift_R
+  hoare_vcg_ex_lift
+  hoare_vcg_ex_liftE
+  hoare_vcg_ex_liftE_E
+  hoare_vcg_all_lift
+  hoare_vcg_all_liftE
+  hoare_vcg_all_liftE_E
+  hoare_vcg_all_liftE_R
+  hoare_vcg_const_Ball_lift
+  hoare_vcg_const_Ball_liftE
+  hoare_vcg_const_Ball_lift_R
+  hoare_vcg_const_Ball_lift_E_E
+  hoare_vcg_split_lift
+  hoare_vcg_if_lift
+  hoare_vcg_imp_lift'
+  hoare_vcg_imp_liftE'
+  hoare_vcg_imp_lift_R'
+  hoare_vcg_imp_liftE_E'<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Weakest Precondition Rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma fail_wp:
+  "\<lbrace>\<top>\<rbrace> fail \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> fail \<lbrace>Q\<rbrace><\STATESEP>by (simp add: valid_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_wp:
+  "\<lbrace>P x\<rbrace> return x \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P x\<rbrace> return x \<lbrace>P\<rbrace><\STATESEP>by(simp add: valid_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma get_wp:
+  "\<lbrace>\<lambda>s. P s s\<rbrace> get \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s s\<rbrace> get \<lbrace>P\<rbrace><\STATESEP>by (simp add: valid_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_wp:
+  "\<lbrace>\<lambda>s. P (f s) s\<rbrace> gets f \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (f s) s\<rbrace> gets f \<lbrace>P\<rbrace><\STATESEP>by(simp add: valid_def split_def gets_def return_def get_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma put_wp:
+  "\<lbrace>\<lambda>_. Q () s\<rbrace> put s \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. Q () s\<rbrace> put s \<lbrace>Q\<rbrace><\STATESEP>by (simp add: put_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_wp:
+  "\<lbrace>\<lambda>s. Q () (f s)\<rbrace> modify f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. Q () (f s)\<rbrace> modify f \<lbrace>Q\<rbrace><\STATESEP>unfolding modify_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. Q () (f s)\<rbrace> do s <- get;
+put (f s)
+od \<lbrace>Q\<rbrace><\STATESEP>by (wp put_wp get_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma failE_wp:
+  "\<lbrace>\<top>\<rbrace> fail \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> fail \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: validE_def fail_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma returnOk_wp:
+  "\<lbrace>P x\<rbrace> returnOk x \<lbrace>P\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P x\<rbrace> returnOk x \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: validE_def2 returnOk_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma throwError_wp:
+  "\<lbrace>E e\<rbrace> throwError e \<lbrace>P\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>E e\<rbrace> throwError e \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by(simp add: validE_def2 throwError_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma returnOKE_R_wp:
+  "\<lbrace>P x\<rbrace> returnOk x \<lbrace>P\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P x\<rbrace> returnOk x \<lbrace>P\<rbrace>, -<\STATESEP>by (simp add: validE_R_def validE_def valid_def returnOk_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_wp:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> liftE f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> liftE f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma catch_wp:
+  "\<lbrakk> \<And>x. \<lbrace>E x\<rbrace> handler x \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> catch f handler \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>E x\<rbrace> handler x \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <catch> handler \<lbrace>Q\<rbrace><\STATESEP>unfolding catch_def valid_def validE_def return_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<forall>s. E x s \<longrightarrow> (\<forall>(r, s')\<in>fst (handler x s). Q r s'); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst ((f >>= case_sum handler (\<lambda>b s. ({(b, s)}, False))) s). Q r s')<\STATESEP>by (fastforce simp: bind_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handleE'_wp:
+  "\<lbrakk> \<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>F\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <handle2> handler \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>F\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <handle2> handler \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding handleE'_def valid_def validE_def return_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<forall>s. F x s \<longrightarrow> (\<forall>(r, s')\<in>fst (handler x s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s'); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> F e s' | Inr r \<Rightarrow> Q r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst ((f >>= case_sum handler (\<lambda>v' s. ({(Inr v', s)}, False))) s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s')<\STATESEP>by (fastforce simp: bind_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma handleE_wp:
+  assumes x: "\<And>x. \<lbrace>F x\<rbrace> handler x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"
+  assumes y: "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>F\<rbrace>"
+  shows      "\<lbrace>P\<rbrace> f <handle> handler \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f <handle> handler \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: handleE_def handleE'_wp [OF x y])<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftM_wp:
+  "\<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> liftM f m \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> liftM f m \<lbrace>Q\<rbrace><\STATESEP>by (simp add: hoare_liftM_subst)<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftME_wp:
+  "\<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> liftME f m \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>Q \<circ> f\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> liftME f m \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: hoare_liftME_subst)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_wp:
+  "\<lbrace>\<lambda>s. P \<longrightarrow> Q () s\<rbrace> assert P \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P \<longrightarrow> Q () s\<rbrace> assert P \<lbrace>Q\<rbrace><\STATESEP>unfolding assert_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P \<longrightarrow> Q () s\<rbrace> if P then return () else fail \<lbrace>Q\<rbrace><\STATESEP>by (wpsimp wp: return_wp fail_wp | rule conjI)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma list_cases_wp:
+  assumes a: "\<lbrace>P_A\<rbrace> a \<lbrace>Q\<rbrace>"
+  assumes b: "\<And>x xs. ts = x#xs \<Longrightarrow> \<lbrace>P_B x xs\<rbrace> b x xs \<lbrace>Q\<rbrace>"
+  shows "\<lbrace>case_list P_A P_B ts\<rbrace> case ts of [] \<Rightarrow> a | x # xs \<Rightarrow> b x xs \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>case ts of [] \<Rightarrow> P_A | x # xa \<Rightarrow> P_B x xa\<rbrace> case ts of [] \<Rightarrow> a | x # xs \<Rightarrow> b x xs \<lbrace>Q\<rbrace><\STATESEP>by (cases ts, auto simp: a b)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_handle_elseE:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>; \<And>e. \<lbrace>E e\<rbrace> g e \<lbrace>R\<rbrace>,\<lbrace>F\<rbrace>; \<And>x. \<lbrace>Q x\<rbrace> h x \<lbrace>R\<rbrace>,\<lbrace>F\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>P\<rbrace> f <handle> g <else> h \<lbrace>R\<rbrace>,\<lbrace>F\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<And>e. \<lbrace>E e\<rbrace> g e \<lbrace>R\<rbrace>, \<lbrace>F\<rbrace>; \<And>x. \<lbrace>Q x\<rbrace> h x \<lbrace>R\<rbrace>, \<lbrace>F\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f <handle> g <else> h \<lbrace>R\<rbrace>, \<lbrace>F\<rbrace><\STATESEP>unfolding handle_elseE_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace>; \<And>e. \<lbrace>E e\<rbrace> g e \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> F e s | Inr r \<Rightarrow> R r s\<rbrace>; \<And>x. \<lbrace>Q x\<rbrace> h x \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> F e s | Inr r \<Rightarrow> R r s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f >>= case_sum g h \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> F e s | Inr r \<Rightarrow> R r s\<rbrace><\STATESEP>by (wpsimp wp: bind_wp_fwd | assumption | rule conjI)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternative_wp:
+  assumes x: "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"
+  assumes y: "\<lbrace>P'\<rbrace> f' \<lbrace>Q\<rbrace>"
+  shows      "\<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace><\STATESEP>unfolding valid_def alternative_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. (P and P') s \<longrightarrow> (\<forall>(r, s')\<in>fst (fst (f s) \<union> fst (f' s), snd (f s) \<or> snd (f' s)). Q r s')<\STATESEP>using post_by_hoare[OF x] post_by_hoare[OF y]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>P ?s; (?r, ?s') \<in> fst (f ?s)\<rbrakk> \<Longrightarrow> Q ?r ?s'
+\<lbrakk>P' ?s; (?r, ?s') \<in> fst (f' ?s)\<rbrakk> \<Longrightarrow> Q ?r ?s'
+
+goal (1 subgoal):
+ 1. \<forall>s. (P and P') s \<longrightarrow> (\<forall>(r, s')\<in>fst (fst (f s) \<union> fst (f' s), snd (f s) \<or> snd (f' s)). Q r s')<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternativeE_wp:
+  assumes "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"
+  assumes "\<lbrace>P'\<rbrace> f' \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"
+  shows   "\<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>\<lambda>v s. case v of Inl e \<Rightarrow> E e s | Inr r \<Rightarrow> Q r s\<rbrace><\STATESEP>by (wpsimp wp: assms alternative_wp | fold validE_def)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternativeE_R_wp:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-; \<lbrace>P'\<rbrace> f' \<lbrace>Q\<rbrace>,- \<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -; \<lbrace>P'\<rbrace> f' \<lbrace>Q\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace>, -<\STATESEP>unfolding validE_R_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>; \<lbrace>P'\<rbrace> f' \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<sqinter> f' \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>_ _. True\<rbrace><\STATESEP>by (rule alternativeE_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma alternativeE_E_wp:
+  "\<lbrakk> \<lbrace>P\<rbrace> f -,\<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> g -,\<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<sqinter> g -, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f -, \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> g -, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<sqinter> g -, \<lbrace>Q\<rbrace><\STATESEP>unfolding validE_E_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> g \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<sqinter> g \<lbrace>\<lambda>_ _. True\<rbrace>, \<lbrace>Q\<rbrace><\STATESEP>by (rule alternativeE_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_wp:
+  "\<lbrace>\<lambda>s. \<forall>x \<in> S. Q x s\<rbrace> select S \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x\<in>S. Q x s\<rbrace> select S \<lbrace>Q\<rbrace><\STATESEP>by (simp add: select_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_f_wp:
+  "\<lbrace>\<lambda>s. \<forall>x\<in>fst S. Q x s\<rbrace> select_f S \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x\<in>fst S. Q x s\<rbrace> select_f S \<lbrace>Q\<rbrace><\STATESEP>by (simp add: select_f_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma state_select_wp:
+  "\<lbrace>\<lambda>s. \<forall>t. (s, t) \<in> f \<longrightarrow> P () t\<rbrace> state_select f \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>t. (s, t) \<in> f \<longrightarrow> P () t\<rbrace> state_select f \<lbrace>P\<rbrace><\STATESEP>unfolding state_select_def2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>t. (s, t) \<in> f \<longrightarrow> P () t\<rbrace> do s <- get;
+S <- return {s'. (s, s') \<in> f};
+assert (S \<noteq> {});
+select S >>= put
+od \<lbrace>P\<rbrace><\STATESEP>by (wpsimp wp: put_wp select_wp return_wp get_wp assert_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma condition_wp:
+  "\<lbrakk> \<lbrace>Q\<rbrace> A \<lbrace>P\<rbrace>; \<lbrace>R\<rbrace> B \<lbrace>P\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then Q s else R s\<rbrace> condition C A B \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>Q\<rbrace> A \<lbrace>P\<rbrace>; \<lbrace>R\<rbrace> B \<lbrace>P\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then Q s else R s\<rbrace> condition C
+  A
+  B \<lbrace>P\<rbrace><\STATESEP>by (clarsimp simp: condition_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma conditionE_wp:
+  "\<lbrakk> \<lbrace>P\<rbrace> A \<lbrace>Q\<rbrace>,\<lbrace>R\<rbrace>; \<lbrace>P'\<rbrace> B \<lbrace>Q\<rbrace>,\<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then P s else P' s\<rbrace> condition C A B \<lbrace>Q\<rbrace>,\<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> A \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace>; \<lbrace>P'\<rbrace> B \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. if C s then P s else P' s\<rbrace> condition C
+  A
+  B \<lbrace>Q\<rbrace>, \<lbrace>R\<rbrace><\STATESEP>by (clarsimp simp: condition_def validE_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma state_assert_wp:
+  "\<lbrace>\<lambda>s. f s \<longrightarrow> P () s\<rbrace> state_assert f \<lbrace>P\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s \<longrightarrow> P () s\<rbrace> state_assert f \<lbrace>P\<rbrace><\STATESEP>unfolding state_assert_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s \<longrightarrow> P () s\<rbrace> do s <- get;
+assert (f s)
+od \<lbrace>P\<rbrace><\STATESEP>by (wp bind_wp_fwd get_wp assert_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma when_wp[wp_split]:
+  "\<lbrakk> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> when P f \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> when P f \<lbrace>R\<rbrace><\STATESEP>by (clarsimp simp: when_def valid_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unless_wp[wp_split]:
+  "(\<not>P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>if P then R () else Q\<rbrace> unless P f \<lbrace>R\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>if P then R () else Q\<rbrace> unless P f \<lbrace>R\<rbrace><\STATESEP>unfolding unless_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>) \<Longrightarrow> \<lbrace>if P then R () else Q\<rbrace> when (\<not> P) f \<lbrace>R\<rbrace><\STATESEP>by wp auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_wp:
+  "(P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> whenE P f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> whenE P f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding whenE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>if P then Q else R ()\<rbrace> if P then f else returnOk () \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by clarsimp (wp returnOk_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma unlessE_wp:
+  "(\<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>if P then R () else Q\<rbrace> unlessE P f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>if P then R () else Q\<rbrace> unlessE P f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding unlessE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<not> P \<Longrightarrow> \<lbrace>Q\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>) \<Longrightarrow> \<lbrace>if P then R () else Q\<rbrace> if P then returnOk () else f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (wpsimp wp: returnOk_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma maybeM_wp:
+  "(\<And>x. y = Some x \<Longrightarrow> \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>) \<Longrightarrow>
+   \<lbrace>\<lambda>s. (\<forall>x. y = Some x \<longrightarrow> P x s) \<and> (y = None \<longrightarrow> Q () s)\<rbrace> maybeM m y \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. y = Some x \<Longrightarrow> \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>x. y = Some x \<longrightarrow> P x s) \<and> (y = None \<longrightarrow> Q () s)\<rbrace> maybeM m y \<lbrace>Q\<rbrace><\STATESEP>unfolding maybeM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>x. y = Some x \<Longrightarrow> \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>\<lambda>s. (\<forall>x. y = Some x \<longrightarrow> P x s) \<and> (y = None \<longrightarrow> Q () s)\<rbrace> case y of None \<Rightarrow> return () | Some x \<Rightarrow> m x \<lbrace>Q\<rbrace><\STATESEP>by (wpsimp wp: return_wp) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma notM_wp:
+  "\<lbrace>P\<rbrace> m \<lbrace>\<lambda>c. Q (\<not> c)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> notM m \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>c. Q (\<not> c)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> notM m \<lbrace>Q\<rbrace><\STATESEP>unfolding notM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>\<lambda>c. Q (\<not> c)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> do c <- m;
+return (\<not> c)
+od \<lbrace>Q\<rbrace><\STATESEP>by (wpsimp wp: return_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ifM_wp:
+  assumes [wp]: "\<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>" "\<lbrace>R\<rbrace> g \<lbrace>S\<rbrace>"
+  assumes [wp]: "\<lbrace>A\<rbrace> P \<lbrace>\<lambda>c s. c \<longrightarrow> Q s\<rbrace>" "\<lbrace>B\<rbrace> P \<lbrace>\<lambda>c s. \<not>c \<longrightarrow> R s\<rbrace>"
+  shows "\<lbrace>A and B\<rbrace> ifM P f g \<lbrace>S\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>A and B\<rbrace> ifM P f g \<lbrace>S\<rbrace><\STATESEP>unfolding ifM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>A and B\<rbrace> do c <- P;
+if c then f else g
+od \<lbrace>S\<rbrace><\STATESEP>by (wpsimp wp: hoare_vcg_if_split hoare_vcg_conj_lift)<\STATESEP>1<\TRANSEP><\STATESEP>lemma andM_wp:
+  assumes [wp]: "\<lbrace>Q'\<rbrace> B \<lbrace>Q\<rbrace>"
+  assumes [wp]: "\<lbrace>P\<rbrace> A \<lbrace>\<lambda>c s. c \<longrightarrow> Q' s\<rbrace>" "\<lbrace>P'\<rbrace> A \<lbrace>\<lambda>c s. \<not> c \<longrightarrow> Q False s\<rbrace>"
+  shows "\<lbrace>P and P'\<rbrace> andM A B \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> andM A B \<lbrace>Q\<rbrace><\STATESEP>unfolding andM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> ifM A B (return False) \<lbrace>Q\<rbrace><\STATESEP>by (wp ifM_wp return_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma orM_wp:
+  assumes [wp]: "\<lbrace>Q'\<rbrace> B \<lbrace>Q\<rbrace>"
+  assumes [wp]: "\<lbrace>P\<rbrace> A \<lbrace>\<lambda>c s. c \<longrightarrow> Q True s\<rbrace>" "\<lbrace>P'\<rbrace> A \<lbrace>\<lambda>c s. \<not> c \<longrightarrow> Q' s\<rbrace>"
+  shows "\<lbrace>P and P'\<rbrace> orM A B \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> orM A B \<lbrace>Q\<rbrace><\STATESEP>unfolding orM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P'\<rbrace> ifM A (return True) B \<lbrace>Q\<rbrace><\STATESEP>by (wp ifM_wp return_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenM_wp:
+  assumes [wp]: "\<lbrace>Q\<rbrace> f \<lbrace>S\<rbrace>"
+  assumes [wp]: "\<lbrace>A\<rbrace> P \<lbrace>\<lambda>c s. c \<longrightarrow> Q s\<rbrace>" "\<lbrace>B\<rbrace> P \<lbrace>\<lambda>c s. \<not>c \<longrightarrow> S () s\<rbrace>"
+  shows "\<lbrace>A and B\<rbrace> whenM P f \<lbrace>S\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>A and B\<rbrace> whenM P f \<lbrace>S\<rbrace><\STATESEP>unfolding whenM_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>A and B\<rbrace> ifM P f (return ()) \<lbrace>S\<rbrace><\STATESEP>by (wp ifM_wp return_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_K_bind[wp_split]:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> K_bind f x \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> K_bind f x \<lbrace>Q\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_K_bind[wp_split]:
+  "\<lbrace> P \<rbrace> x \<lbrace> Q \<rbrace>, \<lbrace> E \<rbrace> \<Longrightarrow> \<lbrace> P \<rbrace> K_bind x f \<lbrace> Q \<rbrace>, \<lbrace> E \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> K_bind x f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_fun_app_wp:
+  "\<lbrace>P\<rbrace> f' x \<lbrace>Q'\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f' $ x \<lbrace>Q'\<rbrace>"
+  "\<lbrace>P\<rbrace> f x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f $ x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"
+  "\<lbrace>P\<rbrace> f x \<lbrace>Q\<rbrace>,- \<Longrightarrow> \<lbrace>P\<rbrace> f $ x \<lbrace>Q\<rbrace>,-"
+  "\<lbrace>P\<rbrace> f x -,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f $ x -,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((\<lbrace>P\<rbrace> f' x \<lbrace>Q'\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f' $ x \<lbrace>Q'\<rbrace>) &&& (\<lbrace>P\<rbrace> f x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f $ x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>)) &&& (\<lbrace>P\<rbrace> f x \<lbrace>Q\<rbrace>, - \<Longrightarrow> \<lbrace>P\<rbrace> f $ x \<lbrace>Q\<rbrace>, -) &&& (\<lbrace>P\<rbrace> f x -, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f $ x -, \<lbrace>E\<rbrace>)<\STATESEP>by simp+<\STATESEP>1<\TRANSEP><\STATESEP>lemma liftE_validE_E:
+  "\<lbrace>\<top>\<rbrace> liftE f -, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> liftE f -, \<lbrace>Q\<rbrace><\STATESEP>by (clarsimp simp: validE_E_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma returnOk_E:
+  "\<lbrace>\<top>\<rbrace> returnOk r -, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> returnOk r -, \<lbrace>Q\<rbrace><\STATESEP>by (simp add: validE_E_def) (wp returnOk_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma case_option_wp:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> m' \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. (x = None \<longrightarrow> P' s) \<and> (x \<noteq> None \<longrightarrow> P (the x) s)\<rbrace> case_option m' m x \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> m' \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (x = None \<longrightarrow> P' s) \<and> (x \<noteq> None \<longrightarrow> P (the x) s)\<rbrace> case x of None \<Rightarrow> m' | Some x \<Rightarrow> m x \<lbrace>Q\<rbrace><\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma case_option_wpE:
+  "\<lbrakk> \<And>x. \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> m' \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>\<lambda>s. (x = None \<longrightarrow> P' s) \<and> (x \<noteq> None \<longrightarrow> P (the x) s)\<rbrace> case_option m' m x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x. \<lbrace>P x\<rbrace> m x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P'\<rbrace> m' \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. (x = None \<longrightarrow> P' s) \<and> (x \<noteq> None \<longrightarrow> P (the x) s)\<rbrace> case x of None \<Rightarrow> m' | Some x \<Rightarrow> m x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (cases x; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas liftME_E_E_wp[wp_split] = validE_validE_E [OF liftME_wp, simplified, OF validE_E_validE]<\STATESEP>0<\TRANSEP><\STATESEP>lemma assert_opt_wp:
+  "\<lbrace>\<lambda>s. x \<noteq> None \<longrightarrow> Q (the x) s\<rbrace> assert_opt x \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. x \<noteq> None \<longrightarrow> Q (the x) s\<rbrace> assert_opt x \<lbrace>Q\<rbrace><\STATESEP>unfolding assert_opt_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. x \<noteq> None \<longrightarrow> Q (the x) s\<rbrace> case x of None \<Rightarrow> fail | Some v \<Rightarrow> return v \<lbrace>Q\<rbrace><\STATESEP>by (cases x; wpsimp wp: fail_wp return_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_wp:
+  "\<lbrace>\<lambda>s. (f s \<noteq> None) \<longrightarrow> Q (the (f s)) s\<rbrace> gets_the f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s \<noteq> None \<longrightarrow> Q (the (f s)) s\<rbrace> gets_the f \<lbrace>Q\<rbrace><\STATESEP>unfolding gets_the_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s \<noteq> None \<longrightarrow> Q (the (f s)) s\<rbrace> gets f >>= assert_opt \<lbrace>Q\<rbrace><\STATESEP>by (wp bind_wp_fwd gets_wp assert_opt_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_wp': (* FIXME: should prefer this one in [wp] *)
+  "\<lbrace>\<lambda>s. \<forall>rv. f s = Some rv \<longrightarrow> Q rv s\<rbrace> gets_the f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>rv. f s = Some rv \<longrightarrow> Q rv s\<rbrace> gets_the f \<lbrace>Q\<rbrace><\STATESEP>unfolding gets_the_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>rv. f s = Some rv \<longrightarrow> Q rv s\<rbrace> gets f >>= assert_opt \<lbrace>Q\<rbrace><\STATESEP>by (wpsimp wp: bind_wp_fwd gets_wp assert_opt_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_map_wp:
+  "\<lbrace>\<lambda>s. f s p \<noteq> None \<longrightarrow> Q (the (f s p)) s\<rbrace> gets_map f p \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s p \<noteq> None \<longrightarrow> Q (the (f s p)) s\<rbrace> gets_map f p \<lbrace>Q\<rbrace><\STATESEP>unfolding gets_map_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. f s p \<noteq> None \<longrightarrow> Q (the (f s p)) s\<rbrace> do m <- gets f;
+assert_opt (m p)
+od \<lbrace>Q\<rbrace><\STATESEP>by (wpsimp wp: bind_wp_fwd gets_wp assert_opt_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_map_wp':
+  "\<lbrace>\<lambda>s. \<forall>rv. f s p = Some rv \<longrightarrow> Q rv s\<rbrace> gets_map f p \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>rv. f s p = Some rv \<longrightarrow> Q rv s\<rbrace> gets_map f p \<lbrace>Q\<rbrace><\STATESEP>unfolding gets_map_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>rv. f s p = Some rv \<longrightarrow> Q rv s\<rbrace> do m <- gets f;
+assert_opt (m p)
+od \<lbrace>Q\<rbrace><\STATESEP>by (wpsimp wp: bind_wp_fwd gets_wp assert_opt_wp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma whenE_throwError_wp:
+  "\<lbrace>\<lambda>s. \<not>Q \<longrightarrow> P s\<rbrace> whenE Q (throwError e) \<lbrace>\<lambda>_. P\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<not> Q \<longrightarrow> P s\<rbrace> whenE Q (throwError e) \<lbrace>\<lambda>_. P\<rbrace>, -<\STATESEP>by (simp add: whenE_def returnOk_def throwError_def return_def validE_R_def validE_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_throwError_wp:
+  "\<lbrace>\<lambda>s. \<forall>x\<in>S. Q x s\<rbrace> select S >>= throwError -, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x\<in>S. Q x s\<rbrace> select S >>= throwError -, \<lbrace>Q\<rbrace><\STATESEP>by (simp add: bind_def throwError_def return_def select_def validE_E_def validE_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Setting up the @{method wp} method\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma valid_is_triple:
+  "valid P f Q = triple_judgement P f (postcondition Q (\<lambda>s f. fst (f s)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> = triple_judgement P f (postcondition Q (\<lambda>s f. fst (f s)))<\STATESEP>by (simp add: triple_judgement_def valid_def postcondition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_is_triple:
+  "validE P f Q E =
+   triple_judgement P f
+     (postconditions (postcondition Q (\<lambda>s f. {(rv, s'). (Inr rv, s') \<in> fst (f s)}))
+                     (postcondition E (\<lambda>s f. {(rv, s'). (Inl rv, s') \<in> fst (f s)})))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> = triple_judgement P f (postconditions (postcondition Q (\<lambda>s f. {(rv, s'). (Inr rv, s') \<in> fst (f s)})) (postcondition E (\<lambda>s f. {(rv, s'). (Inl rv, s') \<in> fst (f s)})))<\STATESEP>by (fastforce simp: validE_def triple_judgement_def valid_def postcondition_def postconditions_def
+                split: sum.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_R_is_triple:
+  "validE_R P f Q =
+   triple_judgement P f (postcondition Q (\<lambda>s f. {(rv, s'). (Inr rv, s') \<in> fst (f s)}))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, - = triple_judgement P f (postcondition Q (\<lambda>s f. {(rv, s'). (Inr rv, s') \<in> fst (f s)}))<\STATESEP>by (simp add: validE_R_def validE_is_triple postconditions_def postcondition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_E_is_triple:
+  "validE_E P f E =
+   triple_judgement P f (postcondition E (\<lambda>s f. {(rv, s'). (Inl rv, s') \<in> fst (f s)}))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f -, \<lbrace>E\<rbrace> = triple_judgement P f (postcondition E (\<lambda>s f. {(rv, s'). (Inl rv, s') \<in> fst (f s)}))<\STATESEP>by (simp add: validE_E_def validE_is_triple postconditions_def postcondition_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_wp_combs = hoare_vcg_conj_lift<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_wp_combsE =
+  validE_validE_R
+  hoare_vcg_R_conj
+  hoare_vcg_E_elim
+  hoare_vcg_E_conj<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_wp_state_combsE =
+  valid_validE_R
+  hoare_vcg_R_conj[OF valid_validE_R]
+  hoare_vcg_E_elim[OF valid_validE_E]
+  hoare_vcg_E_conj[OF valid_validE_E]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_classic_wp_combs = hoare_post_comb_imp_conj hoare_weaken_pre hoare_wp_combs<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_classic_wp_combsE = hoare_weaken_preE hoare_weaken_preE_R hoare_wp_combsE<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_classic_wp_state_combsE =
+  hoare_weaken_preE[OF valid_validE]
+  hoare_weaken_preE_R[OF valid_validE_R]
+  hoare_wp_state_combsE<\STATESEP>0<\TRANSEP><\STATESEP>lemmas all_classic_wp_combs =
+  hoare_classic_wp_state_combsE
+  hoare_classic_wp_combsE
+  hoare_classic_wp_combs<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_wp_splits[wp_split] =
+  handleE'_wp handleE_wp
+  validE_validE_R [OF handleE'_wp [OF validE_R_validE]]
+  validE_validE_R [OF handleE_wp [OF validE_R_validE]]
+  catch_wp hoare_vcg_if_split hoare_vcg_if_splitE
+  validE_validE_R [OF hoare_vcg_if_splitE [OF validE_R_validE validE_R_validE]]
+  liftM_wp liftME_wp
+  validE_validE_R [OF liftME_wp [OF validE_R_validE]]
+  validE_valid<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [wp_comb] = hoare_wp_state_combsE hoare_wp_combsE hoare_wp_combs<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [wp] =
+  hoare_vcg_prop bind_wp
+  bindE_R_wp bindE_E_wp bindE_wp
+  bind_wpE_R bind_wpE_E bind_wpE<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [wp] = wp_post_tauts
+              hoare_fun_app_wp
+              returnOk_E
+              liftE_validE_E
+              put_wp
+              get_wp
+              gets_wp
+              modify_wp
+              return_wp
+              returnOk_wp
+              throwError_wp
+              fail_wp
+              failE_wp
+              assert_wp
+              state_assert_wp
+              assert_opt_wp
+              gets_the_wp
+              gets_map_wp'
+              liftE_wp
+              alternative_wp
+              alternativeE_R_wp
+              alternativeE_E_wp
+              alternativeE_wp
+              select_wp
+              select_f_wp
+              state_select_wp
+              condition_wp
+              conditionE_wp
+              maybeM_wp notM_wp ifM_wp andM_wp orM_wp whenM_wp<\STATESEP>0<\TRANSEP><\STATESEP>lemmas [wp_trip] = valid_is_triple validE_is_triple validE_E_is_triple validE_R_is_triple<\STATESEP>0<\TRANSEP><\STATESEP>lemmas validE_E_combs[wp_comb] =
+    hoare_vcg_E_conj[where Q'="\<top>\<top>", folded validE_E_def]
+    valid_validE_E
+    hoare_vcg_E_conj[where Q'="\<top>\<top>", folded validE_E_def, OF valid_validE_E]<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Simplifications on conjunction\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_post_eq:
+  "\<lbrakk> Q = Q'; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>Q = Q'; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_eqE1:
+  "\<lbrakk> Q = Q'; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>,\<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>Q = Q'; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_eqE2:
+  "\<lbrakk> E = E'; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E'\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>E = E'; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_post_eqE_R:
+  "\<lbrakk> Q = Q'; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>,- \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>Q = Q'; \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>, -\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma pred_conj_apply_elim:
+  "(\<lambda>rv. Q rv and Q' rv) = (\<lambda>rv s. Q rv s \<and> Q' rv s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>rv. Q rv and Q' rv) = (\<lambda>rv s. Q rv s \<and> Q' rv s)<\STATESEP>by (simp add: pred_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma pred_conj_conj_elim:
+  "(\<lambda>rv s. (Q rv and Q' rv) s \<and> Q'' rv s) = (\<lambda>rv s. Q rv s \<and> Q' rv s \<and> Q'' rv s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>rv s. (Q rv and Q' rv) s \<and> Q'' rv s) = (\<lambda>rv s. Q rv s \<and> Q' rv s \<and> Q'' rv s)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma conj_assoc_apply:
+  "(\<lambda>rv s. (Q rv s \<and> Q' rv s) \<and> Q'' rv s) = (\<lambda>rv s. Q rv s \<and> Q' rv s \<and> Q'' rv s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>rv s. (Q rv s \<and> Q' rv s) \<and> Q'' rv s) = (\<lambda>rv s. Q rv s \<and> Q' rv s \<and> Q'' rv s)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_elim:
+  "(\<lambda>rv s. \<forall>x. P rv s) = P"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>rv s. \<forall>x. P rv s) = P<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_conj_elim:
+  "(\<lambda>rv s. (\<forall>x. P rv s) \<and> Q rv s) = (\<lambda>rv s. P rv s \<and> Q rv s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<lambda>rv s. (\<forall>x. P rv s) \<and> Q rv s) = (\<lambda>rv s. P rv s \<and> Q rv s)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemmas vcg_rhs_simps =
+  pred_conj_apply_elim pred_conj_conj_elim conj_assoc_apply all_elim all_conj_elim<\STATESEP>0<\TRANSEP><\STATESEP>lemma if_apply_reduct:
+  "\<lbrace>P\<rbrace> If P' (f x) (g x) \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> If P' f g x \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> if P' then f x else g x \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> (if P' then f else g) x \<lbrace>Q\<rbrace><\STATESEP>by (cases P'; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_apply_reductE:
+  "\<lbrace>P\<rbrace> If P' (f x) (g x) \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> If P' f g x \<lbrace>Q\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> if P' then f x else g x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> (if P' then f else g) x \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (cases P'; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma if_apply_reductE_R:
+  "\<lbrace>P\<rbrace> If P' (f x) (g x) \<lbrace>Q\<rbrace>,- \<Longrightarrow> \<lbrace>P\<rbrace> If P' f g x \<lbrace>Q\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> if P' then f x else g x \<lbrace>Q\<rbrace>, - \<Longrightarrow> \<lbrace>P\<rbrace> (if P' then f else g) x \<lbrace>Q\<rbrace>, -<\STATESEP>by (cases P'; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_wp_simps[wp_split] =
+  vcg_rhs_simps[THEN hoare_post_eq] vcg_rhs_simps[THEN hoare_post_eqE1]
+  vcg_rhs_simps[THEN hoare_post_eqE2] vcg_rhs_simps[THEN hoare_post_eqE_R]
+  if_apply_reduct if_apply_reductE if_apply_reductE_R TrueI<\STATESEP>0<\TRANSEP><\STATESEP>schematic_goal if_apply_test:
+  "\<lbrace>?Q\<rbrace> (if A then returnOk else K fail) x \<lbrace>P\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>?Q\<rbrace> (if A then returnOk else K fail) x \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by wpsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_elim_pred_conj:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and Q' rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and Q' rv\<rbrace><\STATESEP>by (unfold pred_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_elim_pred_conjE1:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>,\<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and Q' rv\<rbrace>,\<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and Q' rv\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (unfold pred_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_elim_pred_conjE2:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv s. E rv s \<and> E' rv s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,\<lbrace>\<lambda>rv. E rv and E' rv\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv s. E rv s \<and> E' rv s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv. E rv and E' rv\<rbrace><\STATESEP>by (unfold pred_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_elim_pred_conjE_R:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>,- \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and Q' rv\<rbrace>,-"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> Q' rv s\<rbrace>, - \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv. Q rv and Q' rv\<rbrace>, -<\STATESEP>by (unfold pred_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_wp_pred_conj_elims =
+  hoare_elim_pred_conj hoare_elim_pred_conjE1
+  hoare_elim_pred_conjE2 hoare_elim_pred_conjE_R<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Bundles\<close><\STATESEP>0<\TRANSEP><\STATESEP>bundle no_pre = hoare_pre [wp_pre del]<\STATESEP>0<\TRANSEP><\STATESEP>bundle classic_wp_pre = hoare_pre [wp_pre del]
+    all_classic_wp_combs[wp_comb del] all_classic_wp_combs[wp_comb]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_pre_cases:
+  "\<lbrakk> \<lbrace>\<lambda>s. R s \<and> P s\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>\<lambda>s. \<not>R s \<and> P' s\<rbrace> f \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>\<lambda>s. R s \<and> P s\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>\<lambda>s. \<not> R s \<and> P' s\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. R s \<and> P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s'); \<forall>s. \<not> R s \<and> P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s')\<rbrakk> \<Longrightarrow> \<forall>s. (P and P') s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s')<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_mp:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q r s \<longrightarrow> Q' r s\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q r s \<longrightarrow> Q' r s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace><\STATESEP>by (auto simp: valid_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_add_post:
+  "\<lbrakk> \<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>; \<And>s. P s \<Longrightarrow> P' s; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q' rv s \<longrightarrow> Q rv s\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P'\<rbrace> f \<lbrace>Q'\<rbrace>; \<And>s. P s \<Longrightarrow> P' s; \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q' rv s \<longrightarrow> Q rv s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>unfolding valid_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P' s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q' r s'); \<And>s. P s \<Longrightarrow> P' s; \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q' r s' \<longrightarrow> Q r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). Q r s')<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_gen_asmE:
+  "(P \<Longrightarrow> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>,-) \<Longrightarrow> \<lbrace>P' and K P\<rbrace> f \<lbrace>Q\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (P \<Longrightarrow> \<lbrace>P'\<rbrace> f \<lbrace>Q\<rbrace>, -) \<Longrightarrow> \<lbrace>P' and K P\<rbrace> f \<lbrace>Q\<rbrace>, -<\STATESEP>by (simp add: validE_R_def validE_def valid_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_list_case:
+  "\<lbrakk> \<lbrace>P1\<rbrace> f f1 \<lbrace>Q\<rbrace>; \<And>y ys. xs = y#ys \<Longrightarrow> \<lbrace>P2 y ys\<rbrace> f (f2 y ys) \<lbrace>Q\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>case xs of [] \<Rightarrow> P1 | y#ys \<Rightarrow> P2 y ys\<rbrace> f (case xs of [] \<Rightarrow> f1 | y#ys \<Rightarrow> f2 y ys) \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P1\<rbrace> f f1 \<lbrace>Q\<rbrace>; \<And>y ys. xs = y # ys \<Longrightarrow> \<lbrace>P2 y ys\<rbrace> f (f2 y ys) \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>case xs of [] \<Rightarrow> P1 | y # ys \<Rightarrow> P2 y ys\<rbrace> f (case xs of [] \<Rightarrow> f1 | y # ys \<Rightarrow> f2 y ys) \<lbrace>Q\<rbrace><\STATESEP>by (cases xs; simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas whenE_wps[wp_split] =
+  whenE_wp whenE_wp[THEN validE_validE_R] whenE_wp[THEN validE_validE_E]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas unlessE_wps[wp_split] =
+  unlessE_wp unlessE_wp[THEN validE_validE_R] unlessE_wp[THEN validE_validE_E]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_use_eq:
+  assumes "\<And>P. \<lbrace>\<lambda>s. P (f s)\<rbrace> m \<lbrace>\<lambda>_ s. P (f s)\<rbrace>"
+  assumes "\<And>f. \<lbrace>\<lambda>s. P f s\<rbrace> m \<lbrace>\<lambda>_ s. Q f s\<rbrace>"
+  shows "\<lbrace>\<lambda>s. P (f s) s\<rbrace> m \<lbrace>\<lambda>_ s. Q (f s) s \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (f s) s\<rbrace> m \<lbrace>\<lambda>_ s. Q (f s) s\<rbrace><\STATESEP>apply (rule hoare_post_imp[where Q="\<lambda>_ s. \<exists>y. y = f s \<and> Q y s"], simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (f s) s\<rbrace> m \<lbrace>\<lambda>_ s. \<exists>y. y = f s \<and> Q y s\<rbrace><\STATESEP>apply (wpsimp wp: hoare_vcg_ex_lift assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_fail_any[simp]:
+  "\<lbrace>P\<rbrace> fail \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> fail \<lbrace>Q\<rbrace><\STATESEP>by wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_failE[simp]:
+  "\<lbrace>P\<rbrace> fail \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> fail \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_validE_pred_conj:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q and R\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q and R\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding valid_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s'); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> R r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> (Q and R) r s')<\STATESEP>by (simp add: split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_validE_conj:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace> \<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> R rv s\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, \<lbrace>E\<rbrace>; \<lbrace>P\<rbrace> f \<lbrace>R\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. Q rv s \<and> R rv s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>unfolding valid_def validE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s'); \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> R r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>fst (f s). case r of Inl e \<Rightarrow> E e s' | Inr r \<Rightarrow> Q r s' \<and> R r s')<\STATESEP>by (simp add: split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_valid_validE = valid_validE<\STATESEP>0<\TRANSEP><\STATESEP>declare validE_validE_E[wp_comb]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas if_validE_E[wp_split] =
+  validE_validE_E[OF hoare_vcg_if_splitE[OF validE_E_validE validE_E_validE]]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_drop_imp:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (auto simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_drop_impE:
+  "\<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>\<lambda>r. Q\<rbrace>, \<lbrace>E\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q s\<rbrace>, \<lbrace>E\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r. Q\<rbrace>, \<lbrace>E\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q s\<rbrace>, \<lbrace>E\<rbrace><\STATESEP>by (simp add: hoare_chainE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_drop_impE_R:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>,- \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q rv s\<rbrace>, -"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>, - \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q rv s\<rbrace>, -<\STATESEP>by (auto simp: validE_R_def validE_def valid_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_drop_impE_E:
+  "\<lbrace>P\<rbrace> f -,\<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f -, \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f -, \<lbrace>\<lambda>rv s. R rv s \<longrightarrow> Q rv s\<rbrace><\STATESEP>by (auto simp: validE_E_def validE_def valid_def split_def split: sum.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_drop_imps = hoare_drop_imp hoare_drop_impE_R hoare_drop_impE_E<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_drop_imp_conj[wp_unsafe]:
+  "\<lbrakk> \<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q'' rv s) \<and> Q''' rv s\<rbrace> \<rbrakk> \<Longrightarrow>
+   \<lbrace>P and P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q' rv s \<and> Q'' rv s) \<and> Q''' rv s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<lbrace>P\<rbrace> f \<lbrace>Q'\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q'' rv s) \<and> Q''' rv s\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P and P'\<rbrace> f \<lbrace>\<lambda>rv s. (Q rv s \<longrightarrow> Q' rv s \<and> Q'' rv s) \<and> Q''' rv s\<rbrace><\STATESEP>by (auto simp: valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas hoare_drop_imp_conj'[wp_unsafe] = hoare_drop_imp_conj[where Q'''="\<top>\<top>", simplified]<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_vcg_set_pred_lift:
+  assumes "\<And>P x. m \<lbrace> \<lambda>s. P (f x s) \<rbrace>"
+  shows "m \<lbrace> \<lambda>s. P {x. f x s} \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P {x. f x s}\<rbrace> m \<lbrace>\<lambda>_ s. P {x. f x s}\<rbrace><\STATESEP>using assms[where P="\<lambda>x . x"] assms[where P=Not] use_valid<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>f ?x\<rbrace> m \<lbrace>\<lambda>_. f ?x\<rbrace>
+\<lbrace>\<lambda>s. \<not> f ?x s\<rbrace> m \<lbrace>\<lambda>_ s. \<not> f ?x s\<rbrace>
+\<lbrakk>(?r, ?s') \<in> fst (?f ?s); \<lbrace>?P\<rbrace> ?f \<lbrace>?Q\<rbrace>; ?P ?s\<rbrakk> \<Longrightarrow> ?Q ?r ?s'
+
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P {x. f x s}\<rbrace> m \<lbrace>\<lambda>_ s. P {x. f x s}\<rbrace><\STATESEP>by (fastforce simp: valid_def elim!: subst[rotated, where P=P])<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_vcg_set_pred_lift_mono:
+  assumes f: "\<And>x. m \<lbrace> f x \<rbrace>"
+  assumes mono: "\<And>A B. A \<subseteq> B \<Longrightarrow> P A \<Longrightarrow> P B"
+  shows "m \<lbrace> \<lambda>s. P {x. f x s} \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P {x. f x s}\<rbrace> m \<lbrace>\<lambda>_ s. P {x. f x s}\<rbrace><\STATESEP>by (fastforce simp: valid_def elim!: mono[rotated] dest: use_valid[OF _ f])<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_strengthen_pre_via_assert_forward:
+  assumes pos: "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"
+  assumes rel: "\<And>s. S s \<longrightarrow> P s \<or> N s"
+  assumes neg: "\<lbrace> N \<rbrace> f \<lbrace> \<bottom>\<bottom> \<rbrace>"
+  shows "\<lbrace> S \<rbrace> f \<lbrace> Q \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>S\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>apply (rule hoare_weaken_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>Q\<rbrace>
+ 2. \<And>s. S s \<Longrightarrow> ?Q s<\STATESEP>apply (rule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f \<lbrace>?Q3\<rbrace>
+ 2. \<And>rv s. ?Q3 rv s \<Longrightarrow> Q rv s
+ 3. \<And>s. S s \<Longrightarrow> ?Q s<\STATESEP>apply (rule hoare_vcg_disj_lift[OF pos neg])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. Q rv s \<or> False \<Longrightarrow> Q rv s
+ 2. \<And>s. S s \<Longrightarrow> P s \<or> N s<\STATESEP>by (auto simp: rel)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_strengthen_pre_via_assert_backward:
+  assumes neg: "\<lbrace> Not \<circ> E \<rbrace> f \<lbrace> \<bottom>\<bottom> \<rbrace>"
+  assumes pos: "\<lbrace> P and E \<rbrace> f \<lbrace> Q \<rbrace>"
+  shows "\<lbrace> P \<rbrace> f \<lbrace> Q \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (rule hoare_strengthen_pre_via_assert_forward[OF pos _ neg], simp)<\STATESEP>1<\TRANSEP><\STATESEP>subsection \<open>Strongest postcondition rules\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma get_sp:
+  "\<lbrace>P\<rbrace> get \<lbrace>\<lambda>rv s. s = rv \<and> P s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> get \<lbrace>\<lambda>rv s. s = rv \<and> P s\<rbrace><\STATESEP>by(simp add:get_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma put_sp:
+  "\<lbrace>\<top>\<rbrace> put a \<lbrace>\<lambda>_ s. s = a\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>_. True\<rbrace> put a \<lbrace>\<lambda>_ s. s = a\<rbrace><\STATESEP>by(simp add:put_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_sp:
+  "\<lbrace>P\<rbrace> return a \<lbrace>\<lambda>rv s. rv = a \<and> P s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> return a \<lbrace>\<lambda>rv s. rv = a \<and> P s\<rbrace><\STATESEP>by(simp add:return_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_return_sp: (* FIXME lib: eliminate *)
+  "\<lbrace>P\<rbrace> return x \<lbrace>\<lambda>rv. P and K (rv = x)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> return x \<lbrace>\<lambda>rv. P and K (rv = x)\<rbrace><\STATESEP>by (simp add: valid_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_sp:
+  "\<lbrace>P\<rbrace> assert Q \<lbrace>\<lambda>_ s. P s \<and> Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> assert Q \<lbrace>\<lambda>_ s. P s \<and> Q\<rbrace><\STATESEP>by (simp add: assert_def fail_def return_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_gets_sp:
+  "\<lbrace>P\<rbrace> gets f \<lbrace>\<lambda>rv s. rv = f s \<and> P s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> gets f \<lbrace>\<lambda>rv s. rv = f s \<and> P s\<rbrace><\STATESEP>by (simp add: valid_def simpler_gets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma hoare_returnOk_sp:
+  "\<lbrace>P\<rbrace> returnOk x \<lbrace>\<lambda>rv s. rv = x \<and> P s\<rbrace>, \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> returnOk x \<lbrace>\<lambda>rv s. rv = x \<and> P s\<rbrace>, \<lbrace>Q\<rbrace><\STATESEP>by (simp add: valid_def validE_def returnOk_def return_def)
+
+\<comment> \<open>For forward reasoning in Hoare proofs, these lemmas allow us to step over the
+    left-hand-side of monadic bind, while keeping the same precondition.\<close><\STATESEP>1<\TRANSEP><\STATESEP>named_theorems forward_inv_step_rules<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_nobind[forward_inv_step_rules] =
+  bind_wp_nobind[where Q'=P and P=P for P, rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bind_wp_fwd_skip[forward_inv_step_rules] =
+  bind_wp_fwd[where Q'="\<lambda>_. P" and P=P for P]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_nobindE_valid[forward_inv_step_rules] =
+  bindE_wp_nobind[where Q'=P and P=P and E="\<lambda>_. Q" and Q="\<lambda>_. Q" for P Q,
+                        simplified validE_eq_valid, rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_valid[forward_inv_step_rules] =
+  bindE_wp_fwd[where Q'="\<lambda>_. P" and P=P and E="\<lambda>_. Q" and Q="\<lambda>_. Q" for P Q,
+                 simplified validE_eq_valid]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_nobindE[forward_inv_step_rules] =
+  bindE_wp_nobind[where Q'=P and P=P for P, rotated]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas bindE_wp_fwd_skip[forward_inv_step_rules] =
+  bindE_wp_fwd[where Q'="\<lambda>_. P" and P=P for P]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_nobindE_validE_E[forward_inv_step_rules] =
+  hoare_forward_inv_step_nobindE[where Q="\<top>\<top>", simplified validE_E_def[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_validE_E[forward_inv_step_rules] =
+  bindE_wp_fwd_skip[where Q="\<top>\<top>", simplified validE_E_def[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_nobindE_validE_R[forward_inv_step_rules] =
+  hoare_forward_inv_step_nobindE[where E="\<top>\<top>", simplified validE_R_def[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas hoare_forward_inv_step_validE_R[forward_inv_step_rules] =
+  bindE_wp_fwd_skip[where E="\<top>\<top>", simplified validE_R_def[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>method forward_inv_step uses wp simp =
+  rule forward_inv_step_rules, solves \<open>wpsimp wp: wp simp: simp\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

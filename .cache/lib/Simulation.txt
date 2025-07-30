@@ -1,0 +1,569 @@
+<\STATESEP>chapter "Refinement"<\STATESEP>0<\TRANSEP><\STATESEP>theory Simulation
+imports Main
+begin<\STATESEP>0<\TRANSEP><\STATESEP>record ('a,'b,'j) data_type =
+  Init :: "'b \<Rightarrow> 'a set"
+  Fin :: "'a \<Rightarrow> 'b"
+  Step :: "'j \<Rightarrow> ('a \<times> 'a) set"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  steps :: "('j \<Rightarrow> ('a \<times> 'a) set) \<Rightarrow> 'a set \<Rightarrow> 'j list \<Rightarrow> 'a set" where
+  "steps \<delta> \<equiv> foldl (\<lambda>S j. \<delta> j `` S)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+   execution :: "('a,'b,'j) data_type \<Rightarrow> 'b \<Rightarrow> 'j list \<Rightarrow> 'b set" where
+  "execution A s js \<equiv> Fin A ` steps (Step A) (Init A s) js"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  hoare_triple :: "('a,'b,'j) data_type \<Rightarrow> 'b set \<Rightarrow> 'j list \<Rightarrow> 'b set \<Rightarrow> bool"
+where
+  "hoare_triple A P js Q \<equiv> \<forall>s \<in> P. execution A s js \<subseteq> Q"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  refines :: "('c,'b,'j) data_type \<Rightarrow> ('a,'b,'j) data_type \<Rightarrow> bool" (infix "\<sqsubseteq>" 60)
+where
+  "C \<sqsubseteq> A \<equiv> \<forall>js s. execution C s js \<subseteq> execution A s js"<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_triple_refinement:
+  "C \<sqsubseteq> A = (\<forall>P Q js. hoare_triple A P js Q \<longrightarrow> hoare_triple C P js Q)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. C \<sqsubseteq> A = (\<forall>P Q js. hoare_triple A P js Q \<longrightarrow> hoare_triple C P js Q)<\STATESEP>by (simp add: refines_def hoare_triple_def) blast
+
+
+\<comment> \<open>composing two relations\<close><\STATESEP>1<\TRANSEP><\STATESEP>definition
+  rel_semi :: "('a \<times> 'b) set \<Rightarrow> ('b \<times> 'c) set \<Rightarrow> ('a \<times> 'c) set" (infixl ";;;" 65)
+where
+  "A ;;; B \<equiv> A O B"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  fw_sim :: "('a \<times> 'c) set \<Rightarrow> ('c,'b,'j) data_type \<Rightarrow> ('a,'b,'j) data_type \<Rightarrow> bool"
+where
+  "fw_sim R C A \<equiv> (\<forall>s. Init C s \<subseteq> R `` Init A s) \<and>
+                  (\<forall>j. R ;;; Step C j \<subseteq> Step A j ;;; R) \<and>
+                  (\<forall>s s'. (s,s') \<in> R \<longrightarrow> Fin C s' = Fin A s)"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  fw_simulates :: "('c,'b,'j) data_type \<Rightarrow> ('a,'b,'j) data_type \<Rightarrow> bool" (infixl "\<sqsubseteq>\<^sub>F" 50)
+where
+  "C \<sqsubseteq>\<^sub>F A \<equiv> \<exists>R. fw_sim R C A"<\STATESEP>0<\TRANSEP><\STATESEP>lemma fw_sim_steps:
+  assumes steps: "t' \<in> steps (Step C) S' js" "S' \<subseteq> R `` S"
+  assumes sim: "fw_sim R C A"
+  shows "\<exists>t \<in> steps (Step A) S js. (t,t') \<in> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R<\STATESEP>using steps<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+t' \<in> steps (Step C) S' js
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R<\STATESEP>proof (induct js arbitrary: S' S)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' []; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S []. (t, t') \<in> R
+ 2. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+t' \<in> steps (Step C) S' []
+S' \<subseteq> R `` S
+
+goal (2 subgoals):
+ 1. \<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' []; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S []. (t, t') \<in> R
+ 2. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+t' \<in> steps (Step C) S' []
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. \<exists>t\<in>steps (Step A) S []. (t, t') \<in> R<\STATESEP>by (simp add: steps_def) blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<exists>t\<in>steps (Step A) S []. (t, t') \<in> R
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>case (Cons j js)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>t' \<in> steps (Step C) ?S' js; ?S' \<subseteq> R `` ?S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) ?S js. (t, t') \<in> R
+t' \<in> steps (Step C) S' (j # js)
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>hence "t' \<in> steps (Step C) (Step C j `` S') js"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>t' \<in> steps (Step C) ?S' js; ?S' \<subseteq> R `` ?S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) ?S js. (t, t') \<in> R
+t' \<in> steps (Step C) S' (j # js)
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. t' \<in> steps (Step C) (Step C j `` S') js<\STATESEP>by (clarsimp simp: steps_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+t' \<in> steps (Step C) (Step C j `` S') js
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+t' \<in> steps (Step C) (Step C j `` S') js
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+t' \<in> steps (Step C) (Step C j `` S') js
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>from Cons.prems<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+t' \<in> steps (Step C) S' (j # js)
+S' \<subseteq> R `` S<\STATESEP>have "S' \<subseteq> R `` S"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+t' \<in> steps (Step C) S' (j # js)
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. S' \<subseteq> R `` S<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>moreover<\STATESEP>4<\TRANSEP>proof (state)
+this:
+S' \<subseteq> R `` S
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>from sim<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+fw_sim R C A<\STATESEP>have "R ;;; Step C j \<subseteq> Step A j ;;; R"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+fw_sim R C A
+
+goal (1 subgoal):
+ 1. R ;;; Step C j \<subseteq> Step A j ;;; R<\STATESEP>by (simp add: fw_sim_def)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+R ;;; Step C j \<subseteq> Step A j ;;; R
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>ultimately<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+S' \<subseteq> R `` S
+R ;;; Step C j \<subseteq> Step A j ;;; R<\STATESEP>have "Step C j `` S' \<subseteq> R `` (Step A j `` S)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+S' \<subseteq> R `` S
+R ;;; Step C j \<subseteq> Step A j ;;; R
+
+goal (1 subgoal):
+ 1. Step C j `` S' \<subseteq> R `` Step A j `` S<\STATESEP>by (simp add: rel_semi_def) blast<\STATESEP>5<\TRANSEP>proof (state)
+this:
+Step C j `` S' \<subseteq> R `` Step A j `` S
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+Step C j `` S' \<subseteq> R `` Step A j `` S
+
+goal (1 subgoal):
+ 1. \<And>a js S' S. \<lbrakk>\<And>S' S. \<lbrakk>t' \<in> steps (Step C) S' js; S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S js. (t, t') \<in> R; t' \<in> steps (Step C) S' (a # js); S' \<subseteq> R `` S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) S (a # js). (t, t') \<in> R<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+t' \<in> steps (Step C) (Step C j `` S') js
+Step C j `` S' \<subseteq> R `` Step A j `` S<\STATESEP>show ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+t' \<in> steps (Step C) (Step C j `` S') js
+Step C j `` S' \<subseteq> R `` Step A j `` S
+
+goal (1 subgoal):
+ 1. \<exists>t\<in>steps (Step A) S (j # js). (t, t') \<in> R<\STATESEP>using Cons.hyps<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+t' \<in> steps (Step C) (Step C j `` S') js
+Step C j `` S' \<subseteq> R `` Step A j `` S
+\<lbrakk>t' \<in> steps (Step C) ?S' js; ?S' \<subseteq> R `` ?S\<rbrakk> \<Longrightarrow> \<exists>t\<in>steps (Step A) ?S js. (t, t') \<in> R
+
+goal (1 subgoal):
+ 1. \<exists>t\<in>steps (Step A) S (j # js). (t, t') \<in> R<\STATESEP>by (auto simp: steps_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<exists>t\<in>steps (Step A) S (j # js). (t, t') \<in> R
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma sim_imp_refines:
+  "C \<sqsubseteq>\<^sub>F A \<Longrightarrow> C \<sqsubseteq> A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. C \<sqsubseteq>\<^sub>F A \<Longrightarrow> C \<sqsubseteq> A<\STATESEP>apply (clarsimp simp: refines_def execution_def fw_simulates_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>R js s xa. \<lbrakk>fw_sim R C A; xa \<in> steps (Step C) (Init C s) js\<rbrakk> \<Longrightarrow> Fin C xa \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply (rename_tac t)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>R js s t. \<lbrakk>fw_sim R C A; t \<in> steps (Step C) (Init C s) js\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply (drule fw_sim_steps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>R js s t. fw_sim R C A \<Longrightarrow> Init C s \<subseteq> ?R10 R js s t `` ?S10 R js s t
+ 2. \<And>R js s t. fw_sim R C A \<Longrightarrow> fw_sim (?R10 R js s t) C (?A10 R js s t)
+ 3. \<And>R js s t. \<lbrakk>fw_sim R C A; \<exists>ta\<in>steps (Step (?A10 R js s t)) (?S10 R js s t) js. (ta, t) \<in> ?R10 R js s t\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>R js s t. fw_sim R C A \<Longrightarrow> fw_sim (?R10 R js s t) C (?A10 R js s t)
+ 2. \<And>R js s t. fw_sim R C A \<Longrightarrow> Init C s \<subseteq> ?R10 R js s t `` ?S10 R js s t
+ 3. \<And>R js s t. \<lbrakk>fw_sim R C A; \<exists>ta\<in>steps (Step (?A10 R js s t)) (?S10 R js s t) js. (ta, t) \<in> ?R10 R js s t\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>R js s t. fw_sim R C A \<Longrightarrow> Init C s \<subseteq> R `` ?S10 R js s t
+ 2. \<And>R js s t. \<lbrakk>fw_sim R C A; \<exists>ta\<in>steps (Step A) (?S10 R js s t) js. (ta, t) \<in> R\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply (simp add: fw_sim_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>R js s t. (\<forall>s. Init C s \<subseteq> R `` Init A s) \<and> (\<forall>j. R ;;; Step C j \<subseteq> Step A j ;;; R) \<and> (\<forall>s s'. (s, s') \<in> R \<longrightarrow> Fin C s' = Fin A s) \<Longrightarrow> Init C s \<subseteq> R `` ?S10 R js s t
+ 2. \<And>R js s t. \<lbrakk>fw_sim R C A; \<exists>ta\<in>steps (Step A) (?S10 R js s t) js. (ta, t) \<in> R\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>R js s t. \<lbrakk>fw_sim R C A; \<exists>ta\<in>steps (Step A) (Init A s) js. (ta, t) \<in> R\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>R js s t ta. \<lbrakk>fw_sim R C A; ta \<in> steps (Step A) (Init A s) js; (ta, t) \<in> R\<rbrakk> \<Longrightarrow> Fin C t \<in> Fin A ` steps (Step A) (Init A s) js<\STATESEP>apply (erule rev_image_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>R js s t ta. \<lbrakk>fw_sim R C A; (ta, t) \<in> R\<rbrakk> \<Longrightarrow> Fin C t = Fin A ta<\STATESEP>apply (simp add: fw_sim_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  invariant_holds :: "('a,'b,'j) data_type \<Rightarrow> 'a set \<Rightarrow> bool" (infix "\<Turnstile>" 60)
+where
+  "D \<Turnstile> I \<equiv> (\<forall>s. Init D s \<subseteq> I) \<and> (\<forall>j. Step D j `` I \<subseteq> I)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma invariant_T [iff]: "D \<Turnstile> UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D \<Turnstile> UNIV<\STATESEP>by (simp add: invariant_holds_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma invariantI:
+  "\<lbrakk> \<forall>s. Init D s \<subseteq> I; \<forall>j. Step D j `` I \<subseteq> I \<rbrakk> \<Longrightarrow> D \<Turnstile> I"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. Init D s \<subseteq> I; \<forall>j. Step D j `` I \<subseteq> I\<rbrakk> \<Longrightarrow> D \<Turnstile> I<\STATESEP>by (simp add: invariant_holds_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma invariant_CollectI [intro?]:
+  assumes init: "\<And>s a. s \<in> Init D a \<Longrightarrow> I s"
+  assumes step: "\<And>j s s'. \<lbrakk> I s; (s,s') \<in> Step D j \<rbrakk> \<Longrightarrow> I s'"
+  shows "D \<Turnstile> Collect I"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. D \<Turnstile> Collect I<\STATESEP>proof (rule invariantI)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<forall>s. Init D s \<subseteq> Collect I
+ 2. \<forall>j. Step D j `` Collect I \<subseteq> Collect I<\STATESEP>show "\<forall>a. Init D a \<subseteq> Collect I"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>a. Init D a \<subseteq> Collect I<\STATESEP>by (fast intro: init)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>a. Init D a \<subseteq> Collect I
+
+goal (1 subgoal):
+ 1. \<forall>j. Step D j `` Collect I \<subseteq> Collect I<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<forall>j. Step D j `` Collect I \<subseteq> Collect I<\STATESEP>show "\<forall>j. Step D j `` Collect I \<subseteq> Collect I"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>j. Step D j `` Collect I \<subseteq> Collect I<\STATESEP>by (auto simp add: Image_def intro: step)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>j. Step D j `` Collect I \<subseteq> Collect I
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma invariant_conjI:
+  "D \<Turnstile> P \<Longrightarrow> D \<Turnstile> Q  \<Longrightarrow> D \<Turnstile> P \<inter> Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>D \<Turnstile> P; D \<Turnstile> Q\<rbrakk> \<Longrightarrow> D \<Turnstile> P \<inter> Q<\STATESEP>by (simp add: invariant_holds_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma invariant_conjI2:
+  "\<lbrakk> D \<Turnstile> I; \<And>s. Init D s \<subseteq> I \<Longrightarrow> Init D s \<subseteq> J;
+    \<forall>j. Step D j `` (I \<inter> J) \<subseteq> J \<rbrakk> \<Longrightarrow> D \<Turnstile> I \<inter> J"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>D \<Turnstile> I; \<And>s. Init D s \<subseteq> I \<Longrightarrow> Init D s \<subseteq> J; \<forall>j. Step D j `` (I \<inter> J) \<subseteq> J\<rbrakk> \<Longrightarrow> D \<Turnstile> I \<inter> J<\STATESEP>by (simp add: invariant_holds_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  LI :: "('a,'b,'j) data_type \<Rightarrow> ('c,'b,'j) data_type \<Rightarrow> ('a \<times> 'c) set \<Rightarrow> ('a \<times> 'c) set \<Rightarrow> bool"
+where
+  "LI A C R I \<equiv> (\<forall>s. Init C s \<subseteq> R `` Init A s) \<and>
+                (\<forall>j. (R \<inter> I) ;;; Step C j \<subseteq> Step A j ;;; R) \<and>
+                (\<forall>s s'. (s,s') \<in> R \<inter> I \<longrightarrow> Fin C s' = Fin A s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma LI_fw_sim:
+  assumes  ia: "A \<Turnstile> I\<^sub>a" and ic: "C \<Turnstile> I\<^sub>c" and li: "LI A C r (I\<^sub>a \<times> I\<^sub>c)"
+  shows "fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>from li<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+LI A C r (I\<^sub>a \<times> I\<^sub>c)<\STATESEP>have
+    init: "\<forall>s. Init C s \<subseteq> r `` Init A s" and
+    step: "\<forall>j. (r \<inter> (I\<^sub>a \<times> I\<^sub>c)) ;;; Step C j \<subseteq> Step A j ;;; r" and
+    fin: "(\<forall>s s'. (s,s') \<in> r \<inter> (I\<^sub>a \<times> I\<^sub>c) \<longrightarrow> Fin C s' = Fin A s)"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+LI A C r (I\<^sub>a \<times> I\<^sub>c)
+
+goal (1 subgoal):
+ 1. \<forall>s. Init C s \<subseteq> r `` Init A s &&& \<forall>j. r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r &&& \<forall>s s'. (s, s') \<in> r \<inter> I\<^sub>a \<times> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s<\STATESEP>by (auto simp: LI_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>s. Init C s \<subseteq> r `` Init A s
+\<forall>j. r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r
+\<forall>s s'. (s, s') \<in> r \<inter> I\<^sub>a \<times> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>from ia<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+A \<Turnstile> I\<^sub>a<\STATESEP>have  "\<forall>s. (r \<inter> (UNIV \<times> I\<^sub>c) ) `` Init A s = (r \<inter> (I\<^sub>a \<times> I\<^sub>c)) `` Init A s"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+A \<Turnstile> I\<^sub>a
+
+goal (1 subgoal):
+ 1. \<forall>s. (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s = (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s<\STATESEP>by (simp add: invariant_holds_def, blast)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>s. (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s = (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<forall>s. (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s = (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>from init ic<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<forall>s. Init C s \<subseteq> r `` Init A s
+C \<Turnstile> I\<^sub>c<\STATESEP>have "\<forall>s. Init C s \<subseteq> (r \<inter> (UNIV \<times> I\<^sub>c)) `` Init A s"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>s. Init C s \<subseteq> r `` Init A s
+C \<Turnstile> I\<^sub>c
+
+goal (1 subgoal):
+ 1. \<forall>s. Init C s \<subseteq> (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s<\STATESEP>by (simp add: invariant_holds_def, blast)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>s. Init C s \<subseteq> (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<forall>s. (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s = (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+\<forall>s. Init C s \<subseteq> (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s<\STATESEP>have initI: "\<forall>s. Init C s \<subseteq> (r \<inter> (I\<^sub>a \<times> I\<^sub>c)) `` Init A s"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>s. (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s = (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+\<forall>s. Init C s \<subseteq> (r \<inter> UNIV \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. \<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>moreover<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>fix j<\STATESEP>4<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>from step<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+\<forall>j. r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r<\STATESEP>have "r \<inter> (I\<^sub>a \<times> I\<^sub>c) ;;; Step C j \<subseteq> Step A j ;;; r"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+\<forall>j. r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r
+
+goal (1 subgoal):
+ 1. r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r<\STATESEP>..<\STATESEP>5<\TRANSEP>proof (state)
+this:
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>also<\STATESEP>4<\TRANSEP>proof (state)
+this:
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>have "r \<inter> (I\<^sub>a \<times> I\<^sub>c) = ((UNIV \<times> I\<^sub>a) \<inter> Id) ;;; r ;;; ((I\<^sub>c \<times> UNIV) \<inter> Id)"
+      (is "_ = ?I\<^sub>a ;;; r ;;; ?I\<^sub>c")<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. r \<inter> I\<^sub>a \<times> I\<^sub>c = UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id<\STATESEP>by (simp add: rel_semi_def, blast)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+r \<inter> I\<^sub>a \<times> I\<^sub>c = UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>finally<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> Step A j ;;; r<\STATESEP>have "?I\<^sub>a ;;; r ;;; ?I\<^sub>c ;;; Step C j \<subseteq> ?I\<^sub>a ;;; Step A j ;;; r"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> Step A j ;;; r
+
+goal (1 subgoal):
+ 1. UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> UNIV \<times> I\<^sub>a \<inter> Id ;;; Step A j ;;; r<\STATESEP>by (simp add: rel_semi_def, blast)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> UNIV \<times> I\<^sub>a \<inter> Id ;;; Step A j ;;; r
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>also<\STATESEP>4<\TRANSEP>proof (state)
+this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> UNIV \<times> I\<^sub>a \<inter> Id ;;; Step A j ;;; r
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>from ia<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+A \<Turnstile> I\<^sub>a<\STATESEP>have "\<dots> \<subseteq> Step A j ;;; ?I\<^sub>a ;;; r"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+A \<Turnstile> I\<^sub>a
+
+goal (1 subgoal):
+ 1. UNIV \<times> I\<^sub>a \<inter> Id ;;; Step A j ;;; r \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r<\STATESEP>by (simp add: invariant_holds_def rel_semi_def, blast)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; Step A j ;;; r \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>finally<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r<\STATESEP>have "?I\<^sub>a ;;;  r ;;; ?I\<^sub>c ;;; Step C j;;; ?I\<^sub>c \<subseteq>  Step A j ;;; ?I\<^sub>a ;;; r ;;; ?I\<^sub>c"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r
+
+goal (1 subgoal):
+ 1. UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j ;;; I\<^sub>c \<times> UNIV \<inter> Id \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id<\STATESEP>by (simp add: rel_semi_def, blast)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j ;;; I\<^sub>c \<times> UNIV \<inter> Id \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>also<\STATESEP>4<\TRANSEP>proof (state)
+this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j ;;; I\<^sub>c \<times> UNIV \<inter> Id \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>from ic<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+C \<Turnstile> I\<^sub>c<\STATESEP>have "?I\<^sub>a ;;; r ;;; ?I\<^sub>c ;;; Step C j;;; ?I\<^sub>c =  ?I\<^sub>a ;;; r ;;; ?I\<^sub>c ;;; Step C j"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+C \<Turnstile> I\<^sub>c
+
+goal (1 subgoal):
+ 1. UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j ;;; I\<^sub>c \<times> UNIV \<inter> Id = UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j<\STATESEP>by (simp add: invariant_holds_def rel_semi_def, blast)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j ;;; I\<^sub>c \<times> UNIV \<inter> Id = UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>finally<\STATESEP>4<\TRANSEP>proof (chain)
+picking this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id<\STATESEP>have "r \<inter> (I\<^sub>a \<times> I\<^sub>c) ;;; Step C j \<subseteq> Step A j ;;; r \<inter> (I\<^sub>a \<times> I\<^sub>c)"<\STATESEP>4<\TRANSEP>proof (prove)
+using this:
+UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id ;;; Step C j \<subseteq> Step A j ;;; UNIV \<times> I\<^sub>a \<inter> Id ;;; r ;;; I\<^sub>c \<times> UNIV \<inter> Id
+
+goal (1 subgoal):
+ 1. r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r \<inter> I\<^sub>a \<times> I\<^sub>c<\STATESEP>by (simp add: rel_semi_def, blast)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; r \<inter> I\<^sub>a \<times> I\<^sub>c
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C ?j2 \<subseteq> Step A ?j2 ;;; r \<inter> I\<^sub>a \<times> I\<^sub>c
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>ultimately<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+\<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C ?j2 \<subseteq> Step A ?j2 ;;; r \<inter> I\<^sub>a \<times> I\<^sub>c<\STATESEP>show "fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C ?j2 \<subseteq> Step A ?j2 ;;; r \<inter> I\<^sub>a \<times> I\<^sub>c
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>using fin<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+\<forall>s. Init C s \<subseteq> (r \<inter> I\<^sub>a \<times> I\<^sub>c) `` Init A s
+r \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C ?j2 \<subseteq> Step A ?j2 ;;; r \<inter> I\<^sub>a \<times> I\<^sub>c
+\<forall>s s'. (s, s') \<in> r \<inter> I\<^sub>a \<times> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s
+
+goal (1 subgoal):
+ 1. fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A<\STATESEP>by (simp add: fw_sim_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+fw_sim (r \<inter> I\<^sub>a \<times> I\<^sub>c) C A
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma weaken_LI:
+  assumes LI: "LI A C R I'" and weaker: "I \<subseteq> I'" shows "LI A C R I"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. LI A C R I<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. LI A C R I<\STATESEP>from weaker<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+I \<subseteq> I'<\STATESEP>have step: "\<And>j. R \<inter> I ;;; Step C j \<subseteq> R \<inter> I' ;;; Step C j"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+I \<subseteq> I'
+
+goal (1 subgoal):
+ 1. \<And>j. R \<inter> I ;;; Step C j \<subseteq> R \<inter> I' ;;; Step C j<\STATESEP>by (fastforce simp: rel_semi_def relcomp_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+R \<inter> I ;;; Step C ?j \<subseteq> R \<inter> I' ;;; Step C ?j
+
+goal (1 subgoal):
+ 1. LI A C R I<\STATESEP>from weaker<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+I \<subseteq> I'<\STATESEP>have fin: "\<And>S. S \<in> R \<inter> I \<Longrightarrow> S \<in> R \<inter> I'"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+I \<subseteq> I'
+
+goal (1 subgoal):
+ 1. \<And>S. S \<in> R \<inter> I \<Longrightarrow> S \<in> R \<inter> I'<\STATESEP>by fastforce<\STATESEP>3<\TRANSEP>proof (state)
+this:
+?S \<in> R \<inter> I \<Longrightarrow> ?S \<in> R \<inter> I'
+
+goal (1 subgoal):
+ 1. LI A C R I<\STATESEP>from subset_trans[OF step] fin LI<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+R \<inter> I' ;;; Step C ?j1 \<subseteq> ?C \<Longrightarrow> R \<inter> I ;;; Step C ?j1 \<subseteq> ?C
+?S \<in> R \<inter> I \<Longrightarrow> ?S \<in> R \<inter> I'
+LI A C R I'<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+R \<inter> I' ;;; Step C ?j1 \<subseteq> ?C \<Longrightarrow> R \<inter> I ;;; Step C ?j1 \<subseteq> ?C
+?S \<in> R \<inter> I \<Longrightarrow> ?S \<in> R \<inter> I'
+LI A C R I'
+
+goal (1 subgoal):
+ 1. LI A C R I<\STATESEP>by (clarsimp simp: LI_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+LI A C R I
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma fw_sim_eq_LI: "fw_sim r C A = LI A C r UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fw_sim r C A = LI A C r UNIV<\STATESEP>by (simp add: fw_sim_def LI_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fw_sim_LI: "fw_sim r C A \<Longrightarrow> LI A C r I"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fw_sim r C A \<Longrightarrow> LI A C r I<\STATESEP>by (simp add: fw_sim_eq_LI weaken_LI[where I'=UNIV])<\STATESEP>1<\TRANSEP><\STATESEP>lemma L_invariantI:
+  assumes  "A \<Turnstile> I\<^sub>a" and "C \<Turnstile> I\<^sub>c" and "LI A C r (I\<^sub>a \<times> I\<^sub>c)"
+  shows "C \<sqsubseteq>\<^sub>F A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. C \<sqsubseteq>\<^sub>F A<\STATESEP>using assms<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+A \<Turnstile> I\<^sub>a
+C \<Turnstile> I\<^sub>c
+LI A C r (I\<^sub>a \<times> I\<^sub>c)
+
+goal (1 subgoal):
+ 1. C \<sqsubseteq>\<^sub>F A<\STATESEP>by (simp add: fw_simulates_def, rule_tac x="r \<inter> I\<^sub>a \<times> I\<^sub>c" in exI,
+      simp add: LI_fw_sim)<\STATESEP>1<\TRANSEP><\STATESEP>lemma refinement_refl[simp]:
+  "A \<sqsubseteq> A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<sqsubseteq> A<\STATESEP>by (simp add: refines_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma refinement_trans [trans]:
+  "\<lbrakk>C \<sqsubseteq> B; B \<sqsubseteq> A\<rbrakk> \<Longrightarrow> C \<sqsubseteq> A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>C \<sqsubseteq> B; B \<sqsubseteq> A\<rbrakk> \<Longrightarrow> C \<sqsubseteq> A<\STATESEP>by (simp add: refines_def) blast<\STATESEP>1<\TRANSEP><\STATESEP>lemma fw_inv_transport:
+  "\<lbrakk> A \<Turnstile> I\<^sub>a; C \<Turnstile> I\<^sub>c; LI A C R (I\<^sub>a \<times> I\<^sub>c) \<rbrakk> \<Longrightarrow> C \<Turnstile> {s'. \<exists>s. (s,s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>A \<Turnstile> I\<^sub>a; C \<Turnstile> I\<^sub>c; LI A C R (I\<^sub>a \<times> I\<^sub>c)\<rbrakk> \<Longrightarrow> C \<Turnstile> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply (clarsimp simp: LI_def invariant_holds_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> (\<forall>s. Init C s \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}) \<and> (\<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c})<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>s. Init C s \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}
+ 2. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply (rule allI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> Init C s \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}
+ 2. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; x \<in> Init C s\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c
+ 2. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply (subgoal_tac "x \<in> (R `` Init A s)")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s x. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; x \<in> Init C s; x \<in> R `` Init A s\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c
+ 2. \<And>s x. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; x \<in> Init C s\<rbrakk> \<Longrightarrow> x \<in> R `` Init A s
+ 3. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s x. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; x \<in> Init C s\<rbrakk> \<Longrightarrow> x \<in> R `` Init A s
+ 2. \<And>s x. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; x \<in> Init C s; x \<in> R `` Init A s\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c
+ 3. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s x. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; x \<in> Init C s; x \<in> R `` Init A s\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c
+ 2. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s\<rbrakk> \<Longrightarrow> \<forall>j. Step C j `` {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c} \<subseteq> {s'. \<exists>s. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>j. Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>j. Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>j. R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c<\STATESEP>apply (erule_tac x=j in allE)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; R \<inter> I\<^sub>a \<times> I\<^sub>c ;;; Step C j \<subseteq> Step A j ;;; R\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c<\STATESEP>apply (clarsimp simp: rel_semi_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; (R \<inter> I\<^sub>a \<times> I\<^sub>c) O Step C j \<subseteq> Step A j O R\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c<\STATESEP>apply (subgoal_tac "(s,x) \<in> Step A j O R")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; (R \<inter> I\<^sub>a \<times> I\<^sub>c) O Step C j \<subseteq> Step A j O R; (s, x) \<in> Step A j O R\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c
+ 2. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; (R \<inter> I\<^sub>a \<times> I\<^sub>c) O Step C j \<subseteq> Step A j O R\<rbrakk> \<Longrightarrow> (s, x) \<in> Step A j O R<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; (R \<inter> I\<^sub>a \<times> I\<^sub>c) O Step C j \<subseteq> Step A j O R\<rbrakk> \<Longrightarrow> (s, x) \<in> Step A j O R
+ 2. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; (R \<inter> I\<^sub>a \<times> I\<^sub>c) O Step C j \<subseteq> Step A j O R; (s, x) \<in> Step A j O R\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>j x xa s. \<lbrakk>\<forall>s. Init A s \<subseteq> I\<^sub>a; \<forall>s. Init C s \<subseteq> I\<^sub>c; \<forall>s. Init C s \<subseteq> R `` Init A s; \<forall>s s'. (s, s') \<in> R \<and> s \<in> I\<^sub>a \<and> s' \<in> I\<^sub>c \<longrightarrow> Fin C s' = Fin A s; (xa, x) \<in> Step C j; (s, xa) \<in> R; s \<in> I\<^sub>a; xa \<in> I\<^sub>c; Step A j `` I\<^sub>a \<subseteq> I\<^sub>a; Step C j `` I\<^sub>c \<subseteq> I\<^sub>c; (R \<inter> I\<^sub>a \<times> I\<^sub>c) O Step C j \<subseteq> Step A j O R; (s, x) \<in> Step A j O R\<rbrakk> \<Longrightarrow> \<exists>s. (s, x) \<in> R \<and> s \<in> I\<^sub>a \<and> x \<in> I\<^sub>c<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma fw_sim_refl:
+  "fw_sim Id A A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fw_sim Id A A<\STATESEP>apply (simp add: fw_sim_def rel_semi_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma fw_simulates_refl[simp]:
+  "A \<sqsubseteq>\<^sub>F A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. A \<sqsubseteq>\<^sub>F A<\STATESEP>apply (simp add: fw_simulates_def fw_sim_refl exI[where x="Id"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma fw_sim_trans:
+  "\<lbrakk>fw_sim Q C B; fw_sim R B A\<rbrakk> \<Longrightarrow> fw_sim (R O Q) C A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>fw_sim Q C B; fw_sim R B A\<rbrakk> \<Longrightarrow> fw_sim (R O Q) C A<\STATESEP>by (auto simp: fw_sim_def rel_semi_def; blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fw_simulates_trans:
+  "\<lbrakk>C \<sqsubseteq>\<^sub>F B; B \<sqsubseteq>\<^sub>F A\<rbrakk> \<Longrightarrow> C \<sqsubseteq>\<^sub>F A"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>C \<sqsubseteq>\<^sub>F B; B \<sqsubseteq>\<^sub>F A\<rbrakk> \<Longrightarrow> C \<sqsubseteq>\<^sub>F A<\STATESEP>apply (auto simp: fw_simulates_def dest: fw_sim_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

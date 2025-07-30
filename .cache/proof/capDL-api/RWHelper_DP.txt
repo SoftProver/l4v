@@ -1,0 +1,621 @@
+<\STATESEP>theory RWHelper_DP
+imports ProofHelpers_DP KHeap_DP
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition eq_on :: "'a set \<Rightarrow> ('a \<Rightarrow> 'b option) \<Rightarrow> ('a \<Rightarrow> 'b option) \<Rightarrow> bool"
+where "eq_on m s s' \<equiv> \<forall>ptr\<in> m. s ptr = s' ptr"<\STATESEP>0<\TRANSEP><\STATESEP>lemma eq_on_subset:
+  "\<lbrakk>B \<subseteq> A ; eq_on A s s' \<rbrakk> \<Longrightarrow> eq_on B s s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>B \<subseteq> A; eq_on A s s'\<rbrakk> \<Longrightarrow> eq_on B s s'<\STATESEP>by (auto simp:eq_on_def)<\STATESEP>1<\TRANSEP><\STATESEP>definition WritingOf :: "(('a \<Rightarrow>'b option) \<Rightarrow> ('a \<Rightarrow> 'b option)) \<Rightarrow> 'a set"
+where "WritingOf f \<equiv> UN s:UNIV. {ptr. (f s) ptr \<noteq> s ptr} "<\STATESEP>0<\TRANSEP><\STATESEP>definition IsReadingEstimateOf :: "'a set \<Rightarrow> (('a \<Rightarrow> 'b option) \<Rightarrow> ('a \<Rightarrow> 'b option)) \<Rightarrow> 'a set \<Rightarrow> bool"
+  where "IsReadingEstimateOf m f estimate \<equiv> (\<forall>s s'. (eq_on m s s') \<longrightarrow> (eq_on estimate (f s) (f s')))"<\STATESEP>0<\TRANSEP><\STATESEP>definition ReadingEstimateOf :: "(('a \<Rightarrow>'b option) \<Rightarrow> ('a \<Rightarrow> 'b option)) \<Rightarrow> ('a set) \<Rightarrow> ('a set)"
+where "ReadingEstimateOf f estimate \<equiv> Inter {m. IsReadingEstimateOf m f estimate }"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation ReadingOf :: "(('a \<Rightarrow>'b option) \<Rightarrow> ('a \<Rightarrow> 'b option)) \<Rightarrow> 'a set"
+where "ReadingOf f \<equiv>  ReadingEstimateOf f (WritingOf f)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma eq_on_trans:
+  "\<lbrakk>eq_on a s sa ; eq_on a sa sb\<rbrakk> \<Longrightarrow> eq_on a s sb"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>eq_on a s sa; eq_on a sa sb\<rbrakk> \<Longrightarrow> eq_on a s sb<\STATESEP>by (simp add:eq_on_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ReadingEstimateOf_inter:
+  "\<lbrakk>IsReadingEstimateOf a f r; IsReadingEstimateOf b f r \<rbrakk> \<Longrightarrow> IsReadingEstimateOf (a \<inter> b) f r"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsReadingEstimateOf a f r; IsReadingEstimateOf b f r\<rbrakk> \<Longrightarrow> IsReadingEstimateOf (a \<inter> b) f r<\STATESEP>apply (clarsimp simp:IsReadingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>\<forall>s s'. eq_on a s s' \<longrightarrow> eq_on r (f s) (f s'); \<forall>s s'. eq_on b s s' \<longrightarrow> eq_on r (f s) (f s'); eq_on (a \<inter> b) s s'\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (drule_tac x = s in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>\<forall>s s'. eq_on b s s' \<longrightarrow> eq_on r (f s) (f s'); eq_on (a \<inter> b) s s'; \<forall>s'. eq_on a s s' \<longrightarrow> eq_on r (f s) (f s')\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (drule_tac x = "(\<lambda>ptr. if ptr\<in>(b - a) then (s' ptr) else (s ptr))" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; \<forall>s'. eq_on a s s' \<longrightarrow> eq_on r (f s) (f s'); \<forall>s'a. eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s'a \<longrightarrow> eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s'a)\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (drule_tac x = "(\<lambda>ptr. if ptr\<in>(b - a) then (s' ptr) else (s ptr))" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; \<forall>s'a. eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s'a \<longrightarrow> eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s'a); eq_on a s (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) \<longrightarrow> eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr))\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (drule_tac x = s' in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on a s (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) \<longrightarrow> eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)); eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s' \<longrightarrow> eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s')\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (erule impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s' \<longrightarrow> eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s')\<rbrakk> \<Longrightarrow> eq_on a s (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)
+ 2. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s' \<longrightarrow> eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s'); eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr))\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (simp add:eq_on_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s' \<longrightarrow> eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s'); eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr))\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (erule impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr))\<rbrakk> \<Longrightarrow> eq_on b (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr) s'
+ 2. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)); eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s')\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (simp add:eq_on_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)); eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s')\<rbrakk> \<Longrightarrow> eq_on r (f s) (f s')<\STATESEP>apply (rule eq_on_trans)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)); eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s')\<rbrakk> \<Longrightarrow> eq_on r (f s) (?sa24 s s')
+ 2. \<And>s s'. \<lbrakk>eq_on (a \<inter> b) s s'; eq_on r (f s) (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)); eq_on r (f (\<lambda>ptr. if ptr \<in> b - a then s' ptr else s ptr)) (f s')\<rbrakk> \<Longrightarrow> eq_on r (?sa24 s s') (f s')<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ReadingEstimateOf_read_subset:
+  "\<lbrakk>IsReadingEstimateOf a f w;  a \<subseteq> b\<rbrakk> \<Longrightarrow> IsReadingEstimateOf b f w"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsReadingEstimateOf a f w; a \<subseteq> b\<rbrakk> \<Longrightarrow> IsReadingEstimateOf b f w<\STATESEP>by (auto simp add:IsReadingEstimateOf_def eq_on_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ReadingEstimateOf_write_subset:
+  "\<lbrakk>IsReadingEstimateOf a f w;  w' \<subseteq> w\<rbrakk> \<Longrightarrow> IsReadingEstimateOf a f w'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsReadingEstimateOf a f w; w' \<subseteq> w\<rbrakk> \<Longrightarrow> IsReadingEstimateOf a f w'<\STATESEP>by (auto simp add:IsReadingEstimateOf_def eq_on_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma reading_estimateD:
+  "\<lbrakk>IsReadingEstimateOf a f w; eq_on a s s'\<rbrakk> \<Longrightarrow> eq_on w (f s) (f s')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsReadingEstimateOf a f w; eq_on a s s'\<rbrakk> \<Longrightarrow> eq_on w (f s) (f s')<\STATESEP>by (auto simp:IsReadingEstimateOf_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma not_writingD:
+  "ptr \<notin> WritingOf f \<Longrightarrow> (f s) ptr = s ptr"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ptr \<notin> WritingOf f \<Longrightarrow> f s ptr = s ptr<\STATESEP>by (auto simp:WritingOf_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma well_ordered_estimate:
+  "WritingOf f \<subseteq> writing_estimate \<Longrightarrow>
+    ReadingOf f \<subseteq> ReadingEstimateOf f writing_estimate"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. WritingOf f \<subseteq> writing_estimate \<Longrightarrow> ReadingOf f \<subseteq> ReadingEstimateOf f writing_estimate<\STATESEP>by (auto simp add:IsReadingEstimateOf_def ReadingEstimateOf_def eq_on_subset)<\STATESEP>1<\TRANSEP><\STATESEP>lemma writing_estimate_pipe:
+  "\<lbrakk>WritingOf f \<subseteq> Q; WritingOf g \<subseteq> Q\<rbrakk> \<Longrightarrow> WritingOf (f\<circ>g) \<subseteq> Q"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>WritingOf f \<subseteq> Q; WritingOf g \<subseteq> Q\<rbrakk> \<Longrightarrow> WritingOf (f \<circ> g) \<subseteq> Q<\STATESEP>apply (subst WritingOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>WritingOf f \<subseteq> Q; WritingOf g \<subseteq> Q\<rbrakk> \<Longrightarrow> (\<Union>s. {ptr. (f \<circ> g) s ptr \<noteq> s ptr}) \<subseteq> Q<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>WritingOf f \<subseteq> Q; WritingOf g \<subseteq> Q; f (g xa) x \<noteq> xa x\<rbrakk> \<Longrightarrow> x \<in> Q<\STATESEP>apply (rule ccontr)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>WritingOf f \<subseteq> Q; WritingOf g \<subseteq> Q; f (g xa) x \<noteq> xa x; x \<notin> Q\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (drule(1) contra_subsetD)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>f (g xa) x \<noteq> xa x; x \<notin> Q; x \<notin> WritingOf f; x \<notin> WritingOf g\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (drule_tac s = "g xa" in not_writingD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>f (g xa) x \<noteq> xa x; x \<notin> Q; x \<notin> WritingOf g; f (g xa) x = g xa x\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (drule_tac s = xa in not_writingD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>f (g xa) x \<noteq> xa x; x \<notin> Q; f (g xa) x = g xa x; g xa x = xa x\<rbrakk> \<Longrightarrow> False<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma reading_writing_estimate:
+  "\<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g)\<rbrakk> \<Longrightarrow> eq_on R (g s) (g s')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g)\<rbrakk> \<Longrightarrow> eq_on R (g s) (g s')<\STATESEP>apply (subst eq_on_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g)\<rbrakk> \<Longrightarrow> \<forall>ptr\<in>R. g s ptr = g s' ptr<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr<\STATESEP>apply (case_tac "ptr \<in> WritingOf g")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R; ptr \<in> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr
+ 2. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R; ptr \<notin> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr<\STATESEP>apply (clarsimp simp:IsReadingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ptr. \<lbrakk>eq_on R s s'; \<forall>s s'. eq_on R s s' \<longrightarrow> eq_on (WritingOf g) (g s) (g s'); ptr \<in> R; ptr \<in> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr
+ 2. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R; ptr \<notin> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr<\STATESEP>apply (elim impE allE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>ptr. \<lbrakk>eq_on R s s'; ptr \<in> R; ptr \<in> WritingOf g\<rbrakk> \<Longrightarrow> eq_on R (?s4 ptr) (?s'5 ptr)
+ 2. \<And>ptr. \<lbrakk>eq_on R s s'; ptr \<in> R; ptr \<in> WritingOf g; eq_on (WritingOf g) (g (?s4 ptr)) (g (?s'5 ptr))\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr
+ 3. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R; ptr \<notin> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>ptr. \<lbrakk>eq_on R s s'; ptr \<in> R; ptr \<in> WritingOf g; eq_on (WritingOf g) (g s) (g s')\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr
+ 2. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R; ptr \<notin> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr<\STATESEP>apply (clarsimp simp:eq_on_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ptr. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g); ptr \<in> R; ptr \<notin> WritingOf g\<rbrakk> \<Longrightarrow> g s ptr = g s' ptr<\STATESEP>apply (clarsimp simp:WritingOf_def eq_on_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma reading_estimate_pipe:
+  assumes reg: "IsReadingEstimateOf R g M"
+  and ref: " IsReadingEstimateOf R f M"
+  and wg: "WritingOf g \<subseteq> M"
+  and wf: "WritingOf f \<subseteq> M"
+  shows "IsReadingEstimateOf R (f \<circ> g) M"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. IsReadingEstimateOf R (f \<circ> g) M<\STATESEP>apply (clarsimp simp: IsReadingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. eq_on R s s' \<Longrightarrow> eq_on M (f (g s)) (f (g s'))<\STATESEP>apply (cut_tac ReadingEstimateOf_write_subset[OF reg wg])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on R s s'; IsReadingEstimateOf R g (WritingOf g)\<rbrakk> \<Longrightarrow> eq_on M (f (g s)) (f (g s'))<\STATESEP>apply (drule(1) reading_writing_estimate[rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>eq_on R s s'; eq_on R (g s) (g s')\<rbrakk> \<Longrightarrow> eq_on M (f (g s)) (f (g s'))<\STATESEP>apply (erule reading_estimateD[OF ref])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "IsSepWritingEstimateOf f P proj m \<equiv> \<forall>ptr v.
+  \<lbrace>\<lambda>s. (proj s) ptr = v \<and> P s \<and> ptr \<in> (UNIV - m) \<rbrace> f \<lbrace>\<lambda>r s. (proj s) ptr = v \<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "IsStrongSepWritingEstimateOf f P proj m g \<equiv> \<forall>state.
+  \<lbrace>\<lambda>s. (proj s) = state \<and> P s \<rbrace> f
+  \<lbrace>\<lambda>r s. (proj s) |` m = (g state) \<and> (proj s) |` (UNIV - m) = state |` (UNIV - m)\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  "IsSepReadingEstimateOf r f P proj m \<equiv> \<forall>substate. \<exists>g.
+  \<lbrace>\<lambda>s. (proj s) |` r = substate \<and> P s  \<rbrace> f \<lbrace>\<lambda>r s. (proj s) |` m = g substate\<rbrace>"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_writing_estimateD:
+  "\<lbrakk>IsSepWritingEstimateOf f P proj m; (r, s') \<in> fst (f s);P s \<rbrakk>
+  \<Longrightarrow> proj s |` (UNIV - m) = proj s' |` (UNIV - m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsSepWritingEstimateOf f P proj m; (r, s') \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> proj s |` (UNIV - m) = proj s' |` (UNIV - m)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>IsSepWritingEstimateOf f P proj m; (r, s') \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m)) x = (proj s' |` (UNIV - m)) x<\STATESEP>apply (clarsimp simp: restrict_map_def
+    IsSepWritingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>ptr v. \<lbrace>\<lambda>s. proj s ptr = v \<and> P s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace>; (r, s') \<in> fst (f s); P s; x \<notin> m\<rbrakk> \<Longrightarrow> proj s x = proj s' x<\STATESEP>apply (drule_tac x = x in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>(r, s') \<in> fst (f s); P s; x \<notin> m; \<forall>v. \<lbrace>\<lambda>s. proj s x = v \<and> P s \<and> x \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s x = v\<rbrace>\<rbrakk> \<Longrightarrow> proj s x = proj s' x<\STATESEP>apply (drule_tac x = "proj s x" in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>(r, s') \<in> fst (f s); P s; x \<notin> m; \<lbrace>\<lambda>sa. proj sa x = proj s x \<and> P sa \<and> x \<notin> m\<rbrace> f \<lbrace>\<lambda>r sa. proj sa x = proj s x\<rbrace>\<rbrakk> \<Longrightarrow> proj s x = proj s' x<\STATESEP>apply (drule(1) use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>P s; x \<notin> m; \<lbrace>\<lambda>sa. proj sa x = proj s x \<and> P sa \<and> x \<notin> m\<rbrace> f \<lbrace>\<lambda>r sa. proj sa x = proj s x\<rbrace>\<rbrakk> \<Longrightarrow> proj s x = proj s x \<and> P s \<and> x \<notin> m
+ 2. \<And>x. \<lbrakk>P s; x \<notin> m; \<lbrace>\<lambda>sa. proj sa x = proj s x \<and> P sa \<and> x \<notin> m\<rbrace> f \<lbrace>\<lambda>r sa. proj sa x = proj s x\<rbrace>; proj s' x = proj s x\<rbrakk> \<Longrightarrow> proj s x = proj s' x<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_writing_estimate_imp:
+  "\<lbrakk>IsSepWritingEstimateOf f P' proj m; \<And>s. P s \<Longrightarrow> P' s\<rbrakk>
+  \<Longrightarrow> IsSepWritingEstimateOf f P proj m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsSepWritingEstimateOf f P' proj m; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> IsSepWritingEstimateOf f P proj m<\STATESEP>apply (clarsimp simp:IsSepWritingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ptr v. \<lbrakk>\<forall>ptr v. \<lbrace>\<lambda>s. proj s ptr = v \<and> P' s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace>; \<And>s. P s \<Longrightarrow> P' s\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. proj s ptr = v \<and> P s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace><\STATESEP>apply (drule_tac x = ptr in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ptr v. \<lbrakk>\<And>s. P s \<Longrightarrow> P' s; \<forall>v. \<lbrace>\<lambda>s. proj s ptr = v \<and> P' s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. proj s ptr = v \<and> P s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace><\STATESEP>apply (drule_tac x = v in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ptr v. \<lbrakk>\<And>s. P s \<Longrightarrow> P' s; \<lbrace>\<lambda>s. proj s ptr = v \<and> P' s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. proj s ptr = v \<and> P s \<and> ptr \<notin> m\<rbrace> f \<lbrace>\<lambda>r s. proj s ptr = v\<rbrace><\STATESEP>apply (erule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>ptr v s. \<lbrakk>\<And>s. P s \<Longrightarrow> P' s; proj s ptr = v \<and> P s \<and> ptr \<notin> m\<rbrakk> \<Longrightarrow> proj s ptr = v \<and> P' s \<and> ptr \<notin> m<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_strong_writing_estimateD:
+  "\<lbrakk>IsStrongSepWritingEstimateOf f P proj m g; (r, s') \<in> fst (f s);P s \<rbrakk>
+  \<Longrightarrow> proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>IsStrongSepWritingEstimateOf f P proj m g; (r, s') \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)<\STATESEP>apply (simp add:
+    IsStrongSepWritingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>state. \<lbrace>\<lambda>s. proj s = state \<and> P s\<rbrace> f \<lbrace>\<lambda>r s. proj s |` m = g state \<and> proj s |` (UNIV - m) = state |` (UNIV - m)\<rbrace>; (r, s') \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)<\STATESEP>apply (drule_tac x = "proj s " in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(r, s') \<in> fst (f s); P s; \<lbrace>\<lambda>sa. proj sa = proj s \<and> P sa\<rbrace> f \<lbrace>\<lambda>r sa. proj sa |` m = g (proj s) \<and> proj sa |` (UNIV - m) = proj s |` (UNIV - m)\<rbrace>\<rbrakk> \<Longrightarrow> proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)<\STATESEP>apply (drule use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>P s; \<lbrace>\<lambda>sa. proj sa = proj s \<and> P sa\<rbrace> f \<lbrace>\<lambda>r sa. proj sa |` m = g (proj s) \<and> proj sa |` (UNIV - m) = proj s |` (UNIV - m)\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>?P2\<rbrace> f \<lbrace>?Q2\<rbrace>
+ 2. \<lbrakk>P s; \<lbrace>\<lambda>sa. proj sa = proj s \<and> P sa\<rbrace> f \<lbrace>\<lambda>r sa. proj sa |` m = g (proj s) \<and> proj sa |` (UNIV - m) = proj s |` (UNIV - m)\<rbrace>\<rbrakk> \<Longrightarrow> ?P2 s
+ 3. \<lbrakk>P s; \<lbrace>\<lambda>sa. proj sa = proj s \<and> P sa\<rbrace> f \<lbrace>\<lambda>r sa. proj sa |` m = g (proj s) \<and> proj sa |` (UNIV - m) = proj s |` (UNIV - m)\<rbrace>; ?Q2 r s'\<rbrakk> \<Longrightarrow> proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>P s; \<lbrace>\<lambda>sa. proj sa = proj s \<and> P sa\<rbrace> f \<lbrace>\<lambda>r sa. proj sa |` m = g (proj s) \<and> proj sa |` (UNIV - m) = proj s |` (UNIV - m)\<rbrace>\<rbrakk> \<Longrightarrow> proj s = proj s \<and> P s
+ 2. \<lbrakk>P s; \<lbrace>\<lambda>sa. proj sa = proj s \<and> P sa\<rbrace> f \<lbrace>\<lambda>r sa. proj sa |` m = g (proj s) \<and> proj sa |` (UNIV - m) = proj s |` (UNIV - m)\<rbrace>; proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)\<rbrakk> \<Longrightarrow> proj s' |` m = g (proj s) \<and> proj s' |` (UNIV - m) = proj s |` (UNIV - m)<\STATESEP>apply simp+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma intent_reset_twice[simp]:
+ "intent_reset (intent_reset z) = intent_reset z"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. intent_reset (intent_reset z) = intent_reset z<\STATESEP>apply (case_tac z)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (10 subgoals):
+ 1. z = Endpoint \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 2. z = Notification \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 3. \<And>x3. z = Tcb x3 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 4. \<And>x4. z = CNode x4 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 5. \<And>x5. z = AsidPool x5 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 6. \<And>x6. z = PageTable x6 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 7. \<And>x7. z = PageDirectory x7 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 8. \<And>x8. z = Frame x8 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 9. z = Untyped \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z
+ 10. \<And>x10. z = IRQNode x10 \<Longrightarrow> intent_reset (intent_reset z) = intent_reset z<\STATESEP>apply (simp_all add:intent_reset_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma largest_set:
+  "UNIV \<subseteq> cmps \<Longrightarrow> cmps = UNIV"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. UNIV \<subseteq> cmps \<Longrightarrow> cmps = UNIV<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>definition "sep_map_predicate p P cmps \<equiv> \<lambda>s. \<exists>obj. (sep_map_general p obj cmps s \<and> P obj)"<\STATESEP>0<\TRANSEP><\STATESEP>definition "sep_heap_dom P m = (\<forall>s. P s \<longrightarrow> dom (sep_heap s) = m)"<\STATESEP>0<\TRANSEP><\STATESEP>definition "sep_irq_node_dom P m = (\<forall>s. P s \<longrightarrow> dom (sep_irq_node s) = m)"<\STATESEP>0<\TRANSEP><\STATESEP>definition "sep_map_spec P s =  (\<forall>s'. P s' \<longrightarrow> s' =  s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_heap_domD:
+  "\<lbrakk>sep_heap_dom P m; P s ; p \<notin> m\<rbrakk>
+   \<Longrightarrow> p \<notin> dom (sep_heap s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_heap_dom P m; P s; p \<notin> m\<rbrakk> \<Longrightarrow> p \<notin> dom (sep_heap s)<\STATESEP>by (fastforce simp:sep_heap_dom_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_heap_domD':
+  "\<lbrakk>sep_heap_dom P m;P s\<rbrakk>
+   \<Longrightarrow> m = dom (sep_heap s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_heap_dom P m; P s\<rbrakk> \<Longrightarrow> m = dom (sep_heap s)<\STATESEP>by (fastforce simp:sep_heap_dom_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_irq_node_domD':
+  "\<lbrakk>sep_irq_node_dom P m; P s\<rbrakk>
+   \<Longrightarrow> m = dom (sep_irq_node s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_irq_node_dom P m; P s\<rbrakk> \<Longrightarrow> m = dom (sep_irq_node s)<\STATESEP>by (fastforce simp: sep_irq_node_dom_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_specD:
+  "\<lbrakk>sep_map_spec P s; P s'\<rbrakk> \<Longrightarrow> s = s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_map_spec P s; P s'\<rbrakk> \<Longrightarrow> s = s'<\STATESEP>by (clarsimp simp: sep_map_spec_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_heap_dom_sep_map_predicate:
+  "m = {ptr}\<times> cmps \<Longrightarrow>
+  sep_heap_dom (sep_map_predicate ptr P cmps) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. m = {ptr} \<times> cmps \<Longrightarrow> sep_heap_dom (sep_map_predicate ptr P cmps) m<\STATESEP>apply (clarsimp simp: sep_map_general_def
+    object_to_sep_state_def
+    sep_heap_dom_def sep_map_predicate_def
+    split:sep_state.splits if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj. \<lbrakk>m = {ptr} \<times> cmps; sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = ptr \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None); sep_irq_node s = (\<lambda>x. None); P obj\<rbrakk> \<Longrightarrow> dom (\<lambda>(obj_id', comp_id). if obj_id' = ptr \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None) = {ptr} \<times> cmps<\STATESEP>apply (rule set_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s obj x. \<lbrakk>m = {ptr} \<times> cmps; sep_heap s = (\<lambda>(obj_id', comp_id). if obj_id' = ptr \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None); sep_irq_node s = (\<lambda>x. None); P obj\<rbrakk> \<Longrightarrow> (x \<in> dom (\<lambda>(obj_id', comp_id). if obj_id' = ptr \<and> comp_id \<in> cmps then Some (object_project comp_id obj) else None)) = (x \<in> {ptr} \<times> cmps)<\STATESEP>apply (clarsimp simp:dom_def object_project_def split:cdl_component_id.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_irq_node_dom_sep_map_predicate:
+  "sep_irq_node_dom (sep_map_predicate ptr P cmps) {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_irq_node_dom (sep_map_predicate ptr P cmps) {}<\STATESEP>apply (clarsimp simp: sep_map_general_def object_to_sep_state_def
+    sep_irq_node_dom_def sep_map_predicate_def
+    split:sep_state.splits if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_rewrite_spec:
+  "sep_map_general = (\<lambda>p obj cmps.  sep_map_predicate p ((=) obj) cmps)"
+  "sep_map_o = (\<lambda>p obj. sep_map_predicate p ((=) obj) UNIV)"
+  "sep_map_f = (\<lambda>p obj. sep_map_predicate p ((=) obj) {Fields})"
+  "sep_map_c = (\<lambda>p cap. let (ptr,slot) = p in
+   sep_map_predicate ptr (\<lambda>obj. object_slots obj = [ slot \<mapsto> cap]) {Slot slot})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (sep_map_general = (\<lambda>p obj. sep_map_predicate p ((=) obj)) &&& sep_map_o = (\<lambda>p obj. sep_map_predicate p ((=) obj) UNIV)) &&& sep_map_f = (\<lambda>p obj. sep_map_predicate p ((=) obj) {Fields}) &&& sep_map_c = (\<lambda>p cap. let (ptr, slot) = p in sep_map_predicate ptr (\<lambda>obj. object_slots obj = [slot \<mapsto> cap]) {Slot slot})<\STATESEP>by (fastforce simp: sep_map_predicate_def sep_any_def sep_map_general_def
+                      sep_map_o_def sep_map_f_def sep_map_c_def split_def
+               split: sep_state.splits)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_rewrite_any:
+  "sep_any_map_c = (\<lambda>ptr state.
+   sep_map_predicate (fst ptr) (\<lambda>obj. \<exists>cap. object_slots obj = [(snd ptr) \<mapsto> cap]) {Slot (snd ptr)} state)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_any_map_c = (\<lambda>ptr. sep_map_predicate (fst ptr) (\<lambda>obj. \<exists>cap. object_slots obj = [snd ptr \<mapsto> cap]) {Slot (snd ptr)})<\STATESEP>by (fastforce simp: sep_map_predicate_def sep_map_general_def sep_any_def
+                      sep_map_o_def sep_map_f_def sep_map_c_def split_def
+               split: sep_state.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_heap_dom_conj:
+  "\<lbrakk>sep_heap_dom P m;sep_heap_dom P' m'\<rbrakk> \<Longrightarrow> sep_heap_dom (P \<and>* P') (m \<union> m')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_heap_dom P m; sep_heap_dom P' m'\<rbrakk> \<Longrightarrow> sep_heap_dom (P \<and>* P') (m \<union> m')<\STATESEP>apply (clarsimp simp: sep_heap_dom_def sep_conj_def
+                        sep_disj_sep_state_def sep_state_disj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>\<forall>s. P s \<longrightarrow> dom (sep_heap s) = m; \<forall>s. P' s \<longrightarrow> dom (sep_heap s) = m'; sep_heap x \<bottom> sep_heap y; sep_irq_node x \<bottom> sep_irq_node y; P x; P' y\<rbrakk> \<Longrightarrow> dom (sep_heap (x + y)) = m \<union> m'<\STATESEP>apply (auto simp: map_disj_def plus_sep_state_def sep_state_add_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_heap_dom_simps:
+  "sep_heap_dom (slot \<mapsto>c -) ({(fst slot,Slot (snd slot))})"
+  "sep_heap_dom (slot \<mapsto>c cap) ({(fst slot,Slot (snd slot))})"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_heap_dom (slot \<mapsto>c -) {(fst slot, Slot (snd slot))} &&& sep_heap_dom (slot \<mapsto>c cap) {(fst slot, Slot (snd slot))}<\STATESEP>apply (simp add:sep_map_rewrite_any sep_heap_dom_sep_map_predicate)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_heap_dom (slot \<mapsto>c cap) {(fst slot, Slot (snd slot))}<\STATESEP>apply (simp add:sep_map_rewrite_spec sep_heap_dom_sep_map_predicate split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_irq_node_dom_simps:
+  "sep_irq_node_dom (slot \<mapsto>c -) {}"
+  "sep_irq_node_dom (slot \<mapsto>c cap) {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_irq_node_dom (slot \<mapsto>c -) {} &&& sep_irq_node_dom (slot \<mapsto>c cap) {}<\STATESEP>apply (simp add:sep_map_rewrite_any sep_irq_node_dom_sep_map_predicate)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_irq_node_dom (slot \<mapsto>c cap) {}<\STATESEP>apply (simp add:sep_map_rewrite_spec sep_irq_node_dom_sep_map_predicate split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_spec_conj:
+  "\<lbrakk>sep_map_spec P s; sep_map_spec P' s'\<rbrakk>
+    \<Longrightarrow> sep_map_spec (P \<and>* P')
+                     (SepState (sep_heap s ++ sep_heap s')
+                               (sep_irq_node s ++ sep_irq_node s'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_map_spec P s; sep_map_spec P' s'\<rbrakk> \<Longrightarrow> sep_map_spec (P \<and>* P') (SepState (sep_heap s ++ sep_heap s') (sep_irq_node s ++ sep_irq_node s'))<\STATESEP>by (clarsimp simp: sep_map_spec_def sep_conj_def
+                     plus_sep_state_def sep_state_add_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_spec_simps:
+  "sep_map_spec (slot \<mapsto>c cap)
+  (SepState [(fst slot,Slot (snd slot)) \<mapsto> (CDL_Cap (Some (reset_cap_asid cap)))]
+            Map.empty)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sep_map_spec (slot \<mapsto>c cap) (SepState [(fst slot, Slot (snd slot)) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))<\STATESEP>apply (clarsimp simp:sep_map_spec_def sep_map_c_def sep_map_general_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s' x y obj. \<lbrakk>slot = (x, y); sep_heap s' = object_to_sep_state x obj {Slot y}; sep_irq_node s' = (\<lambda>x. None); object_slots obj = [y \<mapsto> cap]\<rbrakk> \<Longrightarrow> s' = SepState [(x, Slot y) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None)<\STATESEP>apply (case_tac s')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s' x y obj x1 x2. \<lbrakk>slot = (x, y); sep_heap s' = object_to_sep_state x obj {Slot y}; sep_irq_node s' = (\<lambda>x. None); object_slots obj = [y \<mapsto> cap]; s' = SepState x1 x2\<rbrakk> \<Longrightarrow> s' = SepState [(x, Slot y) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None)<\STATESEP>apply (clarsimp simp:object_to_sep_state_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y obj. \<lbrakk>slot = (x, y); object_slots obj = [y \<mapsto> cap]\<rbrakk> \<Longrightarrow> (\<lambda>(obj_id', comp_id). if obj_id' = x \<and> comp_id = Slot y then Some (object_project comp_id obj) else None) = [(x, Slot y) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))]<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y obj xa. \<lbrakk>slot = (x, y); object_slots obj = [y \<mapsto> cap]\<rbrakk> \<Longrightarrow> (case xa of (obj_id', comp_id) \<Rightarrow> if obj_id' = x \<and> comp_id = Slot y then Some (object_project comp_id obj) else None) = [(x, Slot y) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] xa<\STATESEP>apply (clarsimp simp: object_project_def object_slots_object_clean
+                 split: if_split_asm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_spec:
+  "\<lbrakk> < P \<and>* Q > s\<rbrakk>
+   \<Longrightarrow> \<exists>s'. < P \<and>* (=) s' > s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cdl.lift (P \<and>* Q) s \<Longrightarrow> \<exists>s'. cdl.lift (P \<and>* (=) s') s<\STATESEP>by (auto simp:sep_state_projection_def sep_conj_def
+    sep_disj_sep_state_def sep_state_disj_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_conj_spec_value:
+  "\<lbrakk> < P \<and>* (=) s' > s; sep_heap_dom P m; p \<notin> m\<rbrakk>
+  \<Longrightarrow> (sep_heap s') p = (sep_heap (sep_state_projection s) |` (UNIV - m)) p"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>cdl.lift (P \<and>* (=) s') s; sep_heap_dom P m; p \<notin> m\<rbrakk> \<Longrightarrow> sep_heap s' p = (cdl.lift sep_heap s |` (UNIV - m)) p<\STATESEP>apply (clarsimp simp:sep_state_projection_def sep_conj_def
+    sep_disj_sep_state_def sep_state_disj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>sep_heap_dom P m; p \<notin> m; sep_heap x \<bottom> sep_heap s'; sep_irq_node x \<bottom> sep_irq_node s'; SepState (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects s obj_id)) (\<lambda>irq. Some (cdl_irq_node s irq)) = x + s'; P x\<rbrakk> \<Longrightarrow> sep_heap s' p = (case p of (obj_id, comp_id) \<Rightarrow> map_option (object_project comp_id) (cdl_objects s obj_id))<\STATESEP>apply (drule(2) sep_heap_domD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>p \<notin> m; sep_heap x \<bottom> sep_heap s'; sep_irq_node x \<bottom> sep_irq_node s'; SepState (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects s obj_id)) (\<lambda>irq. Some (cdl_irq_node s irq)) = x + s'; P x; p \<notin> dom (sep_heap x)\<rbrakk> \<Longrightarrow> sep_heap s' p = (case p of (obj_id, comp_id) \<Rightarrow> map_option (object_project comp_id) (cdl_objects s obj_id))<\STATESEP>apply (simp add: plus_sep_state_def sep_state_add_def
+            split: sep_state.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>p \<notin> m; sep_heap x \<bottom> sep_heap s'; sep_irq_node x \<bottom> sep_irq_node s'; (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects s obj_id)) = sep_heap x ++ sep_heap s' \<and> (\<lambda>irq. Some (cdl_irq_node s irq)) = sep_irq_node x ++ sep_irq_node s'; P x; p \<notin> dom (sep_heap x)\<rbrakk> \<Longrightarrow> sep_heap s' p = (sep_heap x ++ sep_heap s') p<\STATESEP>apply (clarsimp simp: map_add_def split:option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma write_estimate_via_sep:
+  assumes sep_valid: "\<And>obj Q. \<lbrace>\<lambda>s. < P \<and>* Q > s \<rbrace>
+    f \<lbrace>\<lambda>r s. < P' \<and>* Q > s \<rbrace>"
+  and sep_heap_dom: "sep_heap_dom P m"
+  and sep_heap_dom': "sep_heap_dom P' m"
+  shows "IsSepWritingEstimateOf f (\<lambda>s. < P \<and>* Q> s)
+    (\<lambda>s.  sep_heap (sep_state_projection s)) m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. IsSepWritingEstimateOf f (cdl.lift (P \<and>* Q)) (cdl.lift sep_heap) m<\STATESEP>apply (clarsimp simp: valid_def IsSepWritingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s aa ba. \<lbrakk>(aa, ba) \<in> fst (f s); cdl.lift (P \<and>* Q) s; (a, b) \<notin> m\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply (drule sep_conj_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s aa ba. \<lbrakk>(aa, ba) \<in> fst (f s); (a, b) \<notin> m; \<exists>s'. cdl.lift (P \<and>* (=) s') s\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s aa ba s'. \<lbrakk>(aa, ba) \<in> fst (f s); (a, b) \<notin> m; cdl.lift (P \<and>* (=) s') s\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply (drule use_valid[OF _ sep_valid])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>a b s aa ba s'. \<lbrakk>(a, b) \<notin> m; cdl.lift (P \<and>* (=) s') s\<rbrakk> \<Longrightarrow> cdl.lift (P \<and>* ?Q21 a b s aa ba s') s
+ 2. \<And>a b s aa ba s'. \<lbrakk>(a, b) \<notin> m; cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* ?Q21 a b s aa ba s') ba\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s aa ba s'. \<lbrakk>(a, b) \<notin> m; cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') ba\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply (drule(1) sep_conj_spec_value[OF _ sep_heap_dom])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s aa ba s'. \<lbrakk>(a, b) \<notin> m; cdl.lift (P' \<and>* (=) s') ba; sep_heap s' (a, b) = (cdl.lift sep_heap s |` (UNIV - m)) (a, b)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply (drule(1) sep_conj_spec_value[OF _ sep_heap_dom'])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b s aa ba s'. \<lbrakk>(a, b) \<notin> m; sep_heap s' (a, b) = (cdl.lift sep_heap s |` (UNIV - m)) (a, b); sep_heap s' (a, b) = (cdl.lift sep_heap ba |` (UNIV - m)) (a, b)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap ba (a, b) = cdl.lift sep_heap s (a, b)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_map_dom_predicate:
+  "\<lbrakk>sep_heap_dom P m; sep_irq_node_dom P m';
+    <P \<and>* P'> b\<rbrakk>
+  \<Longrightarrow> P (SepState (sep_heap (sep_state_projection b) |` m)
+                  (sep_irq_node (sep_state_projection b) |` m'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sep_heap_dom P m; sep_irq_node_dom P m'; cdl.lift (P \<and>* P') b\<rbrakk> \<Longrightarrow> P (SepState (cdl.lift sep_heap b |` m) (cdl.lift sep_irq_node b |` m'))<\STATESEP>apply (clarsimp simp: sep_state_projection_def sep_conj_def
+                        plus_sep_state_def sep_state_add_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>sep_heap_dom P m; sep_irq_node_dom P m'; x ## y; (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects b obj_id)) = sep_heap x ++ sep_heap y; (\<lambda>irq. Some (cdl_irq_node b irq)) = sep_irq_node x ++ sep_irq_node y; P x; P' y\<rbrakk> \<Longrightarrow> P (SepState ((sep_heap x ++ sep_heap y) |` m) ((sep_irq_node x ++ sep_irq_node y) |` m'))<\STATESEP>apply (drule(1) sep_heap_domD')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>sep_irq_node_dom P m'; x ## y; (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects b obj_id)) = sep_heap x ++ sep_heap y; (\<lambda>irq. Some (cdl_irq_node b irq)) = sep_irq_node x ++ sep_irq_node y; P x; P' y; m = dom (sep_heap x)\<rbrakk> \<Longrightarrow> P (SepState ((sep_heap x ++ sep_heap y) |` m) ((sep_irq_node x ++ sep_irq_node y) |` m'))<\STATESEP>apply (drule(1) sep_irq_node_domD')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>x ## y; (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects b obj_id)) = sep_heap x ++ sep_heap y; (\<lambda>irq. Some (cdl_irq_node b irq)) = sep_irq_node x ++ sep_irq_node y; P x; P' y; m = dom (sep_heap x); m' = dom (sep_irq_node x)\<rbrakk> \<Longrightarrow> P (SepState ((sep_heap x ++ sep_heap y) |` m) ((sep_irq_node x ++ sep_irq_node y) |` m'))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>x ## y; (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects b obj_id)) = sep_heap x ++ sep_heap y; (\<lambda>irq. Some (cdl_irq_node b irq)) = sep_irq_node x ++ sep_irq_node y; P x; P' y; m = dom (sep_heap x); m' = dom (sep_irq_node x)\<rbrakk> \<Longrightarrow> P (SepState ((sep_heap x ++ sep_heap y) |` dom (sep_heap x)) ((sep_irq_node x ++ sep_irq_node y) |` dom (sep_irq_node x)))<\STATESEP>apply (case_tac x,case_tac y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y x1 x2 x1a x2a. \<lbrakk>x ## y; (\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects b obj_id)) = sep_heap x ++ sep_heap y; (\<lambda>irq. Some (cdl_irq_node b irq)) = sep_irq_node x ++ sep_irq_node y; P x; P' y; m = dom (sep_heap x); m' = dom (sep_irq_node x); x = SepState x1 x2; y = SepState x1a x2a\<rbrakk> \<Longrightarrow> P (SepState ((sep_heap x ++ sep_heap y) |` dom (sep_heap x)) ((sep_irq_node x ++ sep_irq_node y) |` dom (sep_irq_node x)))<\STATESEP>apply (clarsimp simp: sep_state_projection_def sep_conj_def
+                        sep_disj_sep_state_def sep_state_disj_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x1 x2 x1a x2a. \<lbrakk>(\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects b obj_id)) = x1 ++ x1a; (\<lambda>irq. Some (cdl_irq_node b irq)) = x2 ++ x2a; P (SepState x1 x2); P' (SepState x1a x2a); m = dom x1; m' = dom x2; x1 \<bottom> x1a; x2 \<bottom> x2a\<rbrakk> \<Longrightarrow> P (SepState ((x1 ++ x1a) |` dom x1) ((x2 ++ x2a) |` dom x2))<\STATESEP>apply (simp add: map_add_restrict_dom_left)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma strong_write_estimate_via_sep:
+  assumes sep_valid: "\<And>obj Q. \<lbrace>\<lambda>s. < P \<and>* Q > s \<rbrace>
+    f \<lbrace>\<lambda>r s. < P' \<and>* Q > s \<rbrace>"
+  and sep_heap_dom: "sep_heap_dom P m"
+  and sep_heap_dom': "sep_heap_dom P' m"
+  and sep_irq_node_dom' : "sep_irq_node_dom P' m'"
+  and sep_spec: "sep_map_spec P' state"
+  shows "IsStrongSepWritingEstimateOf f (\<lambda>s. < P \<and>* Q> s)
+    (\<lambda>s.  sep_heap (sep_state_projection s)) m (\<lambda>s. sep_heap state)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. IsStrongSepWritingEstimateOf f (cdl.lift (P \<and>* Q)) (cdl.lift sep_heap) m (\<lambda>s. sep_heap state)<\STATESEP>apply (clarsimp simp: valid_def IsStrongSepWritingEstimateOf_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>cdl.lift (P \<and>* Q) s; (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state \<and> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (drule sep_conj_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); \<exists>s'. cdl.lift (P \<and>* (=) s') s\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state \<and> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b s'. \<lbrakk>(a, b) \<in> fst (f s); cdl.lift (P \<and>* (=) s') s\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state \<and> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (drule use_valid[OF _ sep_valid])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b s'. cdl.lift (P \<and>* (=) s') s \<Longrightarrow> cdl.lift (P \<and>* ?Q16 s a b s') s
+ 2. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* ?Q16 s a b s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state \<and> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state \<and> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state
+ 2. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state
+ 2. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (drule sep_map_dom_predicate[OF sep_heap_dom' sep_irq_node_dom'])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; P' (SepState (cdl.lift sep_heap b |` m) (cdl.lift sep_irq_node b |` m'))\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state
+ 2. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (drule sep_specD[OF sep_spec])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; state = SepState (cdl.lift sep_heap b |` m) (cdl.lift sep_irq_node b |` m')\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` m = sep_heap state
+ 2. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (case_tac state,simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b s'. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b |` (UNIV - m) = cdl.lift sep_heap s |` (UNIV - m)<\STATESEP>apply (rule ext,clarsimp simp:restrict_map_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b s' a ba. \<lbrakk>cdl.lift (P \<and>* (=) s') s; cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b (a, ba) = cdl.lift sep_heap s (a, ba)<\STATESEP>apply (drule sep_conj_spec_value)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s b s' a ba. \<lbrakk>cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m\<rbrakk> \<Longrightarrow> sep_heap_dom P (?m34 s b s' a ba)
+ 2. \<And>s b s' a ba. \<lbrakk>cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m\<rbrakk> \<Longrightarrow> ?p34 s b s' a ba \<notin> ?m34 s b s' a ba
+ 3. \<And>s b s' a ba. \<lbrakk>cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m; sep_heap s' (?p34 s b s' a ba) = (cdl.lift sep_heap s |` (UNIV - ?m34 s b s' a ba)) (?p34 s b s' a ba)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b (a, ba) = cdl.lift sep_heap s (a, ba)<\STATESEP>apply (rule sep_heap_dom)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s b s' a ba. \<lbrakk>cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m\<rbrakk> \<Longrightarrow> ?p34 s b s' a ba \<notin> m
+ 2. \<And>s b s' a ba. \<lbrakk>cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m; sep_heap s' (?p34 s b s' a ba) = (cdl.lift sep_heap s |` (UNIV - m)) (?p34 s b s' a ba)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b (a, ba) = cdl.lift sep_heap s (a, ba)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b s' a ba. \<lbrakk>cdl.lift (P' \<and>* (=) s') b; (a, ba) \<notin> m; sep_heap s' (a, ba) = (cdl.lift sep_heap s |` (UNIV - m)) (a, ba)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b (a, ba) = cdl.lift sep_heap s (a, ba)<\STATESEP>apply (drule(1) sep_conj_spec_value[OF _ sep_heap_dom'])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s b s' a ba. \<lbrakk>(a, ba) \<notin> m; sep_heap s' (a, ba) = (cdl.lift sep_heap s |` (UNIV - m)) (a, ba); sep_heap s' (a, ba) = (cdl.lift sep_heap b |` (UNIV - m)) (a, ba)\<rbrakk> \<Longrightarrow> cdl.lift sep_heap b (a, ba) = cdl.lift sep_heap s (a, ba)<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma map_eqI:
+  "\<lbrakk>a |` m = b |` m;a |` (UNIV - m)  = b |` (UNIV - m)\<rbrakk> \<Longrightarrow> a = b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a |` m = b |` m; a |` (UNIV - m) = b |` (UNIV - m)\<rbrakk> \<Longrightarrow> a = b<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>a |` m = b |` m; a |` (UNIV - m) = b |` (UNIV - m)\<rbrakk> \<Longrightarrow> a x = b x<\STATESEP>apply (drule_tac x = x in fun_cong)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>(a |` m) x = (b |` m) x; (a |` (UNIV - m)) x = (b |` (UNIV - m)) x\<rbrakk> \<Longrightarrow> a x = b x<\STATESEP>apply (auto simp:restrict_map_def split:if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma using_writing_estimate:
+  assumes we: "IsSepWritingEstimateOf f P proj m"
+  shows "\<lbrace>\<lambda>s. P s \<and> Q ((proj s) |` (UNIV - m)) \<rbrace> f \<lbrace>\<lambda>r s. Q ((proj s) |` (UNIV - m))\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s \<and> Q (proj s |` (UNIV - m))\<rbrace> f \<lbrace>\<lambda>r s. Q (proj s |` (UNIV - m))\<rbrace><\STATESEP>apply (clarsimp simp:valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s; Q (proj s |` (UNIV - m))\<rbrakk> \<Longrightarrow> Q (proj b |` (UNIV - m))<\STATESEP>apply (erule arg_cong[where f = Q,THEN iffD1,rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> proj s |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (erule sep_writing_estimateD[OF we])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. P s \<Longrightarrow> P s<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma using_strong_writing_estimate:
+  assumes we: "IsStrongSepWritingEstimateOf f P proj m g"
+  shows
+  "\<lbrace>\<lambda>s. P s \<and> Q ((proj s) |` (UNIV - m) ++ g (proj s))  \<rbrace> f \<lbrace>\<lambda>r s. Q (proj s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P s \<and> Q (proj s |` (UNIV - m) ++ g (proj s))\<rbrace> f \<lbrace>\<lambda>r s. Q (proj s)\<rbrace><\STATESEP>apply (clarsimp simp:valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s; Q (proj s |` (UNIV - m) ++ g (proj s))\<rbrakk> \<Longrightarrow> Q (proj b)<\STATESEP>apply (erule arg_cong[where f = Q,THEN iffD1,rotated])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> proj s |` (UNIV - m) ++ g (proj s) = proj b<\STATESEP>apply (rule map_eqI[where m = m])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` m = proj b |` m
+ 2. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (drule(1) sep_strong_writing_estimateD[OF we,THEN conjunct1,symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; g (proj s) = proj b |` m\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` m = proj b |` m
+ 2. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b x. \<lbrakk>P s; g (proj s) = proj b |` m\<rbrakk> \<Longrightarrow> ((proj s |` (UNIV - m) ++ g (proj s)) |` m) x = (proj b |` m) x
+ 2. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (clarsimp simp:restrict_map_def
+     map_add_def split:option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (frule(1) sep_strong_writing_estimateD[OF we,THEN conjunct1,symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>(a, b) \<in> fst (f s); P s; g (proj s) = proj b |` m\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (drule(1) sep_strong_writing_estimateD[OF we,THEN conjunct2,symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; g (proj s) = proj b |` m; proj s |` (UNIV - m) = proj b |` (UNIV - m)\<rbrakk> \<Longrightarrow> (proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m) = proj b |` (UNIV - m)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b x. \<lbrakk>P s; g (proj s) = proj b |` m; proj s |` (UNIV - m) = proj b |` (UNIV - m)\<rbrakk> \<Longrightarrow> ((proj s |` (UNIV - m) ++ g (proj s)) |` (UNIV - m)) x = (proj b |` (UNIV - m)) x<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition "scheduable_cap cap \<equiv> case cap of
+  RunningCap \<Rightarrow> True | RestartCap \<Rightarrow> True | _ \<Rightarrow> False"<\STATESEP>0<\TRANSEP><\STATESEP>definition tcb_scheduable :: "cdl_tcb \<Rightarrow> bool"
+  where "tcb_scheduable \<equiv> \<lambda>tcb. (cdl_tcb_caps tcb) tcb_pending_op_slot
+  = Some RunningCap \<or> (cdl_tcb_caps tcb) tcb_pending_op_slot = Some RestartCap"<\STATESEP>0<\TRANSEP><\STATESEP>abbreviation "tcb_at_heap \<equiv> \<lambda>P ptr heap.
+  object_at_heap (\<lambda>obj. \<exists>tcb. obj = Tcb tcb  \<and>  P tcb)  ptr heap"<\STATESEP>0<\TRANSEP><\STATESEP>definition all_scheduable_tcbs :: "(word32 \<Rightarrow> cdl_object option) \<Rightarrow> cdl_object_id set"
+where  "all_scheduable_tcbs \<equiv> \<lambda>m. {ptr. tcb_at_heap tcb_scheduable ptr m}"<\STATESEP>0<\TRANSEP><\STATESEP>definition sep_all_scheduable_tcbs :: "(32 word \<times> cdl_component_id \<Rightarrow> cdl_component option) \<Rightarrow> cdl_object_id set"
+where "sep_all_scheduable_tcbs m \<equiv> {ptr. \<exists>obj cap. m (ptr,Fields) = Some (CDL_Object obj) \<and> is_tcb obj
+  \<and> m (ptr,Slot tcb_pending_op_slot) = Some (CDL_Cap (Some cap)) \<and> scheduable_cap cap}"<\STATESEP>0<\TRANSEP><\STATESEP>lemma is_tcb_obj_type:
+  "is_tcb = (\<lambda>x. object_type x = TcbType)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. is_tcb = (\<lambda>x. object_type x = TcbType)<\STATESEP>by (auto simp:is_tcb_def object_type_def split:cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_scheduable_tcbs_rewrite:
+  "all_scheduable_tcbs (cdl_objects s) =
+  sep_all_scheduable_tcbs (sep_heap (sep_state_projection s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. all_scheduable_tcbs (cdl_objects s) = sep_all_scheduable_tcbs (cdl.lift sep_heap s)<\STATESEP>apply (intro set_eqI iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. x \<in> all_scheduable_tcbs (cdl_objects s) \<Longrightarrow> x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s)
+ 2. \<And>x. x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s) \<Longrightarrow> x \<in> all_scheduable_tcbs (cdl_objects s)<\STATESEP>apply (clarsimp simp:all_scheduable_tcbs_def sep_state_projection_def
+    sep_all_scheduable_tcbs_def object_at_heap_def object_project_def
+    is_tcb_obj_type)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x tcb. \<lbrakk>cdl_objects s x = Some (Tcb tcb); tcb_scheduable tcb\<rbrakk> \<Longrightarrow> object_type (Tcb tcb) = TcbType \<and> (\<exists>cap. object_slots (object_clean (Tcb tcb)) tcb_pending_op_slot = Some cap \<and> scheduable_cap cap)
+ 2. \<And>x. x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s) \<Longrightarrow> x \<in> all_scheduable_tcbs (cdl_objects s)<\STATESEP>apply (clarsimp simp:object_type_def object_slots_object_clean
+    tcb_scheduable_def object_slots_def scheduable_cap_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x tcb. \<lbrakk>cdl_objects s x = Some (Tcb tcb); cdl_tcb_caps tcb tcb_pending_op_slot = Some RunningCap \<or> cdl_tcb_caps tcb tcb_pending_op_slot = Some RestartCap\<rbrakk> \<Longrightarrow> \<exists>cap. (case object_clean (Tcb tcb) of Tcb x \<Rightarrow> cdl_tcb_caps x | CNode x \<Rightarrow> cdl_cnode_caps x | AsidPool x \<Rightarrow> cdl_asid_pool_caps x | PageTable x \<Rightarrow> cdl_page_table_caps x | PageDirectory x \<Rightarrow> cdl_page_directory_caps x | IRQNode x \<Rightarrow> cdl_irq_node_caps x | _ \<Rightarrow> \<lambda>x. None) tcb_pending_op_slot = Some cap \<and> (case cap of RestartCap \<Rightarrow> True | RunningCap \<Rightarrow> True | _ \<Rightarrow> False)
+ 2. \<And>x. x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s) \<Longrightarrow> x \<in> all_scheduable_tcbs (cdl_objects s)<\STATESEP>apply (fastforce simp:object_clean_def asid_reset_def update_slots_def
+    reset_cap_asid_def intent_reset_def object_slots_def
+    split:if_splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s) \<Longrightarrow> x \<in> all_scheduable_tcbs (cdl_objects s)<\STATESEP>apply (clarsimp simp:all_scheduable_tcbs_def sep_state_projection_def
+    sep_all_scheduable_tcbs_def object_at_heap_def object_project_def
+    is_tcb_obj_type split:option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x z cap. \<lbrakk>object_type z = TcbType; scheduable_cap cap; cdl_objects s x = Some z; object_slots (object_clean z) tcb_pending_op_slot = Some cap\<rbrakk> \<Longrightarrow> \<exists>tcb. z = Tcb tcb \<and> tcb_scheduable tcb<\STATESEP>apply (clarsimp simp:object_type_def tcb_scheduable_def
+   scheduable_cap_def object_slots_def object_clean_def asid_reset_def
+   update_slots_def intent_reset_def reset_cap_asid_def
+   split:cdl_object.splits cdl_cap.splits option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma update_slots_rev:
+  "update_slots slots obj = obj' \<Longrightarrow>
+  obj = update_slots (object_slots obj) obj'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. update_slots slots obj = obj' \<Longrightarrow> obj = update_slots (object_slots obj) obj'<\STATESEP>by (clarsimp simp:update_slots_def object_slots_def
+    split:cdl_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_scheduable_tcbsD:
+  "ptr \<in> all_scheduable_tcbs (cdl_objects s)
+  \<Longrightarrow> tcb_at_heap tcb_scheduable ptr (cdl_objects s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ptr \<in> all_scheduable_tcbs (cdl_objects s) \<Longrightarrow> tcb_at_heap tcb_scheduable ptr (cdl_objects s)<\STATESEP>by (simp add:all_scheduable_tcbs_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma all_scheduable_tcbsD':
+  "ptr \<notin> all_scheduable_tcbs (cdl_objects s)
+  \<Longrightarrow> \<not> tcb_at_heap tcb_scheduable ptr (cdl_objects s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ptr \<notin> all_scheduable_tcbs (cdl_objects s) \<Longrightarrow> \<not> tcb_at_heap tcb_scheduable ptr (cdl_objects s)<\STATESEP>by (simp add:all_scheduable_tcbs_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma scheduable_cap_reset_cap_asid[simp]:
+  "scheduable_cap (reset_cap_asid cap) = scheduable_cap cap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. scheduable_cap (reset_cap_asid cap) = scheduable_cap cap<\STATESEP>by (case_tac cap,simp_all add: reset_cap_asid_def scheduable_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma set_cap_all_scheduable_tcbs:
+  "\<lbrace>\<lambda>s. all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap) \<rbrace>
+    set_cap (cur_thread,tcb_pending_op_slot) cap
+  \<lbrace>\<lambda>rv s. all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap)\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. all_scheduable_tcbs (cdl_objects s) = {cur_thread}\<rbrace><\STATESEP>apply (rule hoare_name_pre_state)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap) \<Longrightarrow> \<lbrace>(=) s\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. all_scheduable_tcbs (cdl_objects s) = {cur_thread}\<rbrace><\STATESEP>apply (cut_tac all_scheduable_tcbsD[where ptr = cur_thread])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap); tcb_at_heap tcb_scheduable cur_thread (cdl_objects (?s3 s))\<rbrakk> \<Longrightarrow> \<lbrace>(=) s\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. all_scheduable_tcbs (cdl_objects s) = {cur_thread}\<rbrace>
+ 2. \<And>s. all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap) \<Longrightarrow> cur_thread \<in> all_scheduable_tcbs (cdl_objects (?s3 s))<\STATESEP>prefer 2<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap) \<Longrightarrow> cur_thread \<in> all_scheduable_tcbs (cdl_objects (?s3 s))
+ 2. \<And>s. \<lbrakk>all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap); tcb_at_heap tcb_scheduable cur_thread (cdl_objects (?s3 s))\<rbrakk> \<Longrightarrow> \<lbrace>(=) s\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. all_scheduable_tcbs (cdl_objects s) = {cur_thread}\<rbrace><\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>all_scheduable_tcbs (cdl_objects s) = {cur_thread} \<and> (cap = RunningCap \<or> cap = RestartCap); tcb_at_heap tcb_scheduable cur_thread (cdl_objects s)\<rbrakk> \<Longrightarrow> \<lbrace>(=) s\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. all_scheduable_tcbs (cdl_objects s) = {cur_thread}\<rbrace><\STATESEP>apply (clarsimp simp:all_scheduable_tcbs_rewrite)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> \<lbrace>(=) s\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> \<lbrace>?Q18 s\<rbrace> set_cap (cur_thread, tcb_pending_op_slot) cap \<lbrace>\<lambda>rv s. sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}\<rbrace>
+ 2. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> ?Q18 s sa<\STATESEP>apply (rule using_strong_writing_estimate
+     [where proj = "(\<lambda>a. sep_heap (sep_state_projection a))"])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> IsStrongSepWritingEstimateOf (set_cap (cur_thread, tcb_pending_op_slot) cap) (?P21 s) (cdl.lift sep_heap) (?m21 s) (?g21 s)
+ 2. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> ?P21 s sa \<and> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - ?m21 s) ++ ?g21 s (cdl.lift sep_heap sa)) = {cur_thread}<\STATESEP>apply (rule strong_write_estimate_via_sep[OF set_cap_wp])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> sep_heap_dom ((cur_thread, tcb_pending_op_slot) \<mapsto>c -) (?m21 s)
+ 2. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> sep_heap_dom ((cur_thread, tcb_pending_op_slot) \<mapsto>c cap) (?m21 s)
+ 3. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> sep_irq_node_dom ((cur_thread, tcb_pending_op_slot) \<mapsto>c cap) (?m'24 s)
+ 4. \<And>s. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap\<rbrakk> \<Longrightarrow> sep_map_spec ((cur_thread, tcb_pending_op_slot) \<mapsto>c cap) (?state24 s)
+ 5. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> cdl.lift ((cur_thread, tcb_pending_op_slot) \<mapsto>c - \<and>* ?Q24 s) sa \<and> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - ?m21 s) ++ sep_heap (?state24 s)) = {cur_thread}<\STATESEP>apply (rule sep_heap_dom_simps sep_irq_node_dom_simps sep_spec_simps)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> cdl.lift ((cur_thread, tcb_pending_op_slot) \<mapsto>c - \<and>* ?Q24 s) sa \<and> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> cdl.lift ((cur_thread, tcb_pending_op_slot) \<mapsto>c - \<and>* ?Q24 s) sa
+ 2. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply (clarsimp simp:sep_map_c_conj
+     Let_def sep_any_exist all_scheduable_tcbs_rewrite[symmetric]
+     dest!:in_singleton)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects sa); cap = RunningCap \<or> cap = RestartCap; cur_thread \<in> all_scheduable_tcbs (cdl_objects sa)\<rbrakk> \<Longrightarrow> (\<exists>x. cdl.lift sep_heap sa (cur_thread, Slot tcb_pending_op_slot) = Some (CDL_Cap (Some (reset_cap_asid x)))) \<and> ?Q24 sa (SepState ((cdl.lift sep_heap sa)((cur_thread, Slot tcb_pending_op_slot) := None)) (cdl.lift sep_irq_node sa))
+ 2. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply (clarsimp simp:object_at_heap_def tcb_scheduable_def
+     sep_state_projection_def object_project_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>sa tcb. \<lbrakk>cap = RunningCap \<or> cap = RestartCap; cur_thread \<in> all_scheduable_tcbs (cdl_objects sa); cdl_objects sa cur_thread = Some (Tcb tcb); cdl_tcb_caps tcb tcb_pending_op_slot = Some RunningCap \<or> cdl_tcb_caps tcb tcb_pending_op_slot = Some RestartCap\<rbrakk> \<Longrightarrow> (\<exists>x. object_slots (object_clean (Tcb tcb)) tcb_pending_op_slot = Some (reset_cap_asid x)) \<and> ?Q24 sa (SepState ((\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects sa obj_id))((cur_thread, Slot tcb_pending_op_slot) := None)) (\<lambda>irq. Some (cdl_irq_node sa irq)))
+ 2. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>sa tcb. \<lbrakk>cap = RunningCap \<or> cap = RestartCap; cur_thread \<in> all_scheduable_tcbs (cdl_objects sa); cdl_objects sa cur_thread = Some (Tcb tcb); cdl_tcb_caps tcb tcb_pending_op_slot = Some RunningCap \<or> cdl_tcb_caps tcb tcb_pending_op_slot = Some RestartCap\<rbrakk> \<Longrightarrow> \<exists>x. object_slots (object_clean (Tcb tcb)) tcb_pending_op_slot = Some (reset_cap_asid x)
+ 2. \<And>sa tcb. \<lbrakk>cap = RunningCap \<or> cap = RestartCap; cur_thread \<in> all_scheduable_tcbs (cdl_objects sa); cdl_objects sa cur_thread = Some (Tcb tcb); cdl_tcb_caps tcb tcb_pending_op_slot = Some RunningCap \<or> cdl_tcb_caps tcb tcb_pending_op_slot = Some RestartCap\<rbrakk> \<Longrightarrow> ?Q24 sa (SepState ((\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects sa obj_id))((cur_thread, Slot tcb_pending_op_slot) := None)) (\<lambda>irq. Some (cdl_irq_node sa irq)))
+ 3. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply (clarsimp simp:object_slots_def object_clean_def
+      update_slots_def intent_reset_def asid_reset_def
+      split:option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>sa tcb. \<lbrakk>cap = RunningCap \<or> cap = RestartCap; cur_thread \<in> all_scheduable_tcbs (cdl_objects sa); cdl_objects sa cur_thread = Some (Tcb tcb); cdl_tcb_caps tcb tcb_pending_op_slot = Some RunningCap \<or> cdl_tcb_caps tcb tcb_pending_op_slot = Some RestartCap\<rbrakk> \<Longrightarrow> (\<exists>y. cdl_tcb_caps tcb tcb_pending_op_slot = Some y) \<and> (\<forall>x2. cdl_tcb_caps tcb tcb_pending_op_slot = Some x2 \<longrightarrow> (\<exists>x. reset_cap_asid x2 = reset_cap_asid x))
+ 2. \<And>sa tcb. \<lbrakk>cap = RunningCap \<or> cap = RestartCap; cur_thread \<in> all_scheduable_tcbs (cdl_objects sa); cdl_objects sa cur_thread = Some (Tcb tcb); cdl_tcb_caps tcb tcb_pending_op_slot = Some RunningCap \<or> cdl_tcb_caps tcb tcb_pending_op_slot = Some RestartCap\<rbrakk> \<Longrightarrow> ?Q24 sa (SepState ((\<lambda>(obj_id, comp_id). map_option (object_project comp_id) (cdl_objects sa obj_id))((cur_thread, Slot tcb_pending_op_slot) := None)) (\<lambda>irq. Some (cdl_irq_node sa irq)))
+ 3. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply fastforce+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = {cur_thread}<\STATESEP>apply (rule subst,assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); sep_all_scheduable_tcbs (cdl.lift sep_heap s) = {cur_thread}; cap = RunningCap \<or> cap = RestartCap; s = sa\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = sep_all_scheduable_tcbs (cdl.lift sep_heap s)<\STATESEP>apply (drule in_singleton)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s sa. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); cap = RunningCap \<or> cap = RestartCap; s = sa; cur_thread \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s)\<rbrakk> \<Longrightarrow> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None))) = sep_all_scheduable_tcbs (cdl.lift sep_heap s)<\STATESEP>apply (intro set_eqI iffI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s sa x. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); cap = RunningCap \<or> cap = RestartCap; s = sa; cur_thread \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s); x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None)))\<rbrakk> \<Longrightarrow> x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s)
+ 2. \<And>s sa x. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); cap = RunningCap \<or> cap = RestartCap; s = sa; cur_thread \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s); x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s)\<rbrakk> \<Longrightarrow> x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None)))<\STATESEP>apply (clarsimp simp: sep_all_scheduable_tcbs_def sep_state_projection_def
+                  split: if_split_asm option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s sa x. \<lbrakk>tcb_at_heap tcb_scheduable cur_thread (cdl_objects s); cap = RunningCap \<or> cap = RestartCap; s = sa; cur_thread \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s); x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap s)\<rbrakk> \<Longrightarrow> x \<in> sep_all_scheduable_tcbs (cdl.lift sep_heap sa |` (UNIV - {(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot)))}) ++ sep_heap (SepState [(fst (cur_thread, tcb_pending_op_slot), Slot (snd (cur_thread, tcb_pending_op_slot))) \<mapsto> CDL_Cap (Some (reset_cap_asid cap))] (\<lambda>x. None)))<\STATESEP>apply (fastforce simp: sep_all_scheduable_tcbs_def map_add_def
+                         sep_state_projection_def scheduable_cap_def
+                 split: option.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_inv_to_all_scheduable_tcbs:
+  assumes sep: "\<And>P. \<lbrace><P>\<rbrace> f \<lbrace>\<lambda>r. <P>\<rbrace>"
+  shows "\<lbrace>\<lambda>s. P (all_scheduable_tcbs (cdl_objects s))\<rbrace> f
+   \<lbrace>\<lambda>r s. P (all_scheduable_tcbs (cdl_objects s))\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. P (all_scheduable_tcbs (cdl_objects s))\<rbrace> f \<lbrace>\<lambda>r s. P (all_scheduable_tcbs (cdl_objects s))\<rbrace><\STATESEP>apply (clarsimp simp:valid_def all_scheduable_tcbs_rewrite)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)); (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> P (sep_all_scheduable_tcbs (cdl.lift sep_heap b))<\STATESEP>apply (erule use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)) \<Longrightarrow> \<lbrace>?P9 s a b\<rbrace> f \<lbrace>\<lambda>a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap b))\<rbrace>
+ 2. \<And>s a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)) \<Longrightarrow> ?P9 s a b s<\STATESEP>apply (rule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>s a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)) \<Longrightarrow> \<lbrace>?P9 s a b\<rbrace> f \<lbrace>?Q12 s a b\<rbrace>
+ 2. \<And>s a b rv sa. \<lbrakk>P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)); ?Q12 s a b rv sa\<rbrakk> \<Longrightarrow> P (sep_all_scheduable_tcbs (cdl.lift sep_heap sa))
+ 3. \<And>s a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)) \<Longrightarrow> ?P9 s a b s<\STATESEP>apply (rule sep)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b rv sa. \<lbrakk>P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)); cdl.lift (?P15 s a b) sa\<rbrakk> \<Longrightarrow> P (sep_all_scheduable_tcbs (cdl.lift sep_heap sa))
+ 2. \<And>s a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)) \<Longrightarrow> cdl.lift (?P15 s a b) s<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. P (sep_all_scheduable_tcbs (cdl.lift sep_heap s)) \<Longrightarrow> P (sep_all_scheduable_tcbs (cdl.lift sep_heap s))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma validE_to_valid:
+  assumes validE:"\<And>E. \<lbrace>P\<rbrace>f\<lbrace>\<lambda>r. Q\<rbrace>,\<lbrace>\<lambda>r s. E\<rbrace>"
+  shows "\<lbrace>P\<rbrace>f\<lbrace>\<lambda>r. Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r. Q\<rbrace><\STATESEP>using validE[where E = False]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<lbrace>P\<rbrace> f \<lbrace>\<lambda>r. Q\<rbrace>, \<lbrace>\<lambda>r s. False\<rbrace>
+
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r. Q\<rbrace><\STATESEP>apply (clarsimp simp:validE_def valid_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<forall>s. P s \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (Inl e, s') \<Rightarrow> False | (Inr ra, s') \<Rightarrow> Q s'); P s; (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> Q b<\STATESEP>apply (drule_tac spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; (a, b) \<in> fst (f s); P (?s9 s a b) \<longrightarrow> (\<forall>x\<in>fst (f (?s9 s a b)). case x of (Inl e, s') \<Rightarrow> False | (Inr ra, s') \<Rightarrow> Q s')\<rbrakk> \<Longrightarrow> Q b<\STATESEP>apply (erule(1) impE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; (a, b) \<in> fst (f s); \<forall>x\<in>fst (f s). case x of (Inl e, s') \<Rightarrow> False | (Inr ra, s') \<Rightarrow> Q s'\<rbrakk> \<Longrightarrow> Q b<\STATESEP>apply (drule_tac bspec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s a b. \<lbrakk>P s; (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> ?x13 s a b \<in> fst (f s)
+ 2. \<And>s a b. \<lbrakk>P s; (a, b) \<in> fst (f s); case ?x13 s a b of (Inl e, s') \<Rightarrow> False | (Inr ra, s') \<Rightarrow> Q s'\<rbrakk> \<Longrightarrow> Q b<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>P s; (a, b) \<in> fst (f s); case (a, b) of (Inl e, s') \<Rightarrow> False | (Inr ra, s') \<Rightarrow> Q s'\<rbrakk> \<Longrightarrow> Q b<\STATESEP>apply (auto split:sum.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,239 @@
+<\STATESEP>theory EmptyFail
+imports Bits_R
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_fail_projectKO [simp, intro!]:
+  "empty_fail (projectKO v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (projectKO v)<\STATESEP>unfolding empty_fail_def projectKO_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. fst ((case projectKO_opt v of None \<Rightarrow> fail | Some x \<Rightarrow> return x) s) = {} \<longrightarrow> snd ((case projectKO_opt v of None \<Rightarrow> fail | Some x \<Rightarrow> return x) s)<\STATESEP>by (simp add: return_def fail_def split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_alignCheck [intro!, wp, simp]:
+  "empty_fail (alignCheck a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (alignCheck a b)<\STATESEP>unfolding alignCheck_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (unless (a && mask b = 0) $ alignError b)<\STATESEP>by (fastforce simp: alignError_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_magnitudeCheck [intro!, wp, simp]:
+  "empty_fail (magnitudeCheck a b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (magnitudeCheck a b c)<\STATESEP>unfolding magnitudeCheck_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (case b of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - a < 1 << c) fail)<\STATESEP>by (fastforce split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_loadObject_default [intro!, wp, simp]:
+  shows "empty_fail (loadObject_default x b c d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (loadObject_default x b c d)<\STATESEP>by (auto simp: loadObject_default_def
+           split: option.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_threadGet [intro!, wp, simp]:
+  "empty_fail (threadGet f p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (threadGet f p)<\STATESEP>by (fastforce simp: threadGet_def getObject_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getCTE [intro!, wp, simp]:
+  "empty_fail (getCTE slot)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getCTE slot)<\STATESEP>apply (simp add: getCTE_def getObject_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do map <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 (fromPPtr slot) map));
+loadObject (fromPPtr slot) (fst p) (snd (lookupAround2 (fromPPtr slot) map)) (snd p)
+od)<\STATESEP>apply (intro empty_fail_bind, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. empty_fail (loadObject (fromPPtr slot) (fst xa) (snd (lookupAround2 (fromPPtr slot) x)) (snd xa))<\STATESEP>apply (simp add: loadObject_cte typeError_def alignCheck_def alignError_def
+                   magnitudeCheck_def
+            split: Structures_H.kernel_object.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. (\<forall>x6. (fromPPtr slot - fst xa = tcbIPCBufferSlot << objBits undefined \<longrightarrow> (tcbIPCBufferSlot << objBits undefined = tcbCallerSlot << objBits undefined \<longrightarrow> (tcbCallerSlot << objBits undefined = tcbReplySlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbReply x6)
+od)))) \<and> (tcbCallerSlot << objBits undefined \<noteq> tcbReplySlot << objBits undefined \<longrightarrow> (tcbCallerSlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbCallerSlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCallerSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCallerSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCaller x6)
+od))))) \<and> (tcbIPCBufferSlot << objBits undefined \<noteq> tcbCallerSlot << objBits undefined \<longrightarrow> (tcbIPCBufferSlot << objBits undefined = tcbReplySlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbReply x6)
+od)))) \<and> (tcbIPCBufferSlot << objBits undefined \<noteq> tcbReplySlot << objBits undefined \<longrightarrow> (tcbIPCBufferSlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbIPCBufferSlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbIPCBufferSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbIPCBufferSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbIPCBufferFrame x6)
+od)))))) \<and> (fromPPtr slot - fst xa \<noteq> tcbIPCBufferSlot << objBits undefined \<longrightarrow> (fromPPtr slot - fst xa = tcbCallerSlot << objBits undefined \<longrightarrow> (tcbCallerSlot << objBits undefined = tcbReplySlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbReply x6)
+od)))) \<and> (tcbCallerSlot << objBits undefined \<noteq> tcbReplySlot << objBits undefined \<longrightarrow> (tcbCallerSlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbCallerSlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCallerSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCallerSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCaller x6)
+od))))) \<and> (fromPPtr slot - fst xa \<noteq> tcbCallerSlot << objBits undefined \<longrightarrow> (fromPPtr slot - fst xa = tcbReplySlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (tcbReplySlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbReplySlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbReply x6)
+od)))) \<and> (fromPPtr slot - fst xa \<noteq> tcbReplySlot << objBits undefined \<longrightarrow> (fromPPtr slot - fst xa = tcbCTableSlot << objBits undefined \<longrightarrow> (tcbCTableSlot << objBits undefined = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (tcbCTableSlot << objBits undefined \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbCTable x6)
+od))) \<and> (fromPPtr slot - fst xa \<noteq> tcbCTableSlot << objBits undefined \<longrightarrow> (fromPPtr slot - fst xa = tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+return (tcbVTable x6)
+od)) \<and> (fromPPtr slot - fst xa \<noteq> tcbVTableSlot << objBits undefined \<longrightarrow> snd xa = KOTCB x6 \<longrightarrow> empty_fail (do y <- unless (fst xa && mask (objBits x6) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fst xa < 1 << objBits x6) fail;
+fail
+od))))))) \<and> (\<forall>x7. snd xa = KOCTE x7 \<longrightarrow> empty_fail (do y <- unless (fromPPtr slot = fst xa) fail;
+y <- unless (fromPPtr slot && mask (objBits x7) = 0) fail;
+y <- case snd (lookupAround2 (fromPPtr slot) x) of None \<Rightarrow> return () | Some z \<Rightarrow> when (z - fromPPtr slot < 1 << objBits x7) fail;
+return x7
+od))<\STATESEP>apply (auto split: option.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_updateObject_cte [intro!, wp, simp]:
+  "empty_fail (updateObject (v :: cte) ko a b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (updateObject v ko a b c)<\STATESEP>by (fastforce simp: updateObject_cte typeError_def unless_def split: kernel_object.splits )<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_setCTE [intro!, wp, simp]:
+  "empty_fail (setCTE p cte)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (setCTE p cte)<\STATESEP>unfolding setCTE_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (setObject p cte)<\STATESEP>by (fastforce simp: setObject_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_updateMDB [intro!, wp, simp]:
+  "empty_fail (updateMDB a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (updateMDB a b)<\STATESEP>unfolding updateMDB_def Let_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (if a = 0 then return () else do cte <- getCTE a;
+mdb <- return (cteMDBNode cte);
+mdb' <- return (b mdb);
+return (cteMDBNode_update (\<lambda>_. mdb') cte) >>= setCTE a
+od)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getSlotCap [intro!, wp, simp]:
+  "empty_fail (getSlotCap a)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getSlotCap a)<\STATESEP>unfolding getSlotCap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do cte <- getCTE a;
+return $ cteCap cte
+od)<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getObject:
+  assumes "\<And>b c d. empty_fail (loadObject x b c d::'a :: pspace_storable kernel)"
+  shows "empty_fail (getObject x :: 'a :: pspace_storable kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getObject x)<\STATESEP>apply (simp add: getObject_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do map <- gets ksPSpace;
+p <- assert_opt (fst (lookupAround2 x map));
+loadObject x (fst p) (snd (lookupAround2 x map)) (snd p)
+od)<\STATESEP>apply (safe intro!: assms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getObject_tcb [intro!, wp, simp]:
+  shows "empty_fail (getObject x :: tcb kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getObject x)<\STATESEP>by (auto intro: empty_fail_getObject)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_updateTrackedFreeIndex [intro!, wp, simp]:
+  shows "empty_fail (updateTrackedFreeIndex p idx)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (updateTrackedFreeIndex p idx)<\STATESEP>by (fastforce simp add: updateTrackedFreeIndex_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_updateNewFreeIndex [intro!, wp, simp]:
+  shows "empty_fail (updateNewFreeIndex p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (updateNewFreeIndex p)<\STATESEP>apply (simp add: updateNewFreeIndex_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do cap <- getSlotCap p;
+case cap of capability.UntypedCap x xa xb xc \<Rightarrow> updateTrackedFreeIndex p (capFreeIndex cap) | _ \<Rightarrow> return ()
+od)<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail (case x of capability.UntypedCap xa xaa xb xc \<Rightarrow> updateTrackedFreeIndex p (capFreeIndex x) | _ \<Rightarrow> return ())<\STATESEP>apply (simp split: capability.split)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_insertNewCap [intro!, wp, simp]:
+  "empty_fail (insertNewCap p p' cap)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (insertNewCap p p' cap)<\STATESEP>unfolding insertNewCap_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (do next <- liftM (mdbNext \<circ> cteMDBNode) $ getCTE p;
+oldCTE <- getCTE p';
+haskell_assert (isNullCap (cteCap oldCTE) \<and> mdbNext (cteMDBNode oldCTE) = nullPointer \<and> mdbPrev (cteMDBNode oldCTE) = nullPointer) [];
+setCTE p' $ CTE cap (MDB next p True True);
+updateMDB next $ mdbPrev_update (\<lambda>_. p');
+updateMDB p $ mdbNext_update (\<lambda>_. p');
+updateNewFreeIndex p'
+od)<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getIRQSlot [intro!, wp, simp]:
+  "empty_fail (getIRQSlot irq)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getIRQSlot irq)<\STATESEP>by (fastforce simp: getIRQSlot_def getInterruptState_def locateSlot_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getObject_ntfn [intro!, wp, simp]:
+  "empty_fail (getObject p :: Structures_H.notification kernel)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getObject p)<\STATESEP>by (simp add: empty_fail_getObject)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getNotification [intro!, wp, simp]:
+  "empty_fail (getNotification ep)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getNotification ep)<\STATESEP>by (simp add: getNotification_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_lookupIPCBuffer [intro!, wp, simp]:
+  "empty_fail (lookupIPCBuffer a b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (lookupIPCBuffer a b)<\STATESEP>by (clarsimp simp: lookupIPCBuffer_def
+                     Let_def getThreadBufferSlot_def locateSlot_conv
+              split: capability.splits arch_capability.splits | wp | wpc | safe)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_updateObject_default [intro!, wp, simp]:
+  "empty_fail (updateObject_default v ko a b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (updateObject_default v ko a b c)<\STATESEP>by (fastforce simp: updateObject_default_def typeError_def unless_def split: kernel_object.splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_threadSet [intro!, wp, simp]:
+  "empty_fail (threadSet f p)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (threadSet f p)<\STATESEP>by (fastforce simp: threadSet_def getObject_def setObject_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_getThreadState[iff]:
+  "empty_fail (getThreadState t)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (getThreadState t)<\STATESEP>by (simp add: getThreadState_def)<\STATESEP>1<\TRANSEP><\STATESEP>declare empty_fail_stateAssert [wp]<\STATESEP>0<\TRANSEP><\STATESEP>declare setRegister_empty_fail [intro!, simp]<\STATESEP>0<\TRANSEP><\STATESEP>lemma empty_fail_getSchedulerAction [intro!, wp, simp]:
+  "empty_fail getSchedulerAction"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail getSchedulerAction<\STATESEP>by (simp add: getSchedulerAction_def getObject_def split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_scheduleSwitchThreadFastfail [intro!, wp, simp]:
+  "empty_fail (scheduleSwitchThreadFastfail a b c d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (scheduleSwitchThreadFastfail a b c d)<\STATESEP>by (simp add: scheduleSwitchThreadFastfail_def split: if_splits)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_fail_curDomain [intro!, wp, simp]:
+  "empty_fail curDomain"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail curDomain<\STATESEP>by (simp add: curDomain_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

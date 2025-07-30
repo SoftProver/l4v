@@ -1,0 +1,233 @@
+<\STATESEP>theory Lookups_D
+imports
+  "DSpec.Syscall_D"
+  "Monads.Nondet_Reader_Option"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a lookup = "cdl_state \<Rightarrow> 'a option"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  opt_cnode :: "cdl_object_id \<Rightarrow> cdl_cnode lookup"
+where
+  "opt_cnode p \<equiv> DO
+      t \<leftarrow> \<lambda>s. cdl_objects s p;
+      case t of
+        CNode cnode \<Rightarrow> oreturn cnode
+      | _ \<Rightarrow> ofail
+   OD"<\STATESEP>0<\TRANSEP><\STATESEP>function resolve_cap ::
+  "cdl_cap \<Rightarrow> cdl_cptr \<Rightarrow> nat \<Rightarrow> (cdl_fault_error + cdl_cap_ref \<times> nat) lookup"
+where
+  "resolve_cap cnode_cap cap_ptr remaining_size =
+  (if is_cnode_cap cnode_cap
+  then DO
+    \<comment> \<open>Fetch the next level CNode.\<close>
+    cnode \<leftarrow> opt_cnode $ cap_object cnode_cap;
+    radix_size \<leftarrow> oreturn $ cdl_cnode_size_bits cnode;
+    guard_size \<leftarrow> oreturn $ cap_guard_size cnode_cap;
+    cap_guard  \<leftarrow> oreturn $ cap_guard cnode_cap;
+    level_size \<leftarrow> oreturn (radix_size + guard_size);
+    oassert (level_size \<noteq> 0);
+
+    \<comment> \<open>Ensure the guard matches up.\<close>
+    guard \<leftarrow> oreturn $ (cap_ptr >> (remaining_size-guard_size)) && (mask guard_size);
+    if \<not>(guard_size \<le> remaining_size \<and> guard = cap_guard) \<or>
+       level_size > remaining_size
+    then othrow FaultError
+    else DO
+      \<comment> \<open>Find the next slot.\<close>
+      offset \<leftarrow> oreturn $ (cap_ptr >> (remaining_size-level_size)) && (mask radix_size);
+      slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+      size_left \<leftarrow> oreturn (remaining_size - level_size);
+      if size_left = 0 then
+        oreturnOk (slot, 0)
+      else DO
+        next_cap \<leftarrow> opt_cap slot;
+        if is_cnode_cap next_cap then
+          resolve_cap next_cap cap_ptr size_left
+        else
+          oreturnOk (slot, size_left)
+      OD
+    OD
+  OD
+  else othrow FaultError)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>P x. (\<And>cnode_cap cap_ptr remaining_size. x = (cnode_cap, cap_ptr, remaining_size) \<Longrightarrow> P) \<Longrightarrow> P
+ 2. \<And>cnode_cap cap_ptr remaining_size cnode_capa cap_ptra remaining_sizea. (cnode_cap, cap_ptr, remaining_size) = (cnode_capa, cap_ptra, remaining_sizea) \<Longrightarrow> (if is_cnode_cap cnode_cap then do {
+  cnode \<leftarrow> opt_cnode $ cap_object cnode_cap;
+radix_size \<leftarrow> oreturn $ cdl_cnode_size_bits cnode;
+guard_size \<leftarrow> oreturn $ cap_guard_size cnode_cap;
+cap_guard \<leftarrow> oreturn $ cap_guard cnode_cap;
+level_size \<leftarrow> oreturn (radix_size + guard_size);
+oassert (level_size \<noteq> 0) >>= K_bind (do {
+  guard \<leftarrow> oreturn $ (cap_ptr >> remaining_size - guard_size) && mask guard_size;
+if \<not> (guard_size \<le> remaining_size \<and> guard = cap_guard) \<or> remaining_size < level_size then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptr >> remaining_size - level_size) && mask radix_size;
+slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+size_left \<leftarrow> oreturn (remaining_size - level_size);
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap_sumC (next_cap, cap_ptr, size_left) else oreturnOk (slot, size_left)
+}
+}
+})
+} else othrow FaultError) = (if is_cnode_cap cnode_capa then do {
+  cnode \<leftarrow> opt_cnode $ cap_object cnode_capa;
+radix_size \<leftarrow> oreturn $ cdl_cnode_size_bits cnode;
+guard_size \<leftarrow> oreturn $ cap_guard_size cnode_capa;
+cap_guard \<leftarrow> oreturn $ cap_guard cnode_capa;
+level_size \<leftarrow> oreturn (radix_size + guard_size);
+oassert (level_size \<noteq> 0) >>= K_bind (do {
+  guard \<leftarrow> oreturn $ (cap_ptra >> remaining_sizea - guard_size) && mask guard_size;
+if \<not> (guard_size \<le> remaining_sizea \<and> guard = cap_guard) \<or> remaining_sizea < level_size then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptra >> remaining_sizea - level_size) && mask radix_size;
+slot \<leftarrow> oreturn (cap_object cnode_capa, unat offset);
+size_left \<leftarrow> oreturn (remaining_sizea - level_size);
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap_sumC (next_cap, cap_ptra, size_left) else oreturnOk (slot, size_left)
+}
+}
+})
+} else othrow FaultError)<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>termination<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. All resolve_cap_dom<\STATESEP>by (relation "measure (\<lambda>(a,b,c). c)") auto<\STATESEP>1<\TRANSEP><\STATESEP>declare resolve_cap.simps [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>declare resolve_address_bits.simps [simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma throwError_FaultError [simp]:
+  "throwError FaultError = throw"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. throwError FaultError = throw<\STATESEP>apply (cases "undefined::cdl_fault_error")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. undefined = FaultError \<Longrightarrow> throwError FaultError = throw<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_get_cnode:
+  "gets_the (opt_cnode r) = get_cnode r"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (opt_cnode r) = get_cnode r<\STATESEP>apply (simp add: get_cnode_def opt_cnode_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- get_object r;
+gets_the (case x of CNode x \<Rightarrow> oreturn x | _ \<Rightarrow> ofail)
+od = do t <- get_object r;
+case t of CNode cnode \<Rightarrow> return cnode | _ \<Rightarrow> fail
+od<\STATESEP>apply (rule bind_cong, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>v s s'. (v, s') \<in> fst (get_object r s) \<Longrightarrow> gets_the (case v of CNode x \<Rightarrow> oreturn x | _ \<Rightarrow> ofail) s' = (case v of CNode cnode \<Rightarrow> return cnode | _ \<Rightarrow> fail) s'<\STATESEP>apply (clarsimp split: cdl_object.splits)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_the_resolve_cap:
+  "gets_the (resolve_cap cnode_cap cap_ptr remaining_size) =
+   resolve_address_bits cnode_cap cap_ptr remaining_size"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. gets_the (resolve_cap cnode_cap cap_ptr remaining_size) = resolve_address_bits cnode_cap cap_ptr remaining_size<\STATESEP>apply (induct cnode_cap cap_ptr remaining_size rule: resolve_cap.induct [simplified])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size. (\<And>v s va. \<lbrakk>is_cnode_cap cnode_cap; opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) \<Longrightarrow> gets_the (resolve_cap cnode_cap cap_ptr remaining_size) = resolve_address_bits cnode_cap cap_ptr remaining_size<\STATESEP>apply (subst resolve_cap.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size. (\<And>v s va. \<lbrakk>is_cnode_cap cnode_cap; opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) \<Longrightarrow> gets_the (if is_cnode_cap cnode_cap then do {
+  cnode \<leftarrow> opt_cnode $ cap_object cnode_cap;
+radix_size \<leftarrow> oreturn $ cdl_cnode_size_bits cnode;
+guard_size \<leftarrow> oreturn $ cap_guard_size cnode_cap;
+cap_guard \<leftarrow> oreturn $ cap_guard cnode_cap;
+level_size \<leftarrow> oreturn (radix_size + guard_size);
+oassert (level_size \<noteq> 0) >>= K_bind (do {
+  guard \<leftarrow> oreturn $ (cap_ptr >> remaining_size - guard_size) && mask guard_size;
+if \<not> (guard_size \<le> remaining_size \<and> guard = cap_guard) \<or> remaining_size < level_size then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptr >> remaining_size - level_size) && mask radix_size;
+slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+size_left \<leftarrow> oreturn (remaining_size - level_size);
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap next_cap cap_ptr size_left else oreturnOk (slot, size_left)
+}
+}
+})
+} else othrow FaultError) = resolve_address_bits cnode_cap cap_ptr remaining_size<\STATESEP>apply (subst resolve_address_bits.simps)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size. (\<And>v s va. \<lbrakk>is_cnode_cap cnode_cap; opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) \<Longrightarrow> gets_the (if is_cnode_cap cnode_cap then do {
+  cnode \<leftarrow> opt_cnode $ cap_object cnode_cap;
+radix_size \<leftarrow> oreturn $ cdl_cnode_size_bits cnode;
+guard_size \<leftarrow> oreturn $ cap_guard_size cnode_cap;
+cap_guard \<leftarrow> oreturn $ cap_guard cnode_cap;
+level_size \<leftarrow> oreturn (radix_size + guard_size);
+oassert (level_size \<noteq> 0) >>= K_bind (do {
+  guard \<leftarrow> oreturn $ (cap_ptr >> remaining_size - guard_size) && mask guard_size;
+if \<not> (guard_size \<le> remaining_size \<and> guard = cap_guard) \<or> remaining_size < level_size then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptr >> remaining_size - level_size) && mask radix_size;
+slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+size_left \<leftarrow> oreturn (remaining_size - level_size);
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap next_cap cap_ptr size_left else oreturnOk (slot, size_left)
+}
+}
+})
+} else othrow FaultError) = doE unlessE (is_cnode_cap cnode_cap) $ throw;
+cnode <- liftE $ get_cnode $ cap_object cnode_cap;
+radix_size <- returnOk $ cdl_cnode_size_bits cnode;
+guard_size <- returnOk $ cap_guard_size cnode_cap;
+cap_guard <- returnOk $ cap_guard cnode_cap;
+level_size <- returnOk (radix_size + guard_size);
+assertE (level_size \<noteq> 0);
+guard <- returnOk $ (cap_ptr >> remaining_size - guard_size) && mask guard_size;
+unlessE (guard_size \<le> remaining_size \<and> guard = cap_guard) $ throw;
+whenE (remaining_size < level_size) $ throw;
+offset <- returnOk $ (cap_ptr >> remaining_size - level_size) && mask radix_size;
+slot <- returnOk (cap_object cnode_cap, unat offset);
+size_left <- returnOk (remaining_size - level_size);
+if size_left = 0 then returnOk (slot, 0) else doE next_cap <- liftE $ get_cap slot;
+if is_cnode_cap next_cap then resolve_address_bits next_cap cap_ptr size_left else returnOk (slot, size_left)
+odE
+odE<\STATESEP>apply (clarsimp simp: unlessE_def liftE_bindE assertE_liftE gets_the_get_cnode)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size. \<lbrakk>\<And>v s va. \<lbrakk>opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)); cap_guard_size cnode_cap \<le> remaining_size; (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; is_cnode_cap cnode_cap\<rbrakk> \<Longrightarrow> do x <- get_cnode (cap_object cnode_cap);
+xa <- assert (0 < cdl_cnode_size_bits x \<or> 0 < cap_guard_size cnode_cap);
+gets_the (if remaining_size < cdl_cnode_size_bits x + cap_guard_size cnode_cap then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptr >> remaining_size - (cdl_cnode_size_bits x + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits x);
+slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+size_left \<leftarrow> oreturn (remaining_size - (cdl_cnode_size_bits x + cap_guard_size cnode_cap));
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap next_cap cap_ptr size_left else oreturnOk (slot, size_left)
+}
+})
+od = do cnode <- get_cnode (cap_object cnode_cap);
+y <- assert (0 < cdl_cnode_size_bits cnode \<or> 0 < cap_guard_size cnode_cap);
+doE y <- whenE (remaining_size < cdl_cnode_size_bits cnode + cap_guard_size cnode_cap) throw;
+if remaining_size \<le> cdl_cnode_size_bits cnode + cap_guard_size cnode_cap then returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits cnode + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits cnode))), 0) else doE next_cap <- liftE $ get_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits cnode + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits cnode)));
+if is_cnode_cap next_cap then resolve_address_bits next_cap cap_ptr (remaining_size - (cdl_cnode_size_bits cnode + cap_guard_size cnode_cap)) else returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits cnode + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits cnode))), remaining_size - (cdl_cnode_size_bits cnode + cap_guard_size cnode_cap))
+odE
+odE
+od<\STATESEP>apply (rule bind_cong, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size v s s'. \<lbrakk>\<And>v s va. \<lbrakk>opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)); cap_guard_size cnode_cap \<le> remaining_size; (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; is_cnode_cap cnode_cap; (v, s') \<in> fst (get_cnode (cap_object cnode_cap) s)\<rbrakk> \<Longrightarrow> (do x <- assert (0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap);
+gets_the (if remaining_size < cdl_cnode_size_bits v + cap_guard_size cnode_cap then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v);
+slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+size_left \<leftarrow> oreturn (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap));
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap next_cap cap_ptr size_left else oreturnOk (slot, size_left)
+}
+})
+od) s' = (do y <- assert (0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap);
+doE y <- whenE (remaining_size < cdl_cnode_size_bits v + cap_guard_size cnode_cap) throw;
+if remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap then returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), 0) else doE next_cap <- liftE $ get_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v)));
+if is_cnode_cap next_cap then resolve_address_bits next_cap cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) else returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))
+odE
+odE
+od) s'<\STATESEP>apply (rule bind_apply_cong, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size v s s' rv st. \<lbrakk>\<And>v s va. \<lbrakk>opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)); cap_guard_size cnode_cap \<le> remaining_size; (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; is_cnode_cap cnode_cap; (v, s') \<in> fst (get_cnode (cap_object cnode_cap) s); (rv, st) \<in> fst (assert (0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap) s')\<rbrakk> \<Longrightarrow> gets_the (if remaining_size < cdl_cnode_size_bits v + cap_guard_size cnode_cap then othrow FaultError else do {
+  offset \<leftarrow> oreturn $ (cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v);
+slot \<leftarrow> oreturn (cap_object cnode_cap, unat offset);
+size_left \<leftarrow> oreturn (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap));
+if size_left = 0 then oreturnOk (slot, 0) else do {
+  next_cap \<leftarrow> opt_cap slot;
+if is_cnode_cap next_cap then resolve_cap next_cap cap_ptr size_left else oreturnOk (slot, size_left)
+}
+}) st = (doE y <- whenE (remaining_size < cdl_cnode_size_bits v + cap_guard_size cnode_cap) throw;
+if remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap then returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), 0) else doE next_cap <- liftE $ get_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v)));
+if is_cnode_cap next_cap then resolve_address_bits next_cap cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) else returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))
+odE
+odE) st<\STATESEP>apply (clarsimp simp: liftE_bindE)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size v s s' st. \<lbrakk>\<And>v s va. \<lbrakk>opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)); (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; is_cnode_cap cnode_cap; (v, s') \<in> fst (get_cnode (cap_object cnode_cap) s); ((), st) \<in> fst (assert (0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap) s'); remaining_size \<noteq> cdl_cnode_size_bits v + cap_guard_size cnode_cap; \<not> remaining_size < cdl_cnode_size_bits v + cap_guard_size cnode_cap\<rbrakk> \<Longrightarrow> (do x <- get_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v)));
+gets_the (if is_cnode_cap x then resolve_cap x cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) else oreturnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)))
+od) st = (do next_cap <- get_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v)));
+if is_cnode_cap next_cap then resolve_address_bits next_cap cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) else returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))
+od) st<\STATESEP>apply (rule bind_apply_cong, rule refl)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>cnode_cap cap_ptr remaining_size v s s' st rv sta. \<lbrakk>\<And>v s va. \<lbrakk>opt_cnode (cap_object cnode_cap) s = Some v; 0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap; \<not> remaining_size \<le> cdl_cnode_size_bits v + cap_guard_size cnode_cap; opt_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) s = Some va; is_cnode_cap va\<rbrakk> \<Longrightarrow> gets_the (resolve_cap va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) = resolve_address_bits va cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)); (cap_ptr >> remaining_size - cap_guard_size cnode_cap) && mask (cap_guard_size cnode_cap) = cap_guard cnode_cap; is_cnode_cap cnode_cap; (v, s') \<in> fst (get_cnode (cap_object cnode_cap) s); ((), st) \<in> fst (assert (0 < cdl_cnode_size_bits v \<or> 0 < cap_guard_size cnode_cap) s'); remaining_size \<noteq> cdl_cnode_size_bits v + cap_guard_size cnode_cap; \<not> remaining_size < cdl_cnode_size_bits v + cap_guard_size cnode_cap; (rv, sta) \<in> fst (get_cap (cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))) st)\<rbrakk> \<Longrightarrow> gets_the (if is_cnode_cap rv then resolve_cap rv cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) else oreturnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) sta = (if is_cnode_cap rv then resolve_address_bits rv cap_ptr (remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) else returnOk ((cap_object cnode_cap, unat ((cap_ptr >> remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap)) && mask (cdl_cnode_size_bits v))), remaining_size - (cdl_cnode_size_bits v + cap_guard_size cnode_cap))) sta<\STATESEP>apply (clarsimp simp: in_monad gets_the_get_cnode [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

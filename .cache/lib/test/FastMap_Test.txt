@@ -1,0 +1,291 @@
+<\STATESEP>theory FastMap_Test
+imports
+  Lib.FastMap
+  Lib.LexordList
+  Lib.NICTATools
+  Lib.Qualify
+begin<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Basic usage example\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    FastMap.define_map
+      (* The name of the map constant and names of associated theorems.
+       * This function constructs a set of sensible default names, but
+       * you can also choose different names manually. *)
+      (FastMap.name_opts_default "simple_test_map")
+
+      (* List of the actual mappings. These must be sorted by key
+       * and the key type must admit a linear order. *)
+      [(@{term "0 :: nat"}, @{term "0 :: nat"}),
+       (@{term "1 :: nat"}, @{term "1 :: nat"}),
+       (@{term "2 :: nat"}, @{term "1 :: nat"}),
+       (@{term "3 :: nat"}, @{term "2 :: nat"}),
+       (@{term "4 :: nat"}, @{term "3 :: nat"}),
+       (@{term "5 :: nat"}, @{term "5 :: nat"})]
+
+      (* Key transformer. Must be an injective function that maps the
+       * key type to a linorder type. This will usually be id, unless
+       * the key type isn't naturally linorder. See string_map below
+       * for an example of a non-trivial key transform. *)
+      @{term "id :: nat \<Rightarrow> nat"}
+
+      (* Extra simp rules to use when verifying the key ordering. *)
+      @{thms}
+
+      (* Use the default background simpset for solving goals.
+       * Set to true if you want precise control over the simpset. *)
+      false
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>thm simple_test_map_def<\STATESEP>0<\TRANSEP><\STATESEP>thm simple_test_map_to_lookup_list<\STATESEP>0<\TRANSEP><\STATESEP>thm simple_test_map_lookups<\STATESEP>0<\TRANSEP><\STATESEP>thm simple_test_map_domain simple_test_map_range simple_test_map_keys_distinct<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Check the generated theorems\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "simple_test_map = map_of [(0, 0), (1, 1), (2, 1), (3, 2), (4, 3), (5, 5)]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. simple_test_map = map_of [(0, 0), (1, 1), (2, 1), (3, 2), (4, 3), (5, 5)]<\STATESEP>by (rule simple_test_map_to_lookup_list)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "simple_test_map 0 = Some 0"
+    "simple_test_map 1 = Some 1"
+    "simple_test_map 2 = Some 1"
+    "simple_test_map 3 = Some 2"
+    "simple_test_map 4 = Some 3"
+    "simple_test_map 5 = Some 5"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (simple_test_map 0 = Some 0 &&& simple_test_map 1 = Some 1 &&& simple_test_map 2 = Some 1) &&& simple_test_map 3 = Some 2 &&& simple_test_map 4 = Some 3 &&& simple_test_map 5 = Some 5<\STATESEP>by (rule simple_test_map_lookups)+<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "dom simple_test_map = set [0, 1, 2, 3, 4, 5]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom simple_test_map = set [0, 1, 2, 3, 4, 5]<\STATESEP>by (rule simple_test_map_domain)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "ran simple_test_map = set [0, 1, 1, 2, 3, 5]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran simple_test_map = set [0, 1, 1, 2, 3, 5]<\STATESEP>by (rule simple_test_map_range)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "distinct ([0, 1, 2, 3, 4, 5] :: nat list)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct [0, 1, 2, 3, 4, 5]<\STATESEP>by (rule simple_test_map_keys_distinct[simplified list.map prod.sel])<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Basic tests for the generated theorems\<close><\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+fun create_int_map name n typ ctxt =
+  FastMap.define_map (FastMap.name_opts_default name)
+    (List.tabulate (n, fn i => (HOLogic.mk_number typ i,
+                                HOLogic.mk_string (string_of_int i))))
+    (Const (@{const_name id}, typ --> typ))
+    @{thms}
+    false
+    ctxt
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    create_int_map "simple_test_map_100" 100 @{typ int}
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>print_theorems<\STATESEP>0<\TRANSEP><\STATESEP>lemma "simple_test_map_100 42 = Some ''42''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. simple_test_map_100 42 = Some ''42''<\STATESEP>by (rule simple_test_map_100_lookups)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "simple_test_map_100 100 = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. simple_test_map_100 100 = None<\STATESEP>by (time_methods
+            default:
+                \<open>simp add: simple_test_map_100_def\<close>
+            minimal:
+                \<open>simp only: simple_test_map_100_def FastMap.lookup_tree_simps'
+                            id_apply rel_simps if_False
+                      cong: if_weak_cong\<close>
+            slow_simps:
+                \<open>simp add: simple_test_map_100_def FastMap.lookup_tree.simps
+                      del: FastMap.lookup_tree_simps'
+                      cong: if_weak_cong cong del: if_cong\<close>
+            slow_simps_l4v:
+                \<open>simp add: simple_test_map_100_def FastMap.lookup_tree.simps
+                      del: FastMap.lookup_tree_simps'
+                      cong: if_cong cong del: if_weak_cong\<close>
+            (* This simulates using a functional map instead of FastMap *)
+            fun_map:
+                \<open>simp add: simple_test_map_100_to_lookup_list\<close>
+            (* Strangely, this is much faster, even though it uses the same rules
+               (and even has the same simp trace) *)
+            fun_map_minimal:
+                \<open>simp only: simple_test_map_100_to_lookup_list
+                            map_of.simps fun_upd_apply prod.sel
+                            rel_simps simp_thms if_True if_False
+                      cong: if_weak_cong\<close>)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "dom simple_test_map_100 = {0 .. 99}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom simple_test_map_100 = {0..99}<\STATESEP>apply (simp add: atLeastAtMost_upto upto_rec1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom simple_test_map_100 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99}<\STATESEP>by (simp only: simple_test_map_100_domain set_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "ran simple_test_map_100 =
+     set ([[x] | x \<leftarrow> ''0123456789''] @ [[x, y] | x \<leftarrow> ''123456789'', y \<leftarrow> ''0123456789''])"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran simple_test_map_100 = set (map (\<lambda>x. [x]) ''0123456789'' @ concat (map (\<lambda>x. map (\<lambda>y. [x, y]) ''0123456789'') ''123456789''))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran simple_test_map_100 = {''0'', ''1'', ''2'', ''3'', ''4'', ''5'', ''6'', ''7'', ''8'', ''9'', ''10'', ''11'', ''12'', ''13'', ''14'', ''15'', ''16'', ''17'', ''18'', ''19'', ''20'', ''21'', ''22'', ''23'', ''24'', ''25'', ''26'', ''27'', ''28'', ''29'', ''30'', ''31'', ''32'', ''33'', ''34'', ''35'', ''36'', ''37'', ''38'', ''39'', ''40'', ''41'', ''42'', ''43'', ''44'', ''45'', ''46'', ''47'', ''48'', ''49'', ''50'', ''51'', ''52'', ''53'', ''54'', ''55'', ''56'', ''57'', ''58'', ''59'', ''60'', ''61'', ''62'', ''63'', ''64'', ''65'', ''66'', ''67'', ''68'', ''69'', ''70'', ''71'', ''72'', ''73'', ''74'', ''75'', ''76'', ''77'', ''78'', ''79'', ''80'', ''81'', ''82'', ''83'', ''84'', ''85'', ''86'', ''87'', ''88'', ''89'', ''90'', ''91'', ''92'', ''93'', ''94'', ''95'', ''96'', ''97'', ''98'', ''99''}<\STATESEP>by (simp only: simple_test_map_100_range set_simps)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Test with larger mapping\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    create_int_map "simple_test_map_1000" 1000 @{typ int}
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "simple_test_map_1000 42 = Some ''42''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. simple_test_map_1000 42 = Some ''42''<\STATESEP>by (rule simple_test_map_1000_lookups)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "simple_test_map_1000 1000 = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. simple_test_map_1000 1000 = None<\STATESEP>by (simp add: simple_test_map_1000_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "dom simple_test_map_1000 = {0 .. 999}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom simple_test_map_1000 = {0..999}<\STATESEP>apply (simp add: atLeastAtMost_upto upto_rec1)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom simple_test_map_1000 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493, 494, 495, 496, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 662, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674, 675, 676, 677, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687, 688, 689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726, 727, 728, 729, 730, 731, 732, 733, 734, 735, 736, 737, 738, 739, 740, 741, 742, 743, 744, 745, 746, 747, 748, 749, 750, 751, 752, 753, 754, 755, 756, 757, 758, 759, 760, 761, 762, 763, 764, 765, 766, 767, 768, 769, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779, 780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 840, 841, 842, 843, 844, 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 863, 864, 865, 866, 867, 868, 869, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923, 924, 925, 926, 927, 928, 929, 930, 931, 932, 933, 934, 935, 936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947, 948, 949, 950, 951, 952, 953, 954, 955, 956, 957, 958, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 969, 970, 971, 972, 973, 974, 975, 976, 977, 978, 979, 980, 981, 982, 983, 984, 985, 986, 987, 988, 989, 990, 991, 992, 993, 994, 995, 996, 997, 998, 999}<\STATESEP>by (simp only: simple_test_map_1000_domain set_simps)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "ran simple_test_map_1000 =
+     set ([[x] | x \<leftarrow> ''0123456789''] @
+          [[x, y] | x \<leftarrow> ''123456789'', y \<leftarrow> ''0123456789''] @
+          [[x, y, z] | x \<leftarrow> ''123456789'', y \<leftarrow> ''0123456789'', z \<leftarrow> ''0123456789''])"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran simple_test_map_1000 = set (map (\<lambda>x. [x]) ''0123456789'' @ concat (map (\<lambda>x. map (\<lambda>y. [x, y]) ''0123456789'') ''123456789'') @ concat (map (\<lambda>x. concat (map (\<lambda>y. map (\<lambda>z. [x, y, z]) ''0123456789'') ''0123456789'')) ''123456789''))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ran simple_test_map_1000 = {''0'', ''1'', ''2'', ''3'', ''4'', ''5'', ''6'', ''7'', ''8'', ''9'', ''10'', ''11'', ''12'', ''13'', ''14'', ''15'', ''16'', ''17'', ''18'', ''19'', ''20'', ''21'', ''22'', ''23'', ''24'', ''25'', ''26'', ''27'', ''28'', ''29'', ''30'', ''31'', ''32'', ''33'', ''34'', ''35'', ''36'', ''37'', ''38'', ''39'', ''40'', ''41'', ''42'', ''43'', ''44'', ''45'', ''46'', ''47'', ''48'', ''49'', ''50'', ''51'', ''52'', ''53'', ''54'', ''55'', ''56'', ''57'', ''58'', ''59'', ''60'', ''61'', ''62'', ''63'', ''64'', ''65'', ''66'', ''67'', ''68'', ''69'', ''70'', ''71'', ''72'', ''73'', ''74'', ''75'', ''76'', ''77'', ''78'', ''79'', ''80'', ''81'', ''82'', ''83'', ''84'', ''85'', ''86'', ''87'', ''88'', ''89'', ''90'', ''91'', ''92'', ''93'', ''94'', ''95'', ''96'', ''97'', ''98'', ''99'', ''100'', ''101'', ''102'', ''103'', ''104'', ''105'', ''106'', ''107'', ''108'', ''109'', ''110'', ''111'', ''112'', ''113'', ''114'', ''115'', ''116'', ''117'', ''118'', ''119'', ''120'', ''121'', ''122'', ''123'', ''124'', ''125'', ''126'', ''127'', ''128'', ''129'', ''130'', ''131'', ''132'', ''133'', ''134'', ''135'', ''136'', ''137'', ''138'', ''139'', ''140'', ''141'', ''142'', ''143'', ''144'', ''145'', ''146'', ''147'', ''148'', ''149'', ''150'', ''151'', ''152'', ''153'', ''154'', ''155'', ''156'', ''157'', ''158'', ''159'', ''160'', ''161'', ''162'', ''163'', ''164'', ''165'', ''166'', ''167'', ''168'', ''169'', ''170'', ''171'', ''172'', ''173'', ''174'', ''175'', ''176'', ''177'', ''178'', ''179'', ''180'', ''181'', ''182'', ''183'', ''184'', ''185'', ''186'', ''187'', ''188'', ''189'', ''190'', ''191'', ''192'', ''193'', ''194'', ''195'', ''196'', ''197'', ''198'', ''199'', ''200'', ''201'', ''202'', ''203'', ''204'', ''205'', ''206'', ''207'', ''208'', ''209'', ''210'', ''211'', ''212'', ''213'', ''214'', ''215'', ''216'', ''217'', ''218'', ''219'', ''220'', ''221'', ''222'', ''223'', ''224'', ''225'', ''226'', ''227'', ''228'', ''229'', ''230'', ''231'', ''232'', ''233'', ''234'', ''235'', ''236'', ''237'', ''238'', ''239'', ''240'', ''241'', ''242'', ''243'', ''244'', ''245'', ''246'', ''247'', ''248'', ''249'', ''250'', ''251'', ''252'', ''253'', ''254'', ''255'', ''256'', ''257'', ''258'', ''259'', ''260'', ''261'', ''262'', ''263'', ''264'', ''265'', ''266'', ''267'', ''268'', ''269'', ''270'', ''271'', ''272'', ''273'', ''274'', ''275'', ''276'', ''277'', ''278'', ''279'', ''280'', ''281'', ''282'', ''283'', ''284'', ''285'', ''286'', ''287'', ''288'', ''289'', ''290'', ''291'', ''292'', ''293'', ''294'', ''295'', ''296'', ''297'', ''298'', ''299'', ''300'', ''301'', ''302'', ''303'', ''304'', ''305'', ''306'', ''307'', ''308'', ''309'', ''310'', ''311'', ''312'', ''313'', ''314'', ''315'', ''316'', ''317'', ''318'', ''319'', ''320'', ''321'', ''322'', ''323'', ''324'', ''325'', ''326'', ''327'', ''328'', ''329'', ''330'', ''331'', ''332'', ''333'', ''334'', ''335'', ''336'', ''337'', ''338'', ''339'', ''340'', ''341'', ''342'', ''343'', ''344'', ''345'', ''346'', ''347'', ''348'', ''349'', ''350'', ''351'', ''352'', ''353'', ''354'', ''355'', ''356'', ''357'', ''358'', ''359'', ''360'', ''361'', ''362'', ''363'', ''364'', ''365'', ''366'', ''367'', ''368'', ''369'', ''370'', ''371'', ''372'', ''373'', ''374'', ''375'', ''376'', ''377'', ''378'', ''379'', ''380'', ''381'', ''382'', ''383'', ''384'', ''385'', ''386'', ''387'', ''388'', ''389'', ''390'', ''391'', ''392'', ''393'', ''394'', ''395'', ''396'', ''397'', ''398'', ''399'', ''400'', ''401'', ''402'', ''403'', ''404'', ''405'', ''406'', ''407'', ''408'', ''409'', ''410'', ''411'', ''412'', ''413'', ''414'', ''415'', ''416'', ''417'', ''418'', ''419'', ''420'', ''421'', ''422'', ''423'', ''424'', ''425'', ''426'', ''427'', ''428'', ''429'', ''430'', ''431'', ''432'', ''433'', ''434'', ''435'', ''436'', ''437'', ''438'', ''439'', ''440'', ''441'', ''442'', ''443'', ''444'', ''445'', ''446'', ''447'', ''448'', ''449'', ''450'', ''451'', ''452'', ''453'', ''454'', ''455'', ''456'', ''457'', ''458'', ''459'', ''460'', ''461'', ''462'', ''463'', ''464'', ''465'', ''466'', ''467'', ''468'', ''469'', ''470'', ''471'', ''472'', ''473'', ''474'', ''475'', ''476'', ''477'', ''478'', ''479'', ''480'', ''481'', ''482'', ''483'', ''484'', ''485'', ''486'', ''487'', ''488'', ''489'', ''490'', ''491'', ''492'', ''493'', ''494'', ''495'', ''496'', ''497'', ''498'', ''499'', ''500'', ''501'', ''502'', ''503'', ''504'', ''505'', ''506'', ''507'', ''508'', ''509'', ''510'', ''511'', ''512'', ''513'', ''514'', ''515'', ''516'', ''517'', ''518'', ''519'', ''520'', ''521'', ''522'', ''523'', ''524'', ''525'', ''526'', ''527'', ''528'', ''529'', ''530'', ''531'', ''532'', ''533'', ''534'', ''535'', ''536'', ''537'', ''538'', ''539'', ''540'', ''541'', ''542'', ''543'', ''544'', ''545'', ''546'', ''547'', ''548'', ''549'', ''550'', ''551'', ''552'', ''553'', ''554'', ''555'', ''556'', ''557'', ''558'', ''559'', ''560'', ''561'', ''562'', ''563'', ''564'', ''565'', ''566'', ''567'', ''568'', ''569'', ''570'', ''571'', ''572'', ''573'', ''574'', ''575'', ''576'', ''577'', ''578'', ''579'', ''580'', ''581'', ''582'', ''583'', ''584'', ''585'', ''586'', ''587'', ''588'', ''589'', ''590'', ''591'', ''592'', ''593'', ''594'', ''595'', ''596'', ''597'', ''598'', ''599'', ''600'', ''601'', ''602'', ''603'', ''604'', ''605'', ''606'', ''607'', ''608'', ''609'', ''610'', ''611'', ''612'', ''613'', ''614'', ''615'', ''616'', ''617'', ''618'', ''619'', ''620'', ''621'', ''622'', ''623'', ''624'', ''625'', ''626'', ''627'', ''628'', ''629'', ''630'', ''631'', ''632'', ''633'', ''634'', ''635'', ''636'', ''637'', ''638'', ''639'', ''640'', ''641'', ''642'', ''643'', ''644'', ''645'', ''646'', ''647'', ''648'', ''649'', ''650'', ''651'', ''652'', ''653'', ''654'', ''655'', ''656'', ''657'', ''658'', ''659'', ''660'', ''661'', ''662'', ''663'', ''664'', ''665'', ''666'', ''667'', ''668'', ''669'', ''670'', ''671'', ''672'', ''673'', ''674'', ''675'', ''676'', ''677'', ''678'', ''679'', ''680'', ''681'', ''682'', ''683'', ''684'', ''685'', ''686'', ''687'', ''688'', ''689'', ''690'', ''691'', ''692'', ''693'', ''694'', ''695'', ''696'', ''697'', ''698'', ''699'', ''700'', ''701'', ''702'', ''703'', ''704'', ''705'', ''706'', ''707'', ''708'', ''709'', ''710'', ''711'', ''712'', ''713'', ''714'', ''715'', ''716'', ''717'', ''718'', ''719'', ''720'', ''721'', ''722'', ''723'', ''724'', ''725'', ''726'', ''727'', ''728'', ''729'', ''730'', ''731'', ''732'', ''733'', ''734'', ''735'', ''736'', ''737'', ''738'', ''739'', ''740'', ''741'', ''742'', ''743'', ''744'', ''745'', ''746'', ''747'', ''748'', ''749'', ''750'', ''751'', ''752'', ''753'', ''754'', ''755'', ''756'', ''757'', ''758'', ''759'', ''760'', ''761'', ''762'', ''763'', ''764'', ''765'', ''766'', ''767'', ''768'', ''769'', ''770'', ''771'', ''772'', ''773'', ''774'', ''775'', ''776'', ''777'', ''778'', ''779'', ''780'', ''781'', ''782'', ''783'', ''784'', ''785'', ''786'', ''787'', ''788'', ''789'', ''790'', ''791'', ''792'', ''793'', ''794'', ''795'', ''796'', ''797'', ''798'', ''799'', ''800'', ''801'', ''802'', ''803'', ''804'', ''805'', ''806'', ''807'', ''808'', ''809'', ''810'', ''811'', ''812'', ''813'', ''814'', ''815'', ''816'', ''817'', ''818'', ''819'', ''820'', ''821'', ''822'', ''823'', ''824'', ''825'', ''826'', ''827'', ''828'', ''829'', ''830'', ''831'', ''832'', ''833'', ''834'', ''835'', ''836'', ''837'', ''838'', ''839'', ''840'', ''841'', ''842'', ''843'', ''844'', ''845'', ''846'', ''847'', ''848'', ''849'', ''850'', ''851'', ''852'', ''853'', ''854'', ''855'', ''856'', ''857'', ''858'', ''859'', ''860'', ''861'', ''862'', ''863'', ''864'', ''865'', ''866'', ''867'', ''868'', ''869'', ''870'', ''871'', ''872'', ''873'', ''874'', ''875'', ''876'', ''877'', ''878'', ''879'', ''880'', ''881'', ''882'', ''883'', ''884'', ''885'', ''886'', ''887'', ''888'', ''889'', ''890'', ''891'', ''892'', ''893'', ''894'', ''895'', ''896'', ''897'', ''898'', ''899'', ''900'', ''901'', ''902'', ''903'', ''904'', ''905'', ''906'', ''907'', ''908'', ''909'', ''910'', ''911'', ''912'', ''913'', ''914'', ''915'', ''916'', ''917'', ''918'', ''919'', ''920'', ''921'', ''922'', ''923'', ''924'', ''925'', ''926'', ''927'', ''928'', ''929'', ''930'', ''931'', ''932'', ''933'', ''934'', ''935'', ''936'', ''937'', ''938'', ''939'', ''940'', ''941'', ''942'', ''943'', ''944'', ''945'', ''946'', ''947'', ''948'', ''949'', ''950'', ''951'', ''952'', ''953'', ''954'', ''955'', ''956'', ''957'', ''958'', ''959'', ''960'', ''961'', ''962'', ''963'', ''964'', ''965'', ''966'', ''967'', ''968'', ''969'', ''970'', ''971'', ''972'', ''973'', ''974'', ''975'', ''976'', ''977'', ''978'', ''979'', ''980'', ''981'', ''982'', ''983'', ''984'', ''985'', ''986'', ''987'', ''988'', ''989'', ''990'', ''991'', ''992'', ''993'', ''994'', ''995'', ''996'', ''997'', ''998'', ''999''}<\STATESEP>by (simp only: simple_test_map_1000_range set_simps)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Optimising an existing mapping\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    let
+      val map_def =
+          fold (fn i => fn m =>
+                @{term "fun_upd :: (int \<Rightarrow> string option) \<Rightarrow> int \<Rightarrow> string option \<Rightarrow> (int \<Rightarrow> string option)"} $
+                  m $ HOLogic.mk_number @{typ int} i $
+                  (@{term "Some :: string \<Rightarrow> string option"} $ HOLogic.mk_string (string_of_int i)))
+               (0 upto 100 - 1) @{term "Map.empty :: int \<Rightarrow> string option"};
+      val name = Binding.name "slow_map";
+    in
+      Local_Theory.define
+        ((name, NoSyn), ((Thm.def_binding name, []), map_def))
+      #> snd
+    end
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>thm slow_map_def<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    create_int_map "fast_map" 100 @{typ int}
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma slow_map_alt_def:
+    "slow_map = fast_map"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. slow_map = fast_map<\STATESEP>unfolding slow_map_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. [0 \<mapsto> ''0'', 1 \<mapsto> ''1'', 2 \<mapsto> ''2'', 3 \<mapsto> ''3'', 4 \<mapsto> ''4'', 5 \<mapsto> ''5'', 6 \<mapsto> ''6'', 7 \<mapsto> ''7'', 8 \<mapsto> ''8'', 9 \<mapsto> ''9'', 10 \<mapsto> ''10'', 11 \<mapsto> ''11'', 12 \<mapsto> ''12'', 13 \<mapsto> ''13'', 14 \<mapsto> ''14'', 15 \<mapsto> ''15'', 16 \<mapsto> ''16'', 17 \<mapsto> ''17'', 18 \<mapsto> ''18'', 19 \<mapsto> ''19'', 20 \<mapsto> ''20'', 21 \<mapsto> ''21'', 22 \<mapsto> ''22'', 23 \<mapsto> ''23'', 24 \<mapsto> ''24'', 25 \<mapsto> ''25'', 26 \<mapsto> ''26'', 27 \<mapsto> ''27'', 28 \<mapsto> ''28'', 29 \<mapsto> ''29'', 30 \<mapsto> ''30'', 31 \<mapsto> ''31'', 32 \<mapsto> ''32'', 33 \<mapsto> ''33'', 34 \<mapsto> ''34'', 35 \<mapsto> ''35'', 36 \<mapsto> ''36'', 37 \<mapsto> ''37'', 38 \<mapsto> ''38'', 39 \<mapsto> ''39'', 40 \<mapsto> ''40'', 41 \<mapsto> ''41'', 42 \<mapsto> ''42'', 43 \<mapsto> ''43'', 44 \<mapsto> ''44'', 45 \<mapsto> ''45'', 46 \<mapsto> ''46'', 47 \<mapsto> ''47'', 48 \<mapsto> ''48'', 49 \<mapsto> ''49'', 50 \<mapsto> ''50'', 51 \<mapsto> ''51'', 52 \<mapsto> ''52'', 53 \<mapsto> ''53'', 54 \<mapsto> ''54'', 55 \<mapsto> ''55'', 56 \<mapsto> ''56'', 57 \<mapsto> ''57'', 58 \<mapsto> ''58'', 59 \<mapsto> ''59'', 60 \<mapsto> ''60'', 61 \<mapsto> ''61'', 62 \<mapsto> ''62'', 63 \<mapsto> ''63'', 64 \<mapsto> ''64'', 65 \<mapsto> ''65'', 66 \<mapsto> ''66'', 67 \<mapsto> ''67'', 68 \<mapsto> ''68'', 69 \<mapsto> ''69'', 70 \<mapsto> ''70'', 71 \<mapsto> ''71'', 72 \<mapsto> ''72'', 73 \<mapsto> ''73'', 74 \<mapsto> ''74'', 75 \<mapsto> ''75'', 76 \<mapsto> ''76'', 77 \<mapsto> ''77'', 78 \<mapsto> ''78'', 79 \<mapsto> ''79'', 80 \<mapsto> ''80'', 81 \<mapsto> ''81'', 82 \<mapsto> ''82'', 83 \<mapsto> ''83'', 84 \<mapsto> ''84'', 85 \<mapsto> ''85'', 86 \<mapsto> ''86'', 87 \<mapsto> ''87'', 88 \<mapsto> ''88'', 89 \<mapsto> ''89'', 90 \<mapsto> ''90'', 91 \<mapsto> ''91'', 92 \<mapsto> ''92'', 93 \<mapsto> ''93'', 94 \<mapsto> ''94'', 95 \<mapsto> ''95'', 96 \<mapsto> ''96'', 97 \<mapsto> ''97'', 98 \<mapsto> ''98'', 99 \<mapsto> ''99''] = fast_map<\STATESEP>unfolding fast_map_to_lookup_list<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. [0 \<mapsto> ''0'', 1 \<mapsto> ''1'', 2 \<mapsto> ''2'', 3 \<mapsto> ''3'', 4 \<mapsto> ''4'', 5 \<mapsto> ''5'', 6 \<mapsto> ''6'', 7 \<mapsto> ''7'', 8 \<mapsto> ''8'', 9 \<mapsto> ''9'', 10 \<mapsto> ''10'', 11 \<mapsto> ''11'', 12 \<mapsto> ''12'', 13 \<mapsto> ''13'', 14 \<mapsto> ''14'', 15 \<mapsto> ''15'', 16 \<mapsto> ''16'', 17 \<mapsto> ''17'', 18 \<mapsto> ''18'', 19 \<mapsto> ''19'', 20 \<mapsto> ''20'', 21 \<mapsto> ''21'', 22 \<mapsto> ''22'', 23 \<mapsto> ''23'', 24 \<mapsto> ''24'', 25 \<mapsto> ''25'', 26 \<mapsto> ''26'', 27 \<mapsto> ''27'', 28 \<mapsto> ''28'', 29 \<mapsto> ''29'', 30 \<mapsto> ''30'', 31 \<mapsto> ''31'', 32 \<mapsto> ''32'', 33 \<mapsto> ''33'', 34 \<mapsto> ''34'', 35 \<mapsto> ''35'', 36 \<mapsto> ''36'', 37 \<mapsto> ''37'', 38 \<mapsto> ''38'', 39 \<mapsto> ''39'', 40 \<mapsto> ''40'', 41 \<mapsto> ''41'', 42 \<mapsto> ''42'', 43 \<mapsto> ''43'', 44 \<mapsto> ''44'', 45 \<mapsto> ''45'', 46 \<mapsto> ''46'', 47 \<mapsto> ''47'', 48 \<mapsto> ''48'', 49 \<mapsto> ''49'', 50 \<mapsto> ''50'', 51 \<mapsto> ''51'', 52 \<mapsto> ''52'', 53 \<mapsto> ''53'', 54 \<mapsto> ''54'', 55 \<mapsto> ''55'', 56 \<mapsto> ''56'', 57 \<mapsto> ''57'', 58 \<mapsto> ''58'', 59 \<mapsto> ''59'', 60 \<mapsto> ''60'', 61 \<mapsto> ''61'', 62 \<mapsto> ''62'', 63 \<mapsto> ''63'', 64 \<mapsto> ''64'', 65 \<mapsto> ''65'', 66 \<mapsto> ''66'', 67 \<mapsto> ''67'', 68 \<mapsto> ''68'', 69 \<mapsto> ''69'', 70 \<mapsto> ''70'', 71 \<mapsto> ''71'', 72 \<mapsto> ''72'', 73 \<mapsto> ''73'', 74 \<mapsto> ''74'', 75 \<mapsto> ''75'', 76 \<mapsto> ''76'', 77 \<mapsto> ''77'', 78 \<mapsto> ''78'', 79 \<mapsto> ''79'', 80 \<mapsto> ''80'', 81 \<mapsto> ''81'', 82 \<mapsto> ''82'', 83 \<mapsto> ''83'', 84 \<mapsto> ''84'', 85 \<mapsto> ''85'', 86 \<mapsto> ''86'', 87 \<mapsto> ''87'', 88 \<mapsto> ''88'', 89 \<mapsto> ''89'', 90 \<mapsto> ''90'', 91 \<mapsto> ''91'', 92 \<mapsto> ''92'', 93 \<mapsto> ''93'', 94 \<mapsto> ''94'', 95 \<mapsto> ''95'', 96 \<mapsto> ''96'', 97 \<mapsto> ''97'', 98 \<mapsto> ''98'', 99 \<mapsto> ''99''] = map_of [(0, ''0''), (1, ''1''), (2, ''2''), (3, ''3''), (4, ''4''), (5, ''5''), (6, ''6''), (7, ''7''), (8, ''8''), (9, ''9''), (10, ''10''), (11, ''11''), (12, ''12''), (13, ''13''), (14, ''14''), (15, ''15''), (16, ''16''), (17, ''17''), (18, ''18''), (19, ''19''), (20, ''20''), (21, ''21''), (22, ''22''), (23, ''23''), (24, ''24''), (25, ''25''), (26, ''26''), (27, ''27''), (28, ''28''), (29, ''29''), (30, ''30''), (31, ''31''), (32, ''32''), (33, ''33''), (34, ''34''), (35, ''35''), (36, ''36''), (37, ''37''), (38, ''38''), (39, ''39''), (40, ''40''), (41, ''41''), (42, ''42''), (43, ''43''), (44, ''44''), (45, ''45''), (46, ''46''), (47, ''47''), (48, ''48''), (49, ''49''), (50, ''50''), (51, ''51''), (52, ''52''), (53, ''53''), (54, ''54''), (55, ''55''), (56, ''56''), (57, ''57''), (58, ''58''), (59, ''59''), (60, ''60''), (61, ''61''), (62, ''62''), (63, ''63''), (64, ''64''), (65, ''65''), (66, ''66''), (67, ''67''), (68, ''68''), (69, ''69''), (70, ''70''), (71, ''71''), (72, ''72''), (73, ''73''), (74, ''74''), (75, ''75''), (76, ''76''), (77, ''77''), (78, ''78''), (79, ''79''), (80, ''80''), (81, ''81''), (82, ''82''), (83, ''83''), (84, ''84''), (85, ''85''), (86, ''86''), (87, ''87''), (88, ''88''), (89, ''89''), (90, ''90''), (91, ''91''), (92, ''92''), (93, ''93''), (94, ''94''), (95, ''95''), (96, ''96''), (97, ''97''), (98, ''98''), (99, ''99'')]<\STATESEP>apply (simp only: FastMap.map_of_rev[symmetric] fast_map_keys_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. [0 \<mapsto> ''0'', 1 \<mapsto> ''1'', 2 \<mapsto> ''2'', 3 \<mapsto> ''3'', 4 \<mapsto> ''4'', 5 \<mapsto> ''5'', 6 \<mapsto> ''6'', 7 \<mapsto> ''7'', 8 \<mapsto> ''8'', 9 \<mapsto> ''9'', 10 \<mapsto> ''10'', 11 \<mapsto> ''11'', 12 \<mapsto> ''12'', 13 \<mapsto> ''13'', 14 \<mapsto> ''14'', 15 \<mapsto> ''15'', 16 \<mapsto> ''16'', 17 \<mapsto> ''17'', 18 \<mapsto> ''18'', 19 \<mapsto> ''19'', 20 \<mapsto> ''20'', 21 \<mapsto> ''21'', 22 \<mapsto> ''22'', 23 \<mapsto> ''23'', 24 \<mapsto> ''24'', 25 \<mapsto> ''25'', 26 \<mapsto> ''26'', 27 \<mapsto> ''27'', 28 \<mapsto> ''28'', 29 \<mapsto> ''29'', 30 \<mapsto> ''30'', 31 \<mapsto> ''31'', 32 \<mapsto> ''32'', 33 \<mapsto> ''33'', 34 \<mapsto> ''34'', 35 \<mapsto> ''35'', 36 \<mapsto> ''36'', 37 \<mapsto> ''37'', 38 \<mapsto> ''38'', 39 \<mapsto> ''39'', 40 \<mapsto> ''40'', 41 \<mapsto> ''41'', 42 \<mapsto> ''42'', 43 \<mapsto> ''43'', 44 \<mapsto> ''44'', 45 \<mapsto> ''45'', 46 \<mapsto> ''46'', 47 \<mapsto> ''47'', 48 \<mapsto> ''48'', 49 \<mapsto> ''49'', 50 \<mapsto> ''50'', 51 \<mapsto> ''51'', 52 \<mapsto> ''52'', 53 \<mapsto> ''53'', 54 \<mapsto> ''54'', 55 \<mapsto> ''55'', 56 \<mapsto> ''56'', 57 \<mapsto> ''57'', 58 \<mapsto> ''58'', 59 \<mapsto> ''59'', 60 \<mapsto> ''60'', 61 \<mapsto> ''61'', 62 \<mapsto> ''62'', 63 \<mapsto> ''63'', 64 \<mapsto> ''64'', 65 \<mapsto> ''65'', 66 \<mapsto> ''66'', 67 \<mapsto> ''67'', 68 \<mapsto> ''68'', 69 \<mapsto> ''69'', 70 \<mapsto> ''70'', 71 \<mapsto> ''71'', 72 \<mapsto> ''72'', 73 \<mapsto> ''73'', 74 \<mapsto> ''74'', 75 \<mapsto> ''75'', 76 \<mapsto> ''76'', 77 \<mapsto> ''77'', 78 \<mapsto> ''78'', 79 \<mapsto> ''79'', 80 \<mapsto> ''80'', 81 \<mapsto> ''81'', 82 \<mapsto> ''82'', 83 \<mapsto> ''83'', 84 \<mapsto> ''84'', 85 \<mapsto> ''85'', 86 \<mapsto> ''86'', 87 \<mapsto> ''87'', 88 \<mapsto> ''88'', 89 \<mapsto> ''89'', 90 \<mapsto> ''90'', 91 \<mapsto> ''91'', 92 \<mapsto> ''92'', 93 \<mapsto> ''93'', 94 \<mapsto> ''94'', 95 \<mapsto> ''95'', 96 \<mapsto> ''96'', 97 \<mapsto> ''97'', 98 \<mapsto> ''98'', 99 \<mapsto> ''99''] = map_of (rev [(0, ''0''), (1, ''1''), (2, ''2''), (3, ''3''), (4, ''4''), (5, ''5''), (6, ''6''), (7, ''7''), (8, ''8''), (9, ''9''), (10, ''10''), (11, ''11''), (12, ''12''), (13, ''13''), (14, ''14''), (15, ''15''), (16, ''16''), (17, ''17''), (18, ''18''), (19, ''19''), (20, ''20''), (21, ''21''), (22, ''22''), (23, ''23''), (24, ''24''), (25, ''25''), (26, ''26''), (27, ''27''), (28, ''28''), (29, ''29''), (30, ''30''), (31, ''31''), (32, ''32''), (33, ''33''), (34, ''34''), (35, ''35''), (36, ''36''), (37, ''37''), (38, ''38''), (39, ''39''), (40, ''40''), (41, ''41''), (42, ''42''), (43, ''43''), (44, ''44''), (45, ''45''), (46, ''46''), (47, ''47''), (48, ''48''), (49, ''49''), (50, ''50''), (51, ''51''), (52, ''52''), (53, ''53''), (54, ''54''), (55, ''55''), (56, ''56''), (57, ''57''), (58, ''58''), (59, ''59''), (60, ''60''), (61, ''61''), (62, ''62''), (63, ''63''), (64, ''64''), (65, ''65''), (66, ''66''), (67, ''67''), (68, ''68''), (69, ''69''), (70, ''70''), (71, ''71''), (72, ''72''), (73, ''73''), (74, ''74''), (75, ''75''), (76, ''76''), (77, ''77''), (78, ''78''), (79, ''79''), (80, ''80''), (81, ''81''), (82, ''82''), (83, ''83''), (84, ''84''), (85, ''85''), (86, ''86''), (87, ''87''), (88, ''88''), (89, ''89''), (90, ''90''), (91, ''91''), (92, ''92''), (93, ''93''), (94, ''94''), (95, ''95''), (96, ''96''), (97, ''97''), (98, ''98''), (99, ''99'')])<\STATESEP>apply (simp only: rev.simps append.simps map_of.simps prod.sel)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma "slow_map 42 = Some ''42''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. slow_map 42 = Some ''42''<\STATESEP>by (time_methods
+          fast_map:      \<open>simp add: slow_map_alt_def fast_map_def\<close>
+          direct_lookup: \<open>simp add: slow_map_alt_def fast_map_lookups\<close>
+          slow_map:      \<open>simp add: slow_map_def\<close>)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "slow_map 100 = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. slow_map 100 = None<\STATESEP>by (time_methods
+          fast_map: \<open>simp add: slow_map_alt_def fast_map_def\<close>
+          slow_map: \<open>simp add: slow_map_def\<close>)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "dom slow_map = {0 .. 99}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom slow_map = {0..99}<\STATESEP>supply upto_rec1[simp]<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom slow_map = {0..99}<\STATESEP>apply (simp add: atLeastAtMost_upto)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom slow_map = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99}<\STATESEP>using set_rev[where xs="[0 .. 99] :: int list", simplified]<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+{99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 77, 76, 75, 74, 73, 72, 71, 70, 69, 68, 67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0} = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99}
+
+goal (1 subgoal):
+ 1. dom slow_map = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99}<\STATESEP>by (time_methods
+          fast_map: \<open>simp add: slow_map_alt_def fast_map_domain\<close>
+          slow_map: \<open>simp add: slow_map_def\<close>)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Simpset tests\<close><\STATESEP>0<\TRANSEP><\STATESEP>definition my_id
+  where
+  "my_id x \<equiv> x"<\STATESEP>0<\TRANSEP><\STATESEP>lemma my_id_loop:
+  "my_id x = my_id (Suc x) - 1"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. my_id x = my_id (Suc x) - 1<\STATESEP>by (simp add: my_id_def)<\STATESEP>1<\TRANSEP><\STATESEP>declare my_id_loop[simp]<\STATESEP>0<\TRANSEP><\STATESEP>declare my_id_def[simp]<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open> fn ctxt =>
+  (Timeout.apply (Time.fromSeconds 5) (
+      FastMap.define_map (FastMap.name_opts_default "minimal_test_map")
+        (List.tabulate (100, fn i => (HOLogic.mk_number @{typ nat} i,
+                                      HOLogic.mk_string (string_of_int i))))
+        @{term "my_id :: nat => nat"}
+        @{thms}
+        false
+      ) ctxt;
+   error "FastMap timeout test: shouldn't get here"
+  )
+  handle Timeout.TIMEOUT _ => ctxt
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>declare my_id_loop[simp del]<\STATESEP>0<\TRANSEP><\STATESEP>declare my_id_def[simp del]<\STATESEP>0<\TRANSEP><\STATESEP>lemma inj_my_id_loop[simp]:
+  fixes x y :: nat
+  shows "(my_id x = my_id y) = (my_id (x + x) = my_id (y + y))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (my_id x = my_id y) = (my_id (x + x) = my_id (y + y))<\STATESEP>by (auto simp: my_id_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma my_id_lessI:
+  "(my_id x < my_id y) = (x < y)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (my_id x < my_id y) = (x < y)<\STATESEP>by (simp add: my_id_def)<\STATESEP>1<\TRANSEP><\STATESEP>local_setup \<open> fn ctxt =>
+  (Timeout.apply (Time.fromSeconds 5) (
+      FastMap.define_map (FastMap.name_opts_default "minimal_test_map")
+        (List.tabulate (100, fn i => (HOLogic.mk_number @{typ nat} i,
+                                      HOLogic.mk_string (string_of_int i))))
+        @{term "my_id :: nat => nat"}
+        @{thms my_id_lessI}
+        false
+      ) ctxt;
+   error "FastMap timeout test: shouldn't get here"
+  )
+  handle Timeout.TIMEOUT _ => ctxt
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma my_id_inj:
+  "inj my_id"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. inj my_id<\STATESEP>by (simp add: inj_def my_id_def)<\STATESEP>1<\TRANSEP><\STATESEP>local_setup \<open>
+  FastMap.define_map (FastMap.name_opts_default "minimal_test_map")
+    (List.tabulate (100, fn i => (HOLogic.mk_number @{typ nat} i,
+                                  HOLogic.mk_string (string_of_int i))))
+    @{term "my_id :: nat => nat"}
+    @{thms my_id_lessI rel_simps my_id_inj[THEN inj_eq]}
+    true
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Test preserving user input\<close><\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+  FastMap.define_map (FastMap.name_opts_default "preserve_input_test_map")
+    (List.tabulate (100, fn i => (@{term "(+) :: nat \<Rightarrow> nat \<Rightarrow> nat"} $
+                                    HOLogic.mk_number @{typ nat} i $
+                                    @{term "0 :: nat"},
+                                  @{term "rev :: string \<Rightarrow> string"} $
+                                    HOLogic.mk_string (string_of_int i))))
+    @{term "id :: nat => nat"}
+    @{thms}
+    false
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "preserve_input_test_map (42 + 0) = Some (rev ''42'')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. preserve_input_test_map (42 + 0) = Some (rev ''42'')<\STATESEP>apply (fails \<open>simp; rule preserve_input_test_map_lookups\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. preserve_input_test_map (42 + 0) = Some (rev ''42'')<\STATESEP>by (rule preserve_input_test_map_lookups)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "42 + 0 \<in> dom preserve_input_test_map"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 42 + 0 \<in> dom preserve_input_test_map<\STATESEP>apply (fails \<open>solves \<open>simp; unfold preserve_input_test_map_domain; intro list.set_intros\<close>\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. 42 + 0 \<in> dom preserve_input_test_map<\STATESEP>by (unfold preserve_input_test_map_domain; intro list.set_intros)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "rev ''42'' \<in> ran preserve_input_test_map"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. rev ''42'' \<in> ran preserve_input_test_map<\STATESEP>apply (fails \<open>solves \<open>simp; unfold preserve_input_test_map_range; intro list.set_intros\<close>\<close>)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. rev ''42'' \<in> ran preserve_input_test_map<\STATESEP>by (unfold preserve_input_test_map_range; intro list.set_intros)<\STATESEP>1<\TRANSEP><\STATESEP>section \<open>Test @{command qualify}\<close><\STATESEP>0<\TRANSEP><\STATESEP>locale qualified_map_test<\STATESEP>0<\TRANSEP><\STATESEP>qualify qualified_map_test<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+  create_int_map "qualified_map" 100 @{typ nat}
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end_qualify<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  @{assert} (not (can dest_Const @{term qualified_map}));
+  @{assert} (can dest_Const @{term qualified_map_test.qualified_map});
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Test locales\<close><\STATESEP>0<\TRANSEP><\STATESEP>context qualified_map_test begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+  create_int_map "locale_map" 100 @{typ nat}
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>thm locale_map_def<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  @{assert} (not (can dest_Const @{term locale_map}));
+  @{assert} (can dest_Const @{term qualified_map_test.locale_map});
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Test other key types\<close><\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Finite words\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    create_int_map "word_map" 256 @{typ word32}
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "word_map 42 = Some ''42''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_map 0x2A = Some ''42''<\STATESEP>by (rule word_map_lookups)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "word_map 999 = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. word_map 0x3E7 = None<\STATESEP>by (simp add: word_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>subsection \<open>Strings\<close><\STATESEP>0<\TRANSEP><\STATESEP>instantiation char :: ord begin<\STATESEP>0<\TRANSEP><\STATESEP>definition[simp]: "(c::char) < d \<equiv> (of_char c :: nat) < of_char d"<\STATESEP>0<\TRANSEP><\STATESEP>definition[simp]: "(c::char) \<le> d \<equiv> (of_char c :: nat) \<le> of_char d"<\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(char, ord_class)<\STATESEP>..<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>instantiation char :: linorder begin<\STATESEP>0<\TRANSEP><\STATESEP>instance<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. OFCLASS(char, linorder_class)<\STATESEP>by intro_classes
+       (auto simp: preorder_class.less_le_not_le linorder_class.linear)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    FastMap.define_map (FastMap.name_opts_default "string_map")
+      (List.tabulate (100, fn i => (HOLogic.mk_string (StringCvt.padLeft #"0" 3 (string_of_int i)),
+                                    HOLogic.mk_number @{typ nat} i)))
+      @{term "lexord_list :: string \<Rightarrow> char lexord_list"}
+      @{thms}
+      false
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma "string_map ''042'' = Some 42"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. string_map ''042'' = Some 42<\STATESEP>by (rule string_map_lookups)<\STATESEP>1<\TRANSEP><\STATESEP>lemma "string_map ''0123'' = None"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. string_map ''0123'' = None<\STATESEP>by (simp add: string_map_def)<\STATESEP>1<\TRANSEP><\STATESEP>schematic_goal "(dom string_map = (?x :: string set))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. dom string_map = ?x<\STATESEP>by (rule string_map_domain)<\STATESEP>1<\TRANSEP><\STATESEP>schematic_goal "string_map = map_of (?binds :: (string \<times> nat) list)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. string_map = map_of ?binds<\STATESEP>by (rule string_map_to_lookup_list)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>section \<open>Small inputs\<close><\STATESEP>0<\TRANSEP><\STATESEP>experiment begin<\STATESEP>0<\TRANSEP><\STATESEP>local_setup \<open>
+    create_int_map "small_test_map_1" 1 @{typ nat}
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>lemma
+    "small_test_map_1 \<equiv> FastMap.lookup_tree id (FastMap.Node 0 ''0'' FastMap.Leaf FastMap.Leaf)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. small_test_map_1 \<equiv> FastMap.lookup_tree id (FastMap.Node 0 ''0'' FastMap.Leaf FastMap.Leaf)<\STATESEP>by (rule small_test_map_1_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "small_test_map_1 = map_of [(0, ''0'')]"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. small_test_map_1 = map_of [(0, ''0'')]<\STATESEP>by (rule small_test_map_1_to_lookup_list)<\STATESEP>1<\TRANSEP><\STATESEP>lemma
+    "small_test_map_1 0 = Some ''0''"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. small_test_map_1 0 = Some ''0''<\STATESEP>by (rule small_test_map_1_lookups)<\STATESEP>1<\TRANSEP><\STATESEP>local_setup \<open>
+      create_int_map "small_test_map_2" 2 @{typ nat}
+      #>
+      create_int_map "small_test_map_3" 3 @{typ nat}
+      #>
+      create_int_map "small_test_map_4" 4 @{typ nat}
+  \<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

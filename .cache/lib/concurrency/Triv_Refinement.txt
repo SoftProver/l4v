@@ -1,0 +1,95 @@
+<\STATESEP>theory Triv_Refinement
+  imports
+    "Monads.Trace_More_RG"
+    "Monads.Trace_Strengthen_Setup"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>definition triv_refinement :: "('s,'a) tmonad \<Rightarrow> ('s,'a) tmonad \<Rightarrow> bool" where
+  "triv_refinement aprog cprog = (\<forall>s. cprog s \<subseteq> aprog s)"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas triv_refinement_elemD = triv_refinement_def[THEN iffD1, rule_format, THEN subsetD]<\STATESEP>0<\TRANSEP><\STATESEP>lemma triv_refinement_trans:
+  "\<lbrakk>triv_refinement f g; triv_refinement g h\<rbrakk> \<Longrightarrow> triv_refinement f h"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>triv_refinement f g; triv_refinement g h\<rbrakk> \<Longrightarrow> triv_refinement f h<\STATESEP>by (auto simp add: triv_refinement_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_mono_bind:
+  "triv_refinement a c \<Longrightarrow> triv_refinement (a >>= b) (c >>= b)"
+  "\<lbrakk>\<forall>x. triv_refinement (b x) (d x)\<rbrakk> \<Longrightarrow> triv_refinement (a >>= b) (a >>= d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (triv_refinement a c \<Longrightarrow> triv_refinement (a >>= b) (c >>= b)) &&& (\<forall>x. triv_refinement (b x) (d x) \<Longrightarrow> triv_refinement (a >>= b) (a >>= d))<\STATESEP>apply (simp add: triv_refinement_def bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<forall>s. c s \<subseteq> a s \<Longrightarrow> \<forall>s. (\<Union>x\<in>c s. case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` b rv s) \<subseteq> (\<Union>x\<in>a s. case x of (xs, Failed) \<Rightarrow> {(xs, Failed)} | (xs, Incomplete) \<Rightarrow> {(xs, Incomplete)} | (xs, Result (rv, s)) \<Rightarrow> (\<lambda>x. case x of (a, x) \<Rightarrow> (a @ xs, x)) ` b rv s)
+ 2. \<forall>x. triv_refinement (b x) (d x) \<Longrightarrow> triv_refinement (a >>= b) (a >>= d)<\STATESEP>apply (intro allI UN_mono; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x. triv_refinement (b x) (d x) \<Longrightarrow> triv_refinement (a >>= b) (a >>= d)<\STATESEP>apply (simp only: triv_refinement_def bind_def' split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x s. d x s \<subseteq> b x s \<Longrightarrow> \<forall>s. (\<lambda>xs. (xs, Failed)) ` {xs. (xs, Failed) \<in> a s} \<union> (\<lambda>xs. (xs, Incomplete)) ` {xs. (xs, Incomplete) \<in> a s} \<union> (\<Union>p\<in>{p. (fst p, Result (fst (snd p), snd (snd p))) \<in> a s}. (\<lambda>pa. (fst pa @ fst p, snd pa)) ` d (fst (snd p)) (snd (snd p))) \<subseteq> (\<lambda>xs. (xs, Failed)) ` {xs. (xs, Failed) \<in> a s} \<union> (\<lambda>xs. (xs, Incomplete)) ` {xs. (xs, Incomplete) \<in> a s} \<union> (\<Union>p\<in>{p. (fst p, Result (fst (snd p), snd (snd p))) \<in> a s}. (\<lambda>pa. (fst pa @ fst p, snd pa)) ` b (fst (snd p)) (snd (snd p)))<\STATESEP>apply (intro Un_mono allI order_refl UN_mono image_mono)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s p. \<lbrakk>\<forall>x s. d x s \<subseteq> b x s; p \<in> {p. (fst p, Result (fst (snd p), snd (snd p))) \<in> a s}\<rbrakk> \<Longrightarrow> d (fst (snd p)) (snd (snd p)) \<subseteq> b (fst (snd p)) (snd (snd p))<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_bind:
+  "\<lbrakk>triv_refinement a c; \<forall>x. triv_refinement (b x) (d x)\<rbrakk>
+   \<Longrightarrow> triv_refinement (bind a b) (bind c d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>triv_refinement a c; \<forall>x. triv_refinement (b x) (d x)\<rbrakk> \<Longrightarrow> triv_refinement (a >>= b) (c >>= d)<\STATESEP>by (metis triv_refinement_mono_bind triv_refinement_trans)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_mono_parallel:
+  "triv_refinement a b \<Longrightarrow> triv_refinement (parallel a c) (parallel b c)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement a b \<Longrightarrow> triv_refinement (parallel a c) (parallel b c)<\STATESEP>apply (simp add: triv_refinement_def parallel_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. b s \<subseteq> a s \<Longrightarrow> \<forall>s. {p. \<exists>f_steps. length f_steps = length (fst p) \<and> (map (\<lambda>p. (if fst p then fst (snd p) else Env, snd (snd p))) (zip f_steps (fst p)), snd p) \<in> b s \<and> (map (\<lambda>p. (if fst p then Env else fst (snd p), snd (snd p))) (zip f_steps (fst p)), snd p) \<in> c s} \<subseteq> {p. \<exists>f_steps. length f_steps = length (fst p) \<and> (map (\<lambda>p. (if fst p then fst (snd p) else Env, snd (snd p))) (zip f_steps (fst p)), snd p) \<in> a s \<and> (map (\<lambda>p. (if fst p then Env else fst (snd p), snd (snd p))) (zip f_steps (fst p)), snd p) \<in> c s}<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_mono_parallel':
+  "triv_refinement a b \<Longrightarrow> triv_refinement (parallel c a) (parallel c b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement a b \<Longrightarrow> triv_refinement (parallel c a) (parallel c b)<\STATESEP>apply (simp add: triv_refinement_def parallel_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. b s \<subseteq> a s \<Longrightarrow> \<forall>s. {p. \<exists>f_steps. length f_steps = length (fst p) \<and> (map (\<lambda>p. (if fst p then fst (snd p) else Env, snd (snd p))) (zip f_steps (fst p)), snd p) \<in> c s \<and> (map (\<lambda>p. (if fst p then Env else fst (snd p), snd (snd p))) (zip f_steps (fst p)), snd p) \<in> b s} \<subseteq> {p. \<exists>f_steps. length f_steps = length (fst p) \<and> (map (\<lambda>p. (if fst p then fst (snd p) else Env, snd (snd p))) (zip f_steps (fst p)), snd p) \<in> c s \<and> (map (\<lambda>p. (if fst p then Env else fst (snd p), snd (snd p))) (zip f_steps (fst p)), snd p) \<in> a s}<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_parallel:
+  "\<lbrakk>triv_refinement a b; triv_refinement c d\<rbrakk>
+   \<Longrightarrow> triv_refinement (parallel a c) (parallel b d)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>triv_refinement a b; triv_refinement c d\<rbrakk> \<Longrightarrow> triv_refinement (parallel a c) (parallel b d)<\STATESEP>by (metis triv_refinement_mono_parallel triv_refinement_mono_parallel'
+            triv_refinement_trans)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_subset:
+  "(select S s \<subseteq> select S' s') = (S \<subseteq> S' \<and> (S \<noteq> {} \<longrightarrow> s = s'))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (select S s \<subseteq> select S' s') = (S \<subseteq> S' \<and> (S \<noteq> {} \<longrightarrow> s = s'))<\STATESEP>by (auto simp add: select_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_select:
+  "S' \<subseteq> S \<Longrightarrow> triv_refinement (select S) (select S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. S' \<subseteq> S \<Longrightarrow> triv_refinement (select S) (select S')<\STATESEP>by (simp add: triv_refinement_def select_subset)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_select_eq:
+  "triv_refinement (select S) (select S') = (S' \<subseteq> S)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement (select S) (select S') = (S' \<subseteq> S)<\STATESEP>by (simp add: triv_refinement_def select_subset)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_rely:
+  "\<lbrakk>\<And>s0 s. R' s0 s \<Longrightarrow> R s0 s\<rbrakk>
+   \<Longrightarrow> triv_refinement (rely f R s0) (rely f R' s0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s0 s. R' s0 s \<Longrightarrow> R s0 s) \<Longrightarrow> triv_refinement (rely f R s0) (rely f R' s0)<\STATESEP>unfolding rely_def triv_refinement_def rely_cond_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s0 s. R' s0 s \<Longrightarrow> R s0 s) \<Longrightarrow> \<forall>s. f s \<inter> {tr. \<forall>(ident, s0, s)\<in>trace_steps (rev tr) s0. ident = Env \<longrightarrow> R' s0 s} \<times> UNIV \<subseteq> f s \<inter> {tr. \<forall>(ident, s0, s)\<in>trace_steps (rev tr) s0. ident = Env \<longrightarrow> R s0 s} \<times> UNIV<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_rely2:
+  "triv_refinement f g \<Longrightarrow> triv_refinement (rely f R s0) (rely g R s0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement f g \<Longrightarrow> triv_refinement (rely f R s0) (rely g R s0)<\STATESEP>unfolding rely_def triv_refinement_def rely_cond_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. g s \<subseteq> f s \<Longrightarrow> \<forall>s. g s \<inter> {tr. \<forall>(ident, s0, s)\<in>trace_steps (rev tr) s0. ident = Env \<longrightarrow> R s0 s} \<times> UNIV \<subseteq> f s \<inter> {tr. \<forall>(ident, s0, s)\<in>trace_steps (rev tr) s0. ident = Env \<longrightarrow> R s0 s} \<times> UNIV<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma rely_rely_triv_refinement:
+  "\<lbrakk>\<And>s0 s. R s0 s \<Longrightarrow> R' s0 s\<rbrakk> \<Longrightarrow> triv_refinement (rely f R' s0) (rely (rely f R s0) R' s0)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s0 s. R s0 s \<Longrightarrow> R' s0 s) \<Longrightarrow> triv_refinement (rely f R' s0) (rely (rely f R s0) R' s0)<\STATESEP>by (clarsimp simp: triv_refinement_def rely_def parallel_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_refl[simp]:
+  "triv_refinement f f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement f f<\STATESEP>by (simp add: triv_refinement_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_select_concrete_All:
+  "\<forall>x \<in> S. triv_refinement aprog (cprog x) \<Longrightarrow> triv_refinement aprog (select S >>= cprog)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>x\<in>S. triv_refinement aprog (cprog x) \<Longrightarrow> triv_refinement aprog (select S >>= cprog)<\STATESEP>by (auto simp: triv_refinement_def bind_def select_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_select_abstract_x:
+  "\<lbrakk>x \<in> S; triv_refinement (aprog x) cprog\<rbrakk> \<Longrightarrow> triv_refinement (select S >>= aprog) cprog"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> S; triv_refinement (aprog x) cprog\<rbrakk> \<Longrightarrow> triv_refinement (select S >>= aprog) cprog<\STATESEP>by (auto simp: triv_refinement_def bind_def select_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_alternative1:
+  "triv_refinement (a \<sqinter> b) a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement (a \<sqinter> b) a<\STATESEP>by (clarsimp simp: triv_refinement_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma triv_refinement_alternative2:
+  "triv_refinement (a \<sqinter> b) b"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. triv_refinement (a \<sqinter> b) b<\STATESEP>by (clarsimp simp: triv_refinement_def alternative_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma validI_triv_refinement:
+  "\<lbrakk>triv_refinement f g; \<lbrace>P\<rbrace>,\<lbrace>R\<rbrace> f \<lbrace>G\<rbrace>,\<lbrace>Q\<rbrace>; prefix_closed g\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace>,\<lbrace>R\<rbrace> g \<lbrace>G\<rbrace>,\<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>triv_refinement f g; \<lbrace>P\<rbrace>, \<lbrace>R\<rbrace> f \<lbrace>G\<rbrace>, \<lbrace>Q\<rbrace>; prefix_closed g\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace>, \<lbrace>R\<rbrace> g \<lbrace>G\<rbrace>, \<lbrace>Q\<rbrace><\STATESEP>unfolding rely_def triv_refinement_def validI_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. g s \<subseteq> f s; prefix_closed f \<and> (\<forall>s0 s tr res. P s0 s \<and> (tr, res) \<in> f s \<inter> Collect (rely_cond R s0) \<times> UNIV \<longrightarrow> guar_cond G s0 tr \<and> (\<forall>rv s'. res = Result (rv, s') \<longrightarrow> Q rv (last_st_tr tr s0) s')); prefix_closed g\<rbrakk> \<Longrightarrow> prefix_closed g \<and> (\<forall>s0 s tr res. P s0 s \<and> (tr, res) \<in> g s \<inter> Collect (rely_cond R s0) \<times> UNIV \<longrightarrow> guar_cond G s0 tr \<and> (\<forall>rv s'. res = Result (rv, s') \<longrightarrow> Q rv (last_st_tr tr s0) s'))<\STATESEP>by fastforce<\STATESEP>1<\TRANSEP><\STATESEP>lemma valid_triv_refinement:
+  "\<lbrakk>triv_refinement f g; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> g \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>triv_refinement f g; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> g \<lbrace>Q\<rbrace><\STATESEP>unfolding rely_def triv_refinement_def valid_def mres_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. g s \<subseteq> f s; \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>Result -` snd ` f s. Q r s')\<rbrakk> \<Longrightarrow> \<forall>s. P s \<longrightarrow> (\<forall>(r, s')\<in>Result -` snd ` g s. Q r s')<\STATESEP>by (fastforce elim: image_eqI[rotated])<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

@@ -1,0 +1,71 @@
+<\STATESEP>theory Bits_AI
+imports ArchBits_AI
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemmas crunch_wps = hoare_drop_imps mapM_wp' mapM_x_wp'<\STATESEP>0<\TRANSEP><\STATESEP>lemmas crunch_simps = split_def whenE_def unlessE_def Let_def if_fun_split
+                      assertE_def zipWithM_mapM zipWithM_x_mapM<\STATESEP>0<\TRANSEP><\STATESEP>lemma in_set_object:
+  "(rv, s') \<in> fst (set_object ptr obj s) \<Longrightarrow> s' = s \<lparr> kheap := (kheap s) (ptr \<mapsto> obj) \<rparr>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (rv, s') \<in> fst (set_object ptr obj s) \<Longrightarrow> s' = s\<lparr>kheap := (kheap s)(ptr \<mapsto> obj)\<rparr><\STATESEP>by (clarsimp simp: set_object_def get_object_def in_monad)<\STATESEP>1<\TRANSEP><\STATESEP>lemma cap_fault_injection:
+ "cap_fault_on_failure addr b = injection_handler (ExceptionTypes_A.CapFault addr b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. cap_fault_on_failure addr b = injection_handler (CapFault addr b)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. cap_fault_on_failure addr b x = injection_handler (CapFault addr b) x<\STATESEP>apply (simp add: cap_fault_on_failure_def injection_handler_def o_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma lookup_error_injection:
+ "lookup_error_on_failure b = injection_handler (ExceptionTypes_A.FailedLookup b)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. lookup_error_on_failure b = injection_handler (FailedLookup b)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. lookup_error_on_failure b x = injection_handler (FailedLookup b) x<\STATESEP>apply (simp add: lookup_error_on_failure_def injection_handler_def o_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>Thm.consolidate @{thms lookup_error_injection}\<close><\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_fault_wp[wp] = injection_wp[OF cap_fault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_fault_wp_E[wp] = injection_wp_E[OF cap_fault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_fault_bindE = injection_bindE[OF cap_fault_injection cap_fault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas cap_fault_liftE[simp] = injection_liftE[OF cap_fault_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookup_error_wp[wp] = injection_wp[OF lookup_error_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookup_error_wp_E[wp] = injection_wp_E[OF lookup_error_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookup_error_bindE = injection_bindE[OF lookup_error_injection lookup_error_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas lookup_error_liftE[simp] = injection_liftE[OF lookup_error_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemma unify_failure_injection:
+  "unify_failure = injection_handler (\<lambda>x. ())"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. unify_failure = injection_handler (\<lambda>x. ())<\STATESEP>by (intro ext, simp add: unify_failure_def injection_handler_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas unify_failure_wp[wp] = injection_wp [OF unify_failure_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemmas unify_failure_wp_E[wp] = injection_wp_E [OF unify_failure_injection]<\STATESEP>0<\TRANSEP><\STATESEP>lemma ep_cases_weak_wp:
+  assumes "\<lbrace>P_A\<rbrace> a \<lbrace>Q\<rbrace>"
+  assumes "\<And>q. \<lbrace>P_B\<rbrace> b q \<lbrace>Q\<rbrace>"
+  assumes "\<And>q. \<lbrace>P_C\<rbrace> c q \<lbrace>Q\<rbrace>"
+  shows
+  "\<lbrace>P_A and P_B and P_C\<rbrace>
+    case ts of
+      Structures_A.IdleEP \<Rightarrow> a
+    | Structures_A.SendEP q \<Rightarrow> b q
+    | Structures_A.RecvEP q \<Rightarrow> c q \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleEP \<Rightarrow> a | SendEP q \<Rightarrow> b q | RecvEP q \<Rightarrow> c q \<lbrace>Q\<rbrace><\STATESEP>apply (cases ts)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. ts = IdleEP \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleEP \<Rightarrow> a | SendEP q \<Rightarrow> b q | RecvEP q \<Rightarrow> c q \<lbrace>Q\<rbrace>
+ 2. \<And>x2. ts = SendEP x2 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleEP \<Rightarrow> a | SendEP q \<Rightarrow> b q | RecvEP q \<Rightarrow> c q \<lbrace>Q\<rbrace>
+ 3. \<And>x3. ts = RecvEP x3 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleEP \<Rightarrow> a | SendEP q \<Rightarrow> b q | RecvEP q \<Rightarrow> c q \<lbrace>Q\<rbrace><\STATESEP>apply (simp, rule hoare_weaken_pre, rule assms, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ntfn_cases_weak_wp:
+  assumes "\<lbrace>P_A\<rbrace> a \<lbrace>Q\<rbrace>"
+  assumes "\<And>q. \<lbrace>P_B\<rbrace> b q \<lbrace>Q\<rbrace>"
+  assumes "\<And>bdg msg. \<lbrace>P_C\<rbrace> c bdg msg \<lbrace>Q\<rbrace>"
+  shows
+  "\<lbrace>P_A and P_B and P_C\<rbrace>
+    case ts of
+      Structures_A.IdleNtfn \<Rightarrow> a
+    | Structures_A.WaitingNtfn q \<Rightarrow> b q
+    | Structures_A.ActiveNtfn bdg \<Rightarrow> c bdg msg \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleNtfn \<Rightarrow> a | WaitingNtfn q \<Rightarrow> b q | ActiveNtfn bdg \<Rightarrow> c bdg msg \<lbrace>Q\<rbrace><\STATESEP>apply (cases ts)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. ts = IdleNtfn \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleNtfn \<Rightarrow> a | WaitingNtfn q \<Rightarrow> b q | ActiveNtfn bdg \<Rightarrow> c bdg msg \<lbrace>Q\<rbrace>
+ 2. \<And>x2. ts = WaitingNtfn x2 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleNtfn \<Rightarrow> a | WaitingNtfn q \<Rightarrow> b q | ActiveNtfn bdg \<Rightarrow> c bdg msg \<lbrace>Q\<rbrace>
+ 3. \<And>x3. ts = ActiveNtfn x3 \<Longrightarrow> \<lbrace>P_A and P_B and P_C\<rbrace> case ts of IdleNtfn \<Rightarrow> a | WaitingNtfn q \<Rightarrow> b q | ActiveNtfn bdg \<Rightarrow> c bdg msg \<lbrace>Q\<rbrace><\STATESEP>apply (simp, rule hoare_weaken_pre, rule assms, simp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma NullCap_valid [simp]: "s \<turnstile> cap.NullCap"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. s \<turnstile> NullCap<\STATESEP>by (simp add: valid_cap_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma empty_on_failure_wp[wp]:
+  "\<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>,\<lbrace>\<lambda>rv. Q []\<rbrace>
+    \<Longrightarrow> \<lbrace>P\<rbrace> empty_on_failure m \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> m \<lbrace>Q\<rbrace>, \<lbrace>\<lambda>rv. Q []\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> empty_on_failure m \<lbrace>Q\<rbrace><\STATESEP>by (simp add: empty_on_failure_def) wp<\STATESEP>1<\TRANSEP><\STATESEP>lemma gen_invocation_typeI:
+  "invocation_type l = GenInvocationLabel x \<Longrightarrow> gen_invocation_type l = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. invocation_type l = GenInvocationLabel x \<Longrightarrow> gen_invocation_type l = x<\STATESEP>by (simp add: gen_invocation_type_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gen_invocation_type_eq:
+  "x \<noteq> InvalidInvocation \<Longrightarrow>
+  (invocation_type l = GenInvocationLabel x) = (gen_invocation_type l = x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. x \<noteq> InvalidInvocation \<Longrightarrow> (invocation_type l = GenInvocationLabel x) = (gen_invocation_type l = x)<\STATESEP>by (auto simp: gen_invocation_type_def split: invocation_label.splits)<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

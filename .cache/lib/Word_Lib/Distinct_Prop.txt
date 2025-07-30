@@ -1,0 +1,296 @@
+<\STATESEP>section "Distinct Proposition"<\STATESEP>0<\TRANSEP><\STATESEP>theory Distinct_Prop  (* part of non-AFP Word_Lib *)
+imports
+  Many_More
+  "HOL-Library.Prefix_Order"
+begin<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  distinct_prop :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a list \<Rightarrow> bool)"
+where
+  "distinct_prop P [] = True"
+| "distinct_prop P (x # xs) = ((\<forall>y\<in>set xs. P x y) \<and> distinct_prop P xs)"<\STATESEP>0<\TRANSEP><\STATESEP>primrec
+  distinct_sets :: "'a set list \<Rightarrow> bool"
+where
+  "distinct_sets [] = True"
+| "distinct_sets (x#xs) = (x \<inter> \<Union> (set xs) = {} \<and> distinct_sets xs)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma distinct_prop_map:
+  "distinct_prop P (map f xs) = distinct_prop (\<lambda>x y. P (f x) (f y)) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop P (map f xs) = distinct_prop (\<lambda>x y. P (f x) (f y)) xs<\STATESEP>by (induct xs) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_append:
+  "distinct_prop P (xs @ ys) =
+    (distinct_prop P xs \<and> distinct_prop P ys \<and> (\<forall>x \<in> set xs. \<forall>y \<in> set ys. P x y))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop P (xs @ ys) = (distinct_prop P xs \<and> distinct_prop P ys \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set ys. P x y))<\STATESEP>by (induct xs arbitrary: ys) (auto simp: conj_comms ball_Un)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_distinct:
+  "\<lbrakk> distinct xs; \<And>x y. \<lbrakk> x \<in> set xs; y \<in> set xs; x \<noteq> y \<rbrakk> \<Longrightarrow> P x y \<rbrakk> \<Longrightarrow> distinct_prop P xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; \<And>x y. \<lbrakk>x \<in> set xs; y \<in> set xs; x \<noteq> y\<rbrakk> \<Longrightarrow> P x y\<rbrakk> \<Longrightarrow> distinct_prop P xs<\STATESEP>by (induct xs) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_True [simp]:
+  "distinct_prop (\<lambda>x y. True) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. True) xs<\STATESEP>by (induct xs, auto)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prefix:
+  "\<lbrakk> distinct xs; ys \<le> xs \<rbrakk> \<Longrightarrow> distinct ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct xs; ys \<le> xs\<rbrakk> \<Longrightarrow> distinct ys<\STATESEP>apply (induct xs arbitrary: ys; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. ys \<le> xs \<Longrightarrow> distinct ys; a \<notin> set xs; ys \<le> a # xs\<rbrakk> \<Longrightarrow> distinct ys<\STATESEP>apply (case_tac ys; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs list. \<lbrakk>\<And>ys. ys \<le> xs \<Longrightarrow> distinct ys; a \<notin> set xs; list \<le> xs; a \<in> set list\<rbrakk> \<Longrightarrow> False<\STATESEP>by (fastforce simp: less_eq_list_def dest: set_mono_prefix)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_prop:
+  "distinct_sets xs = distinct_prop (\<lambda>x y. x \<inter> y = {}) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets xs = distinct_prop (\<lambda>x y. x \<inter> y = {}) xs<\STATESEP>by (induct xs) auto<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_take_strg:
+  "distinct xs \<longrightarrow> distinct (take n xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct xs \<longrightarrow> distinct (take n xs)<\STATESEP>by simp<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_prefixE:
+  "\<lbrakk> distinct_prop P ys; prefix xs ys \<rbrakk> \<Longrightarrow> distinct_prop P xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_prop P ys; prefix xs ys\<rbrakk> \<Longrightarrow> distinct_prop P xs<\STATESEP>apply (induct xs arbitrary: ys; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs ys. \<lbrakk>\<And>ys. \<lbrakk>distinct_prop P ys; prefix xs ys\<rbrakk> \<Longrightarrow> distinct_prop P xs; distinct_prop P ys; prefix (a # xs) ys\<rbrakk> \<Longrightarrow> (\<forall>y\<in>set xs. P a y) \<and> distinct_prop P xs<\STATESEP>apply (case_tac ys; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a xs list x. \<lbrakk>\<And>ys. \<lbrakk>distinct_prop P ys; prefix xs ys\<rbrakk> \<Longrightarrow> distinct_prop P xs; prefix xs list; \<forall>x\<in>set list. P a x; distinct_prop P list; x \<in> set xs\<rbrakk> \<Longrightarrow> P a x<\STATESEP>by (fastforce dest: set_mono_prefix)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_union_sub:
+  "\<lbrakk>x \<in> A; distinct_sets [A,B]\<rbrakk> \<Longrightarrow> A \<union> B - {x} = A - {x} \<union> B"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> A; distinct_sets [A, B]\<rbrakk> \<Longrightarrow> A \<union> B - {x} = A - {x} \<union> B<\STATESEP>by (auto simp: distinct_sets_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_append:
+  "distinct_sets (xs @ ys) \<Longrightarrow> distinct_sets xs \<and> distinct_sets ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ ys) \<Longrightarrow> distinct_sets xs \<and> distinct_sets ys<\STATESEP>apply (subst distinct_sets_prop)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ ys) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) ys<\STATESEP>apply (subst (asm) distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ ys) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) ys<\STATESEP>apply (subst (asm) distinct_prop_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) ys \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set ys. x \<inter> y = {}) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) ys<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_append1:
+  "distinct_sets (xs @ ys) \<Longrightarrow> distinct_sets xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ ys) \<Longrightarrow> distinct_sets xs<\STATESEP>by (drule distinct_sets_append, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_append2:
+  "distinct_sets (xs @ ys) \<Longrightarrow> distinct_sets ys"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ ys) \<Longrightarrow> distinct_sets ys<\STATESEP>by (drule distinct_sets_append, simp)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_append_Cons:
+  "distinct_sets (xs @ a # ys) \<Longrightarrow> distinct_sets (xs @ ys)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ a # ys) \<Longrightarrow> distinct_sets (xs @ ys)<\STATESEP>apply (subst distinct_sets_prop)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ a # ys) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ ys)<\STATESEP>apply (subst (asm) distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ a # ys) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ ys)<\STATESEP>apply (subst distinct_prop_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ a # ys) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) ys \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set ys. x \<inter> y = {})<\STATESEP>apply (subst (asm) distinct_prop_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # ys) \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set (a # ys). x \<inter> y = {}) \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) ys \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set ys. x \<inter> y = {})<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_append_Cons_disjoint:
+  "distinct_sets (xs @ a # ys) \<Longrightarrow>  a \<inter> \<Union> (set xs) = {} "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (xs @ a # ys) \<Longrightarrow> a \<inter> \<Union> (set xs) = {}<\STATESEP>apply (subst (asm) distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ a # ys) \<Longrightarrow> a \<inter> \<Union> (set xs) = {}<\STATESEP>apply (subst (asm) distinct_prop_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # ys) \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set (a # ys). x \<inter> y = {}) \<Longrightarrow> a \<inter> \<Union> (set xs) = {}<\STATESEP>apply (subst Int_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # ys) \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set (a # ys). x \<inter> y = {}) \<Longrightarrow> \<Union> (set xs) \<inter> a = {}<\STATESEP>apply (subst Union_disjoint)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) xs \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # ys) \<and> (\<forall>x\<in>set xs. \<forall>y\<in>set (a # ys). x \<inter> y = {}) \<Longrightarrow> \<forall>B\<in>set xs. B \<inter> a = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_take:
+  "\<lbrakk>distinct_prop P xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop P (take i xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_prop P xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop P (take i xs)<\STATESEP>by (metis take_is_prefix distinct_prop_prefixE)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_take:
+  "\<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (take i xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (take i xs)<\STATESEP>by (simp add: distinct_sets_prop distinct_prop_take)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_take_Suc:
+  "\<lbrakk>distinct_prop P xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop P (take (Suc i) xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_prop P xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop P (take (Suc i) xs)<\STATESEP>by (metis distinct_prop_take not_less take_all)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_take_Suc:
+  "\<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (take (Suc i) xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (take (Suc i) xs)<\STATESEP>by (simp add: distinct_sets_prop distinct_prop_take_Suc)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_prop_rev:
+  "distinct_prop P (rev xs) = distinct_prop (\<lambda>y x. P x y) xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop P (rev xs) = distinct_prop (\<lambda>y x. P x y) xs<\STATESEP>by (induct xs) (auto simp: distinct_prop_append)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_rev [simp]:
+  "distinct_sets (rev xs) = distinct_sets xs"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_sets (rev xs) = distinct_sets xs<\STATESEP>apply (unfold distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>x y. x \<inter> y = {}) (rev xs) = distinct_prop (\<lambda>x y. x \<inter> y = {}) xs<\STATESEP>apply (subst distinct_prop_rev)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>y x. x \<inter> y = {}) xs = distinct_prop (\<lambda>x y. x \<inter> y = {}) xs<\STATESEP>apply (subst Int_commute)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. distinct_prop (\<lambda>y x. y \<inter> x = {}) xs = distinct_prop (\<lambda>x y. x \<inter> y = {}) xs<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_drop:
+  "\<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop i xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop i xs)<\STATESEP>apply (cases "i=0", simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs; i \<noteq> 0\<rbrakk> \<Longrightarrow> distinct_sets (drop i xs)<\STATESEP>apply (subst distinct_sets_rev [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs; i \<noteq> 0\<rbrakk> \<Longrightarrow> distinct_sets (rev (drop i xs))<\STATESEP>apply (subst rev_drop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs; i \<noteq> 0\<rbrakk> \<Longrightarrow> distinct_sets (take (length xs - i) (rev xs))<\STATESEP>apply (subst distinct_sets_take, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_drop_Suc:
+  "\<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)<\STATESEP>apply (subst distinct_sets_rev [symmetric])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (rev (drop (Suc i) xs))<\STATESEP>apply (subst rev_drop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (take (length xs - Suc i) (rev xs))<\STATESEP>apply (subst distinct_sets_take, simp_all)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_take_nth:
+  "\<lbrakk>distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply (drule (1) distinct_sets_take_Suc)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; x \<in> set (take i xs); distinct_sets (take (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply (subst (asm) take_Suc_conv_app_nth, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; x \<in> set (take i xs); distinct_sets (take i xs @ [xs ! i])\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply (unfold distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; x \<in> set (take i xs); distinct_prop (\<lambda>x y. x \<inter> y = {}) (take i xs @ [xs ! i])\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply (subst (asm) distinct_prop_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; x \<in> set (take i xs); distinct_prop (\<lambda>x y. x \<inter> y = {}) (take i xs) \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) [xs ! i] \<and> (\<forall>x\<in>set (take i xs). \<forall>y\<in>set [xs ! i]. x \<inter> y = {})\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_drop_nth:
+  "\<lbrakk>distinct_sets xs; i < length xs; x \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets xs; i < length xs; x \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply (drule (1) distinct_sets_drop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; x \<in> set (drop (Suc i) xs); distinct_sets (drop i xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply (subst (asm) drop_Suc_nth, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; x \<in> set (drop (Suc i) xs); distinct_sets (xs ! i # drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> xs ! i = {}<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_append_distinct:
+  "\<lbrakk>x \<in> set xs; y \<in> set ys; distinct_sets (xs @ ys)\<rbrakk> \<Longrightarrow> x \<inter> y = {}"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> set xs; y \<in> set ys; distinct_sets (xs @ ys)\<rbrakk> \<Longrightarrow> x \<inter> y = {}<\STATESEP>unfolding distinct_sets_prop<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>x \<in> set xs; y \<in> set ys; distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs @ ys)\<rbrakk> \<Longrightarrow> x \<inter> y = {}<\STATESEP>by (clarsimp simp: distinct_prop_append)<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_update:
+ "\<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (xs[i := a])"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (xs[i := a])<\STATESEP>apply (subst distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs[i := a])<\STATESEP>apply (subst (asm) distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (xs[i := a])<\STATESEP>apply (subst upd_conv_take_nth_drop, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (take i xs @ a # drop (Suc i) xs)<\STATESEP>apply (subst distinct_prop_append)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (take i xs) \<and> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # drop (Suc i) xs) \<and> (\<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {})<\STATESEP>apply (intro conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (take i xs)
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # drop (Suc i) xs)
+ 3. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (erule (1) distinct_prop_take)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (a # drop (Suc i) xs)
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (rule conjI|clarsimp)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs; y \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> a \<inter> y = {}
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_prop (\<lambda>x y. x \<inter> y = {}) (drop (Suc i) xs)
+ 3. \<lbrakk>a \<subseteq> xs ! i; distinct_prop (\<lambda>x y. x \<inter> y = {}) xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (fold distinct_sets_prop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; y \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> a \<inter> y = {}
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)
+ 3. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (drule (1) distinct_sets_drop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>a \<subseteq> xs ! i; i < length xs; y \<in> set (drop (Suc i) xs); distinct_sets (drop i xs)\<rbrakk> \<Longrightarrow> a \<inter> y = {}
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)
+ 3. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (subst (asm) drop_Suc_nth, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>y. \<lbrakk>a \<subseteq> xs ! i; i < length xs; y \<in> set (drop (Suc i) xs); distinct_sets (xs ! i # drop (Suc i) xs)\<rbrakk> \<Longrightarrow> a \<inter> y = {}
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)
+ 3. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (drule (1) distinct_sets_drop)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>a \<subseteq> xs ! i; i < length xs; distinct_sets (drop i xs)\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (subst (asm) drop_Suc_nth, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>a \<subseteq> xs ! i; i < length xs; distinct_sets (xs ! i # drop (Suc i) xs)\<rbrakk> \<Longrightarrow> distinct_sets (drop (Suc i) xs)
+ 2. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs\<rbrakk> \<Longrightarrow> \<forall>x\<in>set (take i xs). \<forall>y\<in>set (a # drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> x \<inter> a = {} \<and> (\<forall>y\<in>set (drop (Suc i) xs). x \<inter> y = {})<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> x \<inter> a = {}
+ 2. \<And>x. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> \<forall>y\<in>set (drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply (drule (2) distinct_sets_take_nth)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>a \<subseteq> xs ! i; i < length xs; x \<in> set (take i xs); x \<inter> xs ! i = {}\<rbrakk> \<Longrightarrow> x \<inter> a = {}
+ 2. \<And>x. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> \<forall>y\<in>set (drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; x \<in> set (take i xs)\<rbrakk> \<Longrightarrow> \<forall>y\<in>set (drop (Suc i) xs). x \<inter> y = {}<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>a \<subseteq> xs ! i; distinct_sets xs; i < length xs; x \<in> set (take i xs); y \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> y = {}<\STATESEP>apply (thin_tac "P \<subseteq> Q" for P Q)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>distinct_sets xs; i < length xs; x \<in> set (take i xs); y \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> y = {}<\STATESEP>apply (subst (asm) id_take_nth_drop, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>distinct_sets (take i xs @ xs ! i # drop (Suc i) xs); i < length xs; x \<in> set (take i xs); y \<in> set (drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> y = {}<\STATESEP>apply (drule distinct_sets_append_Cons)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x y. \<lbrakk>i < length xs; x \<in> set (take i xs); y \<in> set (drop (Suc i) xs); distinct_sets (take i xs @ drop (Suc i) xs)\<rbrakk> \<Longrightarrow> x \<inter> y = {}<\STATESEP>apply (erule (2) distinct_sets_append_distinct)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma distinct_sets_map_update:
+  "\<lbrakk>distinct_sets (map f xs); i < length xs; f a \<subseteq> f(xs ! i)\<rbrakk>
+  \<Longrightarrow> distinct_sets (map f (xs[i := a]))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_sets (map f xs); i < length xs; f a \<subseteq> f (xs ! i)\<rbrakk> \<Longrightarrow> distinct_sets (map f (xs[i := a]))<\STATESEP>by (metis distinct_sets_update length_map map_update nth_map)<\STATESEP>1<\TRANSEP><\STATESEP>lemma Union_list_update:
+  "\<lbrakk>i < length xs; distinct_sets (map f xs)\<rbrakk>
+  \<Longrightarrow> (\<Union>x\<in>set (xs [i := a]). f x) = (\<Union>x\<in>set xs. f x) - f (xs ! i) \<union> f a"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>i < length xs; distinct_sets (map f xs)\<rbrakk> \<Longrightarrow> \<Union> (f ` set (xs[i := a])) = \<Union> (f ` set xs) - f (xs ! i) \<union> f a<\STATESEP>apply (induct xs arbitrary: i; clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>aa xs i. \<lbrakk>\<And>i. i < length xs \<Longrightarrow> \<Union> (f ` set (xs[i := a])) = \<Union> (f ` set xs) - f (xs ! i) \<union> f a; i < Suc (length xs); f aa \<inter> \<Union> (f ` set xs) = {}; distinct_sets (map f xs)\<rbrakk> \<Longrightarrow> \<Union> (f ` set (case i of 0 \<Rightarrow> a # xs | Suc j \<Rightarrow> aa # xs[j := a])) = f aa \<union> \<Union> (f ` set xs) - f ((aa # xs) ! i) \<union> f a<\STATESEP>apply (case_tac i; (clarsimp, fastforce))<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma fst_enumerate:
+  "i < length xs \<Longrightarrow> fst (enumerate n xs ! i) = i + n"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < length xs \<Longrightarrow> fst (enumerate n xs ! i) = i + n<\STATESEP>by (metis add.commute fst_conv nth_enumerate_eq)<\STATESEP>1<\TRANSEP><\STATESEP>lemma snd_enumerate:
+  "i < length xs \<Longrightarrow> snd (enumerate n xs ! i) = xs ! i"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. i < length xs \<Longrightarrow> snd (enumerate n xs ! i) = xs ! i<\STATESEP>by (metis nth_enumerate_eq snd_conv)<\STATESEP>1<\TRANSEP><\STATESEP>lemma enumerate_member:
+  assumes "i < length xs"
+  shows "(n + i, xs ! i) \<in> set (enumerate n xs)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (n + i, xs ! i) \<in> set (enumerate n xs)<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. (n + i, xs ! i) \<in> set (enumerate n xs)<\STATESEP>have pair_unpack: "\<And>a b x. ((a, b) = x) = (a = fst x \<and> b = snd x)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b x. ((a, b) = x) = (a = fst x \<and> b = snd x)<\STATESEP>by fastforce<\STATESEP>3<\TRANSEP>proof (state)
+this:
+((?a, ?b) = ?x) = (?a = fst ?x \<and> ?b = snd ?x)
+
+goal (1 subgoal):
+ 1. (n + i, xs ! i) \<in> set (enumerate n xs)<\STATESEP>from assms<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+i < length xs<\STATESEP>have "(n + i, xs ! i) = enumerate n xs ! i"<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+i < length xs
+
+goal (1 subgoal):
+ 1. (n + i, xs ! i) = enumerate n xs ! i<\STATESEP>by (auto simp: fst_enumerate snd_enumerate pair_unpack)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(n + i, xs ! i) = enumerate n xs ! i
+
+goal (1 subgoal):
+ 1. (n + i, xs ! i) \<in> set (enumerate n xs)<\STATESEP>with assms<\STATESEP>2<\TRANSEP>proof (chain)
+picking this:
+i < length xs
+(n + i, xs ! i) = enumerate n xs ! i<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+i < length xs
+(n + i, xs ! i) = enumerate n xs ! i
+
+goal (1 subgoal):
+ 1. (n + i, xs ! i) \<in> set (enumerate n xs)<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+(n + i, xs ! i) \<in> set (enumerate n xs)
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma distinct_prop_nth:
+  "\<lbrakk> distinct_prop P ls; n < n'; n' < length ls \<rbrakk> \<Longrightarrow> P (ls ! n) (ls ! n')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>distinct_prop P ls; n < n'; n' < length ls\<rbrakk> \<Longrightarrow> P (ls ! n) (ls ! n')<\STATESEP>apply (induct ls arbitrary: n n'; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a ls n n'. \<lbrakk>\<And>n n'. \<lbrakk>n < n'; n' < length ls\<rbrakk> \<Longrightarrow> P (ls ! n) (ls ! n'); (\<forall>y\<in>set ls. P a y) \<and> distinct_prop P ls; n < n'; n' < Suc (length ls)\<rbrakk> \<Longrightarrow> P ((a # ls) ! n) (ls ! (n' - Suc 0))<\STATESEP>apply (case_tac n'; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a ls n n' nat. \<lbrakk>\<And>n n'. \<lbrakk>n < n'; n' < length ls\<rbrakk> \<Longrightarrow> P (ls ! n) (ls ! n'); (\<forall>y\<in>set ls. P a y) \<and> distinct_prop P ls; n < Suc nat; nat < length ls; n' = Suc nat\<rbrakk> \<Longrightarrow> P ((a # ls) ! n) (ls ! nat)<\STATESEP>apply (case_tac n; simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

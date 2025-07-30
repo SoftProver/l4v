@@ -1,0 +1,40 @@
+<\STATESEP>theory Sep_Select
+imports Separation_Algebra
+begin<\STATESEP>0<\TRANSEP><\STATESEP>ML_file "sep_tactics.ML"<\STATESEP>0<\TRANSEP><\STATESEP>ML\<open>
+  structure SepSelect_Rules = Named_Thms (
+    val name = @{binding "sep_select"}
+    val description = "sep_select rules"
+  )
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>setup SepSelect_Rules.setup<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  structure SepSelectAsm_Rules = Named_Thms (
+    val name = @{binding "sep_select_asm"}
+    val description = "sep_select_asm rules"
+  )
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>setup SepSelectAsm_Rules.setup<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  fun sep_selects_tactic ns ctxt =
+    sep_select_tactic (resolve_tac ctxt (SepSelect_Rules.get ctxt)) ns ctxt
+
+  fun sep_select_asms_tactic ns ctxt =
+    sep_select_tactic (dresolve_tac ctxt (SepSelectAsm_Rules.get ctxt)) ns ctxt
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup sep_select_asm = \<open>
+  Scan.lift (Scan.repeat Parse.int) >>
+    (fn ns => fn ctxt => SIMPLE_METHOD' (sep_select_asms_tactic ns ctxt))
+\<close> "Reorder assumptions"<\STATESEP>0<\TRANSEP><\STATESEP>method_setup sep_select = \<open>
+  Scan.lift (Scan.repeat Parse.int) >>
+    (fn ns => fn ctxt => SIMPLE_METHOD' (sep_selects_tactic ns ctxt))
+\<close> "Reorder conclusions"<\STATESEP>0<\TRANSEP><\STATESEP>lemma sep_eq [sep_select]: "(\<And>s. T s = (P \<and>* R) s) \<Longrightarrow> T s \<Longrightarrow> (P \<and>* R) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. T s = (P \<and>* R) s; T s\<rbrakk> \<Longrightarrow> (P \<and>* R) s<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>lemma sep_asm_eq [sep_select_asm]: "(P \<and>* R) s \<Longrightarrow> (\<And>s. T s = (P \<and>* R) s) \<Longrightarrow> T s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>(P \<and>* R) s; \<And>s. T s = (P \<and>* R) s\<rbrakk> \<Longrightarrow> T s<\STATESEP>by clarsimp<\STATESEP>1<\TRANSEP><\STATESEP>ML \<open>
+  (* export method form of these two for use outisde this entry *)
+
+  fun sep_select_method lens ns ctxt =
+    SIMPLE_METHOD' (sep_select_tactic lens ns ctxt)
+
+  fun sep_select_generic_method asm thms ns ctxt =
+    sep_select_method (if asm then dresolve_tac ctxt thms else resolve_tac ctxt thms) ns ctxt
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>method_setup sep_select_gen = \<open>
+  Attrib.thms --| Scan.lift Args.colon -- Scan.lift (Scan.repeat Parse.int) -- Scan.lift (Args.mode "asm") >>
+    (fn ((lens, ns), asm) => sep_select_generic_method asm lens ns)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

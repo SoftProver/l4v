@@ -1,0 +1,66 @@
+<\STATESEP>theory MachineMonad
+imports MachineTypes
+begin<\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>interpretation Arch<\STATESEP>0<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>.<\STATESEP>1<\TRANSEP><\STATESEP>requalify_types
+  machine_state
+  machine_state_rest<\STATESEP>0<\TRANSEP><\STATESEP>requalify_consts
+  underlying_memory
+  underlying_memory_update
+  device_state
+  device_state_update
+  irq_masks
+  machine_state_rest
+  machine_state_rest_update<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a machine_monad = "(machine_state, 'a) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>translations
+  (type) "'c machine_monad" <= (type) "machine_state \<Rightarrow> ('c \<times> machine_state) set \<times> bool"<\STATESEP>0<\TRANSEP><\STATESEP>type_synonym 'a machine_rest_monad = "(machine_state_rest, 'a) nondet_monad"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  machine_rest_lift :: "'a machine_rest_monad \<Rightarrow> 'a machine_monad"
+where
+  "machine_rest_lift f \<equiv> do
+    mr \<leftarrow> gets machine_state_rest;
+    (r, mr') \<leftarrow> select_f (f mr);
+    modify (\<lambda>s. s \<lparr> machine_state_rest := mr' \<rparr>);
+    return r
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  ignore_failure :: "('s,unit) nondet_monad \<Rightarrow> ('s,unit) nondet_monad"
+  where
+  "ignore_failure f \<equiv>
+  \<lambda>s. if fst (f s) = {} then ({((),s)},False) else (fst (f s), False)"<\STATESEP>0<\TRANSEP><\STATESEP>lemma failure_consistent:
+  "\<lbrakk> empty_fail f; no_fail \<top> f \<rbrakk> \<Longrightarrow> ignore_failure f = f"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>empty_fail f; no_fail (\<lambda>_. True) f\<rbrakk> \<Longrightarrow> ignore_failure f = f<\STATESEP>apply (simp add: ignore_failure_def empty_fail_def no_fail_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. fst (f s) \<noteq> {}; \<forall>s. \<not> snd (f s)\<rbrakk> \<Longrightarrow> (\<lambda>s. (fst (f s), False)) = f<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. fst (f s) \<noteq> {}; \<forall>s. \<not> snd (f s)\<rbrakk> \<Longrightarrow> (fst (f s), False) = f s<\STATESEP>apply (auto intro: prod_eqI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma ef_ignore_failure [simp]:
+  "empty_fail (ignore_failure f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail (ignore_failure f)<\STATESEP>by (simp add: empty_fail_def ignore_failure_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_ignore_failure [simp, intro!]:
+  "no_fail \<top> (ignore_failure f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) (ignore_failure f)<\STATESEP>by (simp add: no_fail_def ignore_failure_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma ef_machine_rest_lift [simp, intro!]:
+  "empty_fail f \<Longrightarrow> empty_fail (machine_rest_lift f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail f \<Longrightarrow> empty_fail (machine_rest_lift f)<\STATESEP>apply (clarsimp simp: empty_fail_def machine_rest_lift_def simpler_gets_def
+                        select_f_def bind_def simpler_modify_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>x\<in>fst (f (machine_state_rest s)). fst ((case x of (r, mr') \<Rightarrow> \<lambda>s. ({(r, s\<lparr>machine_state_rest := mr'\<rparr>)}, False)) s) = {}; \<not> snd (f (machine_state_rest s))\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (f (machine_state_rest s)). snd ((case x of (r, mr') \<Rightarrow> \<lambda>s. ({(r, s\<lparr>machine_state_rest := mr'\<rparr>)}, False)) s)<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_machine_state_rest [intro!]:
+  "no_fail P f \<Longrightarrow> no_fail (P o machine_state_rest) (machine_rest_lift f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail P f \<Longrightarrow> no_fail (P \<circ> machine_state_rest) (machine_rest_lift f)<\STATESEP>apply (simp add: no_fail_def machine_rest_lift_def simpler_gets_def
+                        select_f_def bind_def simpler_modify_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s. P s \<longrightarrow> \<not> snd (f s) \<Longrightarrow> \<forall>s. P (machine_state_rest s) \<longrightarrow> (\<forall>x\<in>fst (f (machine_state_rest s)). \<not> snd ((case x of (r, mr') \<Rightarrow> \<lambda>s. ({(r, s\<lparr>machine_state_rest := mr'\<rparr>)}, False)) s))<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma no_fail_machine_state_rest_T [simp, intro!]:
+  "no_fail \<top> f \<Longrightarrow> no_fail \<top> (machine_rest_lift f)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail (\<lambda>_. True) f \<Longrightarrow> no_fail (\<lambda>_. True) (machine_rest_lift f)<\STATESEP>apply (drule no_fail_machine_state_rest)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. no_fail ((\<lambda>_. True) \<circ> machine_state_rest) (machine_rest_lift f) \<Longrightarrow> no_fail (\<lambda>_. True) (machine_rest_lift f)<\STATESEP>apply (simp add: o_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>definition
+  "machine_op_lift \<equiv> machine_rest_lift o ignore_failure"<\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

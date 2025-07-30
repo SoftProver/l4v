@@ -1,0 +1,1680 @@
+<\STATESEP>theory SubMonadLib
+imports
+  Monads.Nondet_Empty_Fail
+  Corres_UL
+begin<\STATESEP>0<\TRANSEP><\STATESEP>locale submonad_args =
+  fixes fetch :: "'a \<Rightarrow> 'b"
+  fixes replace :: "'b \<Rightarrow> 'a \<Rightarrow> 'a"
+  fixes guard :: "'a \<Rightarrow> bool"
+
+  assumes args:
+   "\<forall>x s. guard s \<longrightarrow> fetch (replace x s) = x"
+   "\<forall>x y s. replace x (replace y s) = replace x s"
+   "\<forall>s. replace (fetch s) s = s"
+
+  assumes replace_preserves_guard:
+   "\<And>s x. guard (replace x s) = guard s"<\STATESEP>0<\TRANSEP><\STATESEP>definition
+  submonad_fn :: "('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'a \<Rightarrow> 'a) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow>
+                  ('b, 'c) nondet_monad \<Rightarrow> ('a, 'c) nondet_monad"
+where
+ "submonad_fn fetch replace guard m \<equiv> do
+    stateAssert guard [];
+    substate \<leftarrow> gets fetch;
+    (rv, substate') \<leftarrow> select_f (m substate);
+    modify (replace substate');
+    return rv
+  od"<\STATESEP>0<\TRANSEP><\STATESEP>locale submonad = submonad_args +
+  fixes fn :: "('b, 'c) nondet_monad \<Rightarrow> ('a, 'c) nondet_monad"
+
+  assumes fn_is_sm: "fn = submonad_fn fetch replace guard"<\STATESEP>0<\TRANSEP><\STATESEP>lemma (in submonad_args) argsD1:
+  "\<And>x s. guard s \<Longrightarrow> fetch (replace x s) = x"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. guard s \<Longrightarrow> fetch (replace x s) = x<\STATESEP>by (simp add: args)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad) guarded_sm:
+  "\<And>s. guard s \<Longrightarrow>
+   fn m s = (do
+     substate \<leftarrow> gets fetch;
+     (rv, substate') \<leftarrow> select_f (m substate);
+     modify (replace substate');
+     return rv
+   od) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> fn m s = (do substate <- gets fetch;
+(rv, substate') <- select_f (m substate);
+modify (replace substate');
+return rv
+od) s<\STATESEP>unfolding fn_is_sm submonad_fn_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> (do stateAssert guard [];
+substate <- gets fetch;
+(rv, substate') <- select_f (m substate);
+modify (replace substate');
+return rv
+od) s = (do substate <- gets fetch;
+(rv, substate') <- select_f (m substate);
+modify (replace substate');
+return rv
+od) s<\STATESEP>by (simp add: stateAssert_def get_def assert_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_modify:
+  "modify fn1 >>= (\<lambda>x. modify fn2) = modify (fn2 \<circ> fn1)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- modify fn1;
+modify fn2
+od = modify (fn2 \<circ> fn1)<\STATESEP>by (simp add: bind_def modify_def get_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_f_walk:
+  assumes m1: "empty_fail m1"
+  assumes S: "fst S = {} \<Longrightarrow> snd S"
+  shows "(do a \<leftarrow> m1; b \<leftarrow> select_f S; m2 a b od) = (do b \<leftarrow> select_f S; a \<leftarrow> m1; m2 a b od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do a <- m1;
+select_f S >>= m2 a
+od = do b <- select_f S;
+a <- m1;
+m2 a b
+od<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (do a <- m1;
+select_f S >>= m2 a
+od) x = (do b <- select_f S;
+a <- m1;
+m2 a b
+od) x<\STATESEP>apply (rule prod.expand)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. fst ((do a <- m1;
+select_f S >>= m2 a
+od) x) = fst ((do b <- select_f S;
+a <- m1;
+m2 a b
+od) x) \<and> snd ((do a <- m1;
+select_f S >>= m2 a
+od) x) = snd ((do b <- select_f S;
+a <- m1;
+m2 a b
+od) x)<\STATESEP>apply (rule conjI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. fst ((do a <- m1;
+select_f S >>= m2 a
+od) x) = fst ((do b <- select_f S;
+a <- m1;
+m2 a b
+od) x)
+ 2. \<And>x. snd ((do a <- m1;
+select_f S >>= m2 a
+od) x) = snd ((do b <- select_f S;
+a <- m1;
+m2 a b
+od) x)<\STATESEP>apply (simp add: select_f_def bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. (\<Union>x\<in>fst (m1 x). \<Union>xa\<in>fst S \<times> {snd x}. fst (m2 (fst x) (fst xa) (snd xa))) = (\<Union>x\<in>fst S \<times> {x}. \<Union>xa\<in>fst (m1 (snd x)). fst (m2 (fst xa) (fst x) (snd xa)))
+ 2. \<And>x. snd ((do a <- m1;
+select_f S >>= m2 a
+od) x) = snd ((do b <- select_f S;
+a <- m1;
+m2 a b
+od) x)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. snd ((do a <- m1;
+select_f S >>= m2 a
+od) x) = snd ((do b <- select_f S;
+a <- m1;
+m2 a b
+od) x)<\STATESEP>apply (simp add: select_f_def bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply (case_tac "fst S = {}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. fst S = {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)
+ 2. \<And>x. fst S \<noteq> {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. fst S = {} \<Longrightarrow> ((\<exists>a b. (a, b) \<in> fst (m1 x)) \<and> snd S \<or> snd (m1 x)) = snd S
+ 2. \<And>x. fst S \<noteq> {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply (case_tac "fst (m1 x) = {}")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x. \<lbrakk>fst S = {}; fst (m1 x) = {}\<rbrakk> \<Longrightarrow> ((\<exists>a b. (a, b) \<in> fst (m1 x)) \<and> snd S \<or> snd (m1 x)) = snd S
+ 2. \<And>x. \<lbrakk>fst S = {}; fst (m1 x) \<noteq> {}\<rbrakk> \<Longrightarrow> ((\<exists>a b. (a, b) \<in> fst (m1 x)) \<and> snd S \<or> snd (m1 x)) = snd S
+ 3. \<And>x. fst S \<noteq> {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply (simp add: empty_failD [OF m1] S)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>fst S = {}; fst (m1 x) \<noteq> {}\<rbrakk> \<Longrightarrow> ((\<exists>a b. (a, b) \<in> fst (m1 x)) \<and> snd S \<or> snd (m1 x)) = snd S
+ 2. \<And>x. fst S \<noteq> {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply (frule S)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x. \<lbrakk>fst S = {}; fst (m1 x) \<noteq> {}; snd S\<rbrakk> \<Longrightarrow> ((\<exists>a b. (a, b) \<in> fst (m1 x)) \<and> snd S \<or> snd (m1 x)) = snd S
+ 2. \<And>x. fst S \<noteq> {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. fst S \<noteq> {} \<Longrightarrow> ((\<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S) \<or> snd (m1 x)) = ((\<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)) \<or> snd S)<\STATESEP>apply safe<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x xa a b xb. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd S; (a, b) \<in> fst (m1 x); xb \<in> fst S; snd (m2 (fst (a, b)) xb (snd (a, b)))\<rbrakk> \<Longrightarrow> \<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)
+ 2. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd S; snd (m1 x)\<rbrakk> \<Longrightarrow> \<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)
+ 3. \<And>x xa xb a b. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); xb \<in> fst S; (a, b) \<in> fst (m1 x); snd (m2 (fst (a, b)) xb (snd (a, b)))\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S
+ 4. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>x xa a b xb. \<lbrakk>xa \<in> fst S; \<not> snd S; (a, b) \<in> fst (m1 x); xb \<in> fst S; snd (m2 a xb b)\<rbrakk> \<Longrightarrow> \<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)
+ 2. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd S; snd (m1 x)\<rbrakk> \<Longrightarrow> \<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)
+ 3. \<And>x xa xb a b. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); xb \<in> fst S; (a, b) \<in> fst (m1 x); snd (m2 (fst (a, b)) xb (snd (a, b)))\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S
+ 4. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd S; snd (m1 x)\<rbrakk> \<Longrightarrow> \<exists>xa\<in>fst S. (\<exists>x\<in>fst (m1 x). snd (m2 (fst x) xa (snd x))) \<or> snd (m1 x)
+ 2. \<And>x xa xb a b. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); xb \<in> fst S; (a, b) \<in> fst (m1 x); snd (m2 (fst (a, b)) xb (snd (a, b)))\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S
+ 3. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xa xb a b. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); xb \<in> fst S; (a, b) \<in> fst (m1 x); snd (m2 (fst (a, b)) xb (snd (a, b)))\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S
+ 2. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x xa xb a b. \<lbrakk>xa \<in> fst S; \<not> snd (m1 x); xb \<in> fst S; (a, b) \<in> fst (m1 x); snd (m2 a xb b)\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S
+ 2. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>xa \<in> fst S; xa \<notin> {}; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>x\<in>fst (m1 x). (\<exists>xa\<in>fst S. snd (m2 (fst x) xa (snd x))) \<or> snd S<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>xa \<in> fst S; \<not> snd (m1 x); snd S\<rbrakk> \<Longrightarrow> \<exists>a b. (a, b) \<in> fst (m1 x)<\STATESEP>apply (case_tac "fst (m1 x) = {}", simp add: empty_failD [OF m1])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x xa. \<lbrakk>xa \<in> fst S; \<not> snd (m1 x); snd S; fst (m1 x) \<noteq> {}\<rbrakk> \<Longrightarrow> \<exists>a b. (a, b) \<in> fst (m1 x)<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma stateAssert_stateAssert:
+  "(stateAssert g [] >>= (\<lambda>u. stateAssert g' [])) = stateAssert (g and g') []"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do u <- stateAssert g [];
+stateAssert g' []
+od = stateAssert (g and g') []<\STATESEP>by (simp add: ext stateAssert_def bind_def get_def assert_def fail_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_stateAssert:
+  "\<lbrakk> \<And>s x. g (r x s) = g s \<rbrakk> \<Longrightarrow>
+   (modify (r x) >>= (\<lambda>u. stateAssert g []))
+            = (stateAssert g [] >>= (\<lambda>u. modify (r x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (\<And>s x. g (r x s) = g s) \<Longrightarrow> do u <- modify (r x);
+stateAssert g []
+od = do u <- stateAssert g [];
+modify (r x)
+od<\STATESEP>by (simp add: ext stateAssert_def bind_def get_def assert_def fail_def
+                return_def modify_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_stateAssert:
+  "(gets f >>= (\<lambda>x. stateAssert g' [] >>= (\<lambda>u. m x)))
+            = (stateAssert g' [] >>= (\<lambda>u. gets f >>= (\<lambda>x. m x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- gets f;
+u <- stateAssert g' [];
+m x
+od = do u <- stateAssert g' [];
+gets f >>= m
+od<\STATESEP>by (simp add: ext stateAssert_def bind_def gets_def get_def
+                assert_def fail_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_f_stateAssert:
+  "empty_fail m \<Longrightarrow>
+   (select_f (m a) >>= (\<lambda>x. stateAssert g [] >>= (\<lambda>u. n x))) =
+   (stateAssert g [] >>= (\<lambda>u. select_f (m a) >>= (\<lambda>x. n x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. empty_fail m \<Longrightarrow> do x <- select_f (m a);
+u <- stateAssert g [];
+n x
+od = do u <- stateAssert g [];
+select_f (m a) >>= n
+od<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail m \<Longrightarrow> (do x <- select_f (m a);
+u <- stateAssert g [];
+n x
+od) x = (do u <- stateAssert g [];
+select_f (m a) >>= n
+od) x<\STATESEP>apply (clarsimp simp: stateAssert_def bind_def select_f_def get_def
+                        assert_def return_def fail_def split_def image_image)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail m \<Longrightarrow> (g x \<longrightarrow> (\<Union>x\<in>fst (m a) \<times> {x}. \<Union>xa\<in>fst ((if g (snd x) then return () else fail) (snd x)). fst (n (fst x) (snd xa))) = (\<Union>x\<in>fst (m a) \<times> {x}. fst (n (fst x) (snd x)))) \<and> (\<not> g x \<longrightarrow> (\<exists>aa b. (aa, b) \<in> fst (m a)) \<or> snd (m a))<\STATESEP>apply (simp only: image_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. empty_fail m \<Longrightarrow> (g x \<longrightarrow> \<Union> {y. \<exists>x\<in>fst (m a) \<times> {x}. y = \<Union> {y. \<exists>xa\<in>fst ((if g (snd x) then return () else fail) (snd x)). y = fst (n (fst x) (snd xa))}} = \<Union> {y. \<exists>x\<in>fst (m a) \<times> {x}. y = fst (n (fst x) (snd x))}) \<and> (\<not> g x \<longrightarrow> (\<exists>aa b. (aa, b) \<in> fst (m a)) \<or> snd (m a))<\STATESEP>apply (clarsimp simp: stateAssert_def bind_def select_f_def get_def
+                        assert_def return_def fail_def split_def image_image)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>empty_fail m; \<not> g x; \<not> snd (m a)\<rbrakk> \<Longrightarrow> \<exists>aa b. (aa, b) \<in> fst (m a)<\STATESEP>apply (simp only: image_def mem_simps empty_fail_def simp_thms)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>s. fst (m s) = {} \<longrightarrow> snd (m s); \<not> g x; \<not> snd (m a)\<rbrakk> \<Longrightarrow> \<exists>aa b. (aa, b) \<in> fst (m a)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_select_f_bind':
+  shows "(select_f (m s) >>= (\<lambda>x. select_f (split n x))) = (select_f ((m >>= n) s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- select_f (m s);
+select_f (case x of (x, xa) \<Rightarrow> n x xa)
+od = select_f ((m >>= n) s)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (do x <- select_f (m s);
+select_f (case x of (x, xa) \<Rightarrow> n x xa)
+od) x = select_f ((m >>= n) s) x<\STATESEP>apply (force simp: select_f_def bind_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_select_f_bind:
+  "(select_f (m1 s) >>= (\<lambda>x. select_f (m2 (fst x) (snd x)))) = (select_f ((m1 >>= m2) s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- select_f (m1 s);
+select_f (m2 (fst x) (snd x))
+od = select_f ((m1 >>= m2) s)<\STATESEP>by (insert bind_select_f_bind' [where m=m1 and n=m2 and s=s],
+      simp add: split_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_from_gets: "select_f (gets f s) = return (f s, s)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. select_f (gets f s) = return (f s, s)<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. select_f (gets f s) x = return (f s, s) x<\STATESEP>apply (simp add: select_f_def return_def simpler_gets_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma select_from_gets':
+  "(select_f \<circ> gets f) = (\<lambda>s. return (f s, s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. select_f \<circ> gets f = (\<lambda>s. return (f s, s))<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (select_f \<circ> gets f) s = return (f s, s)<\STATESEP>apply (simp add: o_def select_from_gets)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_subst_lift:
+  "(f >>= g) = h \<Longrightarrow> (do x \<leftarrow> f; y \<leftarrow> g x; j y od) = (h >>= j)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f >>= g = h \<Longrightarrow> do x <- f;
+g x >>= j
+od = h >>= j<\STATESEP>by (simp add: bind_assoc[symmetric])<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_gets:
+  "\<lbrakk> \<And>x s. g (r x s) = g s; \<And>x s. g s \<longrightarrow> f (r x s) = x \<rbrakk>
+   \<Longrightarrow> (modify (r x) >>= (\<lambda>u. stateAssert g [] >>= (\<lambda>u'. gets f)))
+            = (stateAssert g [] >>= (\<lambda>u'. modify (r x) >>= (\<lambda>u. return x)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>x s. g (r x s) = g s; \<And>x s. g s \<longrightarrow> f (r x s) = x\<rbrakk> \<Longrightarrow> do u <- modify (r x);
+u' <- stateAssert g [];
+gets f
+od = do u' <- stateAssert g [];
+u <- modify (r x);
+return x
+od<\STATESEP>by (simp add: ext stateAssert_def assert_def modify_def bind_def get_def
+                put_def gets_def return_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad_args) gets_modify:
+  "\<And>s. guard s \<Longrightarrow>
+   (do x \<leftarrow> gets fetch; u \<leftarrow> modify (replace x); f x od) s = ((gets fetch) >>= f) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> (do x <- gets fetch;
+u <- modify (replace x);
+f x
+od) s = (gets fetch >>= f) s<\STATESEP>by (clarsimp simp: modify_def gets_def return_def bind_def
+                     put_def args get_def
+              split: option.split)<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_bind:
+  "\<lbrakk> submonad f r g m; submonad f r g m'; submonad f r g m'';
+     empty_fail a; \<And>x. empty_fail (b x) \<rbrakk> \<Longrightarrow>
+   m (a >>= b) = (m' a) >>= (\<lambda>rv. m'' (b rv))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad f r g m; submonad f r g m'; submonad f r g m''; empty_fail a; \<And>x. empty_fail (b x)\<rbrakk> \<Longrightarrow> m (a >>= b) = do rv <- m' a;
+m'' (b rv)
+od<\STATESEP>apply (subst submonad.fn_is_sm, assumption)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad f r g m; submonad f r g m'; submonad f r g m''; empty_fail a; \<And>x. empty_fail (b x)\<rbrakk> \<Longrightarrow> submonad_fn f r g (a >>= b) = do rv <- submonad_fn f r g a;
+submonad_fn f r g (b rv)
+od<\STATESEP>apply (clarsimp simp: submonad_def bind_assoc split_def submonad_fn_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> do y <- stateAssert g [];
+substate <- gets f;
+p <- select_f ((a >>= b) substate);
+y <- modify (r (snd p));
+return (fst p)
+od = do x <- stateAssert g [];
+x <- gets f;
+x <- select_f (a x);
+y <- modify (r (snd x));
+y <- stateAssert g [];
+substate <- gets f;
+p <- select_f (b (fst x) substate);
+y <- modify (r (snd p));
+return (fst p)
+od<\STATESEP>apply (subst bind_subst_lift [OF modify_gets, unfolded bind_assoc])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>xb xa x xc s. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> g (r xc s) = g s
+ 2. \<And>xb xa x xc s. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> g s \<longrightarrow> f (r xc s) = xc
+ 3. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> do y <- stateAssert g [];
+substate <- gets f;
+p <- select_f ((a >>= b) substate);
+y <- modify (r (snd p));
+return (fst p)
+od = do x <- stateAssert g [];
+x <- gets f;
+x <- select_f (a x);
+xa <- stateAssert g [];
+xa <- modify (r (snd x));
+a <- return (snd x);
+p <- select_f (b (fst x) a);
+y <- modify (r (snd p));
+return (fst p)
+od<\STATESEP>apply (simp add: submonad_args.args submonad_args.replace_preserves_guard)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> do y <- stateAssert g [];
+substate <- gets f;
+p <- select_f ((a >>= b) substate);
+y <- modify (r (snd p));
+return (fst p)
+od = do x <- stateAssert g [];
+x <- gets f;
+x <- select_f (a x);
+xa <- stateAssert g [];
+xa <- modify (r (snd x));
+p <- select_f (b (fst x) (snd x));
+y <- modify (r (snd p));
+return (fst p)
+od<\STATESEP>apply (subst select_f_stateAssert, assumption)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> do y <- stateAssert g [];
+substate <- gets f;
+p <- select_f ((a >>= b) substate);
+y <- modify (r (snd p));
+return (fst p)
+od = do x <- stateAssert g [];
+x <- gets f;
+u <- stateAssert g [];
+x <- select_f (a x);
+xa <- modify (r (snd x));
+p <- select_f (b (fst x) (snd x));
+y <- modify (r (snd p));
+return (fst p)
+od<\STATESEP>apply (subst gets_stateAssert)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> do y <- stateAssert g [];
+substate <- gets f;
+p <- select_f ((a >>= b) substate);
+y <- modify (r (snd p));
+return (fst p)
+od = do x <- stateAssert g [];
+u <- stateAssert g [];
+x <- gets f;
+x <- select_f (a x);
+xa <- modify (r (snd x));
+p <- select_f (b (fst x) (snd x));
+y <- modify (r (snd p));
+return (fst p)
+od<\STATESEP>apply (subst bind_subst_lift [OF stateAssert_stateAssert])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad_axioms f r g m'; submonad_axioms f r g m''; empty_fail a; \<And>x. empty_fail (b x); submonad_args f r g; submonad_axioms f r g m\<rbrakk> \<Longrightarrow> do y <- stateAssert g [];
+substate <- gets f;
+p <- select_f ((a >>= b) substate);
+y <- modify (r (snd p));
+return (fst p)
+od = do u <- stateAssert (g and g) [];
+x <- gets f;
+x <- select_f (a x);
+xa <- modify (r (snd x));
+p <- select_f (b (fst x) (snd x));
+y <- modify (r (snd p));
+return (fst p)
+od<\STATESEP>apply (clarsimp simp: bind_assoc split_def select_f_walk empty_failD pred_conj_def
+                        bind_subst_lift[OF modify_modify] submonad_args.args o_def
+                        bind_subst_lift[OF bind_select_f_bind])<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad) guard_preserved:
+  "\<And>s s'. \<lbrakk> (rv, s') \<in> fst (fn m s) \<rbrakk> \<Longrightarrow> guard s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. (rv, s') \<in> fst (fn m s) \<Longrightarrow> guard s'<\STATESEP>unfolding fn_is_sm submonad_fn_def<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. (rv, s') \<in> fst ((do stateAssert guard [];
+substate <- gets fetch;
+(rv, substate') <- select_f (m substate);
+modify (replace substate');
+return rv
+od) s) \<Longrightarrow> guard s'<\STATESEP>by (clarsimp simp: stateAssert_def gets_def get_def bind_def modify_def put_def
+                     return_def select_f_def replace_preserves_guard in_monad)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fst_stateAssertD:
+  "\<And>s s' v. (v, s') \<in> fst (stateAssert g [] s) \<Longrightarrow> s' = s \<and> g s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s' v. (v, s') \<in> fst (stateAssert g [] s) \<Longrightarrow> s' = s \<and> g s<\STATESEP>by (clarsimp simp: stateAssert_def in_monad)<\STATESEP>1<\TRANSEP><\STATESEP>lemma(in submonad) guarded_gets:
+  "\<And>s. guard s \<Longrightarrow> fn (gets f) s = gets (f \<circ> fetch) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> fn (gets f) s = gets (f \<circ> fetch) s<\STATESEP>apply (simp add: guarded_sm select_from_gets gets_modify)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> (do substate <- gets fetch;
+return (f substate)
+od) s = gets (f \<circ> fetch) s<\STATESEP>apply (simp add: gets_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad) guarded_return:
+  "\<And>s. guard s \<Longrightarrow> fn (return x) s = return x s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> fn (return x) s = return x s<\STATESEP>using args guarded_gets<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>x s. guard s \<longrightarrow> fetch (replace x s) = x
+\<forall>x y s. replace x (replace y s) = replace x s
+\<forall>s. replace (fetch s) s = s
+guard ?s \<Longrightarrow> fn (gets ?f) ?s = gets (?f \<circ> fetch) ?s
+
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> fn (return x) s = return x s<\STATESEP>by (fastforce simp: gets_def bind_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad_args) submonad_fn_gets:
+  "submonad_fn fetch replace guard (gets f) =
+   (stateAssert guard [] >>= (\<lambda>u. gets (f \<circ> fetch)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad_fn fetch replace guard (gets f) = do u <- stateAssert guard [];
+gets (f \<circ> fetch)
+od<\STATESEP>apply (simp add: ext select_from_gets submonad_fn_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do y <- stateAssert guard [];
+substate <- gets fetch;
+y <- modify (replace substate);
+return (f substate)
+od = do u <- stateAssert guard [];
+gets (f \<circ> fetch)
+od<\STATESEP>apply (rule bind_cong [OF refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>v s s'. (v, s') \<in> fst (stateAssert guard [] s) \<Longrightarrow> (do substate <- gets fetch;
+y <- modify (replace substate);
+return (f substate)
+od) s' = gets (f \<circ> fetch) s'<\STATESEP>apply (clarsimp simp: gets_modify dest!: fst_stateAssertD)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. guard s \<Longrightarrow> (do substate <- gets fetch;
+return (f substate)
+od) s = gets (f \<circ> fetch) s<\STATESEP>apply (simp add: gets_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma(in submonad) gets:
+  "fn (gets f) = (stateAssert guard [] >>= (\<lambda>u. gets (f \<circ> fetch)))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fn (gets f) = do u <- stateAssert guard [];
+gets (f \<circ> fetch)
+od<\STATESEP>unfolding fn_is_sm submonad_fn_gets<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do u <- stateAssert guard [];
+gets (f \<circ> fetch)
+od = do u <- stateAssert guard [];
+gets (f \<circ> fetch)
+od<\STATESEP>by (rule refl)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad) return:
+  "fn (return x) = (stateAssert guard [] >>= (\<lambda>u. return x))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fn (return x) = do u <- stateAssert guard [];
+return x
+od<\STATESEP>using args gets<\STATESEP>1<\TRANSEP>proof (prove)
+using this:
+\<forall>x s. guard s \<longrightarrow> fetch (replace x s) = x
+\<forall>x y s. replace x (replace y s) = replace x s
+\<forall>s. replace (fetch s) s = s
+fn (gets ?f) = do u <- stateAssert guard [];
+gets (?f \<circ> fetch)
+od
+
+goal (1 subgoal):
+ 1. fn (return x) = do u <- stateAssert guard [];
+return x
+od<\STATESEP>by (fastforce simp: gets_def bind_def get_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad) mapM_guard_preserved:
+  "\<And>s s'. \<lbrakk> guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>proof (induct xs)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) [] s)\<rbrakk> \<Longrightarrow> guard s'
+ 2. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) [] s)
+
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) [] s)\<rbrakk> \<Longrightarrow> guard s'
+ 2. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) [] s)
+
+goal (1 subgoal):
+ 1. guard s'<\STATESEP>by (simp add: mapM_def sequence_def return_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+guard s'
+
+goal (1 subgoal):
+ 1. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>case (Cons x xs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>guard ?s; \<exists>rv. (rv, ?s') \<in> fst (mapM (fn \<circ> m) xs ?s)\<rbrakk> \<Longrightarrow> guard ?s'
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (x # xs) s)
+
+goal (1 subgoal):
+ 1. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>guard ?s; \<exists>rv. (rv, ?s') \<in> fst (mapM (fn \<circ> m) xs ?s)\<rbrakk> \<Longrightarrow> guard ?s'
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM (fn \<circ> m) (x # xs) s)
+
+goal (1 subgoal):
+ 1. guard s'<\STATESEP>apply (clarsimp simp: o_def mapM_Cons return_def bind_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (\<lambda>a. fn (m a)) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; (a, b) \<in> fst (fn (m x) s); (aa, s') \<in> fst (mapM (\<lambda>a. fn (m a)) xs b)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>apply (drule guard_preserved)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b aa. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM (\<lambda>a. fn (m a)) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; (aa, s') \<in> fst (mapM (\<lambda>a. fn (m a)) xs b); guard b\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>apply fastforce<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+guard s'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma (in submonad) mapM_x_guard_preserved:
+  "\<And>s s'. \<lbrakk> guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>proof (induct xs)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) [] s)\<rbrakk> \<Longrightarrow> guard s'
+ 2. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) [] s)
+
+goal (2 subgoals):
+ 1. \<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) [] s)\<rbrakk> \<Longrightarrow> guard s'
+ 2. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) [] s)
+
+goal (1 subgoal):
+ 1. guard s'<\STATESEP>by (simp add: mapM_x_def sequence_x_def return_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+guard s'
+
+goal (1 subgoal):
+ 1. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>case (Cons x xs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>guard ?s; \<exists>rv. (rv, ?s') \<in> fst (mapM_x (fn \<circ> m) xs ?s)\<rbrakk> \<Longrightarrow> guard ?s'
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (x # xs) s)
+
+goal (1 subgoal):
+ 1. \<And>a xs s s'. \<lbrakk>\<And>s s'. \<lbrakk>guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; \<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (a # xs) s)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+\<lbrakk>guard ?s; \<exists>rv. (rv, ?s') \<in> fst (mapM_x (fn \<circ> m) xs ?s)\<rbrakk> \<Longrightarrow> guard ?s'
+guard s
+\<exists>rv. (rv, s') \<in> fst (mapM_x (fn \<circ> m) (x # xs) s)
+
+goal (1 subgoal):
+ 1. guard s'<\STATESEP>apply (clarsimp simp: o_def mapM_x_Cons return_def bind_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>\<And>s s'. \<lbrakk>guard s; ((), s') \<in> fst (mapM_x (\<lambda>a. fn (m a)) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; (a, b) \<in> fst (fn (m x) s); ((), s') \<in> fst (mapM_x (\<lambda>a. fn (m a)) xs b)\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>apply (drule guard_preserved)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a b. \<lbrakk>\<And>s s'. \<lbrakk>guard s; ((), s') \<in> fst (mapM_x (\<lambda>a. fn (m a)) xs s)\<rbrakk> \<Longrightarrow> guard s'; guard s; ((), s') \<in> fst (mapM_x (\<lambda>a. fn (m a)) xs b); guard b\<rbrakk> \<Longrightarrow> guard s'<\STATESEP>apply fastforce<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+guard s'
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma (in submonad) stateAssert_fn:
+  "stateAssert guard [] >>= (\<lambda>u. fn m) = fn m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do u <- stateAssert guard [];
+fn m
+od = fn m<\STATESEP>by (simp add: fn_is_sm submonad_fn_def pred_conj_def
+                bind_subst_lift [OF stateAssert_stateAssert])<\STATESEP>1<\TRANSEP><\STATESEP>lemma (in submonad) fn_stateAssert:
+  "fn m >>= (\<lambda>x. stateAssert guard [] >>= (\<lambda>u. n x)) = (fn m >>= n)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- fn m;
+u <- stateAssert guard [];
+n x
+od = fn m >>= n<\STATESEP>apply (simp add: fn_is_sm submonad_fn_def bind_assoc split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- stateAssert guard [];
+x <- gets fetch;
+x <- select_f (m x);
+y <- modify (replace (snd x));
+u <- stateAssert guard [];
+n (fst x)
+od = do x <- stateAssert guard [];
+x <- gets fetch;
+x <- select_f (m x);
+y <- modify (replace (snd x));
+n (fst x)
+od<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. (do x <- stateAssert guard [];
+x <- gets fetch;
+x <- select_f (m x);
+y <- modify (replace (snd x));
+u <- stateAssert guard [];
+n (fst x)
+od) x = (do x <- stateAssert guard [];
+x <- gets fetch;
+x <- select_f (m x);
+y <- modify (replace (snd x));
+n (fst x)
+od) x<\STATESEP>apply (rule bind_apply_cong [OF refl])+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x rv st rva sta rvb stb rvc stc. \<lbrakk>(rv, st) \<in> fst (stateAssert guard [] x); (rva, sta) \<in> fst (gets fetch st); (rvb, stb) \<in> fst (select_f (m rva) sta); (rvc, stc) \<in> fst (modify (replace (snd rvb)) stb)\<rbrakk> \<Longrightarrow> (do u <- stateAssert guard [];
+n (fst rvb)
+od) stc = n (fst rvb) stc<\STATESEP>apply (clarsimp simp: stateAssert_def bind_assoc in_monad select_f_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>guard x; (a, b) \<in> fst (m (fetch x))\<rbrakk> \<Longrightarrow> (do x <- get;
+u <- assert (guard x);
+n a
+od) (replace b x) = n a (replace b x)<\STATESEP>apply (drule iffD2 [OF replace_preserves_guard])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>(a, b) \<in> fst (m (fetch x)); guard (replace (?x17 x a b) x)\<rbrakk> \<Longrightarrow> (do x <- get;
+u <- assert (guard x);
+n a
+od) (replace b x) = n a (replace b x)<\STATESEP>apply (fastforce simp: bind_def assert_def get_def return_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_mapM:
+  assumes sm: "submonad f r g sm" and sm': "submonad f r g sm'"
+  assumes efm: "\<And>x. empty_fail (m x)"
+  shows
+  "(sm (mapM m l)) = (stateAssert g [] >>= (\<lambda>u. mapM (sm' \<circ> m) l))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sm (mapM m l) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) l
+od<\STATESEP>proof (induct l)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. sm (mapM m []) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) []
+od
+ 2. \<And>a l. sm (mapM m l) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM m (a # l)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (a # l)
+od<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (2 subgoals):
+ 1. sm (mapM m []) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) []
+od
+ 2. \<And>a l. sm (mapM m l) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM m (a # l)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (a # l)
+od<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sm (mapM m []) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) []
+od<\STATESEP>by (simp add: mapM_def sequence_def bind_def submonad.return [OF sm])<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sm (mapM m []) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) []
+od
+
+goal (1 subgoal):
+ 1. \<And>a l. sm (mapM m l) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM m (a # l)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (a # l)
+od<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a l. sm (mapM m l) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM m (a # l)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (a # l)
+od<\STATESEP>case (Cons x xs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+sm (mapM m xs) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) xs
+od
+
+goal (1 subgoal):
+ 1. \<And>a l. sm (mapM m l) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM m (a # l)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (a # l)
+od<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+sm (mapM m xs) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) xs
+od
+
+goal (1 subgoal):
+ 1. sm (mapM m (x # xs)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (x # xs)
+od<\STATESEP>using sm sm' efm<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+sm (mapM m xs) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) xs
+od
+submonad f r g sm
+submonad f r g sm'
+empty_fail (m ?x)
+
+goal (1 subgoal):
+ 1. sm (mapM m (x # xs)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (x # xs)
+od<\STATESEP>apply (simp add: mapM_Cons)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> sm (do y <- m x;
+ys <- mapM m xs;
+return (y # ys)
+od) = do u <- stateAssert g [];
+y <- sm' (m x);
+ys <- mapM (\<lambda>a. sm' (m a)) xs;
+return (y # ys)
+od<\STATESEP>apply (simp add: bind_subst_lift [OF submonad.stateAssert_fn])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> sm (do y <- m x;
+ys <- mapM m xs;
+return (y # ys)
+od) = do y <- sm' (m x);
+ys <- mapM (\<lambda>a. sm' (m a)) xs;
+return (y # ys)
+od<\STATESEP>apply (simp add: bind_assoc submonad_bind submonad.return empty_fail_cond)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> do rv <- sm' (m x);
+x <- stateAssert g [];
+rva <- mapM (\<lambda>a. sm' (m a)) xs;
+u <- stateAssert g [];
+return (rv # rva)
+od = do y <- sm' (m x);
+ys <- mapM (\<lambda>a. sm' (m a)) xs;
+return (y # ys)
+od<\STATESEP>apply (subst submonad.fn_stateAssert [OF sm'])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> do rv <- sm' (m x);
+rva <- mapM (\<lambda>a. sm' (m a)) xs;
+u <- stateAssert g [];
+return (rv # rva)
+od = do y <- sm' (m x);
+ys <- mapM (\<lambda>a. sm' (m a)) xs;
+return (y # ys)
+od<\STATESEP>apply (intro ext bind_apply_cong [OF refl])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa rv st rva sta. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa); (rva, sta) \<in> fst (mapM (\<lambda>a. sm' (m a)) xs st)\<rbrakk> \<Longrightarrow> (do u <- stateAssert g [];
+return (rv # rva)
+od) sta = return (rv # rva) sta<\STATESEP>apply (subgoal_tac "g sta")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xa rv st rva sta. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa); (rva, sta) \<in> fst (mapM (\<lambda>a. sm' (m a)) xs st); g sta\<rbrakk> \<Longrightarrow> (do u <- stateAssert g [];
+return (rv # rva)
+od) sta = return (rv # rva) sta
+ 2. \<And>xa rv st rva sta. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa); (rva, sta) \<in> fst (mapM (\<lambda>a. sm' (m a)) xs st)\<rbrakk> \<Longrightarrow> g sta<\STATESEP>apply (clarsimp simp: stateAssert_def bind_def get_def assert_def return_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa rv st rva sta. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa); (rva, sta) \<in> fst (mapM (\<lambda>a. sm' (m a)) xs st)\<rbrakk> \<Longrightarrow> g sta<\STATESEP>apply (frule(1) submonad.guard_preserved)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa rv st rva sta. \<lbrakk>sm (mapM m xs) = do u <- stateAssert g [];
+mapM (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa); (rva, sta) \<in> fst (mapM (\<lambda>a. sm' (m a)) xs st); g st\<rbrakk> \<Longrightarrow> g sta<\STATESEP>apply (erule(1) submonad.mapM_guard_preserved, fastforce simp: o_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sm (mapM m (x # xs)) = do u <- stateAssert g [];
+mapM (sm' \<circ> m) (x # xs)
+od
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma submonad_mapM_x:
+  assumes sm: "submonad f r g sm" and sm': "submonad f r g sm'"
+  assumes efm: "\<And>x. empty_fail (m x)"
+  shows
+  "(sm (mapM_x m l)) = (stateAssert g [] >>= (\<lambda>u. mapM_x (sm' \<circ> m) l))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sm (mapM_x m l) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) l
+od<\STATESEP>proof (induct l)<\STATESEP>1<\TRANSEP>proof (state)
+goal (2 subgoals):
+ 1. sm (mapM_x m []) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) []
+od
+ 2. \<And>a l. sm (mapM_x m l) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM_x m (a # l)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (a # l)
+od<\STATESEP>case Nil<\STATESEP>2<\TRANSEP>proof (state)
+this:
+
+
+goal (2 subgoals):
+ 1. sm (mapM_x m []) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) []
+od
+ 2. \<And>a l. sm (mapM_x m l) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM_x m (a # l)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (a # l)
+od<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. sm (mapM_x m []) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) []
+od<\STATESEP>by (simp add: mapM_x_def sequence_x_def bind_def submonad.return [OF sm])<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sm (mapM_x m []) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) []
+od
+
+goal (1 subgoal):
+ 1. \<And>a l. sm (mapM_x m l) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM_x m (a # l)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (a # l)
+od<\STATESEP>next<\STATESEP>2<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. \<And>a l. sm (mapM_x m l) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM_x m (a # l)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (a # l)
+od<\STATESEP>case (Cons x xs)<\STATESEP>2<\TRANSEP>proof (state)
+this:
+sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) xs
+od
+
+goal (1 subgoal):
+ 1. \<And>a l. sm (mapM_x m l) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) l
+od \<Longrightarrow> sm (mapM_x m (a # l)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (a # l)
+od<\STATESEP>thus ?case<\STATESEP>2<\TRANSEP>proof (prove)
+using this:
+sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) xs
+od
+
+goal (1 subgoal):
+ 1. sm (mapM_x m (x # xs)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (x # xs)
+od<\STATESEP>using sm sm' efm<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) xs
+od
+submonad f r g sm
+submonad f r g sm'
+empty_fail (m ?x)
+
+goal (1 subgoal):
+ 1. sm (mapM_x m (x # xs)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (x # xs)
+od<\STATESEP>apply (simp add: mapM_x_Cons)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> sm (do y <- m x;
+mapM_x m xs
+od) = do u <- stateAssert g [];
+y <- sm' (m x);
+mapM_x (\<lambda>a. sm' (m a)) xs
+od<\STATESEP>apply (simp add: bind_subst_lift [OF submonad.stateAssert_fn])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> sm (do y <- m x;
+mapM_x m xs
+od) = do y <- sm' (m x);
+mapM_x (\<lambda>a. sm' (m a)) xs
+od<\STATESEP>apply (simp add: bind_assoc submonad_bind submonad.return)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> do rv <- sm' (m x);
+u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od = do y <- sm' (m x);
+mapM_x (\<lambda>a. sm' (m a)) xs
+od<\STATESEP>apply (subst submonad.fn_stateAssert [OF sm'])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x)\<rbrakk> \<Longrightarrow> do rv <- sm' (m x);
+mapM_x (\<lambda>a. sm' (m a)) xs
+od = do y <- sm' (m x);
+mapM_x (\<lambda>a. sm' (m a)) xs
+od<\STATESEP>apply (intro ext bind_apply_cong [OF refl])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa rv st. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa)\<rbrakk> \<Longrightarrow> mapM_x (\<lambda>a. sm' (m a)) xs st = mapM_x (\<lambda>a. sm' (m a)) xs st<\STATESEP>apply (subgoal_tac "g st")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>xa rv st. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa); g st\<rbrakk> \<Longrightarrow> mapM_x (\<lambda>a. sm' (m a)) xs st = mapM_x (\<lambda>a. sm' (m a)) xs st
+ 2. \<And>xa rv st. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa)\<rbrakk> \<Longrightarrow> g st<\STATESEP>apply (clarsimp simp: stateAssert_def bind_def get_def assert_def return_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>xa rv st. \<lbrakk>sm (mapM_x m xs) = do u <- stateAssert g [];
+mapM_x (\<lambda>a. sm' (m a)) xs
+od; submonad f r g sm; submonad f r g sm'; \<And>x. empty_fail (m x); (rv, st) \<in> fst (sm' (m x) xa)\<rbrakk> \<Longrightarrow> g st<\STATESEP>apply (frule(1) submonad.guard_preserved, simp)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+sm (mapM_x m (x # xs)) = do u <- stateAssert g [];
+mapM_x (sm' \<circ> m) (x # xs)
+od
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma corres_select:
+  "(\<forall>s' \<in> S'. \<exists>s \<in> S. rvr s s') \<Longrightarrow> corres_underlying sr nf nf' rvr \<top> \<top> (select S) (select S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<forall>s'\<in>S'. \<exists>s\<in>S. rvr s s' \<Longrightarrow> corres_underlying sr nf nf' rvr (\<lambda>_. True) (\<lambda>_. True) (select S) (select S')<\STATESEP>by (clarsimp simp: select_def corres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_select_f:
+  "\<lbrakk> \<forall>s' \<in> fst S'. \<exists>s \<in> fst S. rvr s s'; nf' \<Longrightarrow> \<not> snd S' \<rbrakk>
+      \<Longrightarrow> corres_underlying sr nf nf' rvr \<top> \<top> (select_f S) (select_f S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s'\<in>fst S'. \<exists>s\<in>fst S. rvr s s'; nf' \<Longrightarrow> \<not> snd S'\<rbrakk> \<Longrightarrow> corres_underlying sr nf nf' rvr (\<lambda>_. True) (\<lambda>_. True) (select_f S) (select_f S')<\STATESEP>by (clarsimp simp: select_f_def corres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_modify':
+  "\<lbrakk> (\<forall>s s'. (s, s') \<in> sr \<longrightarrow> (f s, f' s') \<in> sr); r () () \<rbrakk>
+      \<Longrightarrow> corres_underlying sr nf nf' r \<top> \<top> (modify f) (modify f')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s s'. (s, s') \<in> sr \<longrightarrow> (f s, f' s') \<in> sr; r () ()\<rbrakk> \<Longrightarrow> corres_underlying sr nf nf' r (\<lambda>_. True) (\<lambda>_. True) (modify f) (modify f')<\STATESEP>by (clarsimp simp: modify_def corres_underlying_def bind_def get_def put_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_select_f_stronger:
+  "\<lbrakk> \<forall>s' \<in> fst S'. \<exists>s \<in> fst S. rvr s s'; nf' \<Longrightarrow> \<not> snd S' \<rbrakk>
+      \<Longrightarrow> corres_underlying sr nf nf' rvr \<top> \<top> (select_f S) (select_f S')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s'\<in>fst S'. \<exists>s\<in>fst S. rvr s s'; nf' \<Longrightarrow> \<not> snd S'\<rbrakk> \<Longrightarrow> corres_underlying sr nf nf' rvr (\<lambda>_. True) (\<lambda>_. True) (select_f S) (select_f S')<\STATESEP>by (clarsimp simp: select_f_def corres_underlying_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma stateAssert_sp:
+  "\<lbrace>P\<rbrace> stateAssert Q l \<lbrace>\<lambda>_. P and Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> stateAssert Q l \<lbrace>\<lambda>_. P and Q\<rbrace><\STATESEP>by (clarsimp simp: valid_def stateAssert_def in_monad)<\STATESEP>1<\TRANSEP><\STATESEP>lemma corres_submonad:
+  "\<lbrakk> submonad f r g fn; submonad f' r' g' fn';
+     \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr;
+     \<forall>s s' ss ss'. ((s, s') \<in> sr \<and> (ss, ss') \<in> ssr) \<longrightarrow> (r ss s, r' ss' s') \<in> sr;
+     corres_underlying ssr False nf' rvr \<top> \<top> x x'\<rbrakk>
+   \<Longrightarrow> corres_underlying sr False nf' rvr g g' (fn x) (fn' x')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr g g' (fn x) (fn' x')<\STATESEP>apply (subst submonad.fn_is_sm, assumption)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr g g' (submonad_fn f r g x) (submonad_fn f' r' g' x')<\STATESEP>apply (clarsimp simp: submonad_fn_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr g g' (do y <- stateAssert g [];
+substate <- gets f;
+(rv, substate') <- select_f (x substate);
+y <- modify (r substate');
+return rv
+od) (do y <- stateAssert g' [];
+substate <- gets f';
+(rv, substate') <- select_f (x' substate);
+y <- modify (r' substate');
+return rv
+od)<\STATESEP>apply (rule corres_underlying_split [OF _ _ stateAssert_sp stateAssert_sp])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' ?r'2 g g' (stateAssert g []) (stateAssert g' [])
+ 2. \<And>y ya. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; ?r'2 y ya\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (g and g) (g' and g') (do substate <- gets f;
+(rv, substate') <- select_f (x substate);
+y <- modify (r substate');
+return rv
+od) (do substate <- gets f';
+(rv, substate') <- select_f (x' substate);
+y <- modify (r' substate');
+return rv
+od)<\STATESEP>apply (fastforce simp: corres_underlying_def stateAssert_def get_def
+                         assert_def return_def bind_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y ya. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (g and g) (g' and g') (do substate <- gets f;
+(rv, substate') <- select_f (x substate);
+y <- modify (r substate');
+return rv
+od) (do substate <- gets f';
+(rv, substate') <- select_f (x' substate);
+y <- modify (r' substate');
+return rv
+od)<\STATESEP>apply (rule corres_underlying_split [where r'="\<lambda>x y. (x, y) \<in> ssr",
+                             OF _ _ hoare_TrueI hoare_TrueI])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y ya. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>x y. (x, y) \<in> ssr) (g and g) (g' and g') (gets f) (gets f')
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (do (rv, substate') <- select_f (x substate);
+y <- modify (r substate');
+return rv
+od) (do (rv, substate') <- select_f (x' substatea);
+y <- modify (r' substate');
+return rv
+od)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (do (rv, substate') <- select_f (x substate);
+y <- modify (r substate');
+return rv
+od) (do (rv, substate') <- select_f (x' substatea);
+y <- modify (r' substate');
+return rv
+od)<\STATESEP>apply (rule corres_underlying_split [where r'="\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr",
+                             OF _ _ hoare_TrueI hoare_TrueI])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr) (\<lambda>_. True) (\<lambda>_. True) (select_f (x substate)) (select_f (x' substatea))
+ 2. \<And>y ya substate substatea rv rv'. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; (case rv of (x, x') \<Rightarrow> \<lambda>(y, y'). rvr x y \<and> (x', y') \<in> ssr) rv'\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (case rv of (rv, substate') \<Rightarrow> do y <- modify (r substate');
+return rv
+od) (case rv' of (rv, substate') \<Rightarrow> do y <- modify (r' substate');
+return rv
+od)<\STATESEP>defer<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y ya substate substatea rv rv'. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; (case rv of (x, x') \<Rightarrow> \<lambda>(y, y'). rvr x y \<and> (x', y') \<in> ssr) rv'\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (case rv of (rv, substate') \<Rightarrow> do y <- modify (r substate');
+return rv
+od) (case rv' of (rv, substate') \<Rightarrow> do y <- modify (r' substate');
+return rv
+od)
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr) (\<lambda>_. True) (\<lambda>_. True) (select_f (x substate)) (select_f (x' substatea))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>substate substatea a b aa ba. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; (substate, substatea) \<in> ssr; rvr a aa; (b, ba) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (do y <- modify (r b);
+return a
+od) (do y <- modify (r' ba);
+return aa
+od)
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr) (\<lambda>_. True) (\<lambda>_. True) (select_f (x substate)) (select_f (x' substatea))<\STATESEP>apply (rule corres_underlying_split [where r'=dc, OF _ _ hoare_TrueI hoare_TrueI])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>substate substatea a b aa ba. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; (substate, substatea) \<in> ssr; rvr a aa; (b, ba) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' dc (\<lambda>_. True) (\<lambda>_. True) (modify (r b)) (modify (r' ba))
+ 2. \<And>substate substatea a b aa ba y ya. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; (substate, substatea) \<in> ssr; rvr a aa; (b, ba) \<in> ssr; dc y ya\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (return a) (return aa)
+ 3. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr) (\<lambda>_. True) (\<lambda>_. True) (select_f (x substate)) (select_f (x' substatea))<\STATESEP>apply (simp add: corres_modify')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>substate substatea a b aa ba y ya. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; (substate, substatea) \<in> ssr; rvr a aa; (b, ba) \<in> ssr; dc y ya\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) (return a) (return aa)
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr) (\<lambda>_. True) (\<lambda>_. True) (select_f (x substate)) (select_f (x' substatea))<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> corres_underlying sr False nf' (\<lambda>(x, x') (y, y'). rvr x y \<and> (x', y') \<in> ssr) (\<lambda>_. True) (\<lambda>_. True) (select_f (x substate)) (select_f (x' substatea))<\STATESEP>apply (rule corres_select_f_stronger)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr\<rbrakk> \<Longrightarrow> \<forall>s'\<in>fst (x' substatea). \<exists>s\<in>fst (x substate). (case s of (x, x') \<Rightarrow> \<lambda>(y, y'). rvr x y \<and> (x', y') \<in> ssr) s'
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; nf'\<rbrakk> \<Longrightarrow> \<not> snd (x' substatea)<\STATESEP>apply (clarsimp simp: corres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>substate substatea a b. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; \<forall>xa\<in>ssr. case xa of (s, s') \<Rightarrow> (\<forall>xa\<in>fst (x' s'). case xa of (r', t') \<Rightarrow> \<exists>x\<in>fst (x s). case x of (r, t) \<Rightarrow> (t, t') \<in> ssr \<and> rvr r r') \<and> (nf' \<longrightarrow> \<not> snd (x' s')); (substate, substatea) \<in> ssr; (a, b) \<in> fst (x' substatea)\<rbrakk> \<Longrightarrow> \<exists>s\<in>fst (x substate). (case s of (x, x') \<Rightarrow> \<lambda>(y, y'). rvr x y \<and> (x', y') \<in> ssr) (a, b)
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; nf'\<rbrakk> \<Longrightarrow> \<not> snd (x' substatea)<\STATESEP>apply (drule (1) bspec, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>substate substatea a b. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; (substate, substatea) \<in> ssr; (a, b) \<in> fst (x' substatea); \<forall>xa\<in>fst (x' substatea). case xa of (r', t') \<Rightarrow> \<exists>x\<in>fst (x substate). case x of (r, t) \<Rightarrow> (t, t') \<in> ssr \<and> rvr r r'; nf' \<longrightarrow> \<not> snd (x' substatea)\<rbrakk> \<Longrightarrow> \<exists>s\<in>fst (x substate). (case s of (x, x') \<Rightarrow> \<lambda>(y, y'). rvr x y \<and> (x', y') \<in> ssr) (a, b)
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; nf'\<rbrakk> \<Longrightarrow> \<not> snd (x' substatea)<\STATESEP>apply (drule (1) bspec, simp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>substate substatea a b. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; (substate, substatea) \<in> ssr; (a, b) \<in> fst (x' substatea); nf' \<longrightarrow> \<not> snd (x' substatea); \<exists>x\<in>fst (x substate). case x of (r, t) \<Rightarrow> (t, b) \<in> ssr \<and> rvr r a\<rbrakk> \<Longrightarrow> \<exists>s\<in>fst (x substate). (case s of (x, x') \<Rightarrow> \<lambda>(y, y'). rvr x y \<and> (x', y') \<in> ssr) (a, b)
+ 2. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; nf'\<rbrakk> \<Longrightarrow> \<not> snd (x' substatea)<\STATESEP>apply blast<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>y ya substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; corres_underlying ssr False nf' rvr (\<lambda>_. True) (\<lambda>_. True) x x'; True; (substate, substatea) \<in> ssr; nf'\<rbrakk> \<Longrightarrow> \<not> snd (x' substatea)<\STATESEP>apply (clarsimp simp: corres_underlying_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>substate substatea. \<lbrakk>submonad f r g fn; submonad f' r' g' fn'; \<forall>s s'. (s, s') \<in> sr \<and> g s \<and> g' s' \<longrightarrow> (f s, f' s') \<in> ssr; \<forall>s s' ss ss'. (s, s') \<in> sr \<and> (ss, ss') \<in> ssr \<longrightarrow> (r ss s, r' ss' s') \<in> sr; \<forall>xa\<in>ssr. case xa of (s, s') \<Rightarrow> (\<forall>xa\<in>fst (x' s'). case xa of (r', t') \<Rightarrow> \<exists>x\<in>fst (x s). case x of (r, t) \<Rightarrow> (t, t') \<in> ssr \<and> rvr r r') \<and> \<not> snd (x' s'); (substate, substatea) \<in> ssr; nf'; snd (x' substatea)\<rbrakk> \<Longrightarrow> False<\STATESEP>apply (drule (1) bspec, clarsimp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma stateAssert_top [simp]:
+  "stateAssert \<top> l >>= f = f ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. stateAssert (\<lambda>_. True) l >>= f = f ()<\STATESEP>by (clarsimp simp add: stateAssert_def get_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma stateAssert_A_top [simp]:
+  "stateAssert \<top> l = return ()"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. stateAssert (\<lambda>_. True) l = return ()<\STATESEP>by (simp add: stateAssert_def get_def bind_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_modify_comm:
+  "\<And> s. \<lbrakk> g (f s) = g s \<rbrakk> \<Longrightarrow>
+   (do x \<leftarrow> modify f; y \<leftarrow> gets g; m x y od) s =
+   (do y \<leftarrow> gets g; x \<leftarrow> modify f; m x y od) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. g (f s) = g s \<Longrightarrow> (do x <- modify f;
+gets g >>= m x
+od) s = (do y <- gets g;
+x <- modify f;
+m x y
+od) s<\STATESEP>by (simp add: modify_def gets_def get_def bind_def put_def return_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma bind_subst_lhs_inv:
+  "\<And>s. \<lbrakk> \<And>x s'. P s' \<Longrightarrow> (f x >>= g x) s' = h x s'; \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. P\<rbrace>; P s \<rbrakk> \<Longrightarrow>
+   (do x \<leftarrow> a; y \<leftarrow> f x; g x y od) s = (a >>= h) s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<And>x s'. P s' \<Longrightarrow> (f x >>= g x) s' = h x s'; \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. P\<rbrace>; P s\<rbrakk> \<Longrightarrow> (do x <- a;
+f x >>= g x
+od) s = (a >>= h) s<\STATESEP>apply (rule bind_apply_cong [OF refl])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s rv st. \<lbrakk>\<And>x s'. P s' \<Longrightarrow> (f x >>= g x) s' = h x s'; \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. P\<rbrace>; P s; (rv, st) \<in> fst (a s)\<rbrakk> \<Longrightarrow> (f rv >>= g rv) st = h rv st<\STATESEP>apply (drule(2) use_valid)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s rv st. \<lbrakk>\<And>x s'. P s' \<Longrightarrow> (f x >>= g x) s' = h x s'; \<lbrace>P\<rbrace> a \<lbrace>\<lambda>_. P\<rbrace>; P s; P st\<rbrakk> \<Longrightarrow> (f rv >>= g rv) st = h rv st<\STATESEP>apply simp<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_comm:
+  "do x \<leftarrow> gets f; y \<leftarrow> gets g; m x y od = do y \<leftarrow> gets g; x \<leftarrow> gets f; m x y od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- gets f;
+gets g >>= m x
+od = do y <- gets g;
+x <- gets f;
+m x y
+od<\STATESEP>by (simp add: gets_def get_def return_def bind_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_comm:
+  assumes x1: "submonad_args f r g" and x2: "submonad_args f' r' g'"
+  assumes y: "m = submonad_fn f r g im" "m' = submonad_fn f' r' g' im'"
+  assumes z: "\<And>s x x'. r x (r' x' s) = r' x' (r x s)"
+  assumes gp: "\<And>s x. g (r' x s) = g s" and gp': "\<And>s x. g' (r x s) = g' s"
+  assumes efim: "empty_fail im" and efim': "empty_fail im'"
+  shows      "(do x \<leftarrow> m; y \<leftarrow> m'; n x y od) = (do y \<leftarrow> m'; x \<leftarrow> m; n x y od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>have P: "\<And>x s. g s \<Longrightarrow> f (r' x s) = f s"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g s \<Longrightarrow> f (r' x s) = f s<\STATESEP>apply (subgoal_tac "f (r' x (r (f s) s)) = f s")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x s. \<lbrakk>g s; f (r' x (r (f s) s)) = f s\<rbrakk> \<Longrightarrow> f (r' x s) = f s
+ 2. \<And>x s. g s \<Longrightarrow> f (r' x (r (f s) s)) = f s<\STATESEP>apply (simp add: submonad_args.args[OF x1])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g s \<Longrightarrow> f (r' x (r (f s) s)) = f s<\STATESEP>apply (simp add: z[symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g s \<Longrightarrow> f (r (f s) (r' x s)) = f s<\STATESEP>apply (subst(asm) gp [symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g (r' (?x1 x s) s) \<Longrightarrow> f (r (f s) (r' x s)) = f s<\STATESEP>apply (fastforce dest: submonad_args.argsD1[OF x1])<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+g ?s \<Longrightarrow> f (r' ?x ?s) = f ?s
+
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>have Q: "\<And>x s. g' s \<Longrightarrow> f' (r x s) = f' s"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g' s \<Longrightarrow> f' (r x s) = f' s<\STATESEP>apply (subgoal_tac "f' (r x (r' (f' s) s)) = f' s")<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x s. \<lbrakk>g' s; f' (r x (r' (f' s) s)) = f' s\<rbrakk> \<Longrightarrow> f' (r x s) = f' s
+ 2. \<And>x s. g' s \<Longrightarrow> f' (r x (r' (f' s) s)) = f' s<\STATESEP>apply (simp add: submonad_args.args[OF x2])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g' s \<Longrightarrow> f' (r x (r' (f' s) s)) = f' s<\STATESEP>apply (simp add: z)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g' s \<Longrightarrow> f' (r' (f' s) (r x s)) = f' s<\STATESEP>apply (subst(asm) gp' [symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x s. g' (r (?x1 x s) s) \<Longrightarrow> f' (r' (f' s) (r x s)) = f' s<\STATESEP>apply (fastforce dest: submonad_args.argsD1[OF x2])<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+g' ?s \<Longrightarrow> f' (r ?x ?s) = f' ?s
+
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>note empty_failD [OF efim, simp]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+fst (im ?s) = {} \<Longrightarrow> snd (im ?s)
+
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>note empty_failD [OF efim', simp]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+fst (im' ?s) = {} \<Longrightarrow> snd (im' ?s)
+
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>note empty_fail_select_f[simp]<\STATESEP>2<\TRANSEP>proof (state)
+this:
+(fst ?S = {} \<Longrightarrow> snd ?S) \<Longrightarrow> empty_fail (select_f ?S)
+
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od<\STATESEP>apply (clarsimp simp: submonad_fn_def y bind_assoc split_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- stateAssert g [];
+x <- gets f;
+x <- select_f (im x);
+y <- modify (r (snd x));
+xa <- stateAssert g' [];
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od = do x <- stateAssert g' [];
+x <- gets f';
+x <- select_f (im' x);
+y <- modify (r' (snd x));
+xa <- stateAssert g [];
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od<\STATESEP>apply (subst bind_subst_lift [OF modify_stateAssert], rule gp gp')+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- stateAssert g [];
+x <- gets f;
+x <- select_f (im x);
+a <- do u <- stateAssert g' [];
+modify (r (snd x))
+od;
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od = do x <- stateAssert g' [];
+x <- gets f';
+x <- select_f (im' x);
+a <- do u <- stateAssert g [];
+modify (r' (snd x))
+od;
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od<\STATESEP>apply (simp add: bind_assoc)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- stateAssert g [];
+x <- gets f;
+x <- select_f (im x);
+xa <- stateAssert g' [];
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od = do x <- stateAssert g' [];
+x <- gets f';
+x <- select_f (im' x);
+xa <- stateAssert g [];
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od<\STATESEP>apply (subst select_f_stateAssert, rule efim efim')+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- stateAssert g [];
+x <- gets f;
+u <- stateAssert g' [];
+x <- select_f (im x);
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od = do x <- stateAssert g' [];
+x <- gets f';
+u <- stateAssert g [];
+x <- select_f (im' x);
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od<\STATESEP>apply (subst gets_stateAssert bind_subst_lift [OF stateAssert_stateAssert])+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do u <- stateAssert (g and g') [];
+x <- gets f;
+x <- select_f (im x);
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od = do u <- stateAssert (g' and g) [];
+x <- gets f';
+x <- select_f (im' x);
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od<\STATESEP>apply (rule bind_cong)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. stateAssert (g and g') [] = stateAssert (g' and g) []
+ 2. \<And>v s s'. (v, s') \<in> fst (stateAssert (g' and g) [] s) \<Longrightarrow> (do x <- gets f;
+x <- select_f (im x);
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s' = (do x <- gets f';
+x <- select_f (im' x);
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s'<\STATESEP>apply (simp add: pred_conj_def conj_comms)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>v s s'. (v, s') \<in> fst (stateAssert (g' and g) [] s) \<Longrightarrow> (do x <- gets f;
+x <- select_f (im x);
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s' = (do x <- gets f';
+x <- select_f (im' x);
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s'<\STATESEP>apply (simp add: bind_assoc select_f_walk[symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s s'. ((), s') \<in> fst (stateAssert (g' and g) [] s) \<Longrightarrow> (do x <- gets f;
+x <- select_f (im x);
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s' = (do x <- gets f';
+x <- select_f (im' x);
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s'<\STATESEP>apply (clarsimp dest!: fst_stateAssertD)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>g' s; g s\<rbrakk> \<Longrightarrow> (do x <- gets f;
+x <- select_f (im x);
+a <- modify (r (snd x));
+xa <- gets f';
+xa <- select_f (im' xa);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s = (do x <- gets f';
+x <- select_f (im' x);
+a <- modify (r' (snd x));
+xa <- gets f;
+xa <- select_f (im xa);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s<\STATESEP>apply (subst bind_assoc[symmetric],
+           subst bind_subst_lhs_inv [OF gets_modify_comm],
+           erule P Q, wp, simp, simp)+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>g' s; g s\<rbrakk> \<Longrightarrow> (do x <- do x <- gets f;
+select_f (im x)
+od;
+y <- gets f';
+xa <- modify (r (snd x));
+xa <- select_f (im' y);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s = (do x <- do x <- gets f';
+select_f (im' x)
+od;
+y <- gets f;
+xa <- modify (r' (snd x));
+xa <- select_f (im y);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s<\STATESEP>apply (simp add: bind_assoc)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>g' s; g s\<rbrakk> \<Longrightarrow> (do x <- gets f;
+x <- select_f (im x);
+y <- gets f';
+xa <- modify (r (snd x));
+xa <- select_f (im' y);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s = (do x <- gets f';
+x <- select_f (im' x);
+y <- gets f;
+xa <- modify (r' (snd x));
+xa <- select_f (im y);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s<\STATESEP>apply (simp add: select_f_walk[symmetric])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>g' s; g s\<rbrakk> \<Longrightarrow> (do x <- gets f;
+y <- gets f';
+x <- select_f (im x);
+xa <- modify (r (snd x));
+xa <- select_f (im' y);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s = (do x <- gets f';
+y <- gets f;
+x <- select_f (im' x);
+xa <- modify (r' (snd x));
+xa <- select_f (im y);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s<\STATESEP>apply (subst gets_comm)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>g' s; g s\<rbrakk> \<Longrightarrow> (do y <- gets f';
+x <- gets f;
+x <- select_f (im x);
+xa <- modify (r (snd x));
+xa <- select_f (im' y);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) s = (do x <- gets f';
+y <- gets f;
+x <- select_f (im' x);
+xa <- modify (r' (snd x));
+xa <- select_f (im y);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) s<\STATESEP>apply (rule bind_apply_cong [OF refl])+<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s rv st rva sta. \<lbrakk>g' s; g s; (rv, st) \<in> fst (gets f' s); (rva, sta) \<in> fst (gets f st)\<rbrakk> \<Longrightarrow> (do x <- select_f (im rva);
+xa <- modify (r (snd x));
+xa <- select_f (im' rv);
+y <- modify (r' (snd xa));
+n (fst x) (fst xa)
+od) sta = (do x <- select_f (im' rv);
+xa <- modify (r' (snd x));
+xa <- select_f (im rva);
+y <- modify (r (snd xa));
+n (fst xa) (fst x)
+od) sta<\STATESEP>apply (subst select_f_walk, simp, simp,
+           subst select_f_walk, simp, simp,
+           rule bind_apply_cong [OF refl])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s rv st rva sta rvb stb. \<lbrakk>g' s; g s; (rv, st) \<in> fst (gets f' s); (rva, sta) \<in> fst (gets f st); (rvb, stb) \<in> fst (select_f (im' rv) sta)\<rbrakk> \<Longrightarrow> (do a <- select_f (im rva);
+aa <- modify (r (snd a));
+y <- modify (r' (snd rvb));
+n (fst a) (fst rvb)
+od) stb = (do x <- modify (r' (snd rvb));
+x <- select_f (im rva);
+y <- modify (r (snd x));
+n (fst x) (fst rvb)
+od) stb<\STATESEP>apply (subst select_f_walk, simp, simp, rule bind_apply_cong [OF refl])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s rv st rva sta rvb stb rvc stc. \<lbrakk>g' s; g s; (rv, st) \<in> fst (gets f' s); (rva, sta) \<in> fst (gets f st); (rvb, stb) \<in> fst (select_f (im' rv) sta); (rvc, stc) \<in> fst (select_f (im rva) stb)\<rbrakk> \<Longrightarrow> (do a <- modify (r (snd rvc));
+y <- modify (r' (snd rvb));
+n (fst rvc) (fst rvb)
+od) stc = (do a <- modify (r' (snd rvb));
+y <- modify (r (snd rvc));
+n (fst rvc) (fst rvb)
+od) stc<\STATESEP>apply (clarsimp simp: simpler_gets_def select_f_def)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b aa ba. \<lbrakk>g' s; g s; (a, b) \<in> fst (im' (f' s)); (aa, ba) \<in> fst (im (f s))\<rbrakk> \<Longrightarrow> (do ab <- modify (r ba);
+y <- modify (r' b);
+n aa a
+od) s = (do ab <- modify (r' b);
+y <- modify (r ba);
+n aa a
+od) s<\STATESEP>apply (simp add: bind_def get_def put_def modify_def z)<\STATESEP>3<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>3<\TRANSEP>proof (state)
+this:
+do x <- m;
+m' >>= n x
+od = do y <- m';
+x <- m;
+n x y
+od
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma submonad_comm2:
+  assumes x1: "submonad_args f r g" and x2: "m = submonad_fn f r g im"
+  assumes y: "submonad f' r' g' m'"
+  assumes z: "\<And>s x x'. r x (r' x' s) = r' x' (r x s)"
+  assumes gp: "\<And>s x. g (r' x s) = g s" and gp': "\<And>s x. g' (r x s) = g' s"
+  assumes efim: "empty_fail im" and efim': "empty_fail im'"
+  shows      "do x \<leftarrow> m; y \<leftarrow> m' im'; n x y od = do y \<leftarrow> m' im'; x \<leftarrow> m; n x y od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- m;
+m' im' >>= n x
+od = do y <- m' im';
+x <- m;
+n x y
+od<\STATESEP>apply (rule submonad_comm[where f'=f' and r'=r', OF x1 _ x2 _ z])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. submonad_args f' r' ?g'
+ 2. m' im' = submonad_fn f' r' ?g' ?im'
+ 3. \<And>s x. g (r' x s) = g s
+ 4. \<And>s x. ?g' (r x s) = ?g' s
+ 5. empty_fail im
+ 6. empty_fail ?im'<\STATESEP>apply (insert y)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (6 subgoals):
+ 1. submonad f' r' g' m' \<Longrightarrow> submonad_args f' r' ?g'
+ 2. submonad f' r' g' m' \<Longrightarrow> m' im' = submonad_fn f' r' ?g' ?im'
+ 3. \<And>s x. submonad f' r' g' m' \<Longrightarrow> g (r' x s) = g s
+ 4. \<And>s x. submonad f' r' g' m' \<Longrightarrow> ?g' (r x s) = ?g' s
+ 5. submonad f' r' g' m' \<Longrightarrow> empty_fail im
+ 6. submonad f' r' g' m' \<Longrightarrow> empty_fail ?im'<\STATESEP>apply (fastforce simp add: submonad_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (5 subgoals):
+ 1. submonad f' r' g' m' \<Longrightarrow> m' im' = submonad_fn f' r' g' ?im'
+ 2. \<And>s x. submonad f' r' g' m' \<Longrightarrow> g (r' x s) = g s
+ 3. \<And>s x. submonad f' r' g' m' \<Longrightarrow> g' (r x s) = g' s
+ 4. submonad f' r' g' m' \<Longrightarrow> empty_fail im
+ 5. submonad f' r' g' m' \<Longrightarrow> empty_fail ?im'<\STATESEP>apply (fastforce dest: submonad.fn_is_sm)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s x. submonad f' r' g' m' \<Longrightarrow> g (r' x s) = g s
+ 2. \<And>s x. submonad f' r' g' m' \<Longrightarrow> g' (r x s) = g' s
+ 3. submonad f' r' g' m' \<Longrightarrow> empty_fail im
+ 4. submonad f' r' g' m' \<Longrightarrow> empty_fail im'<\STATESEP>apply (simp add: efim efim' gp gp')+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_bind_alt:
+  assumes x: "submonad_args f r g"
+  assumes y: "a = submonad_fn f r g a'" "\<And>rv. b rv = submonad_fn f r g (b' rv)"
+  assumes efa: "empty_fail a'" and efb: "\<And>x. empty_fail (b' x)"
+  shows      "(a >>= b) = submonad_fn f r g (a' >>= b')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a >>= b = submonad_fn f r g (a' >>= b')<\STATESEP>proof -<\STATESEP>1<\TRANSEP>proof (state)
+goal (1 subgoal):
+ 1. a >>= b = submonad_fn f r g (a' >>= b')<\STATESEP>have P: "submonad f r g (submonad_fn f r g)"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad f r g (submonad_fn f r g)<\STATESEP>by (simp add: x submonad_def submonad_axioms_def)<\STATESEP>3<\TRANSEP>proof (state)
+this:
+submonad f r g (submonad_fn f r g)
+
+goal (1 subgoal):
+ 1. a >>= b = submonad_fn f r g (a' >>= b')<\STATESEP>have Q: "b = (\<lambda>rv. submonad_fn f r g (b' rv))"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. b = (\<lambda>rv. submonad_fn f r g (b' rv))<\STATESEP>by (rule ext) fact+<\STATESEP>3<\TRANSEP>proof (state)
+this:
+b = (\<lambda>rv. submonad_fn f r g (b' rv))
+
+goal (1 subgoal):
+ 1. a >>= b = submonad_fn f r g (a' >>= b')<\STATESEP>show ?thesis<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. a >>= b = submonad_fn f r g (a' >>= b')<\STATESEP>by (simp add: y Q submonad_bind [OF P P P efa efb])<\STATESEP>3<\TRANSEP>proof (state)
+this:
+a >>= b = submonad_fn f r g (a' >>= b')
+
+goal:
+No subgoals!<\STATESEP>qed<\STATESEP>2<\TRANSEP><\STATESEP>lemma submonad_singleton:
+  "submonad_fn fetch replace \<top> (\<lambda>s. ({(rv s, s' s)}, False))
+     = (\<lambda>s. ({(rv (fetch s), replace (s' (fetch s)) s)}, False))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad_fn fetch replace (\<lambda>_. True) (\<lambda>s. ({(rv s, s' s)}, False)) = (\<lambda>s. ({(rv (fetch s), replace (s' (fetch s)) s)}, False))<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. submonad_fn fetch replace (\<lambda>_. True) (\<lambda>s. ({(rv s, s' s)}, False)) s = ({(rv (fetch s), replace (s' (fetch s)) s)}, False)<\STATESEP>apply (simp add: submonad_fn_def bind_def gets_def
+                put_def get_def modify_def return_def
+                select_f_def UNION_eq)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma gets_submonad:
+  "\<lbrakk> submonad_args fetch replace \<top>; \<And>s. f s = f' (fetch s); m = gets f' \<rbrakk>
+   \<Longrightarrow> gets f = submonad_fn fetch replace \<top> m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>submonad_args fetch replace (\<lambda>_. True); \<And>s. f s = f' (fetch s); m = gets f'\<rbrakk> \<Longrightarrow> gets f = submonad_fn fetch replace (\<lambda>_. True) m<\STATESEP>apply (drule submonad_args.args(3))<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. f s = f' (fetch s); m = gets f'; \<forall>s. replace (fetch s) s = s\<rbrakk> \<Longrightarrow> gets f = submonad_fn fetch replace (\<lambda>_. True) m<\STATESEP>apply (clarsimp simp add: simpler_gets_def submonad_singleton)<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma modify_submonad:
+  "\<lbrakk> \<And>s. f s = replace (K_record (f' (fetch s))) s; m = modify f' \<rbrakk>
+     \<Longrightarrow> modify f = submonad_fn fetch (replace o K_record) \<top> m"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<And>s. f s = replace (K_record (f' (fetch s))) s; m = modify f'\<rbrakk> \<Longrightarrow> modify f = submonad_fn fetch (replace \<circ> K_record) (\<lambda>_. True) m<\STATESEP>by (simp add: simpler_modify_def submonad_singleton)<\STATESEP>1<\TRANSEP><\STATESEP>lemma fail_submonad:
+  "fail = submonad_fn fetch replace \<top> fail"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. fail = submonad_fn fetch replace (\<lambda>_. True) fail<\STATESEP>by (simp add: submonad_fn_def simpler_gets_def return_def
+                simpler_modify_def select_f_def bind_def fail_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma return_submonad:
+  "submonad_args fetch replace guard \<Longrightarrow>
+   return v = submonad_fn fetch replace \<top> (return v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad_args fetch replace guard \<Longrightarrow> return v = submonad_fn fetch replace (\<lambda>_. True) (return v)<\STATESEP>by (simp add: return_def submonad_singleton submonad_args.args)<\STATESEP>1<\TRANSEP><\STATESEP>lemma assert_opt_submonad:
+  "submonad_args fetch replace \<top> \<Longrightarrow>
+   assert_opt v = submonad_fn fetch replace \<top> (assert_opt v)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. submonad_args fetch replace (\<lambda>_. True) \<Longrightarrow> assert_opt v = submonad_fn fetch replace (\<lambda>_. True) (assert_opt v)<\STATESEP>apply (case_tac v, simp_all add: assert_opt_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrakk>submonad_args fetch replace (\<lambda>_. True); v = None\<rbrakk> \<Longrightarrow> fail = submonad_fn fetch replace (\<lambda>_. True) fail
+ 2. \<And>a. \<lbrakk>submonad_args fetch replace (\<lambda>_. True); v = Some a\<rbrakk> \<Longrightarrow> return a = submonad_fn fetch replace (\<lambda>_. True) (return a)<\STATESEP>apply (rule fail_submonad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>submonad_args fetch replace (\<lambda>_. True); v = Some a\<rbrakk> \<Longrightarrow> return a = submonad_fn fetch replace (\<lambda>_. True) (return a)<\STATESEP>apply (rule return_submonad)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>a. \<lbrakk>submonad_args fetch replace (\<lambda>_. True); v = Some a\<rbrakk> \<Longrightarrow> submonad_args fetch replace (?guard3 a)<\STATESEP>apply assumption<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_stateAssert_gets:
+  "\<lbrakk> \<forall>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace>; \<lbrace>\<top>\<rbrace> f \<lbrace>\<lambda>_. guard\<rbrace>;
+     empty_fail f; no_fail guard f; \<lbrace>guard\<rbrace> f \<lbrace>\<lambda>rv s. fetch s = rv\<rbrace> \<rbrakk>
+    \<Longrightarrow> f = do stateAssert guard []; gets fetch od"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>\<forall>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace>; \<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>_. guard\<rbrace>; empty_fail f; no_fail guard f; \<lbrace>guard\<rbrace> f \<lbrace>\<lambda>rv s. fetch s = rv\<rbrace>\<rbrakk> \<Longrightarrow> f = do stateAssert guard [];
+gets fetch
+od<\STATESEP>apply (rule ext)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>s. \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) s\<rbrace>; \<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>_. guard\<rbrace>; empty_fail f; no_fail guard f; \<lbrace>guard\<rbrace> f \<lbrace>\<lambda>rv s. fetch s = rv\<rbrace>\<rbrakk> \<Longrightarrow> f x = (do stateAssert guard [];
+gets fetch
+od) x<\STATESEP>apply (clarsimp simp: bind_def empty_fail_def valid_def no_fail_def
+                        stateAssert_def assert_def gets_def get_def
+                        return_def fail_def image_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x)\<rbrakk> \<Longrightarrow> (guard x \<longrightarrow> f x = ({(fetch x, x)}, False)) \<and> (\<not> guard x \<longrightarrow> f x = ({}, True))<\STATESEP>apply (case_tac "f x")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b)\<rbrakk> \<Longrightarrow> (guard x \<longrightarrow> f x = ({(fetch x, x)}, False)) \<and> (\<not> guard x \<longrightarrow> f x = ({}, True))<\STATESEP>apply (intro conjI impI)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b); guard x\<rbrakk> \<Longrightarrow> f x = ({(fetch x, x)}, False)
+ 2. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b); \<not> guard x\<rbrakk> \<Longrightarrow> f x = ({}, True)<\STATESEP>apply (drule_tac x=x in spec)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>f x = (a, b); guard x; \<forall>xa\<in>fst (f x). x = snd xa; (\<exists>a b. (a, b) \<in> fst (f x)) \<longrightarrow> guard x; fst (f x) = {} \<longrightarrow> snd (f x); guard x \<longrightarrow> \<not> snd (f x); guard x \<longrightarrow> (\<forall>xa\<in>fst (f x). fetch x = fst xa)\<rbrakk> \<Longrightarrow> f x = ({(fetch x, x)}, False)
+ 2. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b); \<not> guard x\<rbrakk> \<Longrightarrow> f x = ({}, True)<\STATESEP>apply (subgoal_tac "\<forall>xa\<in>fst (f x). fst xa = fetch x \<and> snd xa = x")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<And>x a b. \<lbrakk>f x = (a, b); guard x; \<forall>xa\<in>fst (f x). x = snd xa; (\<exists>a b. (a, b) \<in> fst (f x)) \<longrightarrow> guard x; fst (f x) = {} \<longrightarrow> snd (f x); guard x \<longrightarrow> \<not> snd (f x); guard x \<longrightarrow> (\<forall>xa\<in>fst (f x). fetch x = fst xa); \<forall>xa\<in>fst (f x). fst xa = fetch x \<and> snd xa = x\<rbrakk> \<Longrightarrow> f x = ({(fetch x, x)}, False)
+ 2. \<And>x a b. \<lbrakk>f x = (a, b); guard x; \<forall>xa\<in>fst (f x). x = snd xa; (\<exists>a b. (a, b) \<in> fst (f x)) \<longrightarrow> guard x; fst (f x) = {} \<longrightarrow> snd (f x); guard x \<longrightarrow> \<not> snd (f x); guard x \<longrightarrow> (\<forall>xa\<in>fst (f x). fetch x = fst xa)\<rbrakk> \<Longrightarrow> \<forall>xa\<in>fst (f x). fst xa = fetch x \<and> snd xa = x
+ 3. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b); \<not> guard x\<rbrakk> \<Longrightarrow> f x = ({}, True)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>x a b. \<lbrakk>f x = (a, b); guard x; \<forall>xa\<in>fst (f x). x = snd xa; (\<exists>a b. (a, b) \<in> fst (f x)) \<longrightarrow> guard x; fst (f x) = {} \<longrightarrow> snd (f x); guard x \<longrightarrow> \<not> snd (f x); guard x \<longrightarrow> (\<forall>xa\<in>fst (f x). fetch x = fst xa)\<rbrakk> \<Longrightarrow> \<forall>xa\<in>fst (f x). fst xa = fetch x \<and> snd xa = x
+ 2. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b); \<not> guard x\<rbrakk> \<Longrightarrow> f x = ({}, True)<\STATESEP>apply clarsimp<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>\<forall>s. \<forall>x\<in>fst (f s). s = snd x; \<forall>s. (\<exists>a b. (a, b) \<in> fst (f s)) \<longrightarrow> guard s; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); \<forall>s. guard s \<longrightarrow> (\<forall>x\<in>fst (f s). fetch s = fst x); f x = (a, b); \<not> guard x\<rbrakk> \<Longrightarrow> f x = ({}, True)<\STATESEP>apply (drule_tac x=x in spec)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>x a b. \<lbrakk>f x = (a, b); \<not> guard x; \<forall>xa\<in>fst (f x). x = snd xa; (\<exists>a b. (a, b) \<in> fst (f x)) \<longrightarrow> guard x; fst (f x) = {} \<longrightarrow> snd (f x); guard x \<longrightarrow> \<not> snd (f x); guard x \<longrightarrow> (\<forall>xa\<in>fst (f x). fetch x = fst xa)\<rbrakk> \<Longrightarrow> f x = ({}, True)<\STATESEP>apply fastforce<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma is_modify:
+  "\<And>s. \<lbrakk> \<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) (replace s)\<rbrace>; empty_fail f;
+          no_fail guard f; guard s \<rbrakk>
+    \<Longrightarrow> f s = modify replace s"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<lbrace>(=) s\<rbrace> f \<lbrace>\<lambda>_. (=) (replace s)\<rbrace>; empty_fail f; no_fail guard f; guard s\<rbrakk> \<Longrightarrow> f s = modify replace s<\STATESEP>apply (clarsimp simp: bind_def empty_fail_def valid_def no_fail_def
+                        stateAssert_def assert_def modify_def get_def put_def
+                        return_def fail_def image_def split_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<lbrakk>\<forall>x\<in>fst (f s). replace s = snd x; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); guard s\<rbrakk> \<Longrightarrow> f s = ({((), replace s)}, False)<\STATESEP>apply (case_tac "f s")<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s a b. \<lbrakk>\<forall>x\<in>fst (f s). replace s = snd x; \<forall>s. fst (f s) = {} \<longrightarrow> snd (f s); \<forall>s. guard s \<longrightarrow> \<not> snd (f s); guard s; f s = (a, b)\<rbrakk> \<Longrightarrow> f s = ({((), replace s)}, False)<\STATESEP>apply force<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>lemma submonad_comm':
+  assumes sm1: "submonad f r g m" and sm2: "submonad f' r' g' m'"
+  assumes z: "\<And>s x x'. r x (r' x' s) = r' x' (r x s)"
+  assumes gp: "\<And>s x. g (r' x s) = g s" and gp': "\<And>s x. g' (r x s) = g' s"
+  assumes efim: "empty_fail im" and efim': "empty_fail im'"
+  shows      "(do x \<leftarrow> m im; y \<leftarrow> m' im'; n x y od) =
+              (do y \<leftarrow> m' im'; x \<leftarrow> m im; n x y od)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. do x <- m im;
+m' im' >>= n x
+od = do y <- m' im';
+x <- m im;
+n x y
+od<\STATESEP>apply (rule submonad_comm [where f'=f' and r'=r', OF _ _ _ _ z])<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. submonad_args ?f (\<lambda>a b. r (?x3 a b) b) ?g
+ 2. submonad_args f' r' ?g'
+ 3. m im = submonad_fn ?f (\<lambda>a b. r (?x3 a b) b) ?g ?im
+ 4. m' im' = submonad_fn f' r' ?g' ?im'
+ 5. \<And>s x. ?g (r' x s) = ?g s
+ 6. \<And>s x. ?g' (r (?x3 x s) s) = ?g' s
+ 7. empty_fail ?im
+ 8. empty_fail ?im'
+flex-flex pairs:
+\<lambda>s x x'. ?x3 x s \<equiv>\<^sup>? \<lambda>s x x'. ?x3 x (r' x' s)<\STATESEP>apply (insert sm1 sm2)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (8 subgoals):
+ 1. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> submonad_args ?f (\<lambda>a b. r (?x3 a b) b) ?g
+ 2. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> submonad_args f' r' ?g'
+ 3. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> m im = submonad_fn ?f (\<lambda>a b. r (?x3 a b) b) ?g ?im
+ 4. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> m' im' = submonad_fn f' r' ?g' ?im'
+ 5. \<And>s x. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> ?g (r' x s) = ?g s
+ 6. \<And>s x. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> ?g' (r (?x3 x s) s) = ?g' s
+ 7. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> empty_fail ?im
+ 8. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> empty_fail ?im'
+flex-flex pairs:
+\<lambda>s x x'. ?x3 x s \<equiv>\<^sup>? \<lambda>s x x'. ?x3 x (r' x' s)<\STATESEP>apply (fastforce dest: submonad.fn_is_sm simp: submonad_def)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (4 subgoals):
+ 1. \<And>s x. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> g (r' x s) = g s
+ 2. \<And>s x. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> g' (r x s) = g' s
+ 3. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> empty_fail im
+ 4. \<lbrakk>submonad f r g m; submonad f' r' g' m'\<rbrakk> \<Longrightarrow> empty_fail im'<\STATESEP>apply (simp add: efim efim' gp gp')+<\STATESEP>1<\TRANSEP>proof (prove)
+goal:
+No subgoals!<\STATESEP>done<\STATESEP>1<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>

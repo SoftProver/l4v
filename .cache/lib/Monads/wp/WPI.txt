@@ -1,0 +1,406 @@
+<\STATESEP>theory WPI
+imports
+  Eisbach_Tools.Eisbach_Methods
+  Nondet_Lemmas
+  WPEx
+begin<\STATESEP>0<\TRANSEP><\STATESEP>lemma bool_function_four_cases:
+  "f = Not \<or> f = id \<or> f = (\<lambda>_. True) \<or> f = (\<lambda>_. False)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. f = Not \<or> f = id \<or> f = (\<lambda>_. True) \<or> f = (\<lambda>_. False)<\STATESEP>by (auto simp add: fun_eq_iff all_bool_eq)<\STATESEP>1<\TRANSEP><\STATESEP>method_setup repeat_new =
+ \<open>Method.text_closure >> (fn m => fn ctxt => fn facts =>
+   let
+     fun tac i st' =
+       Goal.restrict i 1 st'
+       |> method_evaluate m ctxt facts
+       |> Seq.map (Goal.unrestrict i)
+
+   in SIMPLE_METHOD (SUBGOAL (fn (_,i) => REPEAT_ALL_NEW tac i) 1) facts end)
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>context begin<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "atomic f A' A B Q = (\<forall>P. \<lbrace>\<lambda>s. P (A' s)\<rbrace> f \<lbrace>\<lambda>r s. P (A r s)\<rbrace>)"<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "trip (Bs :: bool) = Bs"<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  init: "(atomic f (\<lambda>_. True) (\<lambda>_ _. True) (\<lambda>_ _. True) Q \<Longrightarrow> trip Ts) \<Longrightarrow>
+          (trip Ts \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f (\<lambda>_. True) (\<lambda>_ _. True) (\<lambda>_ _. True) Q \<Longrightarrow> trip Ts; trip Ts \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (simp add: atomic_def valid_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_conjE1:
+  "atomic f A' A B (\<lambda>r s. Q r s \<and> Q' r s) \<Longrightarrow>
+    (atomic f A' A B Q \<Longrightarrow> trip Ts) \<Longrightarrow>
+    trip Ts "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Q r s \<and> Q' r s); atomic f A' A B Q \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>by (simp add: atomic_def trip_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_conjE2:
+  "atomic f A' A B (\<lambda>r s. Q r s \<and> Q' r s) \<Longrightarrow>
+    (atomic f A' A B Q' \<Longrightarrow> trip Ts) \<Longrightarrow>
+    trip Ts "<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Q r s \<and> Q' r s); atomic f A' A B Q' \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>by (simp add: atomic_def trip_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_impE_curry:
+  "atomic f A' A B (\<lambda>r s. (Q r s \<and> Q' r s) \<longrightarrow> Q'' r s) \<Longrightarrow>
+    (atomic f A' A B (\<lambda>r s. Q r s \<longrightarrow> Q' r s \<longrightarrow> Q'' r s) \<Longrightarrow> trip Ts) \<Longrightarrow> trip Ts"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Q r s \<and> Q' r s \<longrightarrow> Q'' r s); atomic f A' A B (\<lambda>r s. Q r s \<longrightarrow> Q' r s \<longrightarrow> Q'' r s) \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>by (simp add: atomic_def )<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_impE_nonpreserved:
+  "atomic f A' A B (\<lambda>r s. Q r s \<longrightarrow> Q' r s) \<Longrightarrow>
+    (atomic f A' A (\<lambda>r s. Q r s \<and> B r s) Q' \<Longrightarrow> trip Ts) \<Longrightarrow> trip Ts"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Q r s \<longrightarrow> Q' r s); atomic f A' A (\<lambda>r s. Q r s \<and> B r s) Q' \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>by (simp add: atomic_def )<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_impE_preserved:
+  "atomic f A' A B (\<lambda>r s. Pres r s \<longrightarrow> Q' r s) \<Longrightarrow>
+  (\<And>P. \<lbrace>\<lambda>s. P (Pres' s)\<rbrace> f \<lbrace>\<lambda>r s. P (Pres r s)\<rbrace>) \<Longrightarrow>
+  (atomic f (\<lambda>s. A' s \<and> Pres' s) (\<lambda>r s. A r s \<and> Pres r s) B Q' \<Longrightarrow> trip Ts) \<Longrightarrow> trip Ts"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Pres r s \<longrightarrow> Q' r s); \<And>P. \<lbrace>\<lambda>s. P (Pres' s)\<rbrace> f \<lbrace>\<lambda>r s. P (Pres r s)\<rbrace>; atomic f (\<lambda>s. A' s \<and> Pres' s) (\<lambda>r s. A r s \<and> Pres r s) B Q' \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>apply (erule meta_mp)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Pres r s \<longrightarrow> Q' r s); \<And>P. \<lbrace>\<lambda>s. P (Pres' s)\<rbrace> f \<lbrace>\<lambda>r s. P (Pres r s)\<rbrace>\<rbrakk> \<Longrightarrow> atomic f (\<lambda>s. A' s \<and> Pres' s) (\<lambda>r s. A r s \<and> Pres r s) B Q'<\STATESEP>apply (clarsimp simp: valid_def atomic_def)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s a b. \<lbrakk>\<forall>P s. P (A' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (A r s')); \<And>P. \<forall>s. P (Pres' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (Pres r s')); P (A' s \<and> Pres' s); (a, b) \<in> fst (f s)\<rbrakk> \<Longrightarrow> P (A a b \<and> Pres a b)<\STATESEP>apply (rename_tac P s r s')<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s r s'. \<lbrakk>\<forall>P s. P (A' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (A r s')); \<And>P. \<forall>s. P (Pres' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (Pres r s')); P (A' s \<and> Pres' s); (r, s') \<in> fst (f s)\<rbrakk> \<Longrightarrow> P (A r s' \<and> Pres r s')<\STATESEP>apply (drule_tac x=P in spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s r s'. \<lbrakk>\<And>P. \<forall>s. P (Pres' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (Pres r s')); P (A' s \<and> Pres' s); (r, s') \<in> fst (f s); \<forall>s. P (A' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (A r s'))\<rbrakk> \<Longrightarrow> P (A r s' \<and> Pres r s')<\STATESEP>apply (drule_tac x=P in meta_spec)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s r s'. \<lbrakk>P (A' s \<and> Pres' s); (r, s') \<in> fst (f s); \<forall>s. P (A' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (A r s')); \<forall>s. P (Pres' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (Pres r s'))\<rbrakk> \<Longrightarrow> P (A r s' \<and> Pres r s')<\STATESEP>apply (drule_tac x=s in spec)+<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s r s'. \<lbrakk>P (A' s \<and> Pres' s); (r, s') \<in> fst (f s); P (A' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (A r s')); P (Pres' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (Pres r s'))\<rbrakk> \<Longrightarrow> P (A r s' \<and> Pres r s')<\STATESEP>apply (cut_tac f=P in bool_function_four_cases)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>P s r s'. \<lbrakk>P (A' s \<and> Pres' s); (r, s') \<in> fst (f s); P (A' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (A r s')); P (Pres' s) \<longrightarrow> (\<forall>x\<in>fst (f s). case x of (r, s') \<Rightarrow> P (Pres r s')); P = Not \<or> P = id \<or> P = (\<lambda>_. True) \<or> P = (\<lambda>_. False)\<rbrakk> \<Longrightarrow> P (A r s' \<and> Pres r s')<\STATESEP>by auto<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_allE:
+  "atomic f A' A B (\<lambda>r s. \<forall>x. Q x r s) \<Longrightarrow>
+    (\<And>x. atomic f A' A B (\<lambda>r s. Q x r s) \<Longrightarrow> trip (Ts x)) \<Longrightarrow> trip (\<forall>x. Ts x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. \<forall>x. Q x r s); \<And>x. atomic f A' A B (Q x) \<Longrightarrow> trip (Ts x)\<rbrakk> \<Longrightarrow> trip (\<forall>x. Ts x)<\STATESEP>by (simp add: atomic_def trip_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_exE:
+  "atomic f A' A B (\<lambda>r s. \<exists>x. Q x r s) \<Longrightarrow>
+    (\<And>x. atomic f A' A B (\<lambda>r s. Q x r s) \<Longrightarrow> trip (Ts x)) \<Longrightarrow> trip (\<exists>x. Ts x)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. \<exists>x. Q x r s); \<And>x. atomic f A' A B (Q x) \<Longrightarrow> trip (Ts x)\<rbrakk> \<Longrightarrow> trip (\<exists>x. Ts x)<\STATESEP>by (simp add: atomic_def trip_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_disjE:
+  "atomic f A' A B (\<lambda>r s. Q r s \<or> Q' r s) \<Longrightarrow>
+   (atomic f A' A B (\<lambda>r s. (\<not> Q r s \<longrightarrow> Q' r s) \<and> (\<not> Q' r s \<longrightarrow> Q r s))
+    \<Longrightarrow> trip Ts) \<Longrightarrow> trip Ts"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>r s. Q r s \<or> Q' r s); atomic f A' A B (\<lambda>r s. (\<not> Q r s \<longrightarrow> Q' r s) \<and> (\<not> Q' r s \<longrightarrow> Q r s)) \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>by (simp add: atomic_def )<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "static Q = (\<lambda>r s. Q)"<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_staticE:
+  "atomic f A' A B (\<lambda>(_ :: 'a) (_ :: 'b). Q) \<Longrightarrow>
+    (atomic f A' A B (static Q :: ('a \<Rightarrow> 'b \<Rightarrow> bool)) \<Longrightarrow> trip Ts) \<Longrightarrow> trip Ts"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (\<lambda>_ _. Q); atomic f A' A B (static Q) \<Longrightarrow> trip Ts\<rbrakk> \<Longrightarrow> trip Ts<\STATESEP>by (simp add: atomic_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas atomic_elims =
+   atomic_conjE1 atomic_conjE2 atomic_allE atomic_exE atomic_disjE atomic_impE_curry<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomicE:
+  "atomic f A' A B Q \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> trip \<lbrace>\<lambda>s. A' s \<longrightarrow> P s\<rbrace> f \<lbrace>\<lambda>r s. A r s \<longrightarrow> Q r s\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B Q; \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>\<rbrakk> \<Longrightarrow> trip \<lbrace>\<lambda>s. A' s \<longrightarrow> P s\<rbrace> f \<lbrace>\<lambda>r s. A r s \<longrightarrow> Q r s\<rbrace><\STATESEP>by (auto simp add: trip_def atomic_def valid_def;blast)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomicE_static:
+  "atomic f A' A B (static Q) \<Longrightarrow> \<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace> \<Longrightarrow>
+    trip \<lbrace>\<lambda>s. A' s \<longrightarrow> Q\<rbrace> f \<lbrace>\<lambda>r s. A r s \<longrightarrow> Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' A B (static Q); \<lbrace>\<lambda>_. True\<rbrace> f \<lbrace>\<lambda>_ _. True\<rbrace>\<rbrakk> \<Longrightarrow> trip \<lbrace>\<lambda>s. A' s \<longrightarrow> Q\<rbrace> f \<lbrace>\<lambda>r s. A r s \<longrightarrow> Q\<rbrace><\STATESEP>by (auto simp add: trip_def atomic_def valid_def;blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas atomicEs = atomicE_static atomicE<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  atomic_drop_trivial:
+  "atomic f A' (\<lambda>_ _. True) (\<lambda>_ _. True) Q \<Longrightarrow> R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f A' (\<lambda>_ _. True) (\<lambda>_ _. True) Q; R\<rbrakk> \<Longrightarrow> R<\STATESEP>by (auto simp add: trip_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_True: "trip True"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. trip True<\STATESEP>by (simp add: trip_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_push_all1:
+  "trip (\<forall>x. \<lbrace>\<lambda>s. Q x s\<rbrace> f \<lbrace>\<lambda>r s. Q' x r s\<rbrace>) \<Longrightarrow>
+    trip (\<lbrace>\<lambda>s. \<forall>x. Q x s\<rbrace> f \<lbrace>\<lambda>r s. \<forall>x. Q' x r s\<rbrace>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. trip (\<forall>x. \<lbrace>Q x\<rbrace> f \<lbrace>Q' x\<rbrace>) \<Longrightarrow> trip \<lbrace>\<lambda>s. \<forall>x. Q x s\<rbrace> f \<lbrace>\<lambda>r s. \<forall>x. Q' x r s\<rbrace><\STATESEP>by (simp add: trip_def valid_def; blast)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_push_all2:
+  "trip (\<forall>x y. \<lbrace>\<lambda>s. Q x y s\<rbrace> f \<lbrace>\<lambda>r s. Q' x y r s\<rbrace>) \<Longrightarrow>
+    trip (\<lbrace>\<lambda>s. \<forall>x y. Q x y s\<rbrace> f \<lbrace>\<lambda>r s. \<forall>x y. Q' x y r s\<rbrace>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. trip (\<forall>x y. \<lbrace>Q x y\<rbrace> f \<lbrace>Q' x y\<rbrace>) \<Longrightarrow> trip \<lbrace>\<lambda>s. \<forall>x y. Q x y s\<rbrace> f \<lbrace>\<lambda>r s. \<forall>x y. Q' x y r s\<rbrace><\STATESEP>by (simp add: trip_def valid_def; blast)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_push_ex1:
+  "trip (\<exists>x. \<lbrace>\<lambda>s. Q s\<rbrace> f \<lbrace>\<lambda>r s. Q' x r s\<rbrace>) \<Longrightarrow>
+    trip (\<lbrace>\<lambda>s. Q s\<rbrace> f \<lbrace>\<lambda>r s. \<exists>x. Q' x r s\<rbrace>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. trip (\<exists>x. \<lbrace>Q\<rbrace> f \<lbrace>Q' x\<rbrace>) \<Longrightarrow> trip \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>r s. \<exists>x. Q' x r s\<rbrace><\STATESEP>by (simp add: trip_def valid_def,blast)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_push_ex2:
+  "trip (\<exists>x y. \<lbrace>\<lambda>s. Q s\<rbrace> f \<lbrace>\<lambda>r s. Q' x y r s\<rbrace>) \<Longrightarrow>
+    trip (\<lbrace>\<lambda>s. Q s\<rbrace> f \<lbrace>\<lambda>r s. \<exists>x y. Q' x y r s\<rbrace>)"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. trip (\<exists>x y. \<lbrace>Q\<rbrace> f \<lbrace>Q' x y\<rbrace>) \<Longrightarrow> trip \<lbrace>Q\<rbrace> f \<lbrace>\<lambda>r s. \<exists>x y. Q' x y r s\<rbrace><\STATESEP>by (simp add: trip_def valid_def; blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas trips_pushEs[elim_format] = trips_push_all1 trips_push_all2 trips_push_ex1 trips_push_ex2<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_True_drop: "trip True \<Longrightarrow> R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>trip True; R\<rbrakk> \<Longrightarrow> R<\STATESEP>by -<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trips_contr_drop: "trip \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. False\<rbrace> \<Longrightarrow> R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>trip \<lbrace>P\<rbrace> f \<lbrace>\<lambda>_ _. False\<rbrace>; R\<rbrakk> \<Longrightarrow> R<\STATESEP>by -<\STATESEP>1<\TRANSEP><\STATESEP>definition "post_imp A B == A \<longrightarrow> B"<\STATESEP>0<\TRANSEP><\STATESEP>lemma trip_init:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_imp True (Q r s)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_imp True (Q r s)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>apply (erule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>rv s. post_imp True (Q rv s) \<Longrightarrow> Q rv s<\STATESEP>by (simp add: post_imp_def)<\STATESEP>1<\TRANSEP><\STATESEP>lemma trip_drop:
+  "\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_imp (Q' r s) (Q r s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_imp (Q' r s) (Q r s)\<rbrace><\STATESEP>apply (erule hoare_strengthen_post)<\STATESEP>1<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>rv s. Q rv s \<Longrightarrow> post_imp (Q' rv s) (Q rv s)<\STATESEP>by (simp add: post_imp_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma hoare_add_trip:
+  "trip (\<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>) \<Longrightarrow>
+  \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>r s. post_imp (Q r s \<and> Q' r s) (R r s)\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>r s. post_imp (Q' r s) (R r s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>trip \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>; \<lbrace>P'\<rbrace> f \<lbrace>\<lambda>r s. post_imp (Q r s \<and> Q' r s) (R r s)\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. P s \<and> P' s\<rbrace> f \<lbrace>\<lambda>r s. post_imp (Q' r s) (R r s)\<rbrace><\STATESEP>by (auto simp: trip_def valid_def post_imp_def; blast)<\STATESEP>1<\TRANSEP><\STATESEP>lemmas post_imp_cong = imp_cong[simplified post_imp_def[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>ML \<open>
+  fun has_shared_frees t t' =
+  let
+    val frees = Term.add_frees t [];
+    val frees' = Term.add_frees t' [];
+  in
+   exists (member (op =) frees') frees
+  end
+\<close><\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>method_setup shared_frees =
+  \<open>Args.term -- Args.term >>
+    (fn (t,t') => (fn _ =>
+    SIMPLE_METHOD (fn st =>
+    if Method.detect_closure_state st then Seq.empty else
+    if has_shared_frees t t' then Seq.single st else Seq.empty )))\<close><\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>method uses_arg for C :: "'a \<Rightarrow> 'b \<Rightarrow> bool" =
+  determ \<open>(match (C) in "\<lambda>r s. ?discard_r s" (cut) \<Rightarrow> \<open>fail\<close> \<bar> _ \<Rightarrow> \<open>-\<close>)\<close><\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma trivial_test: "atomic f a b (\<lambda>_ _. True) B \<Longrightarrow> R \<Longrightarrow> R"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>atomic f a b (\<lambda>_ _. True) B; R\<rbrakk> \<Longrightarrow> R<\STATESEP>by -<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>method tests =
+determ \<open>(match premises in "atomic f _ _ C Q" (cut) for f and C Q :: "'a \<Rightarrow> 'b \<Rightarrow> bool"  \<Rightarrow> \<open>
+     fails \<open>
+            shared_frees C Q (* consequent shares variables with antecedent *)
+          | shared_frees f C, shared_frees f Q (* both consequent and antecedent share variables with function args *)
+          | uses_arg C, uses_arg Q (* consequent and antecedent depend on return value *)
+          | uses_arg C, shared_frees f Q (* antecedent depends on return value, consequent depends on function args *)
+          | shared_frees f C, uses_arg Q (* consequent depends on return value, antecedent depends on function args *)
+          \<close>\<close>)\<close><\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>method make_goals methods wp_weak wp_strong tests  =
+  (repeat_new \<open>erule atomic_staticE | erule atomic_elims |
+            (erule atomic_impE_preserved, solves \<open>wp_weak | wp_strong\<close>) |
+             erule atomic_impE_nonpreserved\<close>,
+      fails \<open>erule atomic_drop_trivial\<close>,
+      (solves \<open>erule atomicEs, wp_weak\<close>
+      | succeeds \<open>erule trivial_test | tests\<close>,
+          determ \<open>erule atomicEs\<close>, solves \<open>wp_strong\<close>))<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemmas simp_dels = all_simps ex_simps<\STATESEP>0<\TRANSEP><\STATESEP>method post_strengthen methods wp_weak wp_strong simp' tests =
+  (rule init,
+    determ \<open>make_goals \<open>wp_weak\<close> \<open>wp_strong\<close> \<open>tests\<close>,
+    (elim trips_pushEs)?,
+    rule trip_init\<close>,
+    (simp add: imp_conjL del: simp_dels split del: if_split)?,
+    determ \<open>(erule trips_True_drop trips_contr_drop hoare_add_trip)\<close>,
+    simp',
+    rule trip_drop,
+    (rule hoare_vcg_prop)?)<\STATESEP>0<\TRANSEP><\STATESEP>named_theorems wpi<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>method final_simp =
+  (simp del: del: simp_dels split del: if_split cong: post_imp_cong)<\STATESEP>0<\TRANSEP><\STATESEP>method wpi_once uses add del declares wpi =
+  (post_strengthen \<open>wp only: wpi\<close> \<open>wp add: add del: del\<close> \<open>final_simp\<close> \<open>fail\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method wpi uses add del declares wpi = ((wpi_once add: add del: del)+)[1]<\STATESEP>0<\TRANSEP><\STATESEP>method wpi_unsafe uses add del declares wpi =
+  (post_strengthen \<open>wp only: wpi\<close> \<open>wp add: add del: del\<close> \<open>final_simp\<close> \<open>tests\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>method wpi_dangerous uses add del declares wpi =
+  (post_strengthen \<open>wp add: wpi add del: del\<close> \<open>fail\<close> \<open>final_simp\<close> \<open>fail\<close>)<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "term x = True"<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  trips_transport:
+  "atomic f A' A B (static Q'') \<Longrightarrow> trip (term (\<lambda>r s. Q''))"
+  "atomic f A' A B Q' \<Longrightarrow> trip (term Q')"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. (atomic f A' A B (static Q'') \<Longrightarrow> trip (term (\<lambda>r s. Q''))) &&& (atomic f A' A B Q' \<Longrightarrow> trip (term Q'))<\STATESEP>by (simp add: trip_def term_def)+<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>definition "post_conj A B \<equiv> A \<and> B"<\STATESEP>0<\TRANSEP><\STATESEP>lemmas post_conj_cong = conj_cong[simplified post_conj_def[symmetric]]<\STATESEP>0<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  trip_term_quants:
+  "trip (\<forall>x. term (Q x)) \<Longrightarrow> trip (term (\<lambda>r s. \<forall>x. Q x r s))"
+  "trip (\<forall>x y. term (Q' x y)) \<Longrightarrow> trip (term (\<lambda>r s. \<forall>x y. Q' x y r s))"
+  "trip (\<exists>x. term (Q x)) \<Longrightarrow> trip (term (\<lambda>r s. \<exists>x. Q x r s))"
+  "trip (\<exists>x y. term (Q' x y)) \<Longrightarrow> trip (term (\<lambda>r s. \<exists>x y. Q' x y r s))"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. ((trip (\<forall>x. term (Q x)) \<Longrightarrow> trip (term (\<lambda>r s. \<forall>x. Q x r s))) &&& (trip (\<forall>x y. term (Q' x y)) \<Longrightarrow> trip (term (\<lambda>r s. \<forall>x y. Q' x y r s)))) &&& (trip (\<exists>x. term (Q x)) \<Longrightarrow> trip (term (\<lambda>r s. \<exists>x. Q x r s))) &&& (trip (\<exists>x y. term (Q' x y)) \<Longrightarrow> trip (term (\<lambda>r s. \<exists>x y. Q' x y r s)))<\STATESEP>by (simp add: trip_def term_def)+<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  strengthen_trip_term:
+  "trip (term Q') \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_conj (Q' r s) (Q r s)\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrakk>trip (term Q'); \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_conj (Q' r s) (Q r s)\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>Q\<rbrace><\STATESEP>by (auto simp add: trip_def atomic_def valid_def post_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>private<\STATESEP>0<\TRANSEP><\STATESEP>lemma
+  post_conj_drop:
+  "\<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q' r s \<and> Q r s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_conj (Q' r s) (Q r s)\<rbrace>"<\STATESEP>0<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. Q' r s \<and> Q r s\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> f \<lbrace>\<lambda>r s. post_conj (Q' r s) (Q r s)\<rbrace><\STATESEP>by (simp add: post_conj_def)<\STATESEP>1<\TRANSEP><\STATESEP>method wp_drop_imp_internal methods tests =
+  (rule init,
+   repeat_new \<open>erule atomic_staticE | erule atomic_elims atomic_impE_nonpreserved\<close>,
+   fails \<open>erule atomic_drop_trivial\<close>,
+   succeeds \<open>erule trivial_test | tests\<close>,
+   determ \<open>erule trips_transport\<close>,
+   ((drule trip_term_quants)+)?,
+   erule strengthen_trip_term,
+   simp split del: if_split cong: post_conj_cong,
+   rule post_conj_drop)<\STATESEP>0<\TRANSEP><\STATESEP>method wp_drop_imp = wp_drop_imp_internal \<open>tests\<close><\STATESEP>0<\TRANSEP><\STATESEP>method wp_strong_drop_imp = wp_drop_imp_internal \<open>succeed\<close><\STATESEP>0<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix P P' P'' P''' and Q Q' Q'' :: "'a \<Rightarrow> bool" and R :: "bool \<Rightarrow> 'b \<Rightarrow> 'a \<Rightarrow> bool"
+      and f :: "'x \<Rightarrow> ('a,'b) nondet_monad" and D D' D'' D''' D'''' y and x :: 'x<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume    Q[wp]: "\<lbrace>P'\<rbrace> f x \<lbrace>\<lambda>_. Q\<rbrace>" and
+            Q'[wp]:"\<lbrace>P''\<rbrace> f x \<lbrace>\<lambda>_. Q'\<rbrace>" and
+            C: "\<And>r s.
+                (y x \<longrightarrow> D''' y) \<and>
+                ((R D r s \<longrightarrow>
+                 D \<and> (D'''' \<longrightarrow> y x)) \<and>
+                (\<not> R D r s \<longrightarrow> Q'' s))"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrace>P'\<rbrace> f x \<lbrace>\<lambda>_. Q\<rbrace>
+\<lbrace>P''\<rbrace> f x \<lbrace>\<lambda>_. Q'\<rbrace>
+(y x \<longrightarrow> D''' y) \<and> (R D ?r ?s \<longrightarrow> D \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D ?r ?s \<longrightarrow> Q'' ?s)<\STATESEP>have "\<lbrace>P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)\<rbrace>
+          f x
+        \<lbrace>\<lambda>r s. D'' x \<and> (R D r s \<longrightarrow> (Q s \<and> Q' s \<and> D \<and> (y x \<longrightarrow> D''' y) \<and> (D''''  \<longrightarrow> y x))) \<and>
+                (\<not> R D r s \<longrightarrow> (Q s \<and> Q'' s))\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)\<rbrace> f x \<lbrace>\<lambda>r s. D'' x \<and> (R D r s \<longrightarrow> Q s \<and> Q' s \<and> D \<and> (y x \<longrightarrow> D''' y) \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D r s \<longrightarrow> Q s \<and> Q'' s)\<rbrace><\STATESEP>apply wp<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'1\<rbrace> f x \<lbrace>\<lambda>rv s. (R D rv s \<longrightarrow> Q s \<and> Q' s \<and> D \<and> (y x \<longrightarrow> D''' y) \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D rv s \<longrightarrow> Q s \<and> Q'' s)\<rbrace>
+ 2. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> ?P'1 s<\STATESEP>apply (wpi wpi: Q')<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'30\<rbrace> f x \<lbrace>\<lambda>r s. (R D r s \<longrightarrow> Q s \<and> D \<and> (y x \<longrightarrow> D''' y) \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D r s \<longrightarrow> Q s \<and> Q'' s)\<rbrace>
+ 2. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> ?P'30 s<\STATESEP>apply (wpi wpi: Q)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?P'61\<rbrace> f x \<lbrace>\<lambda>r s. (R D r s \<longrightarrow> D \<and> (y x \<longrightarrow> D''' y) \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D r s \<longrightarrow> Q'' s)\<rbrace>
+ 2. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> P' s \<and> ?P'61 s<\STATESEP>apply (rule hoare_strengthen_post[OF wp_post_taut])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. True \<Longrightarrow> (R D rv s \<longrightarrow> D \<and> (y x \<longrightarrow> D''' y) \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D rv s \<longrightarrow> Q'' s)
+ 2. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> P' s \<and> True<\STATESEP>apply (simp add: C)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>rv s. R D rv s \<longrightarrow> D'''' \<longrightarrow> y x
+ 2. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> P' s \<and> True<\STATESEP>using C<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+(y x \<longrightarrow> D''' y) \<and> (R D ?r ?s \<longrightarrow> D \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D ?r ?s \<longrightarrow> Q'' ?s)
+
+goal (2 subgoals):
+ 1. \<And>rv s. R D rv s \<longrightarrow> D'''' \<longrightarrow> y x
+ 2. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> P' s \<and> True<\STATESEP>apply blast<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> P' s \<and> True<\STATESEP>using C<\STATESEP>3<\TRANSEP>proof (prove)
+using this:
+(y x \<longrightarrow> D''' y) \<and> (R D ?r ?s \<longrightarrow> D \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D ?r ?s \<longrightarrow> Q'' ?s)
+
+goal (1 subgoal):
+ 1. \<And>s. (P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)) s \<Longrightarrow> D'' x \<and> P'' s \<and> P' s \<and> True<\STATESEP>by blast<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>P and P' and P'' and (\<lambda>_. D'' x \<and> D' x)\<rbrace> f x \<lbrace>\<lambda>r s. D'' x \<and> (R D r s \<longrightarrow> Q s \<and> Q' s \<and> D \<and> (y x \<longrightarrow> D''' y) \<and> (D'''' \<longrightarrow> y x)) \<and> (\<not> R D r s \<longrightarrow> Q s \<and> Q'' s)\<rbrace><\STATESEP>fix B<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume B[wp]: "\<lbrace>\<lambda>s. B x s\<rbrace> f x \<lbrace>\<lambda>r. B x\<rbrace>"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r. B x\<rbrace><\STATESEP>have "\<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace>
+ 2. \<And>s. B x s \<Longrightarrow> ?Q s<\STATESEP>apply (wpi wpi: B)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. B x s \<Longrightarrow> B x s \<and> True<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace><\STATESEP>have "\<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace>
+ 2. \<And>s. B x s \<Longrightarrow> ?Q s<\STATESEP>apply (wpi_dangerous)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. B x s \<Longrightarrow> B x s \<and> True<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>B x\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> B x s\<rbrace><\STATESEP>fix C<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume CC[wp]: "\<lbrace>C\<rbrace> f x \<lbrace>\<lambda>r s. C s\<rbrace>"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrace>C\<rbrace> f x \<lbrace>\<lambda>r. C\<rbrace><\STATESEP>have "\<lbrace>\<lambda>s. D \<longrightarrow> C s\<rbrace> f x \<lbrace>\<lambda>r s. D \<longrightarrow> C s\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. D \<longrightarrow> C s\<rbrace> f x \<lbrace>\<lambda>r s. D \<longrightarrow> C s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f x \<lbrace>\<lambda>r s. D \<longrightarrow> C s\<rbrace>
+ 2. \<And>s. D \<longrightarrow> C s \<Longrightarrow> ?Q s<\STATESEP>apply wpi<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. D \<longrightarrow> C s \<Longrightarrow> (D \<longrightarrow> C s) \<and> True<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. D \<longrightarrow> C s\<rbrace> f x \<lbrace>\<lambda>r s. D \<longrightarrow> C s\<rbrace><\STATESEP>fix C CC<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume RD[wp]: "\<And>P. \<lbrace>\<lambda>s. P (CC s)\<rbrace> f x \<lbrace>\<lambda>r s. P (R D r s)\<rbrace>" and
+         CC[wp]: "\<lbrace>C\<rbrace> f x \<lbrace>\<lambda>r s. C s\<rbrace>"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. ?P (CC s)\<rbrace> f x \<lbrace>\<lambda>r s. ?P (R D r s)\<rbrace>
+\<lbrace>C\<rbrace> f x \<lbrace>\<lambda>r. C\<rbrace><\STATESEP>have "\<lbrace>\<lambda>s. CC s \<longrightarrow> C s\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> C s\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. CC s \<longrightarrow> C s\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> C s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> C s\<rbrace>
+ 2. \<And>s. CC s \<longrightarrow> C s \<Longrightarrow> ?Q s<\STATESEP>apply wpi<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. CC s \<longrightarrow> C s \<Longrightarrow> (CC s \<longrightarrow> C s) \<and> True<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. CC s \<longrightarrow> C s\<rbrace> f x \<lbrace>\<lambda>r s. R D r s \<longrightarrow> C s\<rbrace><\STATESEP>fix G G'<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume Failsafe: "\<And>P. P" and
+         f_G: "\<And>P :: bool \<Rightarrow> bool. \<lbrace>\<lambda>s. P (G s)\<rbrace> f x \<lbrace>\<lambda>r s. P (G s)\<rbrace>"<\STATESEP>2<\TRANSEP>proof (state)
+this:
+?P
+\<lbrace>\<lambda>s. ?P (G s)\<rbrace> f x \<lbrace>\<lambda>r s. ?P (G s)\<rbrace><\STATESEP>have "\<lbrace>\<lambda>s . (G s \<longrightarrow> \<not> D) \<and> ((\<not>G s) \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> ((\<not>G s) \<longrightarrow> D)\<rbrace>"<\STATESEP>2<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>apply (rule thin_rl[of W W for W])<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace>
+ 2. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q5\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace>
+ 2. \<And>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D) \<Longrightarrow> ?Q5 s
+ 3. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>apply wpi?<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q5\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace>
+ 2. \<And>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D) \<Longrightarrow> ?Q5 s
+ 3. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>apply wpi_unsafe<\STATESEP>3<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P'31\<rbrace> f x \<lbrace>\<lambda>r. G\<rbrace>
+ 2. \<And>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D) \<Longrightarrow> \<not> D \<and> ?P'31 s
+ 3. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>apply ((rule Failsafe)+)[2]<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q43\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace>
+ 2. \<And>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D) \<Longrightarrow> ?Q43 s<\STATESEP>apply (wpi add: f_G)<\STATESEP>3<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D) \<Longrightarrow> (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D) \<and> True<\STATESEP>by simp<\STATESEP>3<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace> f x \<lbrace>\<lambda>r s. (G s \<longrightarrow> \<not> D) \<and> (\<not> G s \<longrightarrow> D)\<rbrace><\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>notepad begin<\STATESEP>0<\TRANSEP>proof (state)<\STATESEP>fix f :: "'a \<Rightarrow> ('a,'b) nondet_monad" and Q P P' :: "int \<Rightarrow> 'a \<Rightarrow> bool" and Q' :: "'a \<Rightarrow> bool" and a :: 'a<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)<\STATESEP>assume P[wp]: "\<And>PP x. \<lbrace>\<lambda>s. PP (P x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P x s)\<rbrace>"
+        and Q[wp]: "\<And>x. \<lbrace>\<lambda>s. Q x s\<rbrace> f a \<lbrace>\<lambda>r s. Q x s\<rbrace>"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. ?PP (P ?x s)\<rbrace> f a \<lbrace>\<lambda>r s. ?PP (P ?x s)\<rbrace>
+\<lbrace>Q ?x\<rbrace> f a \<lbrace>\<lambda>r. Q ?x\<rbrace><\STATESEP>have "\<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace>"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace>
+ 2. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> ?Q s<\STATESEP>apply wpi<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> (\<forall>x. P x s \<longrightarrow> Q x s) \<and> True<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace><\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<And>PP x. \<lbrace>\<lambda>s. PP (P x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P x s)\<rbrace>; \<And>x. \<lbrace>Q x\<rbrace> f a \<lbrace>\<lambda>r. Q x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace><\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<And>PP x. \<lbrace>\<lambda>s. PP (P x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P x s)\<rbrace>; \<And>x. \<lbrace>Q x\<rbrace> f a \<lbrace>\<lambda>r. Q x\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace><\STATESEP>fix Q'' Q'<\STATESEP>4<\TRANSEP>proof (state)<\STATESEP>assume Q[wp]:"\<And>x. \<lbrace>\<lambda>s. Q x s\<rbrace> f a \<lbrace>\<lambda>r s. Q x s\<rbrace>" and
+         Q''[wp]:"\<lbrace>\<lambda>s. Q'' s\<rbrace> f a \<lbrace>\<lambda>r s. Q'' s\<rbrace>"
+         and Failsafe: "\<And>P. P"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrace>Q ?x\<rbrace> f a \<lbrace>\<lambda>r. Q ?x\<rbrace>
+\<lbrace>Q''\<rbrace> f a \<lbrace>\<lambda>r. Q''\<rbrace>
+?P<\STATESEP>have "\<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> (Q'' s \<and> Q x s)\<rbrace>"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply (rule thin_rl[of W W for W])<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace>
+ 2. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q5\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace>
+ 2. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> ?Q5 s
+ 3. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply wpi?<\STATESEP>5<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?Q5\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace>
+ 2. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> ?Q5 s
+ 3. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply wpi_unsafe+<\STATESEP>5<\TRANSEP>proof (prove)
+goal (3 subgoals):
+ 1. \<lbrace>?P'30\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace>
+ 2. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> Q'' s \<and> ?P'30 s
+ 3. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply (wpi wpi: Q)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> Q'' s \<and> (\<forall>x. Q x s) \<and> True
+ 2. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply simp<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> Q'' s \<and> (\<forall>x. Q x s)
+ 2. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply (rule Failsafe)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q70\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace>
+ 2. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> ?Q70 s<\STATESEP>apply wpi_dangerous+<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> Q'' s \<and> (\<forall>x. Q x s) \<and> True<\STATESEP>apply simp<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. \<forall>x. P x s \<longrightarrow> Q x s \<Longrightarrow> Q'' s \<and> (\<forall>x. Q x s)<\STATESEP>by (rule Failsafe)<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> Q'' s \<and> Q x s\<rbrace><\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<And>x. \<lbrace>Q x\<rbrace> f a \<lbrace>\<lambda>r. Q x\<rbrace>; \<lbrace>?Q''2\<rbrace> f a \<lbrace>\<lambda>r. ?Q''2\<rbrace>; \<And>P. P\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> ?Q''2 s \<and> Q x s\<rbrace><\STATESEP>{<\STATESEP>2<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<And>x. \<lbrace>Q x\<rbrace> f a \<lbrace>\<lambda>r. Q x\<rbrace>; \<lbrace>?Q''2\<rbrace> f a \<lbrace>\<lambda>r. ?Q''2\<rbrace>; \<And>P. P\<rbrakk> \<Longrightarrow> \<lbrace>\<lambda>s. \<forall>x. P x s \<longrightarrow> Q x s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> ?Q''2 s \<and> Q x s\<rbrace><\STATESEP>assume P[wp]: "\<And>PP x. \<lbrace>\<lambda>s. PP (P x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P x s)\<rbrace>" and
+         P'[wp]: "\<And>PP x. \<lbrace>\<lambda>s. PP (P' x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P' x s)\<rbrace>"
+         and Q[wp]: "\<lbrace>\<lambda>s. \<forall>x. P' x s \<longrightarrow> Q' s\<rbrace> f a \<lbrace>\<lambda>r s. Q' s\<rbrace>"<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrace>\<lambda>s. ?PP (P ?x s)\<rbrace> f a \<lbrace>\<lambda>r s. ?PP (P ?x s)\<rbrace>
+\<lbrace>\<lambda>s. ?PP (P' ?x s)\<rbrace> f a \<lbrace>\<lambda>r s. ?PP (P' ?x s)\<rbrace>
+\<lbrace>\<lambda>s. \<forall>x. P' x s \<longrightarrow> Q' s\<rbrace> f a \<lbrace>\<lambda>r. Q'\<rbrace><\STATESEP>have "\<lbrace>\<lambda>s. Q' s\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> (\<forall>y. P' y s \<longrightarrow> Q' s)\<rbrace>"<\STATESEP>4<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<lbrace>Q'\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> (\<forall>y. P' y s \<longrightarrow> Q' s)\<rbrace><\STATESEP>apply (rule hoare_pre)<\STATESEP>5<\TRANSEP>proof (prove)
+goal (2 subgoals):
+ 1. \<lbrace>?Q\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> (\<forall>y. P' y s \<longrightarrow> Q' s)\<rbrace>
+ 2. \<And>s. Q' s \<Longrightarrow> ?Q s<\STATESEP>apply wpi<\STATESEP>5<\TRANSEP>proof (prove)
+goal (1 subgoal):
+ 1. \<And>s. Q' s \<Longrightarrow> (\<forall>x xa. P x s \<longrightarrow> P' xa s \<longrightarrow> (\<forall>x. P' x s \<longrightarrow> Q' s)) \<and> True<\STATESEP>by simp<\STATESEP>5<\TRANSEP>proof (state)
+this:
+\<lbrace>Q'\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> (\<forall>y. P' y s \<longrightarrow> Q' s)\<rbrace><\STATESEP>}<\STATESEP>4<\TRANSEP>proof (state)
+this:
+\<lbrakk>\<And>PP x. \<lbrace>\<lambda>s. PP (P x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P x s)\<rbrace>; \<And>PP x. \<lbrace>\<lambda>s. PP (P' x s)\<rbrace> f a \<lbrace>\<lambda>r s. PP (P' x s)\<rbrace>; \<lbrace>\<lambda>s. \<forall>x. P' x s \<longrightarrow> Q' s\<rbrace> f a \<lbrace>\<lambda>r. Q'\<rbrace>\<rbrakk> \<Longrightarrow> \<lbrace>Q'\<rbrace> f a \<lbrace>\<lambda>r s. \<forall>x. P x s \<longrightarrow> (\<forall>y. P' y s \<longrightarrow> Q' s)\<rbrace><\STATESEP>end<\STATESEP>2<\TRANSEP><\STATESEP>end<\STATESEP>0<\TRANSEP>
