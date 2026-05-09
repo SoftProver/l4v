@@ -36,11 +36,11 @@ endif
 
 # Setup rules for the heaps.
 $(HEAPS): .FORCE
-	$(ISABELLE_TOOL) build -b -v ${ISABELLE_BUILD_OPTS} -d $(ROOT_PATH) $@
+	$(ISABELLE_TOOL) build -b -v -o document="false" ${ISABELLE_BUILD_OPTS} -d $(ROOT_PATH) $@
 .PHONY: $(HEAPS)
 
 $(GROUPS): .FORCE
-	$(ISABELLE_TOOL) build -b -v ${ISABELLE_BUILD_OPTS} -d $(ROOT_PATH) -g $@
+	$(ISABELLE_TOOL) build -b -v -o document="false" ${ISABELLE_BUILD_OPTS} -d $(ROOT_PATH) -g $@
 .PHONY: $(GROUPS)
 
 clean: clean-images
