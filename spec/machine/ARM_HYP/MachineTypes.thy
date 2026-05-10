@@ -1,0 +1,609 @@
+(* THIS FILE WAS AUTOMATICALLY GENERATED. DO NOT EDIT. *)
+(* instead, see the skeleton file MachineTypes.thy *)
+(*
+ * Copyright 2014, General Dynamics C4 Systems
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *)
+
+chapter \<open>ARM\_HYP Machine Types\<close>
+
+theory MachineTypes
+imports
+  Word_Lib.WordSetup
+  Monads.Nondet_Empty_Fail
+  Monads.Nondet_No_Fail
+  Monads.Reader_Option_ND
+  Setup_Locale
+  Platform
+begin
+context Arch begin global_naming ARM_HYP
+
+
+text \<open>
+  An implementation of the machine's types, defining register set
+  and some observable machine state.
+\<close>
+
+section "Types"
+
+datatype register =
+    R0
+  | R1
+  | R2
+  | R3
+  | R4
+  | R5
+  | R6
+  | R7
+  | R8
+  | R9
+  | SL
+  | FP
+  | IP
+  | SP
+  | LR
+  | NextIP
+  | FaultIP
+  | CPSR
+  | TPIDRURW
+  | TPIDRURO
+
+datatype vcpureg =
+    VCPURegSCTLR
+  | VCPURegACTLR
+  | VCPURegTTBCR
+  | VCPURegTTBR0
+  | VCPURegTTBR1
+  | VCPURegDACR
+  | VCPURegDFSR
+  | VCPURegIFSR
+  | VCPURegADFSR
+  | VCPURegAIFSR
+  | VCPURegDFAR
+  | VCPURegIFAR
+  | VCPURegPRRR
+  | VCPURegNMRR
+  | VCPURegCIDR
+  | VCPURegTPIDRPRW
+  | VCPURegFPEXC
+  | VCPURegLRsvc
+  | VCPURegSPsvc
+  | VCPURegLRabt
+  | VCPURegSPabt
+  | VCPURegLRund
+  | VCPURegSPund
+  | VCPURegLRirq
+  | VCPURegSPirq
+  | VCPURegLRfiq
+  | VCPURegSPfiq
+  | VCPURegR8fiq
+  | VCPURegR9fiq
+  | VCPURegR10fiq
+  | VCPURegR11fiq
+  | VCPURegR12fiq
+  | VCPURegSPSRsvc
+  | VCPURegSPSRabt
+  | VCPURegSPSRund
+  | VCPURegSPSRirq
+  | VCPURegSPSRfiq
+  | VCPURegCNTV_CTL
+  | VCPURegCNTV_CVALhigh
+  | VCPURegCNTV_CVALlow
+  | VCPURegCNTVOFFhigh
+  | VCPURegCNTVOFFlow
+
+consts'
+vcpuRegNum :: "nat"
+
+consts'
+vcpuRegSavedWhenDisabled :: "vcpureg \<Rightarrow> bool"
+
+consts'
+initContext :: "(register * machine_word) list"
+
+
+datatype virt_timer =
+    VirtTimer (vtimerLastPCount : word64)
+
+primrec
+  vtimerLastPCount_update :: "(word64 \<Rightarrow> word64) \<Rightarrow> virt_timer \<Rightarrow> virt_timer"
+where
+  "vtimerLastPCount_update f (VirtTimer v0) = VirtTimer (f v0)"
+
+abbreviation (input)
+  VirtTimer_trans :: "(word64) \<Rightarrow> virt_timer" ("VirtTimer'_ \<lparr> vtimerLastPCount= _ \<rparr>")
+where
+  "VirtTimer_ \<lparr> vtimerLastPCount= v0 \<rparr> == VirtTimer v0"
+
+lemma vtimerLastPCount_vtimerLastPCount_update [simp]:
+  "vtimerLastPCount (vtimerLastPCount_update f v) = f (vtimerLastPCount v)"
+  by (cases v) simp
+
+datatype vppievent_irq =
+    VPPIEventIRQ_VTimer
+
+(*<*)
+
+end
+
+context begin interpretation Arch .
+requalify_types register vcpureg vppievent_irq virt_timer
+
+end
+
+context Arch begin global_naming ARM_HYP
+
+end
+qualify ARM_HYP (in Arch) 
+(* register instance proofs *)
+(*<*)
+instantiation register :: enum begin
+interpretation Arch .
+definition
+  enum_register: "enum_class.enum \<equiv> 
+    [ 
+      R0,
+      R1,
+      R2,
+      R3,
+      R4,
+      R5,
+      R6,
+      R7,
+      R8,
+      R9,
+      SL,
+      FP,
+      IP,
+      SP,
+      LR,
+      NextIP,
+      FaultIP,
+      CPSR,
+      TPIDRURW,
+      TPIDRURO
+    ]"
+
+
+definition
+  "enum_class.enum_all (P :: register \<Rightarrow> bool) \<longleftrightarrow> Ball UNIV P"
+
+definition
+  "enum_class.enum_ex (P :: register \<Rightarrow> bool) \<longleftrightarrow> Bex UNIV P"
+
+  instance
+  apply intro_classes
+   apply (safe, simp)
+   apply (case_tac x)
+  apply (simp_all add: enum_register enum_all_register_def enum_ex_register_def)
+  by fast+
+end
+
+instantiation register :: enum_alt
+begin
+interpretation Arch .
+definition
+  enum_alt_register: "enum_alt \<equiv> 
+    alt_from_ord (enum :: register list)"
+instance ..
+end
+
+instantiation register :: enumeration_both
+begin
+interpretation Arch .
+instance by (intro_classes, simp add: enum_alt_register)
+end
+
+(*>*)
+end_qualify
+context Arch begin global_naming ARM_HYP
+
+end
+qualify ARM_HYP (in Arch) 
+(* vcpureg instance proofs *)
+(*<*)
+instantiation vcpureg :: enum begin
+interpretation Arch .
+definition
+  enum_vcpureg: "enum_class.enum \<equiv> 
+    [ 
+      VCPURegSCTLR,
+      VCPURegACTLR,
+      VCPURegTTBCR,
+      VCPURegTTBR0,
+      VCPURegTTBR1,
+      VCPURegDACR,
+      VCPURegDFSR,
+      VCPURegIFSR,
+      VCPURegADFSR,
+      VCPURegAIFSR,
+      VCPURegDFAR,
+      VCPURegIFAR,
+      VCPURegPRRR,
+      VCPURegNMRR,
+      VCPURegCIDR,
+      VCPURegTPIDRPRW,
+      VCPURegFPEXC,
+      VCPURegLRsvc,
+      VCPURegSPsvc,
+      VCPURegLRabt,
+      VCPURegSPabt,
+      VCPURegLRund,
+      VCPURegSPund,
+      VCPURegLRirq,
+      VCPURegSPirq,
+      VCPURegLRfiq,
+      VCPURegSPfiq,
+      VCPURegR8fiq,
+      VCPURegR9fiq,
+      VCPURegR10fiq,
+      VCPURegR11fiq,
+      VCPURegR12fiq,
+      VCPURegSPSRsvc,
+      VCPURegSPSRabt,
+      VCPURegSPSRund,
+      VCPURegSPSRirq,
+      VCPURegSPSRfiq,
+      VCPURegCNTV_CTL,
+      VCPURegCNTV_CVALhigh,
+      VCPURegCNTV_CVALlow,
+      VCPURegCNTVOFFhigh,
+      VCPURegCNTVOFFlow
+    ]"
+
+
+definition
+  "enum_class.enum_all (P :: vcpureg \<Rightarrow> bool) \<longleftrightarrow> Ball UNIV P"
+
+definition
+  "enum_class.enum_ex (P :: vcpureg \<Rightarrow> bool) \<longleftrightarrow> Bex UNIV P"
+
+  instance
+  apply intro_classes
+   apply (safe, simp)
+   apply (case_tac x)
+  apply (simp_all add: enum_vcpureg enum_all_vcpureg_def enum_ex_vcpureg_def)
+  by fast+
+end
+
+instantiation vcpureg :: enum_alt
+begin
+interpretation Arch .
+definition
+  enum_alt_vcpureg: "enum_alt \<equiv> 
+    alt_from_ord (enum :: vcpureg list)"
+instance ..
+end
+
+instantiation vcpureg :: enumeration_both
+begin
+interpretation Arch .
+instance by (intro_classes, simp add: enum_alt_vcpureg)
+end
+
+(*>*)
+end_qualify
+context Arch begin global_naming ARM_HYP
+
+end
+qualify ARM_HYP (in Arch) 
+(* vppievent_irq instance proofs *)
+(*<*)
+instantiation vppievent_irq :: enum begin
+interpretation Arch .
+definition
+  enum_vppievent_irq: "enum_class.enum \<equiv> 
+    [ 
+      VPPIEventIRQ_VTimer
+    ]"
+
+
+definition
+  "enum_class.enum_all (P :: vppievent_irq \<Rightarrow> bool) \<longleftrightarrow> Ball UNIV P"
+
+definition
+  "enum_class.enum_ex (P :: vppievent_irq \<Rightarrow> bool) \<longleftrightarrow> Bex UNIV P"
+
+  instance
+  apply intro_classes
+   apply (safe, simp)
+   apply (case_tac x)
+  apply (auto simp: enum_vppievent_irq enum_all_vppievent_irq_def enum_ex_vppievent_irq_def
+    distinct_map_enum)
+  done
+end
+
+instantiation vppievent_irq :: enum_alt
+begin
+interpretation Arch .
+definition
+  enum_alt_vppievent_irq: "enum_alt \<equiv> 
+    alt_from_ord (enum :: vppievent_irq list)"
+instance ..
+end
+
+instantiation vppievent_irq :: enumeration_both
+begin
+interpretation Arch .
+instance by (intro_classes, simp add: enum_alt_vppievent_irq)
+end
+
+(*>*)
+end_qualify
+context Arch begin global_naming ARM_HYP
+
+(*>*)
+definition
+"capRegister \<equiv> R0"
+
+definition
+"msgInfoRegister \<equiv> R1"
+
+definition
+"msgRegisters \<equiv> [R2  .e.  R5]"
+
+definition
+"badgeRegister \<equiv> R0"
+
+definition
+"faultRegister \<equiv> FaultIP"
+
+definition
+"nextInstructionRegister \<equiv> NextIP"
+
+definition
+"frameRegisters \<equiv> FaultIP # SP # CPSR # [R0, R1] @ [R8  .e.  IP]"
+
+definition
+"gpRegisters \<equiv> [R2, R3, R4, R5, R6, R7, LR, TPIDRURW, TPIDRURO]"
+
+definition
+"exceptionMessage \<equiv> [FaultIP, SP, CPSR]"
+
+definition
+"syscallMessage \<equiv> [R0  .e.  R7] @ [FaultIP, SP, LR, CPSR]"
+
+definition
+"tlsBaseRegister \<equiv> TPIDRURW"
+
+definition
+"elr_hyp \<equiv> NextIP"
+
+defs vcpuRegNum_def:
+"vcpuRegNum\<equiv> fromEnum (maxBound ::vcpureg)"
+
+defs vcpuRegSavedWhenDisabled_def:
+"vcpuRegSavedWhenDisabled x0\<equiv> (case x0 of
+    VCPURegSCTLR \<Rightarrow>    True
+  | _ \<Rightarrow>    False
+  )"
+
+defs initContext_def:
+"initContext\<equiv> [(CPSR,0x150)]"
+
+
+section "Machine State"
+
+text \<open>
+  Most of the machine state is left underspecified at this level.
+  We know it exists, we will declare some interface functions, but
+  at this level we do not have access to how this state is transformed
+  or what effect it has on the machine.
+\<close>
+typedecl machine_state_rest
+
+text \<open>
+  The exclusive monitors state is observable in user mode.
+  The type for this is the type used in the Cambridge HOL4 ARM model.
+\<close>
+type_synonym exclusive_monitors = "(word32 \<Rightarrow> bool) list \<times> (word32 \<times> nat \<Rightarrow> bool)"
+
+text \<open>
+  The full machine state is the state observable by the kernel plus
+  the underspecified rest above. The observable parts are the
+  interrupt controller (which IRQs are masked) and the memory of the
+  machine. The latter is shadow state: kernel memory is kept in a
+  separate, more abstract datatype; user memory is reflected down
+  to the underlying memory of the machine.
+\<close>
+end
+
+qualify ARM_HYP (in Arch)
+
+record
+  machine_state =
+  irq_masks :: "ARM_HYP.irq \<Rightarrow> bool"
+  irq_state :: nat
+  underlying_memory :: "word32 \<Rightarrow> word8"
+  device_state :: "word32 \<Rightarrow> word8 option"
+  exclusive_state :: ARM_HYP.exclusive_monitors
+  machine_state_rest :: ARM_HYP.machine_state_rest
+
+axiomatization
+  irq_oracle :: "nat \<Rightarrow> 10 word"
+where
+  irq_oracle_max_irq: "\<forall> n. (irq_oracle n) <= ARM_HYP.maxIRQ"
+
+end_qualify
+
+context Arch begin global_naming ARM_HYP
+
+text \<open>
+  The machine monad is used for operations on the state defined above.
+\<close>
+type_synonym 'a machine_monad = "(machine_state, 'a) nondet_monad"
+
+end
+
+translations
+  (type) "'c ARM_HYP.machine_monad" <= (type) "(ARM_HYP.machine_state, 'c) nondet_monad"
+
+context Arch begin global_naming ARM_HYP
+
+text \<open>
+  After kernel initialisation all IRQs are masked.
+\<close>
+definition
+  "init_irq_masks \<equiv> \<lambda>_. True"
+
+text \<open>
+  The initial contents of the user-visible memory is 0.
+\<close>
+definition
+  init_underlying_memory :: "word32 \<Rightarrow> word8"
+  where
+  "init_underlying_memory \<equiv> \<lambda>_. 0"
+
+text \<open>
+  The initial exclusive state is the same constant
+  that clearExMonitor defaults it to.
+\<close>
+
+consts' default_exclusive_state :: exclusive_monitors
+
+text \<open>
+  We leave open the underspecified rest of the machine state in
+  the initial state.
+\<close>
+definition
+  init_machine_state :: machine_state where
+ "init_machine_state \<equiv> \<lparr> irq_masks = init_irq_masks,
+                         irq_state = 0,
+                         underlying_memory = init_underlying_memory,
+                         device_state = Map.empty,
+                         exclusive_state = default_exclusive_state,
+                         machine_state_rest = undefined \<rparr>"
+
+
+(* Machine/Hardware/ARM.lhs - hardware_asid, vmfault_type and vmpage_size *)
+type_synonym hardware_asid = "word8"
+
+definition
+  HardwareASID :: "hardware_asid \<Rightarrow> hardware_asid"
+where HardwareASID_def[simp]:
+ "HardwareASID \<equiv> id"
+
+definition
+  fromHWASID :: "hardware_asid \<Rightarrow> hardware_asid"
+where
+  fromHWASID_def[simp]:
+ "fromHWASID \<equiv> id"
+
+definition  fromHWASID_update :: "(hardware_asid \<Rightarrow> hardware_asid) \<Rightarrow> hardware_asid \<Rightarrow> hardware_asid"
+where
+  fromHWASID_update_def[simp]:
+ "fromHWASID_update f y \<equiv> f y"
+
+abbreviation (input)
+  HardwareASID_trans :: "(word8) \<Rightarrow> hardware_asid" ("HardwareASID'_ \<lparr> fromHWASID= _ \<rparr>")
+where
+  "HardwareASID_ \<lparr> fromHWASID= v0 \<rparr> == HardwareASID v0"
+
+datatype vmpage_size =
+    ARMSmallPage
+  | ARMLargePage
+  | ARMSection
+  | ARMSuperSection
+
+datatype vmfault_type =
+    ARMDataAbort
+  | ARMPrefetchAbort
+
+datatype hyp_fault_type =
+    ARMVCPUFault word32
+
+definition
+pageBits :: "nat"
+where
+"pageBits \<equiv> 12"
+
+definition
+pageBitsForSize :: "vmpage_size \<Rightarrow> nat"
+where
+"pageBitsForSize x0\<equiv> (case x0 of
+    ARMSmallPage \<Rightarrow>    12
+  | ARMLargePage \<Rightarrow>    16
+  | ARMSection \<Rightarrow>    21
+  | ARMSuperSection \<Rightarrow>    25
+  )"
+
+definition
+"hcrVCPU\<equiv>  (0x87039 ::machine_word)"
+
+definition
+"hcrNative\<equiv> (0xfe8703b ::machine_word)"
+
+definition
+"vgicHCREN\<equiv> (0x1 ::machine_word)"
+
+definition
+"sctlrDefault\<equiv> (0xc5187c ::machine_word)"
+
+definition
+"actlrDefault\<equiv> (0x40 ::machine_word)"
+
+definition
+"gicVCPUMaxNumLR\<equiv> (64 ::nat)"
+
+
+end
+
+context begin interpretation Arch .
+requalify_types vmpage_size
+end
+
+context Arch begin global_naming ARM_HYP
+
+end
+qualify ARM_HYP (in Arch) 
+(* vmpage_size instance proofs *)
+(*<*)
+instantiation vmpage_size :: enum begin
+interpretation Arch .
+definition
+  enum_vmpage_size: "enum_class.enum \<equiv> 
+    [ 
+      ARMSmallPage,
+      ARMLargePage,
+      ARMSection,
+      ARMSuperSection
+    ]"
+
+
+definition
+  "enum_class.enum_all (P :: vmpage_size \<Rightarrow> bool) \<longleftrightarrow> Ball UNIV P"
+
+definition
+  "enum_class.enum_ex (P :: vmpage_size \<Rightarrow> bool) \<longleftrightarrow> Bex UNIV P"
+
+  instance
+  apply intro_classes
+   apply (safe, simp)
+   apply (case_tac x)
+  apply (simp_all add: enum_vmpage_size enum_all_vmpage_size_def enum_ex_vmpage_size_def)
+  by fast+
+end
+
+instantiation vmpage_size :: enum_alt
+begin
+interpretation Arch .
+definition
+  enum_alt_vmpage_size: "enum_alt \<equiv> 
+    alt_from_ord (enum :: vmpage_size list)"
+instance ..
+end
+
+instantiation vmpage_size :: enumeration_both
+begin
+interpretation Arch .
+instance by (intro_classes, simp add: enum_alt_vmpage_size)
+end
+
+(*>*)
+end_qualify
+context Arch begin global_naming ARM_HYP
+
+
+end
+end
